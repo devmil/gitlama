@@ -1,12 +1,12 @@
 // Page behaviour for the landing page: the lane field behind the hero, the
-// Compass scroll rule, reveals, and the two small models. Nothing here loads
+// Lama on its merge, the Compass scroll rule, reveals, and the two small
+// models. Nothing here loads
 // data; releases.js owns the release index.
 (function () {
   "use strict";
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   const dark = window.matchMedia("(prefers-color-scheme: dark)");
-  const rootStyle = () => getComputedStyle(document.documentElement);
 
   // A generated history that grows at the top and drifts down. Geometry
   // follows the Meridian graph: a lane changes column on a cubic S-curve that
@@ -26,8 +26,9 @@
     let pointer = null, nextAuto = 1800, releaseAuto = 0;
     let visible = true, frame = 0, last = 0;
 
+    // The stage scopes its own lane colours and ground.
     function readColours() {
-      const style = rootStyle();
+      const style = getComputedStyle(canvas);
       palette = [];
       for (let lane = 1; lane <= 8; lane++) palette.push(style.getPropertyValue(`--lane-${lane}`).trim());
       ground = style.getPropertyValue("--ground").trim();
@@ -292,6 +293,60 @@
     wake();
   }
 
+  // The Lama on the merge: it greets with a nod, then stands proud. Every few
+  // seconds a commit runs along the branch into the merge and the Lama hops.
+  // Hovering the scene nods again. Reduced motion keeps the still pose.
+  function heroLama(scene) {
+    const lama = document.getElementById("hero-lama");
+    const branch = document.getElementById("merge-branch");
+    const runner = document.getElementById("commit-runner");
+    const head = document.getElementById("merge-head");
+    if (!lama || !branch || !runner || !head) return;
+    const RUN = 1400, PAUSE = 4200;
+    const length = branch.getTotalLength();
+    let hovering = false, visible = true, frame = 0, start = 0, timer = 0;
+
+    function pose(hello) { lama.classList.toggle("is-hello", hello); }
+    setTimeout(() => { if (!hovering) pose(false); }, 1600);
+    scene.addEventListener("pointerenter", () => { hovering = true; pose(true); });
+    scene.addEventListener("pointerleave", () => { hovering = false; pose(false); });
+
+    function replay(node, name) {
+      node.classList.remove(name);
+      void node.getBBox();
+      node.classList.add(name);
+    }
+
+    function run(now) {
+      frame = 0;
+      const t = Math.min((now - start) / RUN, 1);
+      // Ease in and out so the commit leaves and lands gently.
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const point = branch.getPointAtLength(eased * length);
+      runner.setAttribute("cx", point.x.toFixed(2));
+      runner.setAttribute("cy", point.y.toFixed(2));
+      runner.style.opacity = String(Math.min(1, t * 8, (1 - t) * 8));
+      if (t < 1) { frame = requestAnimationFrame(run); return; }
+      runner.style.opacity = "0";
+      replay(head, "landed");
+      replay(lama, "is-hopping");
+      queue(PAUSE);
+    }
+
+    function queue(delay) {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (frame || reduced.matches || !visible || document.hidden) { queue(PAUSE); return; }
+        start = performance.now();
+        frame = requestAnimationFrame(run);
+      }, delay);
+    }
+
+    lama.addEventListener("animationend", () => lama.classList.remove("is-hopping"));
+    new IntersectionObserver((entries) => { visible = entries[0].isIntersecting; }).observe(scene);
+    queue(2600);
+  }
+
   // The Compass rule follows scroll progress; the product shot settles flat.
   function scrollEffects() {
     const compass = document.querySelector(".compass");
@@ -407,7 +462,8 @@
     const count = document.getElementById("diff-count");
     const range = document.getElementById("hunk-range");
     const stageHunk = document.getElementById("stage-hunk");
-    if (!model || !view || !count || !range || !stageHunk) return;
+    const clean = document.getElementById("diff-clean");
+    if (!model || !view || !count || !range || !stageHunk || !clean) return;
     const initial = Array.from(view.querySelectorAll(".dl")).map((row) => ({
       kind: row.classList.contains("add") ? "add" : row.classList.contains("del") ? "del" : "ctx",
       code: row.querySelector("code").textContent,
@@ -488,17 +544,15 @@
       stageHunk.disabled = changes === 0;
       count.textContent = staged ? `${staged} staged · ${changes} unstaged` : `${changes} unstaged`;
       if (changes === 0) {
+        // Everything is staged: the app's resting Lama takes the empty side.
         view.textContent = "";
-        const empty = document.createElement("div");
-        empty.className = "diff-empty";
-        const text = document.createElement("p");
-        text.textContent = "No changes on this side.";
+        const empty = clean.content.firstElementChild.cloneNode(true);
         const again = document.createElement("button");
         again.type = "button";
         again.className = "button small secondary";
         again.textContent = "Start over";
         again.addEventListener("click", reset);
-        empty.append(text, again);
+        empty.append(again);
         view.append(empty);
         return;
       }
@@ -526,6 +580,8 @@
 
   const field = document.getElementById("lane-field");
   if (field && field.getContext) laneField(field);
+  const scene = document.getElementById("hero-scene");
+  if (scene) heroLama(scene);
   scrollEffects();
   reveals();
   shotTheme();

@@ -40,18 +40,43 @@
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
-      <canvas id="lane-field" class="lane-field" aria-hidden="true"></canvas>
-      <div class="hero-veil" aria-hidden="true"></div>
-      <div class="hero-copy">
-        <img class="hero-mark" src="assets/icon-512.png" width="104" height="104" alt="">
-        <p class="eyebrow">Git client for macOS, Linux and Windows</p>
-        <h1 id="hero-title">Your repository,<br>in view.</h1>
-        <p class="intro">GitLama is a desktop Git client. It keeps the history graph, your changes and the selected diff in one window.</p>
-        <div class="actions">
-          <a id="hero-download" class="button primary" href="#downloads"><span class="icon" style="--icon:url(assets/icons/download.svg)"></span><span>Download</span></a>
-          <a class="button secondary" href="#features">What it does</a>
+      <div class="stage">
+        <canvas id="lane-field" class="lane-field" aria-hidden="true"></canvas>
+        <div class="stage-veil" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow">Git client for macOS, Linux and Windows</p>
+          <h1 id="hero-title">Your repository,<br>in view.</h1>
+          <p class="intro">GitLama is a desktop Git client. It keeps the history graph, your changes and the selected diff in one window.</p>
+          <div class="actions">
+            <a id="hero-download" class="button primary" href="#downloads"><span class="icon" style="--icon:url(assets/icons/download.svg)"></span><span>Download</span></a>
+            <a class="button secondary" href="#features">What it does</a>
+          </div>
+          <p class="hero-note"><span id="hero-release" class="mono"></span>Beta. Free software under GPL-3.0-or-later. Built with Flutter and Rust.</p>
         </div>
-        <p class="hero-note"><span id="hero-release" class="mono"></span>Beta. Free software under GPL-3.0-or-later. Built with Flutter and Rust.</p>
+        <!-- The Lama stands on a merge, as in the app icon. It opens with a
+             nod; site.js sends a commit along the branch and the Lama hops
+             when it lands. -->
+        <div id="hero-scene" class="hero-scene" aria-hidden="true">
+          <svg viewBox="0 0 200 120" focusable="false">
+            <defs>
+              <linearGradient id="trunk-fade" gradientUnits="userSpaceOnUse" x1="2" y1="0" x2="180" y2="0">
+                <stop offset="0" stop-color="#6AAEFF" stop-opacity="0"/>
+                <stop offset="0.35" stop-color="#6AAEFF"/>
+              </linearGradient>
+            </defs>
+            <path class="trunk" d="M2 87H180" stroke="url(#trunk-fade)"/>
+            <path id="merge-branch" class="branch" d="M100 87c10 0 12 13 24 13h20c12 0 14-13 24-13"/>
+            <circle class="ring" cx="44" cy="87" r="4.5"/>
+            <circle class="ring" cx="72" cy="87" r="4.5"/>
+            <circle class="node" cx="134" cy="100" r="5"/>
+            <circle id="merge-head" class="node head" cx="180" cy="87" r="5"/>
+            <circle id="commit-runner" class="runner" cx="100" cy="87" r="4"/>
+            <g id="hero-lama" class="hero-lama is-hello">
+              <image class="pose proud" href="assets/lama/lama-proud.svg" x="98" y="17.8" width="72" height="72"/>
+              <image class="pose hello" href="assets/lama/lama-standing-nod.svg" x="98" y="17.8" width="72" height="72"/>
+            </g>
+          </svg>
+        </div>
       </div>
     </section>
 
@@ -183,6 +208,12 @@
               <div class="dl add"><span class="gutter"><span class="ln"></span><span class="ln">46</span></span><span class="sign">+</span><code>  bool get showsHints =&gt; _hints;</code></div>
               <div class="dl"><span class="gutter"><span class="ln">45</span><span class="ln">47</span></span><span class="sign"> </span><code>}</code></div>
             </div>
+            <template id="diff-clean">
+              <div class="diff-empty">
+                <span class="lama-tile"><img src="assets/lama/lama-resting.svg" width="64" height="64" alt=""></span>
+                <p><strong>Nothing left to stage.</strong> Edit the file again and the new changes appear here.</p>
+              </div>
+            </template>
           </div>
           <p class="demo-note">A model, not the app. Click a line number to select changed lines, then stage them.</p>
         </div>
@@ -190,10 +221,13 @@
     </section>
 
     <section id="downloads" class="section wrap" aria-labelledby="downloads-title">
-      <div class="section-heading reveal">
-        <p class="eyebrow">Download</p>
-        <h2 id="downloads-title">Get GitLama</h2>
-        <p>GitLama is in beta. It uses the Git you have installed, version 2.39 or newer.</p>
+      <div class="download-stage reveal">
+        <span class="download-lama" aria-hidden="true"><img src="assets/lama/lama-standing.svg" width="120" height="120" alt=""></span>
+        <div>
+          <p class="eyebrow">Download</p>
+          <h2 id="downloads-title">Get GitLama</h2>
+          <p>GitLama is in beta. It uses the Git you have installed, version 2.39 or newer. Open a repository and you are ready.</p>
+        </div>
       </div>
       <div id="release-status" class="release-status" role="status" aria-live="polite">No verified public release is available yet.</div>
       <div id="release-bar" class="release-bar" hidden></div>
@@ -214,7 +248,7 @@ Get-FileHash GitLama-*.msi       # Windows PowerShell</pre>
   </main>
 
   <footer>
-    <div><strong>GitLama</strong><p>A desktop Git client.</p></div>
+    <div class="footer-brand"><span class="signature" aria-hidden="true"></span><div><strong>GitLama</strong><p>A desktop Git client by Devmil Solutions.</p></div></div>
     <nav aria-label="Legal"><a href="releases.html">Release notes</a><a href="license.html">License</a><a href="privacy.html">Privacy</a></nav>
     <p>No analytics. No tracking scripts.</p>
   </footer>

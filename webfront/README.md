@@ -16,9 +16,15 @@ update signature. Do not edit it by hand.
 
 The site follows Meridian's GitLama brand (light and dark from
 `prefers-color-scheme`): islands on the ground, `polar` only for intent, lane
-colours only for topology. `site.js` draws the hero's generated lane field with
-the Meridian graph geometry and lane-focus behaviour, and runs the small graph
-and diff models; it honours reduced motion and loads no data. `releases.js`
+colours only for topology. The hero is a stage on the brand ground `#14242B`
+where `site.js` draws the generated lane field with the Meridian graph geometry
+and lane-focus behaviour. The Lama stands on a merge there, as in the app icon:
+it opens with the hello pose, settles proud, and hops when a commit runs into
+the merge. The ivory Lama appears only on the brand ground (stage, download
+island, small brand tiles); the footer carries the single-ink family signature.
+`site.js` also runs the small graph and diff models; it honours reduced motion
+and loads no data. `assets/lama/` holds byte-identical copies of the vendored
+masters in `resources/brand/`, copied by `scripts/generate-brand.py`. `releases.js`
 alone reads the release index. Platform marks in `assets/platform/` come from
 Simple Icons (CC0) except the Windows mark; `assets/icons/` holds Lucide icons.
 `assets/fonts/JetBrainsMono-Regular.woff2` is a Latin subset of the design

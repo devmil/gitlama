@@ -1,7 +1,9 @@
 /* GitLama website on Meridian: islands on a tinted ground, one polar
    accent spent on intent, the spline graph as the signature. Colours are the
    GitLama brand of meridian_ui (light and dark); lane colours describe
-   topology only. Depth has two levels, shadow-pane and shadow-float. */
+   topology only. Depth has two levels, shadow-pane and shadow-float.
+   The ivory Lama only ever sits on the brand ground (--brand), never on a
+   pane or the page ground. */
 
 @font-face {
   font-family: "JetBrains Mono";
@@ -29,6 +31,12 @@
   --accent-ink: #0A58B8;
   --focus: #0A62CC;
   --fjord: #14242B;
+  --brand: #14242B;
+  --brand-ink: #F4F7F8;
+  --brand-muted: #A9BAC2;
+  --brand-accent: #6AAEFF;
+  --brand-on-accent: #04121C;
+  --brand-line: rgba(244, 247, 248, 0.16);
   --danger: #B42318;
   --added: #16733A;
   --added-bg: #E6F4EA;
@@ -109,6 +117,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header) + 16px); }
 body {
   margin: 0;
@@ -220,34 +229,81 @@ h2 {
 }
 h3 { font-size: 16px; line-height: 1.3; margin: 0 0 6px; font-weight: 600; }
 
-/* Hero: a field of spline lanes drawn by site.js, faded behind the copy. */
-.hero {
-  position: relative; overflow: hidden; text-align: center;
-  margin-top: calc(-1 * var(--header));
-  min-height: min(900px, 100svh);
-  display: grid; place-items: center;
-  padding: calc(var(--header) + 56px) var(--gutter) 88px;
+/* Hero: a brand-ground stage. site.js draws a field of spline lanes on it,
+   and the Lama stands on a merge at the right, as in the app icon. The stage
+   keeps the dark lane colours in both appearances. */
+.hero { padding: 8px var(--gutter) 0; }
+.stage {
+  --ground: var(--brand);
+  --lane-1: #6AAEFF; --lane-2: #3DD6C0; --lane-3: #F2C14E; --lane-4: #FF8A5B;
+  --lane-5: #FF6B9A; --lane-6: #B49BFF; --lane-7: #4CC9F0; --lane-8: #A3D65C;
+  --focus: #8CC2FF;
+  position: relative; overflow: hidden; isolation: isolate;
+  max-width: calc(var(--max) + 2 * var(--gutter) + 160px); margin-inline: auto;
+  min-height: min(760px, calc(100svh - var(--header) - 24px));
+  display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 10fr); align-items: center; gap: 24px;
+  padding: 72px max(40px, calc((100% - var(--max)) / 2 + 24px)) 168px;
+  background: var(--brand); color: var(--brand-ink);
+  border-radius: 22px; box-shadow: var(--shadow-float);
 }
-.lane-field { position: absolute; inset: 0; width: 100%; height: 100%; }
-.hero-veil {
-  position: absolute; inset: 0; pointer-events: none;
+.lane-field { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; }
+.stage-veil {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
-    linear-gradient(to bottom, transparent 72%, var(--ground)),
-    radial-gradient(ellipse 46% 52% at 50% 50%, var(--ground) 38%, transparent 100%);
+    linear-gradient(to bottom, transparent 70%, var(--brand)),
+    linear-gradient(to right, var(--brand) 18%, color-mix(in srgb, var(--brand) 82%, transparent) 46%, transparent 72%),
+    radial-gradient(ellipse 30% 36% at 76% 50%, color-mix(in srgb, var(--brand) 88%, transparent) 30%, transparent 100%);
 }
-.hero-copy { position: relative; max-width: 720px; }
-.hero-mark { display: block; margin: 0 auto 28px; border-radius: 22px; box-shadow: var(--shadow-float); }
+.hero-copy { position: relative; max-width: 600px; }
+.hero .eyebrow { color: var(--brand-muted); }
 .hero h1 {
-  font-size: clamp(42px, 6.2vw, 72px); line-height: 1.04;
+  color: var(--brand-ink);
+  font-size: clamp(42px, 5.6vw, 72px); line-height: 1.04;
   letter-spacing: -0.035em; margin: 0 0 20px; font-weight: 700;
 }
-.intro { font-size: 19px; max-width: 560px; margin: 0 auto; }
-.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 30px; }
-.hero-note { margin: 18px 0 0; font-size: 14px; }
+.hero .intro { color: var(--brand-muted); font-size: 19px; max-width: 520px; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero .button.primary { background: var(--brand-accent); color: var(--brand-on-accent); }
+.hero .button.primary:hover { background: #8CC2FF; }
+.hero .button.secondary {
+  background: transparent; color: var(--brand-ink);
+  border-color: var(--brand-line); box-shadow: none;
+}
+.hero .button.secondary:hover { background: rgba(244, 247, 248, 0.08); }
+.hero-note { margin: 18px 0 0; font-size: 14px; color: var(--brand-muted); }
 .hero-note .mono:not(:empty)::after { content: " · "; }
 
+.hero-scene { position: relative; justify-self: end; width: min(100%, 540px); }
+.hero-scene svg { display: block; width: 100%; height: auto; overflow: visible; }
+.hero-scene path { fill: none; stroke-width: 4; stroke-linecap: round; }
+.hero-scene .branch { stroke: var(--brand-accent); }
+.hero-scene .ring { fill: var(--brand); stroke: var(--brand-accent); stroke-width: 2.5; }
+.hero-scene .node, .hero-scene .runner { fill: var(--brand-accent); }
+.hero-scene .runner { opacity: 0; }
+.hero-scene .head { transform-box: fill-box; transform-origin: center; }
+.hero-scene .head.landed { animation: merge-land 520ms var(--ease); }
+@keyframes merge-land { 40% { transform: scale(1.5); } }
+/* The Lama's feet are 92% down its artwork; hops pivot there. */
+.hero-lama { transform-box: fill-box; transform-origin: 55% 92%; cursor: default; }
+.hero-lama .pose { transition: opacity 320ms var(--ease); }
+.hero-lama .hello, .hero-lama.is-hello .proud { opacity: 0; }
+.hero-lama.is-hello .hello { opacity: 1; }
+.hero-lama.is-hopping { animation: lama-hop 560ms var(--ease); }
+@keyframes lama-hop {
+  18% { transform: scale(1.03, 0.96); }
+  45% { transform: translateY(-9%) scale(0.98, 1.03); }
+  78% { transform: scale(1.02, 0.98); }
+}
+
+/* A small brand-ground tile that lets the ivory Lama appear on panes. */
+.lama-tile {
+  flex: none; display: grid; place-items: center;
+  width: 88px; height: 88px; border-radius: 20px; background: var(--brand);
+}
+.lama-tile img { display: block; }
+
 /* The product shot is an island that floats above the ground. */
-.shot { padding-bottom: 40px; perspective: 1800px; }
+.shot { position: relative; z-index: 1; margin-top: -128px; padding-bottom: 40px; perspective: 1800px; }
 .window {
   background: var(--window-ground); border-radius: var(--radius-xl);
   box-shadow: var(--shadow-float); overflow: hidden;
@@ -437,13 +493,35 @@ button.gutter:focus-visible { outline-offset: -2px; border-radius: var(--radius-
 @keyframes stage-wash { from { background-color: var(--added-strong); } }
 .floating-stage { position: absolute; right: 12px; z-index: 1; box-shadow: var(--shadow-float); }
 .diff-empty {
-  display: grid; place-items: center; gap: 8px; min-height: 216px;
+  display: grid; place-items: center; align-content: center; gap: 12px; min-height: 216px;
+  padding: 16px 24px; text-align: center;
   font-family: var(--font-sans); font-size: 14px; color: var(--ink-muted);
 }
-.diff-empty p { margin: 0; }
+.diff-empty p { margin: 0; max-width: 300px; }
+.diff-empty strong { display: block; color: var(--ink); font-weight: 600; }
 
-/* Downloads */
-.release-status { color: var(--ink-muted); padding: 18px 20px; text-align: center; }
+/* Downloads: the heading is a brand-ground island where the Lama stands
+   ready. */
+.download-stage {
+  display: flex; align-items: center; gap: 28px; margin-bottom: 12px;
+  padding: 28px 36px; border-radius: var(--radius-xl);
+  background: var(--brand); box-shadow: var(--shadow-pane);
+}
+.download-stage .eyebrow, .download-stage p { color: var(--brand-muted); }
+.download-stage h2 { color: var(--brand-ink); margin-bottom: 8px; }
+.download-stage p:last-child { margin: 0; max-width: 620px; }
+.download-lama { flex: none; width: 120px; height: 120px; }
+.download-lama img { display: block; width: 100%; height: 100%; }
+.release-status {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  color: var(--ink-muted); padding: 18px 20px; text-align: center;
+}
+/* With nothing to show, the resting Lama nods at the empty list. */
+.release-status::before, .release-list:not(:has(.release-record))::before {
+  content: ""; flex: none; width: 56px; height: 56px; border-radius: 14px;
+  background: url("assets/lama/lama-nod.svg") center / 48px no-repeat var(--brand);
+}
+.release-list:not(:has(.release-record)) { display: flex; align-items: center; gap: 16px; color: var(--ink-muted); }
 .release-bar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
   padding: 12px 16px; margin-bottom: 12px; font-size: 14px; color: var(--ink-muted);
@@ -514,6 +592,13 @@ footer {
   display: grid; grid-template-columns: 1fr auto auto; align-items: start; gap: 32px;
 }
 footer strong { color: var(--ink); }
+.footer-brand { display: flex; align-items: flex-start; gap: 12px; }
+/* The family signature: 16 px tall, in ink-faint. */
+.signature {
+  flex: none; width: 17.23px; height: 16px; margin-top: 4px; background: var(--ink-faint);
+  -webkit-mask: url("assets/lama/lama-signature.svg") center / contain no-repeat;
+  mask: url("assets/lama/lama-signature.svg") center / contain no-repeat;
+}
 footer p { margin: 4px 0 0; font-size: 14px; }
 footer nav { display: flex; gap: 6px; align-items: center; }
 footer nav a { color: var(--ink-muted); font-size: 14px; padding: 4px 8px; border-radius: var(--radius-sm); }
@@ -556,6 +641,13 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 
 @media (max-width: 880px) {
   .site-header { grid-template-columns: auto 1fr; }
+  .stage { grid-template-columns: minmax(0, 1fr); padding: 40px 32px 152px; min-height: 0; gap: 8px; }
+  .hero-scene { order: -1; justify-self: center; width: min(100%, 440px); margin-right: -8%; }
+  .stage-veil {
+    background:
+      linear-gradient(to bottom, transparent 70%, var(--brand)),
+      linear-gradient(to bottom, transparent 20%, color-mix(in srgb, var(--brand) 88%, transparent) 48%);
+  }
   .compass { justify-self: end; }
   .header-release { display: none; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
@@ -569,14 +661,12 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
   :root { --gutter: 16px; --header: 56px; }
   .brand { font-size: 0; gap: 0; }
   .compass a { padding: 5px 9px; font-size: 13px; }
-  .hero { padding-bottom: 64px; }
-  .hero-mark { width: 80px; height: 80px; border-radius: 18px; }
-  .hero-veil {
-    background:
-      linear-gradient(to bottom, transparent 72%, var(--ground)),
-      radial-gradient(ellipse 95% 50% at 50% 50%, var(--ground) 45%, transparent 100%);
-  }
-  .intro { font-size: 17px; }
+  .hero { padding-inline: 8px; }
+  .stage { padding: 28px 20px 112px; border-radius: var(--radius-xl); }
+  .hero .intro { font-size: 17px; }
+  .shot { margin-top: -88px; }
+  .download-stage { flex-direction: column; align-items: flex-start; gap: 12px; padding: 24px 20px; }
+  .download-lama { width: 88px; height: 88px; }
   .feature-grid, footer { grid-template-columns: 1fr; }
   .section { padding-top: 112px; }
   .section::before { height: 64px; }
@@ -596,4 +686,5 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
   *, *::before, *::after { transition: none !important; animation: none !important; }
   .js .reveal { opacity: 1; transform: none; }
   .window { transform: none; }
+  .hero-scene .runner { display: none; }
 }
