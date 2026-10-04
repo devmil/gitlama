@@ -1,31 +1,34 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="canonical" href="https://devmil.de/gitlama/">
+  <meta property="og:url" content="https://devmil.de/gitlama/">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Northspline is a desktop Git client for macOS, Linux and Windows, built with Flutter and Rust.">
+  <meta name="description" content="GitLama is a desktop Git client for macOS, Linux and Windows, built with Flutter and Rust.">
   <meta name="theme-color" content="#E8ECEE" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0B151A" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Northspline · Your repository, in view">
+  <meta property="og:title" content="GitLama · Your repository, in view">
   <meta property="og:description" content="A desktop Git client that keeps the history graph, your changes and the selected diff in one window.">
-  <meta property="og:image" content="assets/feature-graphic.png">
+  <meta property="og:image" content="https://devmil.de/gitlama/assets/feature-graphic.png">
   <meta property="og:image:width" content="1024">
   <meta property="og:image:height" content="500">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="assets/feature-graphic.png">
-  <title>Northspline · Your repository, in view</title>
+  <meta name="twitter:image" content="https://devmil.de/gitlama/assets/feature-graphic.png">
+  <title>GitLama · Your repository, in view</title>
   <link rel="icon" href="assets/icon-32.png">
   <link rel="stylesheet" href="style.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Northspline","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows","license":"https://www.gnu.org/licenses/gpl-3.0.html","description":"A desktop Git client built with Flutter and Rust."}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GitLama","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows","license":"https://www.gnu.org/licenses/gpl-3.0.html","description":"A desktop Git client built with Flutter and Rust."}</script>
   <script>document.documentElement.classList.add("js")</script>
   <script src="releases.js" defer></script>
   <script src="site.js" defer></script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GitLama","url":"https://devmil.de/gitlama/","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows","author":{"@type":"Organization","name":"Devmil Solutions"}}</script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
-    <a href="index.html" class="brand" aria-label="Northspline home"><img src="assets/icon-64.png" width="32" height="32" alt="">Northspline</a>
+    <a href="index.html" class="brand" aria-label="GitLama home"><img src="assets/icon-64.png" width="32" height="32" alt="">GitLama</a>
     <nav class="compass" aria-label="Primary">
       <a href="#features">Features</a>
       <a href="#downloads">Download</a>
@@ -43,7 +46,7 @@
         <img class="hero-mark" src="assets/icon-512.png" width="104" height="104" alt="">
         <p class="eyebrow">Git client for macOS, Linux and Windows</p>
         <h1 id="hero-title">Your repository,<br>in view.</h1>
-        <p class="intro">Northspline is a desktop Git client. It keeps the history graph, your changes and the selected diff in one window.</p>
+        <p class="intro">GitLama is a desktop Git client. It keeps the history graph, your changes and the selected diff in one window.</p>
         <div class="actions">
           <a id="hero-download" class="button primary" href="#downloads"><span class="icon" style="--icon:url(assets/icons/download.svg)"></span><span>Download</span></a>
           <a class="button secondary" href="#features">What it does</a>
@@ -52,7 +55,7 @@
       </div>
     </section>
 
-    <section class="shot wrap" aria-label="The Northspline workspace">
+    <section class="shot wrap" aria-label="The GitLama workspace">
       <div id="window" class="window">
         <div class="window-bar">
           <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
@@ -63,7 +66,7 @@
         </div>
         <picture>
           <source srcset="assets/workspace-dark.png" media="(prefers-color-scheme: dark)">
-          <img id="shot" src="assets/workspace-light.png" width="2880" height="1800" alt="The Northspline workspace: a sidebar with branches, remotes and tags, the history graph with a merged feature branch, and below it the selected commit with its changed files">
+          <img id="shot" src="assets/workspace-light.png" width="2880" height="1800" alt="The GitLama workspace: a sidebar with branches, remotes and tags, the history graph with a merged feature branch, and below it the selected commit with its changed files">
         </picture>
       </div>
       <p class="caption">The sidebar on the left, the history graph at the top, the selected commit below. Rendered from the app with sample data.</p>
@@ -189,8 +192,8 @@
     <section id="downloads" class="section wrap" aria-labelledby="downloads-title">
       <div class="section-heading reveal">
         <p class="eyebrow">Download</p>
-        <h2 id="downloads-title">Get Northspline</h2>
-        <p>Northspline is in beta. It uses the Git you have installed, version 2.39 or newer.</p>
+        <h2 id="downloads-title">Get GitLama</h2>
+        <p>GitLama is in beta. It uses the Git you have installed, version 2.39 or newer.</p>
       </div>
       <div id="release-status" class="release-status" role="status" aria-live="polite">No verified public release is available yet.</div>
       <div id="release-bar" class="release-bar" hidden></div>
@@ -200,9 +203,9 @@
         <details class="verify">
           <summary>Check a download</summary>
           <p>Each package lists its SHA-256 checksum. Copy it with the button next to the package and compare it with your file.</p>
-          <pre>shasum -a 256 Northspline-*.dmg      # macOS
-sha256sum northspline_*.deb          # Linux
-Get-FileHash Northspline-*.msi       # Windows PowerShell</pre>
+          <pre>shasum -a 256 GitLama-*.dmg      # macOS
+sha256sum gitlama_*.deb          # Linux
+Get-FileHash GitLama-*.msi       # Windows PowerShell</pre>
           <p class="trust-note"><span class="icon" style="--icon:url(assets/icons/shield-check.svg)"></span><span>The links on this page come from a release index signed with Ed25519. <a href="northspline-release-ed25519.pub">Public key</a></span></p>
         </details>
       </div>
@@ -211,7 +214,7 @@ Get-FileHash Northspline-*.msi       # Windows PowerShell</pre>
   </main>
 
   <footer>
-    <div><strong>Northspline</strong><p>A desktop Git client.</p></div>
+    <div><strong>GitLama</strong><p>A desktop Git client.</p></div>
     <nav aria-label="Legal"><a href="releases.html">Release notes</a><a href="license.html">License</a><a href="privacy.html">Privacy</a></nav>
     <p>No analytics. No tracking scripts.</p>
   </footer>

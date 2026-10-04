@@ -1,4 +1,4 @@
-# Northspline public website
+# GitLama public website
 
 Run `python3 -m http.server 4173 --directory webfront` and open
 `http://localhost:4173`. The checked-in site shows a deliberate unavailable
@@ -14,7 +14,7 @@ index. `northspline-release-ed25519.pub` is the versioned offline trust root.
 renders it from the verified index; it lists only packages that carry an
 update signature. Do not edit it by hand.
 
-The site follows Meridian's Northspline brand (light and dark from
+The site follows Meridian's GitLama brand (light and dark from
 `prefers-color-scheme`): islands on the ground, `polar` only for intent, lane
 colours only for topology. `site.js` draws the hero's generated lane field with
 the Meridian graph geometry and lane-focus behaviour, and runs the small graph
@@ -29,7 +29,7 @@ app by the opt-in `website workspace capture` test in
 Forgejo is authoritative and the public GitHub repository is a mirror.
 `.forgejo/workflows/sync-website.yml` runs on every push to `main` that touches
 the site and mirrors `webfront/` into the GitHub repository's `webfront/`
-directory, together with `.github/workflows/northspline-pages.yml`, which
+directory, together with `.github/workflows/gitlama-pages.yml`, which
 deploys it with GitHub Pages. Releases publish the signed index through the
 same mirror. The mirror owns only files recorded by
 `.northspline-managed-files.json` in a directory carrying the exact

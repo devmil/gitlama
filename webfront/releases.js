@@ -37,7 +37,7 @@
   }
 
   function valid(d) {
-    return d && d.schema_version === 1 && d.product === "Northspline" && d.latest
+    return d && d.schema_version === 1 && d.product === "GitLama" && d.latest
       && Array.isArray(d.latest.assets) && d.latest.assets.length === 6
       && d.latest.assets.every(validAsset)
       && Array.isArray(d.releases) && d.releases.length > 0 && d.releases.length <= 10;

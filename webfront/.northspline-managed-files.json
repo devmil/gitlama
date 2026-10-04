@@ -2,9 +2,6 @@
   "files": [
     ".northspline-site-owner",
     "README.md",
-    "_data/channels.json",
-    "_data/releases.json",
-    "_data/releases.json.sig",
     "appcast.xml",
     "assets/feature-graphic.png",
     "assets/fonts/JetBrainsMono-Regular.woff2",
@@ -40,6 +37,7 @@
     "releases.html",
     "releases.js",
     "site.js",
+    "sitemap.xml",
     "style.css"
   ],
   "owner": "northspline:public-site:v1",
