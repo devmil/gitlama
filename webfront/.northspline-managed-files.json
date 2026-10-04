@@ -2,6 +2,9 @@
   "files": [
     ".northspline-site-owner",
     "README.md",
+    "_data/channels.json",
+    "_data/releases.json",
+    "_data/releases.json.sig",
     "appcast.xml",
     "assets/feature-graphic.png",
     "assets/fonts/JetBrainsMono-Regular.woff2",

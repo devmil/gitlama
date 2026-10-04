@@ -1,2 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0"><channel><title>GitLama updates</title><link>https://devmil.de/gitlama/</link><description>The first GitLama release is pending.</description></channel></rss>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>GitLama</title>
+    <link>https://devmil.de/gitlama/releases.html</link>
+    <description>GitLama updates for macOS</description>
+    <language>en</language>
+    <item>
+      <title>GitLama 0.1.0-beta.31</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>32</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.31</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;GitLama has a bolder app icon that is easier to recognize.&lt;/li&gt;&lt;li&gt;The GitLama website has a new design and updated download pages.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.31-32/GitLama-0.1.0-beta.31-32-macos-arm64.dmg" length="18389981" type="application/octet-stream" sparkle:edSignature="w4HEnTP4nmqV9mHlCvbJqFRqYvjOz1j/ND2INRrNtum6IKnMbv5B2GYoT4FEaQw0XqvYkSgr/2W2wlFgtgleCQ==" />
+    </item>
+  </channel>
+</rss>
