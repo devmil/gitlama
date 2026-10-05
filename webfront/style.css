@@ -242,7 +242,9 @@ h3 { font-size: 16px; line-height: 1.3; margin: 0 0 6px; font-weight: 600; }
   max-width: calc(var(--max) + 2 * var(--gutter) + 160px); margin-inline: auto;
   min-height: min(760px, calc(100svh - var(--header) - 24px));
   display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 10fr); align-items: center; gap: 24px;
-  padding: 72px max(40px, calc((100% - var(--max)) / 2 + 24px)) 168px;
+  /* Padding percentages resolve against .hero, not the capped stage, so the
+     inset stops growing once the stage reaches its max-width. */
+  padding: 72px max(40px, min(calc((100% - var(--max)) / 2 + 24px), calc(var(--gutter) + 104px))) 168px;
   background: var(--brand); color: var(--brand-ink);
   border-radius: 22px; box-shadow: var(--shadow-float);
 }
