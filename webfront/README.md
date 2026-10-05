@@ -15,8 +15,8 @@ renders it from the verified index; it lists only packages that carry an
 update signature. Do not edit it by hand.
 
 The site follows Meridian's GitLama brand (light and dark from
-`prefers-color-scheme`): islands on the ground, the Git ember accent only for intent, lane
-colours only for topology. The hero is a stage on the brand ground `#53261B`
+`prefers-color-scheme`): islands on the ground, the cerulean accent only for intent, lane
+colours only for topology. The hero is a stage on the brand ground `#14242B`
 where `site.js` draws the generated lane field with the Meridian graph geometry
 and lane-focus behaviour. The Lama stands on a merge there, as in the app icon:
 it opens with the hello pose, settles proud, and hops when a commit runs into
