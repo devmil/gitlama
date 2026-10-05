@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.32</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>33</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.32</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;GitLama now wears Git&amp;#x27;s own orange-red: a new app icon and a warmer accent for selections, focus and primary actions, so it stands apart from the other Lama apps in the dock.&lt;/li&gt;&lt;li&gt;Open a repository with `open -a &amp;quot;GitLama.app&amp;quot; /path/to/repository` on macOS, whether GitLama is starting or already running.&lt;/li&gt;&lt;li&gt;The app icon is now rounded on Linux, Windows and macOS and inside the app, matching other apps in the dock, taskbar and launcher.&lt;/li&gt;&lt;li&gt;The portable Linux tar now includes the app icon and desktop entry.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.32-33/GitLama-0.1.0-beta.32-33-macos-arm64.dmg" length="18419138" type="application/octet-stream" sparkle:edSignature="+av9TWQY8sdabraapm0TV09PiTwOaruAlrgquadsYcJEAXIyI5Naj335IWIY3fpLW0KmlwaQXed8J1Sla5K3DQ==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.31</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>32</sparkle:version>
