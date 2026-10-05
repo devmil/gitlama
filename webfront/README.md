@@ -15,8 +15,8 @@ renders it from the verified index; it lists only packages that carry an
 update signature. Do not edit it by hand.
 
 The site follows Meridian's GitLama brand (light and dark from
-`prefers-color-scheme`): islands on the ground, `polar` only for intent, lane
-colours only for topology. The hero is a stage on the brand ground `#14242B`
+`prefers-color-scheme`): islands on the ground, the Git ember accent only for intent, lane
+colours only for topology. The hero is a stage on the brand ground `#53261B`
 where `site.js` draws the generated lane field with the Meridian graph geometry
 and lane-focus behaviour. The Lama stands on a merge there, as in the app icon:
 it opens with the hello pose, settles proud, and hops when a commit runs into
@@ -43,6 +43,13 @@ same mirror. The mirror owns only files recorded by
 line. It uses a separate checkout credential and a normal fast-forward push; it
 never force-pushes or claims an unrelated tree. GitHub Pages must be set to
 deploy from GitHub Actions in the mirror's settings.
+
+Local asset references in the pages and `style.css` carry a `?v=` content
+digest, so a returning browser fetches changed styles, scripts and images.
+After changing anything under `webfront/`, run
+`python3 scripts/generate_webfront_versions.py` (`scripts/generate-brand.py`
+runs it after copying brand derivatives); the website fixture fails while a
+digest is stale.
 
 Run the static and publication fixtures with:
 

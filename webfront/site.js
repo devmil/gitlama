@@ -359,7 +359,7 @@
     if (window.LamaAntics) {
       LamaAntics.attach(lama, {
         base: "assets/lama/",
-        colors: ["#6AAEFF", "#0A62CC", "#FFF8EB"],
+        colors: ["#F77C56", "#C8421F", "#FFF8EB"],
         taps: {
           commit: async (antic) => {
             if (!antic.reduced()) send();

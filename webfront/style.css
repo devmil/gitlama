@@ -1,4 +1,4 @@
-/* GitLama website on Meridian: islands on a tinted ground, one polar
+/* GitLama website on Meridian: islands on a tinted ground, one ember
    accent spent on intent, the spline graph as the signature. Colours are the
    GitLama brand of meridian_ui (light and dark); lane colours describe
    topology only. Depth has two levels, shadow-pane and shadow-float.
@@ -7,7 +7,7 @@
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("assets/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  src: url("assets/fonts/JetBrainsMono-Regular.woff2?v=5090862b5603") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
 }
 
@@ -24,19 +24,18 @@
   --ink-faint: #8795A0;
   --line: #D8DFE3;
   --line-strong: #C3CCD1;
-  --accent: #0A62CC;
-  --accent-hover: #0853AD;
+  --accent: #C8421F;
+  --accent-hover: #A9381A;
   --on-accent: #FFFFFF;
-  --accent-soft: #DCEBFD;
-  --accent-ink: #0A58B8;
-  --focus: #0A62CC;
-  --fjord: #14242B;
-  --brand: #14242B;
-  --brand-ink: #F4F7F8;
-  --brand-muted: #A9BAC2;
-  --brand-accent: #6AAEFF;
-  --brand-on-accent: #04121C;
-  --brand-line: rgba(244, 247, 248, 0.16);
+  --accent-soft: #FFE5DE;
+  --accent-ink: #B73918;
+  --focus: #C8421F;
+  --brand: #53261B;
+  --brand-ink: #FFF4F1;
+  --brand-muted: #E0B9AE;
+  --brand-accent: #F77C56;
+  --brand-on-accent: #1B0A07;
+  --brand-line: rgba(255, 244, 241, 0.16);
   --danger: #B42318;
   --added: #16733A;
   --added-bg: #E6F4EA;
@@ -85,13 +84,12 @@
     --ink-faint: #5E717B;
     --line: #21323B;
     --line-strong: #2C414B;
-    --accent: #6AAEFF;
-    --accent-hover: #8CC2FF;
-    --on-accent: #04121C;
-    --accent-soft: #16334D;
-    --accent-ink: #8CC2FF;
-    --focus: #8CC2FF;
-    --fjord: #1F3A48;
+    --accent: #F77C56;
+    --accent-hover: #FAAA95;
+    --on-accent: #1B0A07;
+    --accent-soft: #45231A;
+    --accent-ink: #FAAA95;
+    --focus: #FAAA95;
     --danger: #FF9C8F;
     --added: #4AC26B;
     --added-bg: #0F2E1C;
@@ -152,7 +150,7 @@ code, .mono, pre { font-family: var(--font-mono); font-size: 0.875em; font-varia
 }
 
 /* Header: chrome sits straight on the ground. The navigation is the Compass,
-   a pill whose polar rule follows the page's scroll progress. */
+   a pill whose accent rule follows the page's scroll progress. */
 .site-header {
   position: sticky; top: 0; z-index: 20;
   min-height: var(--header);
@@ -237,7 +235,7 @@ h3 { font-size: 16px; line-height: 1.3; margin: 0 0 6px; font-weight: 600; }
   --ground: var(--brand);
   --lane-1: #6AAEFF; --lane-2: #3DD6C0; --lane-3: #F2C14E; --lane-4: #FF8A5B;
   --lane-5: #FF6B9A; --lane-6: #B49BFF; --lane-7: #4CC9F0; --lane-8: #A3D65C;
-  --focus: #8CC2FF;
+  --focus: #FAAA95;
   position: relative; overflow: hidden; isolation: isolate;
   max-width: calc(var(--max) + 2 * var(--gutter) + 160px); margin-inline: auto;
   min-height: min(760px, calc(100svh - var(--header) - 24px));
@@ -266,12 +264,12 @@ h3 { font-size: 16px; line-height: 1.3; margin: 0 0 6px; font-weight: 600; }
 .hero .intro { color: var(--brand-muted); font-size: 19px; max-width: 520px; margin: 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .hero .button.primary { background: var(--brand-accent); color: var(--brand-on-accent); }
-.hero .button.primary:hover { background: #8CC2FF; }
+.hero .button.primary:hover { background: #FAAA95; }
 .hero .button.secondary {
   background: transparent; color: var(--brand-ink);
   border-color: var(--brand-line); box-shadow: none;
 }
-.hero .button.secondary:hover { background: rgba(244, 247, 248, 0.08); }
+.hero .button.secondary:hover { background: rgba(255, 244, 241, 0.08); }
 .hero-note { margin: 18px 0 0; font-size: 14px; color: var(--brand-muted); }
 .hero-note .mono:not(:empty)::after { content: " · "; }
 
@@ -406,7 +404,7 @@ h3 { font-size: 16px; line-height: 1.3; margin: 0 0 6px; font-weight: 600; }
 .graph-demo .l2 { stroke: var(--lane-2); }
 .graph-demo .dot.l1 { fill: var(--lane-1); }
 .graph-demo .dot.l2 { fill: var(--lane-2); }
-/* On the selected row, strokes and rings paint in on-polar. */
+/* On the selected row, strokes and rings paint in on-accent. */
 .graph-demo circle.on { stroke: var(--on-accent); fill: var(--accent); }
 .graph-demo .dot.on { fill: var(--on-accent); }
 .graph-demo path, .graph-demo circle, .graph-demo .row > * { transition: opacity 120ms, stroke-width 120ms; }
@@ -521,7 +519,7 @@ button.gutter:focus-visible { outline-offset: -2px; border-radius: var(--radius-
 /* With nothing to show, the resting Lama nods at the empty list. */
 .release-status::before, .release-list:not(:has(.release-record))::before {
   content: ""; flex: none; width: 56px; height: 56px; border-radius: 14px;
-  background: url("assets/lama/lama-nod.svg") center / 48px no-repeat var(--brand);
+  background: url("assets/lama/lama-nod.svg?v=fffbdbba65ac") center / 48px no-repeat var(--brand);
 }
 .release-list:not(:has(.release-record)) { display: flex; align-items: center; gap: 16px; color: var(--ink-muted); }
 .release-bar {
@@ -598,8 +596,8 @@ footer strong { color: var(--ink); }
 /* The family signature: 16 px tall, in ink-faint. */
 .signature {
   flex: none; width: 17.23px; height: 16px; margin-top: 4px; background: var(--ink-faint);
-  -webkit-mask: url("assets/lama/lama-signature.svg") center / contain no-repeat;
-  mask: url("assets/lama/lama-signature.svg") center / contain no-repeat;
+  -webkit-mask: url("assets/lama/lama-signature.svg?v=f42d5d84b9d9") center / contain no-repeat;
+  mask: url("assets/lama/lama-signature.svg?v=f42d5d84b9d9") center / contain no-repeat;
 }
 footer p { margin: 4px 0 0; font-size: 14px; }
 footer nav { display: flex; gap: 6px; align-items: center; }

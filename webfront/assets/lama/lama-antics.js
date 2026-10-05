@@ -10,7 +10,7 @@
 
      const antics = LamaAntics.attach(lamaElement, {
        base: "assets/lama/",        // folder holding the pose SVGs
-       colors: ["#4C82FB", ...],    // confetti and hearts
+       colors: ["#24C27D", ...],    // confetti and hearts
        idle: { name: (api) => ... },// optional site antics
        taps: { name: (api) => ... },
      });
