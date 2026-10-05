@@ -19,9 +19,11 @@
   <title>GitLama · Your repository, in view</title>
   <link rel="icon" href="assets/icon-32.png">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets/lama/lama-antics.css">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GitLama","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows","license":"https://www.gnu.org/licenses/gpl-3.0.html","description":"A desktop Git client built with Flutter and Rust."}</script>
   <script>document.documentElement.classList.add("js")</script>
   <script src="releases.js" defer></script>
+  <script src="assets/lama/lama-antics.js" defer></script>
   <script src="site.js" defer></script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GitLama","url":"https://devmil.de/gitlama/","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows","author":{"@type":"Organization","name":"Devmil Solutions"}}</script>
 </head>
@@ -55,7 +57,7 @@
         </div>
         <!-- The Lama stands on a merge, as in the app icon. It opens with a
              nod; site.js sends a commit along the branch and the Lama hops
-             when it lands. -->
+             when it lands. Tapping it plays a gag (lama-antics.js). -->
         <div id="hero-scene" class="hero-scene" aria-hidden="true">
           <svg viewBox="0 0 200 120" focusable="false">
             <defs>

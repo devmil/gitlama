@@ -333,18 +333,41 @@
       queue(PAUSE);
     }
 
+    // Starts a commit now, unless one is already on its way.
+    function send() {
+      if (frame) return;
+      clearTimeout(timer);
+      start = performance.now();
+      frame = requestAnimationFrame(run);
+    }
+
     function queue(delay) {
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (frame || reduced.matches || !visible || document.hidden) { queue(PAUSE); return; }
-        start = performance.now();
-        frame = requestAnimationFrame(run);
+        send();
       }, delay);
     }
 
     lama.addEventListener("animationend", () => lama.classList.remove("is-hopping"));
     new IntersectionObserver((entries) => { visible = entries[0].isIntersecting; }).observe(scene);
     queue(2600);
+
+    // Between commits the Lama gets up to things of its own (lama-antics.js,
+    // from the brand repository). Tapping it plays a gag; one of them is a
+    // big hop that pushes a commit along the merge branch.
+    if (window.LamaAntics) {
+      LamaAntics.attach(lama, {
+        base: "assets/lama/",
+        colors: ["#6AAEFF", "#0A62CC", "#FFF8EB"],
+        taps: {
+          commit: async (antic) => {
+            if (!antic.reduced()) send();
+            await antic.move("bigHop");
+          },
+        },
+      });
+    }
   }
 
   // The Compass rule follows scroll progress; the product shot settles flat.

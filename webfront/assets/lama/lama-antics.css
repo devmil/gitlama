@@ -1,0 +1,56 @@
+/* Lama antics (lama-antics.js). Vendored unchanged by each site from the
+   brand repository (assets/web). */
+
+.lama-antics {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* The rig wraps the poses. Its origin sits between the Lama's feet. */
+.lama-antics-rig {
+  transform-box: fill-box;
+  transform-origin: 50% 92%;
+}
+
+div.lama-antics-rig {
+  position: absolute;
+  inset: 0;
+}
+
+/* Extra poses stay hidden until an antic shows one; while it does, the
+   site's own proud and hello poses step aside. */
+.lama-antics .antic-pose,
+.lama-antics.is-posing .pose {
+  opacity: 0 !important;
+}
+
+.lama-antics.is-posing .pose.is-current {
+  opacity: 1 !important;
+}
+
+.lama-antics-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lama-antics-bit {
+  position: absolute;
+  display: block;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.lama-antics-bit svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.lama-antics-bit.is-mini {
+  transform: none;
+}
