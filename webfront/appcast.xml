@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.33</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>34</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.33</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;GitLama returns to blue: a cerulean app icon and accent for selections, focus and primary actions. The orange-red accent clashed with the red that marks errors and conflicts.&lt;/li&gt;&lt;li&gt;Reduce Linux window-rendering CPU while keeping smooth rounded corners, themed borders and native resize edges.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.33-34/GitLama-0.1.0-beta.33-34-macos-arm64.dmg" length="18417350" type="application/octet-stream" sparkle:edSignature="Ihjc2KeZflerIfNtwXFnDHBMUU63bDWTzuAmWDLmC2+br4SSAl65yzmCcH51w1eOvOfIkbMDmt/jpdmsMD2VBw==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.32</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>33</sparkle:version>
