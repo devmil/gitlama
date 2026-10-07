@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.35</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>36</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.35</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Experimental: open repositories that live on another Linux computer over SSH. Turn it on in Settings, add the computer with the SSH alias you already use, and let GitLama install its matching helper there after you confirm. You can browse history, changes and diffs; staging and committing can be allowed separately for each computer.&lt;/li&gt;&lt;li&gt;If a connection drops during a remote change, GitLama tells you whether the change was applied, or that it could not tell, instead of guessing or trying again.&lt;/li&gt;&lt;li&gt;History diffs now show the stored file contents even when a repository configures a textconv filter.&lt;/li&gt;&lt;li&gt;A clearer way to explore history. Every commit opens in one inspector with a breadcrumb and Back and Forward buttons that always stay in place, and the graph follows when you go back.&lt;/li&gt;&lt;li&gt;Look at any file as its diff, its contents, its blame or its history with one switch. File history shows each change&amp;#x27;s diff right next to the list.&lt;/li&gt;&lt;li&gt;&amp;quot;All files&amp;quot; now lists the whole tree of a commit with the same rows and actions as the changed files.&lt;/li&gt;&lt;li&gt;Pop any view out into its own window, which has the same tools and can show its commit in the main window again. A setting chooses whether blame and history open in the detail area or in a window.&lt;/li&gt;&lt;li&gt;Every file menu now offers the same actions, wherever the file is listed.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.35-36/GitLama-0.1.0-beta.35-36-macos-arm64.dmg" length="20182220" type="application/octet-stream" sparkle:edSignature="AGSQ/D2pkLRexl35DQh1rizcobEW2Icc74g9WIqNrk+AiXa+BqtcpIeAIBtB+K5ooHtmvKzTjWSfPcpDsHqqAA==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.34</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>35</sparkle:version>
