@@ -7,13 +7,16 @@
   touch-action: manipulation;
 }
 
-/* The rig wraps the poses. Its origin sits between the Lama's feet. */
-.lama-antics-rig {
+/* The rig wraps the poses, and the turn inside it mirrors the Lama when it
+   faces right. Both turn about a point between the Lama's feet. */
+.lama-antics-rig,
+.lama-antics-turn {
   transform-box: fill-box;
   transform-origin: 50% 92%;
 }
 
-div.lama-antics-rig {
+div.lama-antics-rig,
+div.lama-antics-turn {
   position: absolute;
   inset: 0;
 }
@@ -29,12 +32,31 @@ div.lama-antics-rig {
   opacity: 1 !important;
 }
 
+/* Pose swaps never leave the Lama see-through: a pose that appears fades
+   in over the one it replaces, which leaves only once it is covered. */
+.lama-antics .pose {
+  transition: opacity 0s linear 140ms !important;
+}
+
+.lama-antics.is-posing .pose.is-current {
+  transition: opacity 140ms linear !important;
+}
+
 .lama-antics-layer {
   position: fixed;
   inset: 0;
   z-index: 60;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* Shapes are placed in page coordinates; the world follows the scroll. */
+.lama-antics-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
 }
 
 .lama-antics-bit {
@@ -53,4 +75,26 @@ div.lama-antics-rig {
 
 .lama-antics-bit.is-mini {
   transform: none;
+}
+
+.lama-antics-wings {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: lama-antics-flap 150ms ease-in-out infinite alternate;
+}
+
+.lama-antics-bit.is-resting .lama-antics-wings {
+  animation-duration: 700ms;
+}
+
+@keyframes lama-antics-flap {
+  to {
+    transform: scaleX(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lama-antics-wings {
+    animation: none;
+  }
 }

@@ -294,8 +294,10 @@
   }
 
   // The Lama on the merge: it greets with a nod, then stands proud. Every few
-  // seconds a commit runs along the branch into the merge and the Lama hops.
-  // Hovering the scene nods again. Reduced motion keeps the still pose.
+  // seconds a commit runs into the merge: along the branch, under the
+  // Lama's belly, or along the trunk, right under its feet, so it jumps.
+  // Now and then both arrive at once and the merge is celebrated. Hovering
+  // the scene nods again. Reduced motion keeps the still pose.
   function heroLama(scene) {
     const lama = document.getElementById("hero-lama");
     const branch = document.getElementById("merge-branch");
@@ -304,7 +306,16 @@
     if (!lama || !branch || !runner || !head) return;
     const RUN = 1400, PAUSE = 4200;
     const length = branch.getTotalLength();
-    let hovering = false, visible = true, frame = 0, start = 0, timer = 0;
+    // A second commit for the trunk.
+    const trunkRunner = runner.cloneNode(false);
+    trunkRunner.removeAttribute("id");
+    runner.after(trunkRunner);
+    // The trunk, in scene units: the commit's radius, the speed of a trunk
+    // commit, and where the Lama's legs are (lama-antics.js, FEET).
+    const R = 4, TRUNK_FROM = 24, TRUNK_TO = 180, TRUNK_MS = 1750;
+    const SPEED = (TRUNK_TO - TRUNK_FROM) / TRUNK_MS;
+    const FEET = [98 + 72 * 0.23, 98 + 72 * 0.87];
+    let hovering = false, visible = true, sending = false, timer = 0, antics = null;
 
     function pose(hello) { lama.classList.toggle("is-hello", hello); }
     setTimeout(() => { if (!hovering) pose(false); }, 1600);
@@ -317,35 +328,104 @@
       node.classList.add(name);
     }
 
-    function run(now) {
-      frame = 0;
-      const t = Math.min((now - start) / RUN, 1);
-      // Ease in and out so the commit leaves and lands gently.
+    const frames = (duration, step) => new Promise((resolve) => {
+      const begin = performance.now();
+      const tick = (now) => {
+        const t = Math.min((now - begin) / duration, 1);
+        step(t);
+        if (t < 1) requestAnimationFrame(tick); else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+    const show = (node, x, y, t) => {
+      node.setAttribute("cx", x.toFixed(2));
+      node.setAttribute("cy", y.toFixed(2));
+      node.style.opacity = String(Math.min(1, t * 8, (1 - t) * 8));
+    };
+    // Ease in and out so the commit leaves and lands gently.
+    const alongBranch = () => frames(RUN, (t) => {
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       const point = branch.getPointAtLength(eased * length);
-      runner.setAttribute("cx", point.x.toFixed(2));
-      runner.setAttribute("cy", point.y.toFixed(2));
-      runner.style.opacity = String(Math.min(1, t * 8, (1 - t) * 8));
-      if (t < 1) { frame = requestAnimationFrame(run); return; }
-      runner.style.opacity = "0";
+      show(runner, point.x, point.y, t);
+    });
+    // The trunk commit keeps a steady pace, so the Lama can time its jump.
+    const alongTrunk = () => frames(TRUNK_MS, (t) => show(trunkRunner, TRUNK_FROM + (TRUNK_TO - TRUNK_FROM) * t, 87, t));
+
+    const JUMPS = ["hop", "tuck", "kick", "hop", "spin", "flip", "twist"];
+    let jumps = [];
+    const nextJump = () => {
+      if (!jumps.length) jumps = JUMPS.slice().sort(() => Math.random() - 0.5);
+      return jumps.shift();
+    };
+    const free = () => antics && antics.busy() !== "tap";
+
+    function land() {
       replay(head, "landed");
-      replay(lama, "is-hopping");
+      if (!antics) replay(lama, "is-hopping");
+    }
+
+    async function send(kind) {
+      if (sending) return;
+      sending = true;
+      clearTimeout(timer);
+      const trunk = kind === "trunk" || kind === "both";
+      const viaBranch = kind === "branch" || kind === "both";
+      if (free()) {
+        antics.react(async (a) => {
+          if (trunk) {
+            // From the time the commit touches the front feet until it
+            // has left the back feet.
+            const touch = (FEET[0] - (TRUNK_FROM + R)) / SPEED;
+            const clear = (FEET[1] - (TRUNK_FROM - R)) / SPEED;
+            a.pose("hello");
+            await a.wait(touch - 300);
+            a.pose(null);
+            await a.jump({ lead: 220, air: clear - touch + 160, style: kind === "both" ? "spin" : nextJump() });
+          } else {
+            // It watches the commit pass under its belly.
+            a.pose("hello");
+            await a.wait(RUN * 0.72);
+            a.pose("standing");
+          }
+          // Then it turns to see it land on the merge behind it.
+          a.face("right");
+          await a.wait(trunk ? 260 : RUN * 0.28 + 160);
+          if (kind === "both") {
+            a.bits("confetti", 16, [0.9, 0.5], { angle: -Math.PI / 2, spread: 1.1, reach: 64, fall: 50, turn: 480, duration: 1400 });
+            a.pose("hello");
+            await a.move("doubleHop");
+          } else {
+            await a.move("hop");
+          }
+          a.face(null);
+          a.pose(null);
+        }, "commit").finally(() => antics.face(null));
+      }
+      const runs = [];
+      if (trunk) runs.push(alongTrunk());
+      // Both commits reach the merge together.
+      if (viaBranch) runs.push(new Promise((resolve) => setTimeout(resolve, trunk ? TRUNK_MS - RUN : 0)).then(alongBranch));
+      await Promise.all(runs);
+      runner.style.opacity = "0";
+      trunkRunner.style.opacity = "0";
+      land();
+      sending = false;
       queue(PAUSE);
     }
 
-    // Starts a commit now, unless one is already on its way.
-    function send() {
-      if (frame) return;
-      clearTimeout(timer);
-      start = performance.now();
-      frame = requestAnimationFrame(run);
-    }
+    const KINDS = ["branch", "trunk", "branch", "trunk", "both", "trunk", "branch"];
+    let kinds = [];
+    const nextKind = () => {
+      if (!antics) return "branch";
+      if (!kinds.length) kinds = KINDS.slice().sort(() => Math.random() - 0.5);
+      return kinds.shift();
+    };
 
     function queue(delay) {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        if (frame || reduced.matches || !visible || document.hidden) { queue(PAUSE); return; }
-        send();
+        if (sending || reduced.matches || !visible || document.hidden) { queue(PAUSE); return; }
+        send(nextKind());
       }, delay);
     }
 
@@ -357,12 +437,12 @@
     // from the brand repository). Tapping it plays a gag; one of them is a
     // big hop that pushes a commit along the merge branch.
     if (window.LamaAntics) {
-      LamaAntics.attach(lama, {
+      antics = LamaAntics.attach(lama, {
         base: "assets/lama/",
         colors: ["#5BB1FE", "#056CB3", "#FFF8EB"],
         taps: {
           commit: async (antic) => {
-            if (!antic.reduced()) send();
+            if (!antic.reduced()) send("branch");
             await antic.move("bigHop");
           },
         },
