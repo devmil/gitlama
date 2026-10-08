@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.37</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>38</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.37</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Experimental: remote workspaces also work with a Raspberry Pi or another 64-bit Arm Linux computer running a 64-bit system such as Raspberry Pi OS Bookworm.&lt;/li&gt;&lt;li&gt;Experimental: remote workspaces now also work with Macs as the other computer. GitLama recognizes whether it is a Linux PC or a Mac and installs the matching helper.&lt;/li&gt;&lt;li&gt;Experimental remote workspaces: create, rename, delete and switch branches, manage tags, upstreams and remotes, use stashes, and fetch, pull or push on the other computer. Fetch, pull and push sign in with the credentials set up on that computer. If GitLama cannot confirm whether a change was applied, it lists it under Remote changes instead of trying again.&lt;/li&gt;&lt;li&gt;Fixed: adding a remote host from a new tab failed with &amp;quot;The host could not be saved&amp;quot;. Settings changes made while a new tab is open are now saved as well.&lt;/li&gt;&lt;li&gt;When a remote host cannot be saved, GitLama now tells you why and shows an error code you can report.&lt;/li&gt;&lt;li&gt;Fixed: remote URLs such as `git@github.com:owner/repo.git` show their SSH login instead of `[REDACTED]`.&lt;/li&gt;&lt;li&gt;Fixed: Edit remote can no longer replace a remote&amp;#x27;s URL with a hidden placeholder. When the current URL contains a password or token, the field starts empty and asks for the complete new URL.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.37-38/GitLama-0.1.0-beta.37-38-macos-arm64.dmg" length="24479481" type="application/octet-stream" sparkle:edSignature="Ee57rnHd7AN1ikUiemLoNAflKG7oEFll33owu3N+jaFLbRzkZQxZMt2sUlMdAkoYIRIrzVdnhQVS+JY/XG6NDw==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.36</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>37</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;GitLama returns to blue: a cerulean app icon and accent for selections, focus and primary actions. The orange-red accent clashed with the red that marks errors and conflicts.&lt;/li&gt;&lt;li&gt;Reduce Linux window-rendering CPU while keeping smooth rounded corners, themed borders and native resize edges.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.33-34/GitLama-0.1.0-beta.33-34-macos-arm64.dmg" length="18417350" type="application/octet-stream" sparkle:edSignature="Ihjc2KeZflerIfNtwXFnDHBMUU63bDWTzuAmWDLmC2+br4SSAl65yzmCcH51w1eOvOfIkbMDmt/jpdmsMD2VBw==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.32</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>33</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.32</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;GitLama now wears Git&amp;#x27;s own orange-red: a new app icon and a warmer accent for selections, focus and primary actions, so it stands apart from the other Lama apps in the dock.&lt;/li&gt;&lt;li&gt;Open a repository with `open -a &amp;quot;GitLama.app&amp;quot; /path/to/repository` on macOS, whether GitLama is starting or already running.&lt;/li&gt;&lt;li&gt;The app icon is now rounded on Linux, Windows and macOS and inside the app, matching other apps in the dock, taskbar and launcher.&lt;/li&gt;&lt;li&gt;The portable Linux tar now includes the app icon and desktop entry.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.32-33/GitLama-0.1.0-beta.32-33-macos-arm64.dmg" length="18419138" type="application/octet-stream" sparkle:edSignature="+av9TWQY8sdabraapm0TV09PiTwOaruAlrgquadsYcJEAXIyI5Naj335IWIY3fpLW0KmlwaQXed8J1Sla5K3DQ==" />
     </item>
   </channel>
 </rss>
