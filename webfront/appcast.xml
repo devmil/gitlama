@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.38</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>39</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.38</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Fixed: while connected to another computer, local repositories could show Git commands as failed and older commits would not open until GitLama was restarted.&lt;/li&gt;&lt;li&gt;Remote fetch, pull, push and other operations now show their progress and result in the operation island.&lt;/li&gt;&lt;li&gt;Remote workspaces: when Pull, Push, Branch or other changes are unavailable for a remote repository, GitLama now tells you why, for example that you need to turn on Allow changes for the host or reconnect.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.38-39/GitLama-0.1.0-beta.38-39-macos-arm64.dmg" length="24571075" type="application/octet-stream" sparkle:edSignature="oXcC4lKVk1WTsnLrHhxbxHGtNcYIYak8kqHqs0Cx3HmgRCY71QUwAguLMq9441uRziiyP1nHZxqaKyYKDM9vCQ==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.37</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>38</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Comparing two commits on different branches now shows their changes. When the comparison is too large to show at once, its changed files are listed and open one at a time.&lt;/li&gt;&lt;li&gt;A comparison now highlights only the commits that differ between the two selected commits, not every row in between.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.34-35/GitLama-0.1.0-beta.34-35-macos-arm64.dmg" length="18414161" type="application/octet-stream" sparkle:edSignature="0fkPCMszpU2SnjXFWJGr8tNUy4pysDJo3tWag6GqNUZQaOUrZEr/02q+f4myNPM/nuBsA0oiKIAIwIKquKoQAA==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.33</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>34</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.33</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;GitLama returns to blue: a cerulean app icon and accent for selections, focus and primary actions. The orange-red accent clashed with the red that marks errors and conflicts.&lt;/li&gt;&lt;li&gt;Reduce Linux window-rendering CPU while keeping smooth rounded corners, themed borders and native resize edges.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.33-34/GitLama-0.1.0-beta.33-34-macos-arm64.dmg" length="18417350" type="application/octet-stream" sparkle:edSignature="Ihjc2KeZflerIfNtwXFnDHBMUU63bDWTzuAmWDLmC2+br4SSAl65yzmCcH51w1eOvOfIkbMDmt/jpdmsMD2VBw==" />
     </item>
   </channel>
 </rss>
