@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.39</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>40</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.39</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Experimental remote workspaces: a lost connection is now restored automatically, and the tab shows why it was lost and when the next attempt runs. Remote tabs also reconnect when GitLama starts.&lt;/li&gt;&lt;li&gt;You can now rename a remote. &amp;quot;Edit remote&amp;quot; is now called &amp;quot;Change remote URL&amp;quot;.&lt;/li&gt;&lt;li&gt;Experimental remote workspaces: Discard and Delete now work on the remote computer when changes are allowed for the host.&lt;/li&gt;&lt;li&gt;Features that are not available for a remote repository are now shown greyed out with the reason instead of being hidden.&lt;/li&gt;&lt;li&gt;The remote folder picker now follows the path as you type it and shows whether that folder exists on the host.&lt;/li&gt;&lt;li&gt;Opening a remote repository from a new tab now uses that tab, as opening a local folder does.&lt;/li&gt;&lt;li&gt;The remote folder picker now starts at the top of each folder you open.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.39-40/GitLama-0.1.0-beta.39-40-macos-arm64.dmg" length="24645801" type="application/octet-stream" sparkle:edSignature="UowEhECIq0ky2D0UTOe6GnnoBw2HI7NUOUQibdM7jx4zeVMPQM7HNLKUGKRJYdYOEAmWCDCRGWHZsBv+G39EAQ==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.38</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>39</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Experimental: open repositories that live on another Linux computer over SSH. Turn it on in Settings, add the computer with the SSH alias you already use, and let GitLama install its matching helper there after you confirm. You can browse history, changes and diffs; staging and committing can be allowed separately for each computer.&lt;/li&gt;&lt;li&gt;If a connection drops during a remote change, GitLama tells you whether the change was applied, or that it could not tell, instead of guessing or trying again.&lt;/li&gt;&lt;li&gt;History diffs now show the stored file contents even when a repository configures a textconv filter.&lt;/li&gt;&lt;li&gt;A clearer way to explore history. Every commit opens in one inspector with a breadcrumb and Back and Forward buttons that always stay in place, and the graph follows when you go back.&lt;/li&gt;&lt;li&gt;Look at any file as its diff, its contents, its blame or its history with one switch. File history shows each change&amp;#x27;s diff right next to the list.&lt;/li&gt;&lt;li&gt;&amp;quot;All files&amp;quot; now lists the whole tree of a commit with the same rows and actions as the changed files.&lt;/li&gt;&lt;li&gt;Pop any view out into its own window, which has the same tools and can show its commit in the main window again. A setting chooses whether blame and history open in the detail area or in a window.&lt;/li&gt;&lt;li&gt;Every file menu now offers the same actions, wherever the file is listed.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.35-36/GitLama-0.1.0-beta.35-36-macos-arm64.dmg" length="20182220" type="application/octet-stream" sparkle:edSignature="AGSQ/D2pkLRexl35DQh1rizcobEW2Icc74g9WIqNrk+AiXa+BqtcpIeAIBtB+K5ooHtmvKzTjWSfPcpDsHqqAA==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.34</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>35</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.34</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Comparing two commits on different branches now shows their changes. When the comparison is too large to show at once, its changed files are listed and open one at a time.&lt;/li&gt;&lt;li&gt;A comparison now highlights only the commits that differ between the two selected commits, not every row in between.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.34-35/GitLama-0.1.0-beta.34-35-macos-arm64.dmg" length="18414161" type="application/octet-stream" sparkle:edSignature="0fkPCMszpU2SnjXFWJGr8tNUy4pysDJo3tWag6GqNUZQaOUrZEr/02q+f4myNPM/nuBsA0oiKIAIwIKquKoQAA==" />
     </item>
   </channel>
 </rss>
