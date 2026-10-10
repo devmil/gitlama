@@ -633,7 +633,7 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 .legal-document a, .legal-document code { overflow-wrap: anywhere; }
 
 /* Release history: each release is a commit on one lane. */
-.release-list { margin-top: 28px; }
+.release-list { margin-top: 28px; overflow-wrap: break-word; }
 .release-record {
   position: relative; margin-left: 28px; padding: 18px 22px;
   background: var(--pane-alt); box-shadow: none;
@@ -727,8 +727,23 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 @media(max-width:620px) {
   :root { --gutter: 16px; --header: 56px; }
   .brand { font-size: 0; gap: 0; }
+  /* The Compass gets its own row below the brand and language switch, so
+     every item stays visible; it scrolls from its left edge if it still
+     does not fit. */
+  html { scroll-padding-top: calc(var(--header) + 60px); }
+  .site-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "brand end" "nav nav";
+    gap: 4px 8px; padding-block: 8px;
+  }
+  .brand { grid-area: brand; }
+  .header-end { grid-area: end; }
+  .compass {
+    grid-area: nav; justify-self: center; max-width: 100%; min-width: 0;
+    overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .compass::-webkit-scrollbar { display: none; }
   .compass a { padding: 5px 7px; font-size: 13px; }
-  .site-header { gap: 8px; }
   .language-switch a, .language-switch button { padding: 6px 7px; }
   .hero { padding-inline: 8px; }
   .stage { padding: 28px 20px 112px; border-radius: var(--radius-xl); }
@@ -750,6 +765,11 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
   .graph-demo .hash { display: none; }
   .legal > .island { padding: 28px 20px; }
   footer { margin-top: 64px; }
+}
+@media (max-width: 380px) {
+  .compass a { padding: 5px 5px; font-size: 12.5px; }
+  /* "Datenschutzerklärung" is one long word. */
+  .legal h1 { font-size: 25px; hyphens: auto; overflow-wrap: break-word; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
