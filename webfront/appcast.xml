@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.40</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>41</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.40</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Remote workspaces are no longer experimental: open repositories on other computers without turning on a setting first.&lt;/li&gt;&lt;li&gt;Choosing whether GitLama may change a host&amp;#x27;s repositories is now a clear Read only / Allow changes choice that takes effect immediately.&lt;/li&gt;&lt;li&gt;Hosts can have their own color and icon, shown on their tabs so you can tell at a glance which computer a tab belongs to.&lt;/li&gt;&lt;li&gt;Remote workspaces: image changes, including SVG files, are now shown for repositories on another computer, and external diff tools and diff renderers work for them too.&lt;/li&gt;&lt;li&gt;Remote workspaces: you can now create patches from a repository on another computer; the patch is saved on this computer.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.40-41/GitLama-0.1.0-beta.40-41-macos-arm64.dmg" length="24910503" type="application/octet-stream" sparkle:edSignature="C5IEGdQ86EVLb0Rf6zz+gN2d4ToDXrTGdAWQZgbRb7CWaFKdWzge+LWX5CJHVGYMLhHTfqTQfv2V1GToCP2qCw==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.39</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>40</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Fixed: with remote workspaces turned on, Open Remote Repository… now appears on the start page and in a new tab. Dropping repository folders onto the window and reviewing pull requests from the Integrations panel work again as well.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.36-37/GitLama-0.1.0-beta.36-37-macos-arm64.dmg" length="20182406" type="application/octet-stream" sparkle:edSignature="7+sSyZ1cN64ZZiEIhhiNer45W/6uKY2zL16k/0YpkoGMfDepkz8NNg/nb8LTx0UvdZVQv2IaESvfJ64dZl1mAA==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.35</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>36</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.35</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Experimental: open repositories that live on another Linux computer over SSH. Turn it on in Settings, add the computer with the SSH alias you already use, and let GitLama install its matching helper there after you confirm. You can browse history, changes and diffs; staging and committing can be allowed separately for each computer.&lt;/li&gt;&lt;li&gt;If a connection drops during a remote change, GitLama tells you whether the change was applied, or that it could not tell, instead of guessing or trying again.&lt;/li&gt;&lt;li&gt;History diffs now show the stored file contents even when a repository configures a textconv filter.&lt;/li&gt;&lt;li&gt;A clearer way to explore history. Every commit opens in one inspector with a breadcrumb and Back and Forward buttons that always stay in place, and the graph follows when you go back.&lt;/li&gt;&lt;li&gt;Look at any file as its diff, its contents, its blame or its history with one switch. File history shows each change&amp;#x27;s diff right next to the list.&lt;/li&gt;&lt;li&gt;&amp;quot;All files&amp;quot; now lists the whole tree of a commit with the same rows and actions as the changed files.&lt;/li&gt;&lt;li&gt;Pop any view out into its own window, which has the same tools and can show its commit in the main window again. A setting chooses whether blame and history open in the detail area or in a window.&lt;/li&gt;&lt;li&gt;Every file menu now offers the same actions, wherever the file is listed.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.35-36/GitLama-0.1.0-beta.35-36-macos-arm64.dmg" length="20182220" type="application/octet-stream" sparkle:edSignature="AGSQ/D2pkLRexl35DQh1rizcobEW2Icc74g9WIqNrk+AiXa+BqtcpIeAIBtB+K5ooHtmvKzTjWSfPcpDsHqqAA==" />
     </item>
   </channel>
 </rss>
