@@ -24,7 +24,7 @@
     "nav.download": "Download",
     "nav.releases": "Versionen",
     "language.label": "Sprache",
-    "footer.tagline": "Ein Desktop-Client für Git von Devmil Solutions.",
+    "footer.tagline": "Ein Desktop-Client für Git – by Devmil Solutions.",
     "footer.label": "Rechtliches",
     "footer.releases": "Versionen",
     "footer.license": "Lizenz",
