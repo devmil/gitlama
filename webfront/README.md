@@ -37,7 +37,10 @@ colours only for topology. The hero is a stage on the brand ground `#14242B`
 where `site.js` draws the generated lane field with the Meridian graph geometry
 and lane-focus behaviour. The Lama stands on a merge there, as in the app icon:
 it opens with the hello pose, settles proud, and hops when a commit runs into
-the merge. The ivory Lama appears only on the brand ground (stage, download
+the merge. The remote workspaces section is a second brand-ground island: this
+computer links over SSH to two hosts in their own colours, the Lama in shades
+stands on the line, and a model tab strip shows the hosts' marks. The ivory
+Lama appears only on the brand ground (stage, remote island, download
 island, small brand tiles); the footer carries the single-ink family signature.
 `site.js` also runs the small graph and diff models; it honours reduced motion
 and loads no data. `assets/lama/` holds byte-identical copies of the vendored

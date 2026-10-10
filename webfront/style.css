@@ -661,6 +661,51 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 }
 .release-record .formats a:hover { color: var(--ink); background: var(--pane-hover); }
 
+/* Remote workspaces: a brand-ground island. This computer links over SSH
+   to two hosts in their own colours, as their tabs show them; the Lama
+   stands on the line. */
+.remote-stage {
+  --host-a: #3DD6C0; --host-b: #FF8A5B;
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 32px; align-items: center;
+  padding: 40px 44px; border-radius: var(--radius-xl);
+  background: var(--brand); color: var(--brand-ink); box-shadow: var(--shadow-pane);
+}
+.remote-stage .eyebrow, .remote-stage p { color: var(--brand-muted); }
+.remote-stage h2 { color: var(--brand-ink); font-size: clamp(26px, 3vw, 34px); }
+.remote-copy > p:last-of-type { margin-bottom: 0; }
+.remote-copy ul { margin: 20px 0 0; padding: 0; list-style: none; }
+.remote-copy li { display: flex; gap: 12px; align-items: baseline; color: var(--brand-muted); }
+.remote-copy li + li { margin-top: 10px; }
+.remote-copy li::before {
+  content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid var(--brand-accent); transform: translateY(1px);
+}
+.remote-scene svg { display: block; width: 100%; height: auto; overflow: visible; }
+.remote-scene path, .remote-scene rect { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.remote-scene .machine rect, .remote-scene .machine path { stroke: var(--brand-muted); }
+.remote-scene .trunk { stroke: var(--brand-accent); stroke-width: 3; }
+.remote-scene .link { stroke-width: 3; stroke-dasharray: 1 9; animation: ssh-flow 1.4s linear infinite; }
+.remote-scene .host-a { stroke: var(--host-a); }
+.remote-scene .host-b { stroke: var(--host-b); }
+.remote-scene .host-a rect, .remote-scene .host-a path { stroke: var(--host-a); }
+.remote-scene .host-b rect, .remote-scene .host-b path { stroke: var(--host-b); }
+.remote-scene .host path { stroke-width: 4; }
+.remote-scene .host-name { fill: var(--brand-muted); font: 12px var(--font-mono); text-anchor: middle; }
+@keyframes ssh-flow { to { stroke-dashoffset: -10; } }
+.remote-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 18px; }
+.remote-tab {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
+  border-radius: var(--radius-md); background: rgba(244, 247, 248, 0.06);
+  color: var(--brand-ink); font-size: 14px;
+}
+.remote-tab.active { background: rgba(244, 247, 248, 0.14); }
+.remote-tab svg {
+  width: 15px; height: 15px; fill: none; stroke: var(--brand-muted);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.remote-tab.host-a svg { stroke: var(--host-a); }
+.remote-tab.host-b svg { stroke: var(--host-b); }
+
 @media (max-width: 880px) {
   .site-header { grid-template-columns: auto 1fr auto; }
   .stage { grid-template-columns: minmax(0, 1fr); padding: 40px 32px 152px; min-height: 0; gap: 8px; }
@@ -673,7 +718,7 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
   .compass { justify-self: end; }
   .header-release { display: none; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
-  .story, .download-grid, .download-extra { grid-template-columns: minmax(0, 1fr); }
+  .story, .download-grid, .download-extra, .remote-stage { grid-template-columns: minmax(0, 1fr); }
   .story.flip > :first-child { order: 0; }
   .platform[data-platform="linux"] { grid-column: auto; grid-row: auto; }
   footer { grid-template-columns: 1fr 1fr; }
@@ -690,6 +735,7 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
   .hero .intro { font-size: 17px; }
   .shot { margin-top: -88px; }
   .download-stage { flex-direction: column; align-items: flex-start; gap: 12px; padding: 24px 20px; }
+  .remote-stage { padding: 28px 20px; gap: 20px; }
   .download-lama { width: 88px; height: 88px; }
   .feature-grid, footer { grid-template-columns: 1fr; }
   .section { padding-top: 112px; }

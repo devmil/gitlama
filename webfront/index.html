@@ -5,7 +5,7 @@
   <meta property="og:url" content="https://devmil.de/gitlama/">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" data-i18n-attr="content:index.description" content="GitLama is a desktop Git client for macOS, Linux and Windows, built with Flutter and Rust.">
+  <meta name="description" data-i18n-attr="content:index.description" content="GitLama is a desktop Git client for macOS, Linux and Windows, built with Flutter and Rust. It also works on repositories on other computers over SSH.">
   <meta name="theme-color" content="#E8ECEE" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0B151A" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="website">
@@ -18,11 +18,11 @@
   <meta name="twitter:image" content="https://devmil.de/gitlama/assets/feature-graphic.png?v=49bfb77ff078">
   <title data-i18n="index.title">GitLama · Your repository, in view</title>
   <link rel="icon" href="assets/icon-32.png?v=83c74eeadafb">
-  <link rel="stylesheet" href="style.css?v=b70c933faaf3">
+  <link rel="stylesheet" href="style.css?v=95e691077265">
   <link rel="stylesheet" href="assets/lama/lama-antics.css?v=926d01e9bae2">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GitLama","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows","license":"https://www.gnu.org/licenses/gpl-3.0.html","description":"A desktop Git client built with Flutter and Rust."}</script>
   <script>document.documentElement.classList.add("js")</script>
-  <script src="language.js?v=9f4f6a40f058" defer></script>
+  <script src="language.js?v=af6489bf2a11" defer></script>
   <script src="releases.js?v=9d9fca125dbc" defer></script>
   <script src="assets/lama/lama-antics.js?v=fd9d7d8235fa" defer></script>
   <script src="site.js?v=e6f7478da5d3" defer></script>
@@ -34,6 +34,7 @@
     <a href="index.html" class="brand" aria-label="GitLama home" data-i18n-attr="aria-label:brand.label"><img src="assets/icon-64.png?v=05939856c8e9" width="32" height="32" alt="">GitLama</a>
     <nav class="compass" aria-label="Primary" data-i18n-attr="aria-label:nav.label">
       <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#remote" data-i18n="nav.remote">Remote</a>
       <a href="#downloads" data-i18n="nav.download">Download</a>
       <a href="releases.html" data-i18n="nav.releases">Release notes</a>
       <span class="compass-rule" aria-hidden="true"></span>
@@ -222,6 +223,53 @@
             </template>
           </div>
           <p class="demo-note" data-i18n="diff.note">A model, not the app. Click a line number to select changed lines, then stage them.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="remote" class="section wrap" aria-labelledby="remote-title">
+      <div class="remote-stage reveal">
+        <div class="remote-copy">
+          <p class="eyebrow" data-i18n="remote.eyebrow">Remote workspaces</p>
+          <h2 id="remote-title" data-i18n="remote.title">Work on repositories on another computer</h2>
+          <p data-i18n="remote.body">Open a repository on a Linux machine, a Mac or a Raspberry Pi over the SSH you already use. Nothing is cloned: the repository stays where it is, and GitLama shows its history, changes and diffs as if it were on your desk.</p>
+          <ul>
+            <li data-i18n="remote.point1">Uses your SSH configuration, keys and agent. GitLama never asks for a password and never accepts an unknown host key.</li>
+            <li data-i18n="remote.point2">Read only until you allow changes for a host. Then staging, commits, branches, stashes, fetch, pull and push run on that computer, with its own Git credentials.</li>
+            <li data-i18n="remote.point3">Each host gets its own color and icon, so you always know which computer a tab belongs to.</li>
+            <li data-i18n="remote.point4">A dropped connection comes back on its own, and a change is never sent twice.</li>
+          </ul>
+        </div>
+        <!-- This computer at the left, two hosts at the right in their own
+             colours; the Lama keeps watch over the SSH line between them. -->
+        <div class="remote-scene" aria-hidden="true">
+          <svg viewBox="0 0 320 200" focusable="false">
+            <g class="machine">
+              <rect x="14" y="94" width="58" height="38" rx="4"/>
+              <path d="M8 140H78"/>
+            </g>
+            <path class="trunk" d="M80 117H150"/>
+            <path class="link host-a" d="M150 117C186 117 196 64 236 64"/>
+            <path class="link host-b" d="M150 117C186 117 196 150 236 150"/>
+            <g class="host host-a">
+              <rect x="240" y="44" width="56" height="18" rx="4"/>
+              <rect x="240" y="66" width="56" height="18" rx="4"/>
+              <path d="M250 53h.01M250 75h.01"/>
+            </g>
+            <g class="host host-b">
+              <rect x="240" y="130" width="56" height="18" rx="4"/>
+              <rect x="240" y="152" width="56" height="18" rx="4"/>
+              <path d="M250 139h.01M250 161h.01"/>
+            </g>
+            <text class="host-name" x="268" y="100">fedora</text>
+            <text class="host-name" x="268" y="186">pi</text>
+            <image class="remote-lama" href="assets/lama/lama-proud-shades-up.svg?v=a24d0e3d3b25" x="78" y="51" width="72" height="72"/>
+          </svg>
+          <div class="remote-tabs">
+            <span class="remote-tab"><svg viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>gitlama</span>
+            <span class="remote-tab active host-a"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>api</span>
+            <span class="remote-tab host-b"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>firmware</span>
+          </div>
         </div>
       </div>
     </section>
