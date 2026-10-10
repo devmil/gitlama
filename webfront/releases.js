@@ -1,8 +1,12 @@
 // Renders downloads and release notes from the signed release index. Every
 // value from the index reaches the page through textContent, and a link is
-// rendered only for an unauthenticated https://github.com/ URL.
+// rendered only for an unauthenticated https://github.com/ URL. Copy comes
+// from language.js; the release notes themselves stay as published.
 (function () {
   "use strict";
+
+  const language = window.GitLamaLanguage;
+  const t = (key, values) => (language ? language.t(key, values) : key);
 
   const status = document.getElementById("release-status");
   const downloads = document.getElementById("download-grid");
@@ -17,12 +21,12 @@
     linux: { label: "Linux", icon: "linux" },
   };
   const packages = {
-    dmg: { name: "Disk image", hint: "Apple silicon", icons: ["apple"] },
-    msi: { name: "Installer", hint: "64-bit Windows", icons: ["windows"] },
-    AppImage: { name: "AppImage", hint: "One portable file", icons: ["appimage"] },
-    deb: { name: "DEB package", hint: "Debian, Ubuntu and derivatives", icons: ["debian", "ubuntu"] },
-    rpm: { name: "RPM package", hint: "Fedora and other RPM-based distributions", icons: ["fedora"] },
-    "tar.gz": { name: "Tarball", hint: "Portable archive", icons: ["archive"] },
+    dmg: { icons: ["apple"] },
+    msi: { icons: ["windows"] },
+    AppImage: { icons: ["appimage"] },
+    deb: { icons: ["debian", "ubuntu"] },
+    rpm: { icons: ["fedora"] },
+    "tar.gz": { icons: ["archive"] },
   };
 
   function validAsset(a) {
@@ -85,7 +89,7 @@
     const restore = () => { button.textContent = "SHA-256"; };
     const done = (text) => { button.textContent = text; setTimeout(restore, 1600); };
     if (!navigator.clipboard) { window.prompt("SHA-256", asset.sha256); return; }
-    navigator.clipboard.writeText(asset.sha256).then(() => done("Copied"), () => done("Failed"));
+    navigator.clipboard.writeText(asset.sha256).then(() => done(t("release.copied")), () => done(t("release.copyFailed")));
   }
 
   function assetRow(asset, suggested) {
@@ -94,11 +98,11 @@
     const icons = element("span", "asset-icons");
     kind.icons.forEach((name) => icons.append(icon(`assets/platform/${name}.svg`)));
     const text = element("span");
-    const name = element("a", "asset-name", kind.name);
+    const name = element("a", "asset-name", t(`package.${asset.format}`));
     name.href = asset.url;
     name.rel = "noopener";
-    name.setAttribute("aria-label", `Download ${asset.file}`);
-    text.append(name, element("span", "asset-hint", kind.hint));
+    name.setAttribute("aria-label", t("release.downloadFile", { file: asset.file }));
+    text.append(name, element("span", "asset-hint", t(`package.${asset.format}.hint`)));
     const meta = element("span", "asset-meta",
       `.${asset.format} · ${asset.architecture} · ${megabytes(asset.bytes)}`);
     const tail = element("span", "asset-tail");
@@ -106,7 +110,7 @@
       const sha = element("button", "sha", "SHA-256");
       sha.type = "button";
       sha.title = asset.sha256;
-      sha.setAttribute("aria-label", `Copy the SHA-256 checksum of ${asset.file}`);
+      sha.setAttribute("aria-label", t("release.copyChecksum", { file: asset.file }));
       sha.addEventListener("click", () => copyChecksum(sha, asset));
       tail.append(sha);
     }
@@ -123,14 +127,15 @@
     status.hidden = true;
 
     if (releaseBar) {
-      const notes = element("a", "", "Release notes");
+      const notes = element("a", "", t("release.notes"));
       notes.href = "releases.html";
-      releaseBar.append(element("span", "chip head plain", r.version),
-        element("span", "", `Build ${r.build} · ${r.channel} channel`), notes);
+      releaseBar.replaceChildren(element("span", "chip head plain", r.version),
+        element("span", "", t("release.build", { build: r.build, channel: r.channel })), notes);
       releaseBar.hidden = false;
     }
 
     downloads.hidden = false;
+    downloads.textContent = "";
     for (const platform of ["macos", "windows", "linux"]) {
       const assets = r.assets.filter((a) => a.platform === platform);
       const card = element("article", "platform");
@@ -141,7 +146,7 @@
       const title = element("div");
       title.append(element("h3", "", platforms[platform].label), element("p", "", assets[0].minimum_system));
       head.append(mark, title);
-      if (platform === detected) head.append(element("span", "chip plain", "Your system"));
+      if (platform === detected) head.append(element("span", "chip plain", t("release.yourSystem")));
       const list = element("ul", "assets");
       const suggested = platform === detected ? suggestedFormat(platform) : null;
       formats[platform].forEach((format) => {
@@ -152,22 +157,23 @@
       downloads.append(card);
     }
 
-    const label = `${r.version} · build ${r.build}`;
+    const label = t("release.label", { version: r.version, build: r.build });
     const headerRelease = document.getElementById("header-release");
     if (headerRelease) headerRelease.textContent = r.version;
     const heroRelease = document.getElementById("hero-release");
     if (heroRelease) heroRelease.textContent = label;
     const heroDownload = document.getElementById("hero-download");
     if (heroDownload && detected) {
-      heroDownload.lastElementChild.textContent = `Download for ${platforms[detected].label}`;
+      heroDownload.lastElementChild.textContent = t("release.downloadFor", { platform: platforms[detected].label });
     }
 
     if (latestNotes && Array.isArray(r.notes) && r.notes.length) {
       const list = element("ul");
       r.notes.slice(0, 3).forEach((note) => list.append(element("li", "", note)));
-      const more = element("a", "", r.notes.length > 3 ? `All ${r.notes.length} changes` : "Release notes");
+      const more = element("a", "", r.notes.length > 3
+        ? t("release.allChanges", { count: r.notes.length }) : t("release.notes"));
       more.href = "releases.html";
-      latestNotes.append(element("h3", "", `Changed in ${r.version}`), list, more);
+      latestNotes.replaceChildren(element("h3", "", t("release.changedIn", { version: r.version })), list, more);
       latestNotes.hidden = false;
     }
   }
@@ -177,7 +183,7 @@
     releaseList.textContent = "";
     for (const r of releases) {
       const record = element("article", "release-record");
-      record.append(element("h2", "", `${r.version} · build ${r.build}`),
+      record.append(element("h2", "", t("release.label", { version: r.version, build: r.build })),
         element("p", "", `${r.channel} · ${r.tag}`));
       if (Array.isArray(r.notes) && r.notes.length) {
         const list = element("ul");
@@ -208,10 +214,17 @@
     })
     .then((data) => {
       if (!valid(data)) throw new Error("invalid");
-      renderDownloads(data.latest);
-      renderNotes(data.releases);
+      const render = () => {
+        renderDownloads(data.latest);
+        renderNotes(data.releases);
+      };
+      render();
+      if (language) language.onChange(render);
     })
     .catch(() => {
-      if (releaseList) releaseList.textContent = "No verified public release is available yet.";
+      if (!releaseList) return;
+      const none = () => { releaseList.textContent = t("release.none"); };
+      none();
+      if (language) language.onChange(none);
     });
 })();

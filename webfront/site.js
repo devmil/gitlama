@@ -567,6 +567,8 @@
     const stageHunk = document.getElementById("stage-hunk");
     const clean = document.getElementById("diff-clean");
     if (!model || !view || !count || !range || !stageHunk || !clean) return;
+    const language = window.GitLamaLanguage;
+    const t = (key, values) => (language ? language.t(key, values) : key);
     const initial = Array.from(view.querySelectorAll(".dl")).map((row) => ({
       kind: row.classList.contains("add") ? "add" : row.classList.contains("del") ? "del" : "ctx",
       code: row.querySelector("code").textContent,
@@ -575,7 +577,8 @@
     const floating = document.createElement("button");
     floating.type = "button";
     floating.className = "button small secondary floating-stage";
-    floating.append(stageHunk.querySelector(".icon").cloneNode(), "Stage");
+    const floatingLabel = document.createTextNode("");
+    floating.append(stageHunk.querySelector(".icon").cloneNode(), floatingLabel);
 
     function reset() {
       lines = initial.map((line, index) => ({ ...line, id: index }));
@@ -600,6 +603,7 @@
     }
 
     function render() {
+      floatingLabel.data = t("diff.stage");
       const focusedId = document.activeElement && document.activeElement.dataset.line;
       view.textContent = "";
       const changes = lines.filter((line) => line.kind !== "ctx").length;
@@ -629,7 +633,8 @@
           gutter.type = "button";
           gutter.dataset.line = line.id;
           gutter.setAttribute("aria-pressed", String(isSelected));
-          gutter.setAttribute("aria-label", `Select ${line.kind === "add" ? "added" : "removed"} line: ${line.code.trim()}`);
+          gutter.setAttribute("aria-label", t(line.kind === "add" ? "diff.selectAdded" : "diff.selectRemoved",
+            { code: line.code.trim() }));
           gutter.addEventListener("click", () => {
             if (selected.has(line.id)) selected.delete(line.id); else selected.add(line.id);
             render();
@@ -645,15 +650,16 @@
       });
       range.textContent = `@@ -41,${oldCount} +41,${newCount} @@`;
       stageHunk.disabled = changes === 0;
-      count.textContent = staged ? `${staged} staged · ${changes} unstaged` : `${changes} unstaged`;
+      count.textContent = staged ? t("diff.staged", { staged, changes }) : t("diff.unstagedCount", { changes });
       if (changes === 0) {
         // Everything is staged: the app's resting Lama takes the empty side.
         view.textContent = "";
         const empty = clean.content.firstElementChild.cloneNode(true);
+        if (language) language.translate(empty);
         const again = document.createElement("button");
         again.type = "button";
         again.className = "button small secondary";
-        again.textContent = "Start over";
+        again.textContent = t("diff.startOver");
         again.addEventListener("click", reset);
         empty.append(again);
         view.append(empty);
@@ -679,6 +685,7 @@
       if (event.key === "Escape" && selected.size) { selected.clear(); render(); }
     });
     reset();
+    if (language) language.onChange(render);
   }
 
   const field = document.getElementById("lane-field");

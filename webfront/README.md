@@ -10,6 +10,23 @@ the browser to unauthenticated `https://github.com/` URLs. The release workflow
 verifies Forgejo and the complete public GitHub mirror before it updates the
 index. `northspline-release-ed25519.pub` is the versioned offline trust root.
 
+`language.js` switches the main pages (index, release notes, license) between
+English and German. English is the source text in the HTML; an element with
+`data-i18n` or `data-i18n-attr` takes its German copy from the dictionary in
+`language.js`, which also holds the run-time strings of `releases.js` and
+`site.js`. The release notes themselves stay as published. The choice is stored
+in `localStorage` under `preferred-language` (`en`/`de`), shared with the other
+Devmil sites on `devmil.de`; without a stored choice a browser language starting
+with `de` selects German. That key is the only browser storage the site uses;
+`privacy.html` lists it, so update the policy when adding another. The imprint
+and privacy policy are separate static pages per language (`imprint.html`,
+`privacy.html`, `de/imprint.html`, `de/privacy.html`). Their switch links to the
+counterpart and records the choice; they never redirect. The contact address
+appears only as a `.contact-email` span that `language.js` turns into a link; the
+website fixture fails if the joined address is published. Keep the privacy
+policy in step with the app's network behaviour (Git remotes, hosting
+providers, update checks, Gravatar, remote workspaces).
+
 `appcast.xml` is the update feed of the macOS application. The release workflow
 renders it from the verified index; it lists only packages that carry an
 update signature. Do not edit it by hand.

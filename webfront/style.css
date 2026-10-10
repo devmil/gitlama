@@ -189,6 +189,22 @@ code, .mono, pre { font-family: var(--font-mono); font-size: 0.875em; font-varia
 }
 .header-release:hover { background: var(--ground-hover); color: var(--ink); }
 .header-release:empty { display: none; }
+/* Header end: the release chip and the EN/DE language switch. */
+.header-end { justify-self: end; display: flex; align-items: center; gap: 8px; }
+.language-switch {
+  display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill);
+  background: var(--pane); box-shadow: var(--shadow-pane);
+}
+.language-switch[hidden] { display: none; }
+.language-switch a, .language-switch button {
+  border: 0; background: none; cursor: pointer; color: var(--ink-muted); text-decoration: none;
+  font: 600 12px/1 var(--font-sans); letter-spacing: 0.02em;
+  padding: 6px 9px; border-radius: var(--radius-pill);
+}
+.language-switch a:hover, .language-switch button:hover { background: var(--pane-hover); color: var(--ink); }
+.language-switch [aria-pressed="true"], .language-switch [aria-current] {
+  background: var(--accent-soft); color: var(--accent-ink);
+}
 .header-release::before {
   content: ""; width: 8px; height: 8px; border-radius: 50%;
   border: 2px solid var(--lane-1);
@@ -600,7 +616,7 @@ footer strong { color: var(--ink); }
   mask: url("assets/lama/lama-signature.svg?v=f42d5d84b9d9") center / contain no-repeat;
 }
 footer p { margin: 4px 0 0; font-size: 14px; }
-footer nav { display: flex; gap: 6px; align-items: center; }
+footer nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 footer nav a { color: var(--ink-muted); font-size: 14px; padding: 4px 8px; border-radius: var(--radius-sm); }
 footer nav a:hover { color: var(--ink); background: var(--ground-hover); }
 
@@ -609,6 +625,12 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 .legal > .island { padding: 40px 44px; }
 .legal h1 { font-size: clamp(30px, 4vw, 40px); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 18px; font-weight: 650; }
 .legal h2 { font-size: 22px; margin-top: 36px; }
+.legal h3 { font-size: 17px; margin: 24px 0 6px; }
+/* Imprint and privacy: a readable measure inside the island. */
+.legal-document > .island > * { max-width: 70ch; }
+.legal-document address { font-style: normal; }
+.legal-document .updated { color: var(--ink-muted); font-size: 14px; }
+.legal-document a, .legal-document code { overflow-wrap: anywhere; }
 
 /* Release history: each release is a commit on one lane. */
 .release-list { margin-top: 28px; }
@@ -640,7 +662,7 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 .release-record .formats a:hover { color: var(--ink); background: var(--pane-hover); }
 
 @media (max-width: 880px) {
-  .site-header { grid-template-columns: auto 1fr; }
+  .site-header { grid-template-columns: auto 1fr auto; }
   .stage { grid-template-columns: minmax(0, 1fr); padding: 40px 32px 152px; min-height: 0; gap: 8px; }
   .hero-scene { order: -1; justify-self: center; width: min(100%, 440px); margin-right: -8%; }
   .stage-veil {
@@ -660,7 +682,9 @@ main.legal { max-width: calc(820px + 2 * var(--gutter)); padding-top: 40px; padd
 @media(max-width:620px) {
   :root { --gutter: 16px; --header: 56px; }
   .brand { font-size: 0; gap: 0; }
-  .compass a { padding: 5px 9px; font-size: 13px; }
+  .compass a { padding: 5px 7px; font-size: 13px; }
+  .site-header { gap: 8px; }
+  .language-switch a, .language-switch button { padding: 6px 7px; }
   .hero { padding-inline: 8px; }
   .stage { padding: 28px 20px 112px; border-radius: var(--radius-xl); }
   .hero .intro { font-size: 17px; }
