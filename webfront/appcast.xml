@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.41</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>42</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.41</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Remote workspaces: when a host is missing the GitLama helper, for example after an update, you can install it right in the tab that could not connect, and its tabs reopen afterwards.&lt;/li&gt;&lt;li&gt;Remote workspaces: hosts can install the helper automatically, so updates no longer stop you with a missing helper.&lt;/li&gt;&lt;li&gt;Remote workspaces: the new Remote hosts page in Settings lists all your hosts and lets you change their access, automatic installation, name and SSH alias.&lt;/li&gt;&lt;li&gt;Remote workspaces: GitLama updates no longer need a new helper on your hosts unless the helper itself changed. This update installs the helper once more.&lt;/li&gt;&lt;li&gt;Remote workspaces: on hosts where you allow changes you can now merge, cherry-pick, revert, rebase, resolve conflicts, undo and redo, use snapshots and bisect, restore files, apply patches, amend commits, reset branches and manage worktrees, submodules and Git LFS.&lt;/li&gt;&lt;li&gt;Remote workspaces: the status bar shows whether GitLama may only read or also change the current host, and lets you switch it with one click.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.41-42/GitLama-0.1.0-beta.41-42-macos-arm64.dmg" length="26999646" type="application/octet-stream" sparkle:edSignature="cXG8HeKWjiMpnMx2Vjrnfzl1Q+Ola2vdLCR3/R3CRF4QKOU1P5bjt/0c6yfXJ2B2X8P6CpGhGYJSWi5m+3ceBA==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.40</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>41</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Experimental: remote workspaces also work with a Raspberry Pi or another 64-bit Arm Linux computer running a 64-bit system such as Raspberry Pi OS Bookworm.&lt;/li&gt;&lt;li&gt;Experimental: remote workspaces now also work with Macs as the other computer. GitLama recognizes whether it is a Linux PC or a Mac and installs the matching helper.&lt;/li&gt;&lt;li&gt;Experimental remote workspaces: create, rename, delete and switch branches, manage tags, upstreams and remotes, use stashes, and fetch, pull or push on the other computer. Fetch, pull and push sign in with the credentials set up on that computer. If GitLama cannot confirm whether a change was applied, it lists it under Remote changes instead of trying again.&lt;/li&gt;&lt;li&gt;Fixed: adding a remote host from a new tab failed with &amp;quot;The host could not be saved&amp;quot;. Settings changes made while a new tab is open are now saved as well.&lt;/li&gt;&lt;li&gt;When a remote host cannot be saved, GitLama now tells you why and shows an error code you can report.&lt;/li&gt;&lt;li&gt;Fixed: remote URLs such as `git@github.com:owner/repo.git` show their SSH login instead of `[REDACTED]`.&lt;/li&gt;&lt;li&gt;Fixed: Edit remote can no longer replace a remote&amp;#x27;s URL with a hidden placeholder. When the current URL contains a password or token, the field starts empty and asks for the complete new URL.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.37-38/GitLama-0.1.0-beta.37-38-macos-arm64.dmg" length="24479481" type="application/octet-stream" sparkle:edSignature="Ee57rnHd7AN1ikUiemLoNAflKG7oEFll33owu3N+jaFLbRzkZQxZMt2sUlMdAkoYIRIrzVdnhQVS+JY/XG6NDw==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.36</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>37</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.36</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Fixed: with remote workspaces turned on, Open Remote Repository… now appears on the start page and in a new tab. Dropping repository folders onto the window and reviewing pull requests from the Integrations panel work again as well.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.36-37/GitLama-0.1.0-beta.36-37-macos-arm64.dmg" length="20182406" type="application/octet-stream" sparkle:edSignature="7+sSyZ1cN64ZZiEIhhiNer45W/6uKY2zL16k/0YpkoGMfDepkz8NNg/nb8LTx0UvdZVQv2IaESvfJ64dZl1mAA==" />
     </item>
   </channel>
 </rss>
