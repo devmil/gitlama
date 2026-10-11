@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.42</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>43</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.42</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Clicking the repository name in the toolbar now opens its details: where it lives, its path, branch and upstream, changes, and what is running. Copy the path or open the folder from there.&lt;/li&gt;&lt;li&gt;The command palette has its own **Commands** button next to the repository name. The keyboard shortcut works as before.&lt;/li&gt;&lt;li&gt;Right-click a repository tab to copy its path.&lt;/li&gt;&lt;li&gt;Remote workspaces: you can now initialize a new repository on a remote host. Choose the host in the Initialize repository dialog, pick an empty folder or type the path of a new one, and the repository opens in a remote tab. Hosts need changes allowed and receive an updated GitLama helper on their next connection.&lt;/li&gt;&lt;li&gt;Deleting a remote branch, or pushing or deleting a tag, no longer fails with &amp;quot;The transfer request is invalid.&amp;quot; when you have no local branch of that name.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.42-43/GitLama-0.1.0-beta.42-43-macos-arm64.dmg" length="27039043" type="application/octet-stream" sparkle:edSignature="KWQ9OokX80HoSBbgIun7ILuHX1TqklVgJj15UtneHmXrlOAmHjB/GIV9VbyUCyuHrFiyomyb4zaDeh4pbnsDCQ==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.41</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>42</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Fixed: while connected to another computer, local repositories could show Git commands as failed and older commits would not open until GitLama was restarted.&lt;/li&gt;&lt;li&gt;Remote fetch, pull, push and other operations now show their progress and result in the operation island.&lt;/li&gt;&lt;li&gt;Remote workspaces: when Pull, Push, Branch or other changes are unavailable for a remote repository, GitLama now tells you why, for example that you need to turn on Allow changes for the host or reconnect.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.38-39/GitLama-0.1.0-beta.38-39-macos-arm64.dmg" length="24571075" type="application/octet-stream" sparkle:edSignature="oXcC4lKVk1WTsnLrHhxbxHGtNcYIYak8kqHqs0Cx3HmgRCY71QUwAguLMq9441uRziiyP1nHZxqaKyYKDM9vCQ==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.37</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>38</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.37</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Experimental: remote workspaces also work with a Raspberry Pi or another 64-bit Arm Linux computer running a 64-bit system such as Raspberry Pi OS Bookworm.&lt;/li&gt;&lt;li&gt;Experimental: remote workspaces now also work with Macs as the other computer. GitLama recognizes whether it is a Linux PC or a Mac and installs the matching helper.&lt;/li&gt;&lt;li&gt;Experimental remote workspaces: create, rename, delete and switch branches, manage tags, upstreams and remotes, use stashes, and fetch, pull or push on the other computer. Fetch, pull and push sign in with the credentials set up on that computer. If GitLama cannot confirm whether a change was applied, it lists it under Remote changes instead of trying again.&lt;/li&gt;&lt;li&gt;Fixed: adding a remote host from a new tab failed with &amp;quot;The host could not be saved&amp;quot;. Settings changes made while a new tab is open are now saved as well.&lt;/li&gt;&lt;li&gt;When a remote host cannot be saved, GitLama now tells you why and shows an error code you can report.&lt;/li&gt;&lt;li&gt;Fixed: remote URLs such as `git@github.com:owner/repo.git` show their SSH login instead of `[REDACTED]`.&lt;/li&gt;&lt;li&gt;Fixed: Edit remote can no longer replace a remote&amp;#x27;s URL with a hidden placeholder. When the current URL contains a password or token, the field starts empty and asks for the complete new URL.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.37-38/GitLama-0.1.0-beta.37-38-macos-arm64.dmg" length="24479481" type="application/octet-stream" sparkle:edSignature="Ee57rnHd7AN1ikUiemLoNAflKG7oEFll33owu3N+jaFLbRzkZQxZMt2sUlMdAkoYIRIrzVdnhQVS+JY/XG6NDw==" />
     </item>
   </channel>
 </rss>
