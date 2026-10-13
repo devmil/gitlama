@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.44</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>45</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.44</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;The repository details that open from the repository name in the title bar have a new look: their colour shows at a glance whether the repository is clean, has changes or conflicts, or is busy, and branch, upstream and changes are shown side by side.&lt;/li&gt;&lt;li&gt;A long commit message no longer pushes the changed files and diff out of view in History; the message scrolls instead.&lt;/li&gt;&lt;li&gt;Commits, blame and file history of repositories on a remote host can open in their own window again. The window reads through the main window&amp;#x27;s connection to the host; when the host is not connected, it says so and you can try again after reconnecting.&lt;/li&gt;&lt;li&gt;In Changes, the discard buttons are now red and kept apart from the staging buttons, so it is harder to discard changes by accident.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.44-45/GitLama-0.1.0-beta.44-45-macos-arm64.dmg" length="27427149" type="application/octet-stream" sparkle:edSignature="UwY2aB8Ky1YSl7j8LTW4GNrXFFLvNZrx1p5jT2RZfkjzPy8jVluGwFDxk0GFoRniQ1Ae+rVhuQPX7nYXmcjoCg==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.43</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>44</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Remote workspaces are no longer experimental: open repositories on other computers without turning on a setting first.&lt;/li&gt;&lt;li&gt;Choosing whether GitLama may change a host&amp;#x27;s repositories is now a clear Read only / Allow changes choice that takes effect immediately.&lt;/li&gt;&lt;li&gt;Hosts can have their own color and icon, shown on their tabs so you can tell at a glance which computer a tab belongs to.&lt;/li&gt;&lt;li&gt;Remote workspaces: image changes, including SVG files, are now shown for repositories on another computer, and external diff tools and diff renderers work for them too.&lt;/li&gt;&lt;li&gt;Remote workspaces: you can now create patches from a repository on another computer; the patch is saved on this computer.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.40-41/GitLama-0.1.0-beta.40-41-macos-arm64.dmg" length="24910503" type="application/octet-stream" sparkle:edSignature="C5IEGdQ86EVLb0Rf6zz+gN2d4ToDXrTGdAWQZgbRb7CWaFKdWzge+LWX5CJHVGYMLhHTfqTQfv2V1GToCP2qCw==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.39</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>40</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.39</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Experimental remote workspaces: a lost connection is now restored automatically, and the tab shows why it was lost and when the next attempt runs. Remote tabs also reconnect when GitLama starts.&lt;/li&gt;&lt;li&gt;You can now rename a remote. &amp;quot;Edit remote&amp;quot; is now called &amp;quot;Change remote URL&amp;quot;.&lt;/li&gt;&lt;li&gt;Experimental remote workspaces: Discard and Delete now work on the remote computer when changes are allowed for the host.&lt;/li&gt;&lt;li&gt;Features that are not available for a remote repository are now shown greyed out with the reason instead of being hidden.&lt;/li&gt;&lt;li&gt;The remote folder picker now follows the path as you type it and shows whether that folder exists on the host.&lt;/li&gt;&lt;li&gt;Opening a remote repository from a new tab now uses that tab, as opening a local folder does.&lt;/li&gt;&lt;li&gt;The remote folder picker now starts at the top of each folder you open.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.39-40/GitLama-0.1.0-beta.39-40-macos-arm64.dmg" length="24645801" type="application/octet-stream" sparkle:edSignature="UowEhECIq0ky2D0UTOe6GnnoBw2HI7NUOUQibdM7jx4zeVMPQM7HNLKUGKRJYdYOEAmWCDCRGWHZsBv+G39EAQ==" />
     </item>
   </channel>
 </rss>
