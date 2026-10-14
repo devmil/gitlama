@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.46</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>47</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.46</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Scrolling to the end of a diff now shows its last line in full: the horizontal scrollbar no longer covers it.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.46-47/GitLama-0.1.0-beta.46-47-macos-arm64.dmg" length="33844916" type="application/octet-stream" sparkle:edSignature="a1ZaYqaDD24ZGmCDJXnwfceQrr2mvtqrXf44nIWGhOPc8viXJ5mY6Xv7ltnAV8P9zfJ02Gkwb+RRSNZYM3l9Cw==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.45</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>46</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Clicking the repository name in the toolbar now opens its details: where it lives, its path, branch and upstream, changes, and what is running. Copy the path or open the folder from there.&lt;/li&gt;&lt;li&gt;The command palette has its own **Commands** button next to the repository name. The keyboard shortcut works as before.&lt;/li&gt;&lt;li&gt;Right-click a repository tab to copy its path.&lt;/li&gt;&lt;li&gt;Remote workspaces: you can now initialize a new repository on a remote host. Choose the host in the Initialize repository dialog, pick an empty folder or type the path of a new one, and the repository opens in a remote tab. Hosts need changes allowed and receive an updated GitLama helper on their next connection.&lt;/li&gt;&lt;li&gt;Deleting a remote branch, or pushing or deleting a tag, no longer fails with &amp;quot;The transfer request is invalid.&amp;quot; when you have no local branch of that name.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.42-43/GitLama-0.1.0-beta.42-43-macos-arm64.dmg" length="27039043" type="application/octet-stream" sparkle:edSignature="KWQ9OokX80HoSBbgIun7ILuHX1TqklVgJj15UtneHmXrlOAmHjB/GIV9VbyUCyuHrFiyomyb4zaDeh4pbnsDCQ==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.41</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>42</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.41</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Remote workspaces: when a host is missing the GitLama helper, for example after an update, you can install it right in the tab that could not connect, and its tabs reopen afterwards.&lt;/li&gt;&lt;li&gt;Remote workspaces: hosts can install the helper automatically, so updates no longer stop you with a missing helper.&lt;/li&gt;&lt;li&gt;Remote workspaces: the new Remote hosts page in Settings lists all your hosts and lets you change their access, automatic installation, name and SSH alias.&lt;/li&gt;&lt;li&gt;Remote workspaces: GitLama updates no longer need a new helper on your hosts unless the helper itself changed. This update installs the helper once more.&lt;/li&gt;&lt;li&gt;Remote workspaces: on hosts where you allow changes you can now merge, cherry-pick, revert, rebase, resolve conflicts, undo and redo, use snapshots and bisect, restore files, apply patches, amend commits, reset branches and manage worktrees, submodules and Git LFS.&lt;/li&gt;&lt;li&gt;Remote workspaces: the status bar shows whether GitLama may only read or also change the current host, and lets you switch it with one click.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.41-42/GitLama-0.1.0-beta.41-42-macos-arm64.dmg" length="26999646" type="application/octet-stream" sparkle:edSignature="cXG8HeKWjiMpnMx2Vjrnfzl1Q+Ola2vdLCR3/R3CRF4QKOU1P5bjt/0c6yfXJ2B2X8P6CpGhGYJSWi5m+3ceBA==" />
     </item>
   </channel>
 </rss>
