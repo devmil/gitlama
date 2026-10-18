@@ -51,7 +51,7 @@
 <p>Editors, terminals, diff and merge tools, diff renderers and custom commands run on your computer as you configured them. GitLama adds no network access to them. A tool you choose may connect to the network on its own; its own policy applies.</p>
 
 <h3>Data on your device</h3>
-<p>GitLama keeps its settings and state in a profile folder: <code>~/Library/Application Support/GitLama/</code> on macOS, <code>%APPDATA%\GitLama\</code> on Windows and <code>~/.config/gitlama/</code> on Linux. It contains your settings, recent repository paths, commit message and review drafts, tool definitions, hosting connections without their tokens, and caches. Undo and recovery state is stored inside each repository’s <code>.git</code> folder. Deleting these folders and the credential store entries removes everything GitLama has stored.</p>
+<p>GitLama keeps its settings and state in a profile folder: <code>~/Library/Application Support/GitLama/</code> on macOS, <code>%APPDATA%\GitLama\</code> on Windows and <code>~/.config/gitlama/</code> on Linux. It contains your settings, recent repository paths, commit message and review drafts, tool definitions, hosting connections without their tokens, and caches. Named snapshots and the state of a running rebase are stored inside each repository’s <code>.git</code> folder. Deleting these folders and the credential store entries removes everything GitLama has stored.</p>
 
 <h3>Permissions</h3>
 <p>GitLama requests no special permissions such as camera, microphone, contacts, screen recording or notifications. It runs with your user’s file access. macOS may ask you to allow access when you open a repository in a protected folder such as Documents or Desktop, or when GitLama reads a token from the Keychain.</p>
