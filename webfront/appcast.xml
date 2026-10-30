@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.58</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>59</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.58</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Dates in History are no longer cut off: dates such as &amp;quot;Mon, Sep 28&amp;quot; now show their day number.&lt;/li&gt;&lt;li&gt;Keep selecting files while GitLama stages or unstages changes, and queue more files without waiting for the first one. Pending files are marked, and you can cancel the waiting actions. GitLama shows whether it is waiting, checking changes, updating the index or refreshing the result. If staging cannot finish safely, it stops the waiting actions and tells you. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;The conflict resolver now guides you through each file. A step line at the top shows whether to pick changes, review the result, resolve the file or continue, says what to do next and counts the resolved files. Deleted files are marked in the file list, and after you resolve a file GitLama opens the next one and tells you which.&lt;/li&gt;&lt;li&gt;Resolving conflicts is clearer. When a file was deleted on one side, GitLama asks whether to keep the deletion or the file, highlights the side you picked, and shows that resolving will delete the file. You can take the choice back at any time. Once every file is resolved, the summary shows how each one was resolved, for example Deleted or Kept current version, so you can undo the right one before you continue.&lt;/li&gt;&lt;li&gt;Worktrees of one repository now share a single tab. When a repository has more than one worktree open, its tab shows how many, and a second row below the tabs lists each worktree by its branch, so you can switch, reorder or close them. The row also opens the repository&amp;#x27;s other worktrees or adds a new one, and it disappears again when only one worktree is left open.&lt;/li&gt;&lt;li&gt;Repositories on another computer can now use the hosting accounts configured on this computer. View pull requests, issues and checks, open reviews and provider pages, and choose an account in Settings → Repository link. GitLama contacts the provider from this computer; it needs network access and account permission there.&lt;/li&gt;&lt;li&gt;Upgrade Flutter to 3.47.8 to include the eMudhra certificate security fix in future builds.&lt;/li&gt;&lt;li&gt;The stage and unstage buttons that appear when you hover a changed file now use the same arrow as the toolbar&amp;#x27;s Stage selected and Unstage selected buttons, so they no longer look like Stage all and Unstage all.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.58-59/GitLama-0.1.0-beta.58-59-macos-arm64.dmg" length="33430003" type="application/octet-stream" sparkle:edSignature="Rit3SWnERyHNr2Q3/px4F7miN2RC3pOqAbqha12omhTKO40zqvk/CkhLR7mxcIUTXB1Q2VPr2rVBG3Zyb0F5Ag==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.57</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>58</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Show other refs in History is now also in Settings → Appearance, next to the eye button menu in History.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.52-53/GitLama-0.1.0-beta.52-53-macos-arm64.dmg" length="34408325" type="application/octet-stream" sparkle:edSignature="CE8IzNZ2q4QpkujkocxLJ/9nt2EdlX8AjG6XFlDOn3UAEYG9mxPfNfXKR/ilDlxz69rA/sNAqoOhRylavDcyDQ==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.50</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>51</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.50</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Save any commit as a ZIP file: right-click it in History, or use the archive button next to its hash in the commit details. The ZIP holds every file and folder of that commit in one folder, including submodules and Git LFS files. It also works for repositories on another computer. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;Unstaged files and folders can be added to .gitignore from their menu. GitLama suggests the entry that matches exactly that file or folder, and you can edit it first, for example to *.log. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;When an action fails, GitLama now shows a dialog instead of a banner at the top of the window. It shows what Git reported and copies a support report, optionally with Git&amp;#x27;s output.&lt;/li&gt;&lt;li&gt;When a fetch, pull or push fails for a reason GitLama recognises, it explains what happened and offers a fix. If another program, such as your editor, is using the repository, GitLama shows its lock files and lets you try again or remove stale locks. If two remote branches differ only in letter case, which macOS cannot store side by side, GitLama can repair this computer&amp;#x27;s copies and fetch again. If a push is rejected because the remote has newer commits, GitLama offers to fetch them. Remote hosts receive an updated helper.&lt;/li&gt;&lt;li&gt;The Fetch dialog has an option to keep remote branches that were deleted on the server.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.50-51/GitLama-0.1.0-beta.50-51-macos-arm64.dmg" length="34775442" type="application/octet-stream" sparkle:edSignature="fvfDQOy3/nnQsIz6leRFyY3lllC+mrtFtTe9glTCz1RrCddV7Sar6QIcpfVWcEoW/aMdBgIDo5WiSSACyiaaDw==" />
     </item>
   </channel>
 </rss>
