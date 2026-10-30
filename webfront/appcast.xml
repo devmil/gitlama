@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.59</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>60</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.59</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;The sidebar&amp;#x27;s Integrations section now shows whether CI passes on your repository&amp;#x27;s main branch, next to the linked hosting account. Hover the badge to see the branch and result.&lt;/li&gt;&lt;li&gt;Right after you push, a branch&amp;#x27;s pull request no longer stays marked as out of date with advice to fetch. GitLama now checks the pull request again shortly after, once the host has caught up with your push.&lt;/li&gt;&lt;li&gt;Escape now closes Settings right after you open them with Ctrl+, or Cmd+,.&lt;/li&gt;&lt;li&gt;In the conflict resolver, selected text in the Result stays visible over resolved conflicts. Each resolved block is now shaded across the whole line in the colour of the side it came from.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.59-60/GitLama-0.1.0-beta.59-60-macos-arm64.dmg" length="33438152" type="application/octet-stream" sparkle:edSignature="8u7Mpfz6QZBMDUv2pRYSnbJnrlwTGw6q2bfvijCKgTvI7KEt4EYSP6ejQtBuasp3yHnz/e0KsZBVEsIwSyifAg==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.58</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>59</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;A pull request in History now shows next to the commit it is at. If your local branch and its remote branch are at different commits, only the one the pull request points to shows it. The pull request also shows whether its checks passed, failed or are still running, and whether it has merge conflicts, when GitHub, GitLab or Forgejo reports this. Running checks update by themselves.&lt;/li&gt;&lt;li&gt;Find branches quickly: click the search button in the sidebar, or just start typing while the sidebar has focus, to show only the branches, remote branches and tags that match. Press Escape or click the x to show everything again.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.53-54/GitLama-0.1.0-beta.53-54-macos-arm64.dmg" length="34423990" type="application/octet-stream" sparkle:edSignature="l/gUwaqlorZKfyMdAS2S+S34zx/hpczvSlAD9OiwLvPLMYrWt5ewqi/idCbxj8qLfVtcz6EAr73yxFQ/t/BMDg==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.52</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>53</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.52</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Show other refs in History is now also in Settings → Appearance, next to the eye button menu in History.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.52-53/GitLama-0.1.0-beta.52-53-macos-arm64.dmg" length="34408325" type="application/octet-stream" sparkle:edSignature="CE8IzNZ2q4QpkujkocxLJ/9nt2EdlX8AjG6XFlDOn3UAEYG9mxPfNfXKR/ilDlxz69rA/sNAqoOhRylavDcyDQ==" />
     </item>
   </channel>
 </rss>
