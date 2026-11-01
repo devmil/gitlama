@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.61</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>62</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.61</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;The default branch’s CI status now sits inside its branch chip in History, matching pull request chips.&lt;/li&gt;&lt;li&gt;Creating a branch from the toolbar or sidebar now starts at the current commit. Creating one from History uses the chosen commit. If that commit is unavailable, GitLama lets you refresh and choose again while keeping your input. Switching repositories cannot apply an open branch dialog to another repository. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.61-62/GitLama-0.1.0-beta.61-62-macos-arm64.dmg" length="33463140" type="application/octet-stream" sparkle:edSignature="D+vSo8LO2d/rXM3L6DjUXw6bM+PVT9L/eKZV4uciyAXc0Rg6qcW6luqkVbV+B5iFf3jj6mI12S0OZHYq/JC1Dw==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.60</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>61</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Windows releases can proceed if the resource soak fails. Its results are still kept for investigation; Linux resource checks and Windows installation checks still have to pass.&lt;/li&gt;&lt;li&gt;In large repositories, selecting a changed file shows its diff without waiting for GitLama to finish checking the whole repository for changes. If Git takes longer, the diff says it is waiting for Git and appears when Git answers, instead of reporting that it could not be loaded.&lt;/li&gt;&lt;li&gt;When checking a repository for changes is slow, GitLama offers to turn on Git&amp;#x27;s own speed-ups for it: the untracked cache and, on Windows and macOS, the file system monitor. Nothing changes until you choose Speed up.&lt;/li&gt;&lt;li&gt;Hosts receive a new GitLama helper.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.57-58/GitLama-0.1.0-beta.57-58-macos-arm64.dmg" length="33362277" type="application/octet-stream" sparkle:edSignature="yFZXYgtZ5dqIR+fM45NRZERpxmO3cyi0YOcBupybbTGIQ/41Xb8U3Dv81W15qttisGIJ3DLuav6q3gP4ag+CBw==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.54</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>55</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.54</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;When you name a new branch, choosing a suggested folder such as feature with Enter keeps the cursor in the name field, so you can continue typing.&lt;/li&gt;&lt;li&gt;Discard all now works when tracked changes and new files are mixed together. One confirmation explains what will be restored and permanently deleted. If only part of the action completes, GitLama tells you to check the remaining changes.&lt;/li&gt;&lt;li&gt;Forgejo and Codeberg setup now explains that Confidential Client must be disabled. If an OAuth app rejects sign-in, GitLama explains what to check instead of only reporting “unavailable”.&lt;/li&gt;&lt;li&gt;Check out any commit with detached HEAD from its History menu or by double-clicking it, after confirmation. With uncommitted changes, choose Dismiss, Stash, or Stash &amp;amp; reapply. Your changes stay in the stash if reapplying conflicts. If Git cannot stash the changes, checkout stops safely. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;Discarding or staging from a selected file now affects all selected files. The file menu also offers Discard selected or Clean selected when applicable.&lt;/li&gt;&lt;li&gt;Find a recent repository quickly: type in the filter above the recent repositories to show only those whose name or location matches, then press Enter to open the first one.&lt;/li&gt;&lt;li&gt;The repository chooser now shows the GitLama app icon.&lt;/li&gt;&lt;li&gt;After resolving conflicts, the resolved files appear in a tidy list you can scroll, each with its own undo button, and Undo all takes every resolution back at once.&lt;/li&gt;&lt;li&gt;Resolve many conflicted files in one go: tick them in the conflict list (or use Select all, or hold Shift to tick a range) and choose Use current or Use incoming.&lt;/li&gt;&lt;li&gt;Image diffs show the size of each version: its width and height in pixels and its file size.&lt;/li&gt;&lt;li&gt;Press Ctrl+F (Cmd+F on macOS) while looking at a diff to search in it.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.54-55/GitLama-0.1.0-beta.54-55-macos-arm64.dmg" length="34471518" type="application/octet-stream" sparkle:edSignature="GesjwaYxM4gWYakEDhtUlvTeQe4q/HReQvo6e4uePl5iptCZqTMUAimJjubEAE6ndXbpmt1wv0zrpB/PYdIrCw==" />
     </item>
   </channel>
 </rss>
