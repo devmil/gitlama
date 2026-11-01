@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.60</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>61</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.60</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Files GitLama shows as binary can now be shown as text anyway with Show as text, in the Changes and History diffs and in the History file preview. This helps with text files Git mistakes for binary; for real binary files the result is unreadable. Lines of such a file cannot be staged one by one. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;SSH destinations now accept `user@host` in the Add host form, `--remote` and `ssh://` links, using existing SSH keys and agent authentication.&lt;/li&gt;&lt;li&gt;When a host already has the maximum number of repositories open, GitLama now explains the limit and asks you to close another repository tab on that host before trying again.&lt;/li&gt;&lt;li&gt;Opening a worktree on a host that already has the maximum number of repositories open now shows the same explanation in the worktree&amp;#x27;s tab.&lt;/li&gt;&lt;li&gt;You can now have up to 16 repositories open per host instead of 8. Hosts receive an updated GitLama helper the next time they connect.&lt;/li&gt;&lt;li&gt;Open a repository on a host from the terminal or another app with `gitlama --remote &amp;lt;host&amp;gt; &amp;lt;path&amp;gt;` or `gitlama ssh://&amp;lt;host&amp;gt;/&amp;lt;path&amp;gt;`, using an SSH alias, hostname or `user@host`. If no saved host matches yet, GitLama offers to add it first.&lt;/li&gt;&lt;li&gt;History now also shows whether CI passes on your repository&amp;#x27;s main branch, next to the main branch&amp;#x27;s chip.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.60-61/GitLama-0.1.0-beta.60-61-macos-arm64.dmg" length="33454430" type="application/octet-stream" sparkle:edSignature="ddspds0oOf8ZMnm8j+TTvwsEPYngLPp0ksCvVhIsQe5eR/i2jQJhWTtW0s/UywGVXfuqrngO5polzMDzuYKSAA==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.59</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>60</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;When you name a new branch, choosing a suggested folder such as feature with Enter keeps the cursor in the name field, so you can continue typing.&lt;/li&gt;&lt;li&gt;Discard all now works when tracked changes and new files are mixed together. One confirmation explains what will be restored and permanently deleted. If only part of the action completes, GitLama tells you to check the remaining changes.&lt;/li&gt;&lt;li&gt;Forgejo and Codeberg setup now explains that Confidential Client must be disabled. If an OAuth app rejects sign-in, GitLama explains what to check instead of only reporting “unavailable”.&lt;/li&gt;&lt;li&gt;Check out any commit with detached HEAD from its History menu or by double-clicking it, after confirmation. With uncommitted changes, choose Dismiss, Stash, or Stash &amp;amp; reapply. Your changes stay in the stash if reapplying conflicts. If Git cannot stash the changes, checkout stops safely. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;Discarding or staging from a selected file now affects all selected files. The file menu also offers Discard selected or Clean selected when applicable.&lt;/li&gt;&lt;li&gt;Find a recent repository quickly: type in the filter above the recent repositories to show only those whose name or location matches, then press Enter to open the first one.&lt;/li&gt;&lt;li&gt;The repository chooser now shows the GitLama app icon.&lt;/li&gt;&lt;li&gt;After resolving conflicts, the resolved files appear in a tidy list you can scroll, each with its own undo button, and Undo all takes every resolution back at once.&lt;/li&gt;&lt;li&gt;Resolve many conflicted files in one go: tick them in the conflict list (or use Select all, or hold Shift to tick a range) and choose Use current or Use incoming.&lt;/li&gt;&lt;li&gt;Image diffs show the size of each version: its width and height in pixels and its file size.&lt;/li&gt;&lt;li&gt;Press Ctrl+F (Cmd+F on macOS) while looking at a diff to search in it.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.54-55/GitLama-0.1.0-beta.54-55-macos-arm64.dmg" length="34471518" type="application/octet-stream" sparkle:edSignature="GesjwaYxM4gWYakEDhtUlvTeQe4q/HReQvo6e4uePl5iptCZqTMUAimJjubEAE6ndXbpmt1wv0zrpB/PYdIrCw==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.53</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>54</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.53</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;A pull request in History now shows next to the commit it is at. If your local branch and its remote branch are at different commits, only the one the pull request points to shows it. The pull request also shows whether its checks passed, failed or are still running, and whether it has merge conflicts, when GitHub, GitLab or Forgejo reports this. Running checks update by themselves.&lt;/li&gt;&lt;li&gt;Find branches quickly: click the search button in the sidebar, or just start typing while the sidebar has focus, to show only the branches, remote branches and tags that match. Press Escape or click the x to show everything again.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.53-54/GitLama-0.1.0-beta.53-54-macos-arm64.dmg" length="34423990" type="application/octet-stream" sparkle:edSignature="l/gUwaqlorZKfyMdAS2S+S34zx/hpczvSlAD9OiwLvPLMYrWt5ewqi/idCbxj8qLfVtcz6EAr73yxFQ/t/BMDg==" />
     </item>
   </channel>
 </rss>
