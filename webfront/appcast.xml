@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.64</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>65</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.64</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Fix Windows startup failing on accounts where Windows allows saved credentials only for the current sign-in session.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.64-65/GitLama-0.1.0-beta.64-65-macos-arm64.dmg" length="33558384" type="application/octet-stream" sparkle:edSignature="0YxUp6JwiJ5b/Phq71I9gJ6KfTVvEOa02TRygPqwZz0blMF/ff9kx50i4BH6mVHiGIEYbDGrpZw+GEC8T/o+CQ==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.61</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>62</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Dates in History are no longer cut off: dates such as &amp;quot;Mon, Sep 28&amp;quot; now show their day number.&lt;/li&gt;&lt;li&gt;Keep selecting files while GitLama stages or unstages changes, and queue more files without waiting for the first one. Pending files are marked, and you can cancel the waiting actions. GitLama shows whether it is waiting, checking changes, updating the index or refreshing the result. If staging cannot finish safely, it stops the waiting actions and tells you. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;The conflict resolver now guides you through each file. A step line at the top shows whether to pick changes, review the result, resolve the file or continue, says what to do next and counts the resolved files. Deleted files are marked in the file list, and after you resolve a file GitLama opens the next one and tells you which.&lt;/li&gt;&lt;li&gt;Resolving conflicts is clearer. When a file was deleted on one side, GitLama asks whether to keep the deletion or the file, highlights the side you picked, and shows that resolving will delete the file. You can take the choice back at any time. Once every file is resolved, the summary shows how each one was resolved, for example Deleted or Kept current version, so you can undo the right one before you continue.&lt;/li&gt;&lt;li&gt;Worktrees of one repository now share a single tab. When a repository has more than one worktree open, its tab shows how many, and a second row below the tabs lists each worktree by its branch, so you can switch, reorder or close them. The row also opens the repository&amp;#x27;s other worktrees or adds a new one, and it disappears again when only one worktree is left open.&lt;/li&gt;&lt;li&gt;Repositories on another computer can now use the hosting accounts configured on this computer. View pull requests, issues and checks, open reviews and provider pages, and choose an account in Settings → Repository link. GitLama contacts the provider from this computer; it needs network access and account permission there.&lt;/li&gt;&lt;li&gt;Upgrade Flutter to 3.47.8 to include the eMudhra certificate security fix in future builds.&lt;/li&gt;&lt;li&gt;The stage and unstage buttons that appear when you hover a changed file now use the same arrow as the toolbar&amp;#x27;s Stage selected and Unstage selected buttons, so they no longer look like Stage all and Unstage all.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.58-59/GitLama-0.1.0-beta.58-59-macos-arm64.dmg" length="33430003" type="application/octet-stream" sparkle:edSignature="Rit3SWnERyHNr2Q3/px4F7miN2RC3pOqAbqha12omhTKO40zqvk/CkhLR7mxcIUTXB1Q2VPr2rVBG3Zyb0F5Ag==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.57</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>58</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.57</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Windows releases can proceed if the resource soak fails. Its results are still kept for investigation; Linux resource checks and Windows installation checks still have to pass.&lt;/li&gt;&lt;li&gt;In large repositories, selecting a changed file shows its diff without waiting for GitLama to finish checking the whole repository for changes. If Git takes longer, the diff says it is waiting for Git and appears when Git answers, instead of reporting that it could not be loaded.&lt;/li&gt;&lt;li&gt;When checking a repository for changes is slow, GitLama offers to turn on Git&amp;#x27;s own speed-ups for it: the untracked cache and, on Windows and macOS, the file system monitor. Nothing changes until you choose Speed up.&lt;/li&gt;&lt;li&gt;Hosts receive a new GitLama helper.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.57-58/GitLama-0.1.0-beta.57-58-macos-arm64.dmg" length="33362277" type="application/octet-stream" sparkle:edSignature="yFZXYgtZ5dqIR+fM45NRZERpxmO3cyi0YOcBupybbTGIQ/41Xb8U3Dv81W15qttisGIJ3DLuav6q3gP4ag+CBw==" />
     </item>
   </channel>
 </rss>
