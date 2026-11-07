@@ -43,7 +43,7 @@ final class HistoryMutationDraft {
     required this.publishedHistory,
     this.initialSourceName,
     this.initialTarget,
-    this.dirtyWorktree = false,
+    this.conflictedWorktree = false,
     this.activeOperation = false,
   });
 
@@ -55,7 +55,10 @@ final class HistoryMutationDraft {
   final bool publishedHistory;
   final String? initialSourceName;
   final String? initialTarget;
-  final bool dirtyWorktree;
+
+  /// Unresolved conflicts, which block a revert. Other local changes do not:
+  /// the revert keeps them in place or sets them aside.
+  final bool conflictedWorktree;
   final bool activeOperation;
 }
 
@@ -412,7 +415,8 @@ final class HistoryRewriteWorkflowService {
         publishedHistory: snapshot.refs.branches.any(
           (branch) => branch.head && branch.published,
         ),
-        dirtyWorktree: snapshot.status?.workingTree != WorkingTreeState.clean,
+        conflictedWorktree:
+            snapshot.status?.workingTree == WorkingTreeState.conflicted,
         activeOperation: snapshot.status?.operations.isNotEmpty ?? false,
       ),
     );
@@ -446,6 +450,7 @@ final class HistoryRewriteWorkflowService {
       if (!interaction.active) return;
       _report(interaction, HistoryMutationFinished(preview, result));
       if (result.state == HistoryMutationExecutionState.conflict ||
+          (result.setAside?.conflicted ?? false) ||
           (preview.noCommit &&
               result.state == HistoryMutationExecutionState.completed)) {
         _showChanges(tabId);

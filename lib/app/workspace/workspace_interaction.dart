@@ -368,7 +368,7 @@ final class WorkspaceInteraction
       initialTarget: draft.initialTarget,
       branches: draft.branches,
       publishedHistory: draft.publishedHistory,
-      dirtyWorktree: draft.dirtyWorktree,
+      conflictedWorktree: draft.conflictedWorktree,
       activeOperation: draft.activeOperation,
     ),
   );

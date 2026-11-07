@@ -10669,6 +10669,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NativeHistorySetAside dco_decode_box_autoadd_native_history_set_aside(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_native_history_set_aside(raw);
+  }
+
+  @protected
   NativeHostKeyChallenge dco_decode_box_autoadd_native_host_key_challenge(
     dynamic raw,
   ) {
@@ -13575,6 +13583,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NativeHistoryLocalChanges dco_decode_native_history_local_changes(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return NativeHistoryLocalChanges.values[raw as int];
+  }
+
+  @protected
   NativeHistoryMergeMode dco_decode_native_history_merge_mode(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return NativeHistoryMergeMode.values[raw as int];
@@ -13626,8 +13642,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   dco_decode_native_history_mutation_execution_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return NativeHistoryMutationExecutionResult(
       state: dco_decode_native_history_mutation_execution_state(arr[0]),
       failure: dco_decode_opt_box_autoadd_native_history_mutation_failure(
@@ -13638,6 +13654,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sequencer: dco_decode_opt_box_autoadd_native_history_mutation_kind(
         arr[4],
       ),
+      setAside: dco_decode_opt_box_autoadd_native_history_set_aside(arr[5]),
     );
   }
 
@@ -13682,8 +13699,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 13)
+      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
     return NativeHistoryMutationPreview(
       token: dco_decode_u_64(arr[0]),
       kind: dco_decode_native_history_mutation_kind(arr[1]),
@@ -13695,6 +13712,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       publishedHistory: dco_decode_bool(arr[7]),
       alreadyContained: dco_decode_bool(arr[8]),
       noCommit: dco_decode_bool(arr[9]),
+      localChanges: dco_decode_native_history_local_changes(arr[10]),
+      overlappingPaths: dco_decode_list_list_prim_u_8_strict(arr[11]),
+      stagedChanges: dco_decode_bool(arr[12]),
     );
   }
 
@@ -13876,6 +13896,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       focus: dco_decode_bool(arr[3]),
       offset: dco_decode_u_64(arr[4]),
       maximumRows: dco_decode_u_32(arr[5]),
+    );
+  }
+
+  @protected
+  NativeHistorySetAside dco_decode_native_history_set_aside(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return NativeHistorySetAside(
+      stashObjectId: dco_decode_String(arr[0]),
+      restored: dco_decode_bool(arr[1]),
+      conflicted: dco_decode_bool(arr[2]),
+      pending: dco_decode_bool(arr[3]),
     );
   }
 
@@ -17718,6 +17752,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NativeHistorySetAside? dco_decode_opt_box_autoadd_native_history_set_aside(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_native_history_set_aside(raw);
+  }
+
+  @protected
   NativeHostKeyChallenge? dco_decode_opt_box_autoadd_native_host_key_challenge(
     dynamic raw,
   ) {
@@ -18780,6 +18824,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_native_history_selection_options(deserializer));
+  }
+
+  @protected
+  NativeHistorySetAside sse_decode_box_autoadd_native_history_set_aside(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_native_history_set_aside(deserializer));
   }
 
   @protected
@@ -22534,6 +22586,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NativeHistoryLocalChanges sse_decode_native_history_local_changes(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    final inner = sse_decode_i_32(deserializer);
+    return NativeHistoryLocalChanges.values[inner];
+  }
+
+  @protected
   NativeHistoryMergeMode sse_decode_native_history_merge_mode(
     SseDeserializer deserializer,
   ) {
@@ -22611,12 +22672,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     );
     final var_sequencer =
         sse_decode_opt_box_autoadd_native_history_mutation_kind(deserializer);
+    final var_setAside = sse_decode_opt_box_autoadd_native_history_set_aside(
+      deserializer,
+    );
     return NativeHistoryMutationExecutionResult(
       state: var_state,
       failure: var_failure,
       activityIds: var_activityIds,
       conflictingPaths: var_conflictingPaths,
       sequencer: var_sequencer,
+      setAside: var_setAside,
     );
   }
 
@@ -22675,6 +22740,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     final var_publishedHistory = sse_decode_bool(deserializer);
     final var_alreadyContained = sse_decode_bool(deserializer);
     final var_noCommit = sse_decode_bool(deserializer);
+    final var_localChanges = sse_decode_native_history_local_changes(
+      deserializer,
+    );
+    final var_overlappingPaths = sse_decode_list_list_prim_u_8_strict(
+      deserializer,
+    );
+    final var_stagedChanges = sse_decode_bool(deserializer);
     return NativeHistoryMutationPreview(
       token: var_token,
       kind: var_kind,
@@ -22686,6 +22758,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       publishedHistory: var_publishedHistory,
       alreadyContained: var_alreadyContained,
       noCommit: var_noCommit,
+      localChanges: var_localChanges,
+      overlappingPaths: var_overlappingPaths,
+      stagedChanges: var_stagedChanges,
     );
   }
 
@@ -22939,6 +23014,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       focus: var_focus,
       offset: var_offset,
       maximumRows: var_maximumRows,
+    );
+  }
+
+  @protected
+  NativeHistorySetAside sse_decode_native_history_set_aside(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    final var_stashObjectId = sse_decode_String(deserializer);
+    final var_restored = sse_decode_bool(deserializer);
+    final var_conflicted = sse_decode_bool(deserializer);
+    final var_pending = sse_decode_bool(deserializer);
+    return NativeHistorySetAside(
+      stashObjectId: var_stashObjectId,
+      restored: var_restored,
+      conflicted: var_conflicted,
+      pending: var_pending,
     );
   }
 
@@ -27842,6 +27934,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NativeHistorySetAside? sse_decode_opt_box_autoadd_native_history_set_aside(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_native_history_set_aside(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   NativeHostKeyChallenge? sse_decode_opt_box_autoadd_native_host_key_challenge(
     SseDeserializer deserializer,
   ) {
@@ -29269,6 +29374,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_native_history_selection_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_native_history_set_aside(
+    NativeHistorySetAside self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_native_history_set_aside(self, serializer);
   }
 
   @protected
@@ -32522,6 +32636,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_native_history_local_changes(
+    NativeHistoryLocalChanges self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
   void sse_encode_native_history_merge_mode(
     NativeHistoryMergeMode self,
     SseSerializer serializer,
@@ -32587,6 +32710,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self.sequencer,
       serializer,
     );
+    sse_encode_opt_box_autoadd_native_history_set_aside(
+      self.setAside,
+      serializer,
+    );
   }
 
   @protected
@@ -32641,6 +32768,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.publishedHistory, serializer);
     sse_encode_bool(self.alreadyContained, serializer);
     sse_encode_bool(self.noCommit, serializer);
+    sse_encode_native_history_local_changes(self.localChanges, serializer);
+    sse_encode_list_list_prim_u_8_strict(self.overlappingPaths, serializer);
+    sse_encode_bool(self.stagedChanges, serializer);
   }
 
   @protected
@@ -32812,6 +32942,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.focus, serializer);
     sse_encode_u_64(self.offset, serializer);
     sse_encode_u_32(self.maximumRows, serializer);
+  }
+
+  @protected
+  void sse_encode_native_history_set_aside(
+    NativeHistorySetAside self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.stashObjectId, serializer);
+    sse_encode_bool(self.restored, serializer);
+    sse_encode_bool(self.conflicted, serializer);
+    sse_encode_bool(self.pending, serializer);
   }
 
   @protected
@@ -36765,6 +36907,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_native_history_page(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_native_history_set_aside(
+    NativeHistorySetAside? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_native_history_set_aside(self, serializer);
     }
   }
 

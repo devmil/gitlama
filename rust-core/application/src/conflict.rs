@@ -621,7 +621,7 @@ pub(crate) fn resume_sequencer<F: InterruptedOperation + ?Sized>(
         .as_ref()
         .is_some_and(|status| status.entries.iter().any(|entry| entry.is_conflicted()));
     let succeeded = matches!(result.activity.status, ActivityStatus::Succeeded { .. });
-    let state = native_continuation_state(
+    let mut state = native_continuation_state(
         if action == NativeConflictSequencerAction::Abort && succeeded && !still_active {
             MutationState::Aborted
         } else if conflicts {
@@ -646,6 +646,18 @@ pub(crate) fn resume_sequencer<F: InterruptedOperation + ?Sized>(
     ) {
         if let Some(runtime) = &step.runtime {
             let _ = fs::remove_dir_all(runtime);
+        }
+        // A family can restore work it set aside once its operation ended (a revert's
+        // local changes). When that restoration stops at conflicts, the resolver continues
+        // with them instead of closing.
+        reload(repository);
+        if repository
+            .snapshot()
+            .status
+            .as_ref()
+            .is_some_and(|status| status.entries.iter().any(|entry| entry.is_conflicted()))
+        {
+            state = NativeConflictContinuationState::Conflict;
         }
     }
     NativeConflictContinuationResult {

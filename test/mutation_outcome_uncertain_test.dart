@@ -214,4 +214,65 @@ void main() {
       inspect,
     );
   });
+
+  testWidgets('revert results say what became of set-aside changes', (
+    tester,
+  ) async {
+    late BuildContext context;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (value) {
+            context = value;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+    String? label(
+      HistoryMutationExecutionState state, {
+      bool restored = false,
+      bool conflicted = false,
+      bool pending = false,
+    }) => historySetAsideLabel(
+      context,
+      HistoryMutationExecutionResult(
+        state: state,
+        activityIds: const [],
+        conflictingPaths: const [],
+        setAside: HistorySetAside(
+          stashObjectId: 'a' * 40,
+          restored: restored,
+          conflicted: conflicted,
+          pending: pending,
+        ),
+      ),
+    );
+    const completed = HistoryMutationExecutionState.completed;
+    expect(
+      label(completed, restored: true),
+      'Reverted. Your local changes and staging were restored. A recovery copy remains in Stashes.',
+    );
+    expect(label(completed, conflicted: true), contains('caused conflicts'));
+    expect(
+      label(HistoryMutationExecutionState.conflict, pending: true),
+      contains('come back when you continue or abort'),
+    );
+    expect(label(completed), contains('remain saved in Stashes'));
+    // A failed revert that put the changes back adds nothing to its failure.
+    expect(label(HistoryMutationExecutionState.failed, restored: true), isNull);
+    expect(
+      historySetAsideLabel(
+        context,
+        const HistoryMutationExecutionResult(
+          state: completed,
+          activityIds: [],
+          conflictingPaths: [],
+        ),
+      ),
+      isNull,
+    );
+  });
 }

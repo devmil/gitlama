@@ -5472,8 +5472,70 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ohne Commit anwenden geht nur mit einem Commit auf einmal.';
 
   @override
-  String get historyRevertCleanRequired =>
-      'Committe oder stashe zuerst deine Änderungen: Ein Revert braucht einen sauberen Arbeitsbaum.';
+  String get historyRevertResolveConflicts =>
+      'Löse zuerst die Konflikte: Solange Dateien in Konflikt stehen, kann kein Revert beginnen.';
+
+  @override
+  String get historyMutationFailureLocalChanges =>
+      'Ein Revert ohne Commit kann deine lokalen Änderungen nicht beiseitelegen. Reverte mit Commit, oder committe oder stashe zuerst die Änderungen, mit denen er kollidiert.';
+
+  @override
+  String get historyPreviewLocalChanges => 'Lokale Änderungen';
+
+  @override
+  String get historyRevertLocalInPlace => 'Bleiben, wo sie sind';
+
+  @override
+  String get historyRevertLocalSetAside =>
+      'Beiseitegelegt und wieder angewendet';
+
+  @override
+  String get historyRevertLocalInPlaceDetail =>
+      'Keine deiner lokalen Änderungen ist gestagt oder betrifft eine Datei, die dieser Revert ändert. Git revertiert um sie herum.';
+
+  @override
+  String historyRevertSetAsideFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count lokale Änderungen betreffen Dateien, die dieser Revert ändert:',
+      one: '1 lokale Änderung betrifft eine Datei, die dieser Revert ändert:',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyRevertSetAsideMore(int count) {
+    return 'und $count weitere';
+  }
+
+  @override
+  String get historyRevertSetAsideStaged =>
+      'Einige deiner lokalen Änderungen sind gestagt, und Git revertiert nicht über gestagte Änderungen.';
+
+  @override
+  String get historyRevertSetAsideExplain =>
+      'GitLama sichert deine lokalen Änderungen in einem Stash, revertiert und wendet sie dann mit ihrem Staging wieder an. Kollidieren sie mit dem Revert, löst du die Konflikte unter Änderungen. Eine Sicherung bleibt unter Stashes.';
+
+  @override
+  String get historyRevertSetAsideAction => 'Beiseitelegen und reverten';
+
+  @override
+  String get historyRevertSetAsideRestored =>
+      'Revert abgeschlossen. Deine lokalen Änderungen und ihr Staging wurden wiederhergestellt. Eine Sicherung bleibt unter Stashes.';
+
+  @override
+  String get historyRevertSetAsideConflict =>
+      'Revert abgeschlossen, aber beim Wiederanwenden deiner lokalen Änderungen sind Konflikte entstanden. Löse sie unter Änderungen. Der Sicherungs-Stash bleibt erhalten.';
+
+  @override
+  String get historyRevertSetAsidePending =>
+      'Der Revert hat bei Konflikten angehalten. Deine lokalen Änderungen sind beiseitegelegt und kommen zurück, wenn du den Revert fortsetzt oder abbrichst.';
+
+  @override
+  String get historyRevertSetAsideSaved =>
+      'Deine lokalen Änderungen konnten nicht vollständig wiederhergestellt werden; sie bleiben unter Stashes gesichert. Prüfe Änderungen, bevor du den Sicherungs-Stash anwendest.';
 
   @override
   String get historyRevertApplied =>

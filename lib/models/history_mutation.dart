@@ -13,6 +13,46 @@ enum HistoryMutationFailureCode {
   failed,
   read,
   mergeCommit,
+
+  /// Local changes collide with an apply-only revert, which never sets them
+  /// aside.
+  localChangesOverlap,
+}
+
+/// What a revert does with the local changes.
+enum HistoryLocalChanges {
+  /// The worktree is clean.
+  none,
+
+  /// Git reverts with the local changes left where they are.
+  inPlace,
+
+  /// The local changes are saved in a stash, the revert runs and the changes
+  /// are reapplied with their staging; conflicts go to the conflict resolver.
+  setAside,
+}
+
+/// Local changes a revert set aside and how restoring them went. The stash
+/// stays in Stashes as a recovery copy.
+final class HistorySetAside {
+  const HistorySetAside({
+    required this.stashObjectId,
+    required this.restored,
+    required this.conflicted,
+    required this.pending,
+  });
+
+  final String stashObjectId;
+
+  /// The changes and their staging were restored.
+  final bool restored;
+
+  /// Restoring them stopped with conflicts.
+  final bool conflicted;
+
+  /// The revert stopped at conflicts first; the changes come back once it is
+  /// continued or aborted.
+  final bool pending;
 }
 
 enum HistoryMutationExecutionState {
@@ -73,6 +113,9 @@ final class HistoryMutationPreview {
     required this.alreadyContained,
     this.sourceName,
     this.noCommit = false,
+    this.localChanges = HistoryLocalChanges.none,
+    this.overlappingPaths = const [],
+    this.stagedChanges = false,
   });
 
   final BigInt token;
@@ -85,6 +128,13 @@ final class HistoryMutationPreview {
   final bool publishedHistory;
   final bool alreadyContained;
   final bool noCommit;
+  final HistoryLocalChanges localChanges;
+
+  /// Local paths that collide with the reverted commits, in status order.
+  final List<List<int>> overlappingPaths;
+
+  /// Some local change is staged, which Git refuses to revert over.
+  final bool stagedChanges;
 }
 
 final class HistoryMutationExecutionResult {
@@ -94,6 +144,7 @@ final class HistoryMutationExecutionResult {
     required this.conflictingPaths,
     this.failure,
     this.sequencer,
+    this.setAside,
   });
 
   final HistoryMutationExecutionState state;
@@ -101,6 +152,9 @@ final class HistoryMutationExecutionResult {
   final List<String> activityIds;
   final List<List<int>> conflictingPaths;
   final HistoryMutationKind? sequencer;
+
+  /// Present when the revert set local changes aside.
+  final HistorySetAside? setAside;
 }
 
 final class ConflictPredictionResult {

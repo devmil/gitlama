@@ -250,7 +250,15 @@ void main() {
         snapshot: snapshot(tree: WorkingTreeState.dirty),
         selectedCommits: [other],
       );
-      expect(dirty.reason(AppCommandId.revertSelected), isNotNull);
+      // A revert keeps local changes in place or sets them aside; a
+      // cherry-pick still needs a clean tree, and conflicts block both.
+      expect(dirty.reason(AppCommandId.revertSelected), isNull);
+      expect(dirty.reason(AppCommandId.cherryPickSelected), isNotNull);
+      final conflicted = CommandMenuState(
+        snapshot: snapshot(tree: WorkingTreeState.conflicted),
+        selectedCommits: [other],
+      );
+      expect(conflicted.reason(AppCommandId.revertSelected), isNotNull);
       final merge = CommandMenuState(
         snapshot: snapshot(),
         selectedCommits: [other],

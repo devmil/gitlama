@@ -3909,6 +3909,7 @@ pub fn enc_native_history_mutation_failure_kind(
         gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Failed => "failed",
         gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Read => "read",
         gitlama_contract::history_operation::NativeHistoryMutationFailureKind::MergeCommit => "mergeCommit",
+        gitlama_contract::history_operation::NativeHistoryMutationFailureKind::LocalChangesOverlap => "localChangesOverlap",
     }.to_owned())
 }
 
@@ -3926,6 +3927,7 @@ pub fn dec_native_history_mutation_failure_kind(
         "failed" => Ok(gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Failed),
         "read" => Ok(gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Read),
         "mergeCommit" => Ok(gitlama_contract::history_operation::NativeHistoryMutationFailureKind::MergeCommit),
+        "localChangesOverlap" => Ok(gitlama_contract::history_operation::NativeHistoryMutationFailureKind::LocalChangesOverlap),
         _ => Err(WireError::invalid("NativeHistoryMutationFailureKind")),
     }
 }
@@ -8378,6 +8380,15 @@ pub fn enc_native_history_mutation_preview(
         w::bool_e(&value.already_contained),
     );
     map.insert("noCommit".to_owned(), w::bool_e(&value.no_commit));
+    map.insert(
+        "localChanges".to_owned(),
+        enc_native_history_local_changes(&value.local_changes),
+    );
+    map.insert(
+        "overlappingPaths".to_owned(),
+        w::list_e(&value.overlapping_paths, |v| w::bytes_e(v)),
+    );
+    map.insert("stagedChanges".to_owned(), w::bool_e(&value.staged_changes));
     Value::Object(map)
 }
 
@@ -8398,6 +8409,9 @@ pub fn dec_native_history_mutation_preview(
             "publishedHistory",
             "alreadyContained",
             "noCommit",
+            "localChanges",
+            "overlappingPaths",
+            "stagedChanges",
         ],
     )?;
     Ok(
@@ -8412,6 +8426,9 @@ pub fn dec_native_history_mutation_preview(
             published_history: w::bool_d(object.field("publishedHistory"))?,
             already_contained: w::bool_d(object.field("alreadyContained"))?,
             no_commit: w::bool_d(object.field("noCommit"))?,
+            local_changes: dec_native_history_local_changes(object.field("localChanges"))?,
+            overlapping_paths: w::list_d(object.field("overlappingPaths"), |v| w::bytes_d(v))?,
+            staged_changes: w::bool_d(object.field("stagedChanges"))?,
         },
     )
 }
@@ -8441,6 +8458,30 @@ pub fn dec_native_history_mutation_kind(
         }
         "revert" => Ok(gitlama_contract::history_operation::NativeHistoryMutationKind::Revert),
         _ => Err(WireError::invalid("NativeHistoryMutationKind")),
+    }
+}
+
+pub fn enc_native_history_local_changes(
+    value: &gitlama_contract::history_operation::NativeHistoryLocalChanges,
+) -> Value {
+    Value::String(
+        match value {
+            gitlama_contract::history_operation::NativeHistoryLocalChanges::None => "none",
+            gitlama_contract::history_operation::NativeHistoryLocalChanges::InPlace => "inPlace",
+            gitlama_contract::history_operation::NativeHistoryLocalChanges::SetAside => "setAside",
+        }
+        .to_owned(),
+    )
+}
+
+pub fn dec_native_history_local_changes(
+    value: &Value,
+) -> Result<gitlama_contract::history_operation::NativeHistoryLocalChanges, WireError> {
+    match w::str_ref(value)? {
+        "none" => Ok(gitlama_contract::history_operation::NativeHistoryLocalChanges::None),
+        "inPlace" => Ok(gitlama_contract::history_operation::NativeHistoryLocalChanges::InPlace),
+        "setAside" => Ok(gitlama_contract::history_operation::NativeHistoryLocalChanges::SetAside),
+        _ => Err(WireError::invalid("NativeHistoryLocalChanges")),
     }
 }
 
@@ -8559,6 +8600,10 @@ pub fn enc_native_history_mutation_execution_result(
         "sequencer".to_owned(),
         w::opt_e(&value.sequencer, |v| enc_native_history_mutation_kind(v)),
     );
+    map.insert(
+        "setAside".to_owned(),
+        w::opt_e(&value.set_aside, |v| enc_native_history_set_aside(v)),
+    );
     Value::Object(map)
 }
 
@@ -8574,6 +8619,7 @@ pub fn dec_native_history_mutation_execution_result(
             "activityIds",
             "conflictingPaths",
             "sequencer",
+            "setAside",
         ],
     )?;
     Ok(
@@ -8586,6 +8632,9 @@ pub fn dec_native_history_mutation_execution_result(
             conflicting_paths: w::list_d(object.field("conflictingPaths"), |v| w::bytes_d(v))?,
             sequencer: w::opt_d(object.field("sequencer"), |v| {
                 dec_native_history_mutation_kind(v)
+            })?,
+            set_aside: w::opt_d(object.field("setAside"), |v| {
+                dec_native_history_set_aside(v)
             })?,
         },
     )
@@ -8620,6 +8669,33 @@ pub fn dec_native_history_mutation_execution_state(
         "outcomeUncertain" => Ok(gitlama_contract::history_operation::NativeHistoryMutationExecutionState::OutcomeUncertain),
         _ => Err(WireError::invalid("NativeHistoryMutationExecutionState")),
     }
+}
+
+pub fn enc_native_history_set_aside(
+    value: &gitlama_contract::history_operation::NativeHistorySetAside,
+) -> Value {
+    let mut map = w::Map::new();
+    map.insert("stashObjectId".to_owned(), w::str_e(&value.stash_object_id));
+    map.insert("restored".to_owned(), w::bool_e(&value.restored));
+    map.insert("conflicted".to_owned(), w::bool_e(&value.conflicted));
+    map.insert("pending".to_owned(), w::bool_e(&value.pending));
+    Value::Object(map)
+}
+
+pub fn dec_native_history_set_aside(
+    value: &Value,
+) -> Result<gitlama_contract::history_operation::NativeHistorySetAside, WireError> {
+    let object = w::object(
+        value,
+        "NativeHistorySetAside",
+        &["stashObjectId", "restored", "conflicted", "pending"],
+    )?;
+    Ok(gitlama_contract::history_operation::NativeHistorySetAside {
+        stash_object_id: w::str_d(object.field("stashObjectId"))?,
+        restored: w::bool_d(object.field("restored"))?,
+        conflicted: w::bool_d(object.field("conflicted"))?,
+        pending: w::bool_d(object.field("pending"))?,
+    })
 }
 
 pub fn enc_native_rebase_preview_result(

@@ -136,6 +136,7 @@ historyMutation.Canceled canceled
 historyMutation.Failed git
 historyMutation.Read read
 historyMutation.MergeCommit precondition
+historyMutation.LocalChangesOverlap precondition
 rebase.InvalidRequest invalidRequest
 rebase.EmptyPlan invalidRequest
 rebase.InvalidPlan invalidRequest

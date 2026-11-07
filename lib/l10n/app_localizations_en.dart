@@ -5403,8 +5403,68 @@ class AppLocalizationsEn extends AppLocalizations {
       'Applying without committing works with one commit at a time.';
 
   @override
-  String get historyRevertCleanRequired =>
-      'Commit or stash your changes first: reverting needs a clean working tree.';
+  String get historyRevertResolveConflicts =>
+      'Resolve the conflicted files first: a revert can\'t start while files are conflicted.';
+
+  @override
+  String get historyMutationFailureLocalChanges =>
+      'An apply-only revert can\'t set your local changes aside. Revert with a commit instead, or commit or stash the changes it collides with first.';
+
+  @override
+  String get historyPreviewLocalChanges => 'Local changes';
+
+  @override
+  String get historyRevertLocalInPlace => 'Stay where they are';
+
+  @override
+  String get historyRevertLocalSetAside => 'Set aside and reapplied';
+
+  @override
+  String get historyRevertLocalInPlaceDetail =>
+      'None of your local changes is staged or touches a file this revert changes, so Git reverts around them.';
+
+  @override
+  String historyRevertSetAsideFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count local changes touch files this revert changes:',
+      one: '1 local change touches a file this revert changes:',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyRevertSetAsideMore(int count) {
+    return 'and $count more';
+  }
+
+  @override
+  String get historyRevertSetAsideStaged =>
+      'Some of your local changes are staged, and Git doesn\'t revert over staged changes.';
+
+  @override
+  String get historyRevertSetAsideExplain =>
+      'GitLama saves your local changes in a stash, reverts, then reapplies them with their staging. If they conflict with the revert, you resolve them in Changes. A recovery copy remains in Stashes.';
+
+  @override
+  String get historyRevertSetAsideAction => 'Set aside and revert';
+
+  @override
+  String get historyRevertSetAsideRestored =>
+      'Reverted. Your local changes and staging were restored. A recovery copy remains in Stashes.';
+
+  @override
+  String get historyRevertSetAsideConflict =>
+      'Reverted, but reapplying your local changes caused conflicts. Resolve them in Changes. The recovery stash is kept.';
+
+  @override
+  String get historyRevertSetAsidePending =>
+      'The revert stopped at conflicts. Your local changes are set aside and come back when you continue or abort the revert.';
+
+  @override
+  String get historyRevertSetAsideSaved =>
+      'Your local changes could not be fully restored; they remain saved in Stashes. Review Changes before applying the recovery stash.';
 
   @override
   String get historyRevertApplied =>

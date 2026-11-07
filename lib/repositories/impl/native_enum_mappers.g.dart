@@ -1192,6 +1192,17 @@ extension ConflictPredictionKindToNative on model.ConflictPredictionKind {
   };
 }
 
+/// [native.NativeHistoryLocalChanges] as its model value, matched by name.
+extension NativeHistoryLocalChangesToModel on native.NativeHistoryLocalChanges {
+  model.HistoryLocalChanges toModel() => switch (this) {
+    native.NativeHistoryLocalChanges.none => model.HistoryLocalChanges.none,
+    native.NativeHistoryLocalChanges.inPlace =>
+      model.HistoryLocalChanges.inPlace,
+    native.NativeHistoryLocalChanges.setAside =>
+      model.HistoryLocalChanges.setAside,
+  };
+}
+
 /// [model.HistoryMergeMode] as its bridge value, matched by name.
 extension HistoryMergeModeToNative on model.HistoryMergeMode {
   native.NativeHistoryMergeMode toNative() => switch (this) {
@@ -1251,6 +1262,8 @@ extension NativeHistoryMutationFailureKindToModel
       model.HistoryMutationFailureCode.read,
     native.NativeHistoryMutationFailureKind.mergeCommit =>
       model.HistoryMutationFailureCode.mergeCommit,
+    native.NativeHistoryMutationFailureKind.localChangesOverlap =>
+      model.HistoryMutationFailureCode.localChangesOverlap,
   };
 }
 

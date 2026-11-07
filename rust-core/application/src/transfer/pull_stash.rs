@@ -2,17 +2,12 @@
 use super::{NativePullStashResult, NativeTransferFailureKind, TransferPlan};
 use crate::activity::ActivityStore;
 use crate::operations::ExecutionFailure;
-use devmil_git::activity::ActivityStatus;
+use crate::stash_handoff::{Handoff, Saved};
 use devmil_git::cancellation::Cancellation;
-use devmil_git::commands::stash::{
-    entry_arguments, list_arguments, push_arguments, EntryOperation,
-};
 use devmil_git::model::RepositoryMutation;
-use devmil_git::process::{ActivityGitRunner, GitProcessCommand, ProcessArgument};
 use devmil_git::status::{BranchHead, WorkingTreeState};
+use devmil_git::types::ObjectId;
 use devmil_git::Repository;
-use std::ffi::OsString;
-use std::sync::atomic::AtomicBool;
 
 fn branch_matches(plan: &TransferPlan, branch: &BranchHead) -> bool {
     let expected = plan
@@ -23,24 +18,27 @@ fn branch_matches(plan: &TransferPlan, branch: &BranchHead) -> bool {
     matches!((branch, expected), (BranchHead::Attached(name), Some(expected)) if name.as_bytes() == expected)
 }
 
-fn run(
-    repository: &Repository,
-    plan: &TransferPlan,
-    arguments: Vec<OsString>,
-    cancellation: &dyn Cancellation,
-    activity: &ActivityStore,
-) -> devmil_git::process::PrivateActivityResult {
-    let id = crate::activity::allocate_operation_id(crate::activity::OperationIntent::Pull);
-    let sink = activity.sink();
-    ActivityGitRunner::run_private(
-        GitProcessCommand::git(repository.git_executable())
-            .current_dir(&plan.facts.worktree)
-            .args(arguments.into_iter().map(ProcessArgument::visible))
-            .redact_output(),
-        id,
-        Some(cancellation),
-        &mut |event| sink(event),
-    )
+fn handoff<'a>(
+    plan: &'a TransferPlan,
+    repository: &'a Repository,
+    activity: &'a ActivityStore,
+) -> Handoff<'a> {
+    Handoff {
+        repository,
+        worktree: &plan.facts.worktree,
+        common_git_dir: &plan.facts.common_git_dir,
+        activity,
+        intent: crate::activity::OperationIntent::Pull,
+    }
+}
+
+fn stash_result(stash: &ObjectId) -> NativePullStashResult {
+    NativePullStashResult {
+        object_id: stash.as_str().to_owned(),
+        pull_completed: false,
+        reapply_completed: false,
+        conflicted: false,
+    }
 }
 
 pub(super) fn prepare(
@@ -70,66 +68,27 @@ pub(super) fn prepare(
     if status.working_tree == WorkingTreeState::Clean {
         return Ok(None);
     }
-    let previous_stash = devmil_git::probes::resolve(
-        repository.git_executable(),
-        &plan.facts.worktree,
-        "refs/stash",
-        &mut crate::git_probe::ProbeExecutor::new(Some(cancellation)),
-    )
-    .map_err(|_| ExecutionFailure::Definite)?;
-    // A unique marker proves which immutable stash this workflow created,
-    // including when another worktree or external Git writer changes the stack.
-    let mut nonce = [0_u8; 16];
-    getrandom::fill(&mut nonce).map_err(|_| ExecutionFailure::Definite)?;
-    let suffix = nonce
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
-    let message = format!("GitLama before pull {suffix}");
-    let pushed = run(
-        repository,
-        plan,
-        push_arguments(Some(&message), &[], true).expect("internal message is valid"),
-        cancellation,
-        activity,
-    );
-    // Even a failed/canceled stash command may have created a recovery object.
-    // Inspect without the canceled token; never assume that a zero exit created one.
-    let cleanup = AtomicBool::new(false);
-    let listed = run(repository, plan, list_arguments(), &cleanup, activity);
-    if !matches!(listed.activity.status, ActivityStatus::Succeeded { .. }) {
-        *failure = Some(NativeTransferFailureKind::Read);
-        return Err(ExecutionFailure::Uncertain);
+    match handoff(plan, repository, activity).save("GitLama before pull", cancellation) {
+        Err(()) => {
+            *failure = Some(NativeTransferFailureKind::Read);
+            Err(ExecutionFailure::Uncertain)
+        }
+        Ok(Saved::Stash(stash)) => Ok(Some(stash_result(&stash))),
+        Ok(Saved::Failed { stash, canceled }) => {
+            *failure = Some(if canceled {
+                NativeTransferFailureKind::Canceled
+            } else {
+                NativeTransferFailureKind::Rejected
+            });
+            // The caller keeps the recovered identity even when preparation failed.
+            Ok(stash.as_ref().map(stash_result))
+        }
+        Ok(Saved::Nothing) => {
+            // Submodule-only dirt can yield a successful no-op. Do not consume an old stash.
+            *failure = Some(NativeTransferFailureKind::DirtyWorktree);
+            Err(ExecutionFailure::Definite)
+        }
     }
-    let entries = devmil_git::refs::parse_stashes(&listed.stdout.bytes)
-        .map_err(|_| ExecutionFailure::Uncertain)?;
-    let saved = entries
-        .into_iter()
-        .find(|entry| {
-            entry.subject.ends_with(message.as_bytes())
-                && previous_stash.as_ref() != Some(&entry.id.0)
-        })
-        .map(|entry| NativePullStashResult {
-            object_id: entry.id.0.as_str().to_owned(),
-            pull_completed: false,
-            reapply_completed: false,
-            conflicted: false,
-        });
-    if !matches!(pushed.activity.status, ActivityStatus::Succeeded { .. }) {
-        *failure = Some(if cancellation.is_cancelled() {
-            NativeTransferFailureKind::Canceled
-        } else {
-            NativeTransferFailureKind::Rejected
-        });
-        // The caller keeps the recovered identity even when preparation failed.
-        return Ok(saved);
-    }
-    if saved.is_none() {
-        // Submodule-only dirt can yield a successful no-op. Do not consume an old stash.
-        *failure = Some(NativeTransferFailureKind::DirtyWorktree);
-        return Err(ExecutionFailure::Definite);
-    }
-    Ok(saved)
 }
 
 pub(super) fn reapply(
@@ -139,75 +98,16 @@ pub(super) fn reapply(
     mutation: &RepositoryMutation,
     activity: &ActivityStore,
 ) {
-    // Cancellation stops the pull, not the best-effort restoration of already
-    // saved work. Never apply over an active merge/rebase or newly dirty tree.
-    let cleanup = AtomicBool::new(false);
-    let Some(status) = mutation.fresh_status(Some(&cleanup)).ok().flatten() else {
+    // Cancellation stops the pull, not the best-effort restoration of already saved work.
+    // Never apply over an active merge/rebase or newly dirty tree.
+    let Ok(oid) = ObjectId::parse(saved.object_id.clone()) else {
         return;
     };
-    if status.working_tree != WorkingTreeState::Clean
-        || !status.operations.is_empty()
-        || !branch_matches(plan, &status.branch.head)
+    if let Some(result) = handoff(plan, repository, activity)
+        .reapply(&oid, mutation, |branch| branch_matches(plan, branch))
     {
-        return;
-    }
-    let Some(head) = status.branch.oid else {
-        return;
-    };
-    let branch = match status.branch.head {
-        BranchHead::Attached(name) => Some(String::from_utf8_lossy(name.as_bytes()).into_owned()),
-        _ => None,
-    };
-    if !crate::stash::begin_pull_reapply(
-        &plan.facts.common_git_dir,
-        &saved.object_id,
-        head.as_str(),
-        branch,
-    ) {
-        return;
-    }
-    let Ok(oid) = devmil_git::types::ObjectId::parse(saved.object_id.clone()) else {
-        return;
-    };
-    let applied = run(
-        repository,
-        plan,
-        entry_arguments(EntryOperation::ApplyWithIndex, &oid, "stash@{0}")
-            .expect("constant selector is valid"),
-        &cleanup,
-        activity,
-    );
-    saved.reapply_completed = matches!(applied.activity.status, ActivityStatus::Succeeded { .. });
-    // An overlapping staged patch can be refused before Git creates conflict
-    // entries. Only when that attempt left a completely clean tree may we ask
-    // Git to merge the saved work without its index, for the conflict resolver.
-    // The original staging remains in the retained recovery object.
-    if !saved.reapply_completed
-        && mutation
-            .fresh_status(Some(&cleanup))
-            .ok()
-            .flatten()
-            .is_some_and(|status| {
-                status.working_tree == WorkingTreeState::Clean && status.operations.is_empty()
-            })
-    {
-        let _ = run(
-            repository,
-            plan,
-            entry_arguments(EntryOperation::Apply, &oid, "stash@{0}")
-                .expect("constant selector is valid"),
-            &cleanup,
-            activity,
-        );
-        // Even a clean merge without --index has not restored the original staging.
-    }
-    saved.conflicted = mutation
-        .fresh_status(Some(&cleanup))
-        .ok()
-        .flatten()
-        .is_some_and(|status| status.working_tree == WorkingTreeState::Conflicted);
-    if !saved.conflicted {
-        let _ = crate::stash::finish_active_conflict(&plan.facts.common_git_dir);
+        saved.reapply_completed = result.completed;
+        saved.conflicted = result.conflicted;
     }
 }
 

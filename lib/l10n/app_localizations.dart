@@ -9221,11 +9221,95 @@ abstract class AppLocalizations {
   /// **'Applying without committing works with one commit at a time.'**
   String get historyRevertApplySingleRequired;
 
-  /// Revert is blocked by uncommitted changes.
+  /// Warning in the revert dialog while the worktree has unresolved conflicts.
   ///
   /// In en, this message translates to:
-  /// **'Commit or stash your changes first: reverting needs a clean working tree.'**
-  String get historyRevertCleanRequired;
+  /// **'Resolve the conflicted files first: a revert can\'t start while files are conflicted.'**
+  String get historyRevertResolveConflicts;
+
+  /// Failure when an apply-only revert would need to set colliding or staged local changes aside.
+  ///
+  /// In en, this message translates to:
+  /// **'An apply-only revert can\'t set your local changes aside. Revert with a commit instead, or commit or stash the changes it collides with first.'**
+  String get historyMutationFailureLocalChanges;
+
+  /// Property label in the revert review for what happens to the local changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Local changes'**
+  String get historyPreviewLocalChanges;
+
+  /// Revert review value: Git reverts with the local changes left untouched.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay where they are'**
+  String get historyRevertLocalInPlace;
+
+  /// Revert review value: the local changes are stashed and reapplied around the revert.
+  ///
+  /// In en, this message translates to:
+  /// **'Set aside and reapplied'**
+  String get historyRevertLocalSetAside;
+
+  /// Revert review explanation when local changes stay in place.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your local changes is staged or touches a file this revert changes, so Git reverts around them.'**
+  String get historyRevertLocalInPlaceDetail;
+
+  /// Revert review heading above the local paths that collide with the revert.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 local change touches a file this revert changes:} other{{count} local changes touch files this revert changes:}}'**
+  String historyRevertSetAsideFiles(int count);
+
+  /// Revert review: how many colliding paths are not listed.
+  ///
+  /// In en, this message translates to:
+  /// **'and {count} more'**
+  String historyRevertSetAsideMore(int count);
+
+  /// Revert review: staged changes require setting the local changes aside.
+  ///
+  /// In en, this message translates to:
+  /// **'Some of your local changes are staged, and Git doesn\'t revert over staged changes.'**
+  String get historyRevertSetAsideStaged;
+
+  /// Revert review: how local changes are set aside and reapplied.
+  ///
+  /// In en, this message translates to:
+  /// **'GitLama saves your local changes in a stash, reverts, then reapplies them with their staging. If they conflict with the revert, you resolve them in Changes. A recovery copy remains in Stashes.'**
+  String get historyRevertSetAsideExplain;
+
+  /// Confirm button of a revert that sets local changes aside.
+  ///
+  /// In en, this message translates to:
+  /// **'Set aside and revert'**
+  String get historyRevertSetAsideAction;
+
+  /// Result after a revert that set local changes aside and restored them.
+  ///
+  /// In en, this message translates to:
+  /// **'Reverted. Your local changes and staging were restored. A recovery copy remains in Stashes.'**
+  String get historyRevertSetAsideRestored;
+
+  /// Result after a revert whose set-aside local changes conflict when reapplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Reverted, but reapplying your local changes caused conflicts. Resolve them in Changes. The recovery stash is kept.'**
+  String get historyRevertSetAsideConflict;
+
+  /// Result when a revert with set-aside local changes stops at conflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'The revert stopped at conflicts. Your local changes are set aside and come back when you continue or abort the revert.'**
+  String get historyRevertSetAsidePending;
+
+  /// Result when set-aside local changes could not be restored automatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Your local changes could not be fully restored; they remain saved in Stashes. Review Changes before applying the recovery stash.'**
+  String get historyRevertSetAsideSaved;
 
   /// Revert workflow text.
   ///

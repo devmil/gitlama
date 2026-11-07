@@ -10,15 +10,17 @@ use crate::interrupted::{InterruptedOperation, Interruption, SequencerStep};
 use crate::operations::ExecutionFailure;
 use crate::preview_store::PreviewStore;
 use devmil_git::activity::ActivityStatus;
+use devmil_git::diff::model::DiffPath;
 use devmil_git::loading::conflict_prediction::{
     ConflictPredictionKind, ConflictPredictionTarget, PredictionCompleteness,
 };
 use devmil_git::loading::refs::RefsSectionData;
+use devmil_git::merge::local_changes::{local_change_overlap, LocalChangeOverlap};
 use devmil_git::merge::{
     cherry_pick_arguments, merge_arguments_with_mode, revert_many_arguments_with_mode, MergeMode,
 };
 use devmil_git::process::{ActivityGitRunner, GitProcessCommand, ProcessArgument};
-use devmil_git::status::{BranchHead, OperationKind, WorkingTreeState};
+use devmil_git::status::{BranchHead, OperationKind, RepositoryStatus, WorkingTreeState};
 use devmil_git::types::{ObjectId, RepositoryRelativePath};
 use devmil_git::{Repository, RepositorySnapshot};
 use std::collections::HashMap;
@@ -27,6 +29,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
+
+mod set_aside;
 
 type EventSink = Arc<dyn Fn(devmil_git::activity::ActivityEvent) + Send + Sync>;
 
@@ -63,6 +67,10 @@ struct Plan {
     arguments: Vec<String>,
     facts: HistoryFacts,
     already_contained: bool,
+    /// The paths the reverted commits change; empty for merge and cherry-pick.
+    changed: Vec<DiffPath>,
+    local: NativeHistoryLocalChanges,
+    overlap: LocalChangeOverlap,
 }
 
 struct Registry {
@@ -122,6 +130,9 @@ pub(crate) fn preview(
             published_history: plan.facts.published,
             already_contained: plan.already_contained,
             no_commit: plan.request.no_commit,
+            local_changes: plan.local,
+            overlapping_paths: plan.overlap.paths.iter().map(native_path).collect(),
+            staged_changes: plan.overlap.staged,
         }),
         failure: None,
     }
@@ -159,6 +170,7 @@ pub(crate) fn execute(
             activity_ids: Vec::new(),
             conflicting_paths: Vec::new(),
             sequencer: None,
+            set_aside: None,
         };
     }
     if plan.already_contained {
@@ -169,6 +181,7 @@ pub(crate) fn execute(
             activity_ids: Vec::new(),
             conflicting_paths: Vec::new(),
             sequencer: None,
+            set_aside: None,
         };
     }
 
@@ -176,6 +189,7 @@ pub(crate) fn execute(
     let activity_ids = Mutex::new(Vec::new());
     let interruption = Mutex::new(None);
     let operation_failure = Mutex::new(None);
+    let set_aside_result = Mutex::new(None);
     let git_started = AtomicBool::new(false);
     let outcome = crate::operations::coordinate_leased_mutation(
         repository,
@@ -192,6 +206,60 @@ pub(crate) fn execute(
                 *operation_failure.lock().unwrap() = Some(NativeHistoryMutationFailureKind::Read);
                 return Err(ExecutionFailure::Definite);
             }
+            let restore = |stash: &ObjectId| {
+                set_aside::restore(
+                    repository,
+                    activity,
+                    &plan.facts.worktree,
+                    &plan.facts.common_git_dir,
+                    stash,
+                    &plan.facts.branch_name,
+                    lease,
+                )
+                .unwrap_or_default()
+            };
+            let mut saved = None;
+            if plan.local == NativeHistoryLocalChanges::SetAside {
+                let handoff = crate::stash_handoff::Handoff {
+                    repository,
+                    worktree: &plan.facts.worktree,
+                    common_git_dir: &plan.facts.common_git_dir,
+                    activity,
+                    intent: crate::activity::OperationIntent::Change,
+                };
+                match handoff.save("GitLama before revert", cancellation) {
+                    Ok(crate::stash_handoff::Saved::Stash(stash)) => saved = Some(stash),
+                    Ok(crate::stash_handoff::Saved::Failed { stash, canceled }) => {
+                        *operation_failure.lock().unwrap() = Some(if canceled {
+                            NativeHistoryMutationFailureKind::Canceled
+                        } else {
+                            NativeHistoryMutationFailureKind::Failed
+                        });
+                        // A stash Git created before failing is put back at once.
+                        if let Some(stash) = stash {
+                            let restored = restore(&stash);
+                            *set_aside_result.lock().unwrap() = Some(NativeHistorySetAside {
+                                stash_object_id: stash.as_str().to_owned(),
+                                restored: restored.completed,
+                                conflicted: restored.conflicted,
+                                pending: false,
+                            });
+                        }
+                        return Err(ExecutionFailure::Definite);
+                    }
+                    Ok(crate::stash_handoff::Saved::Nothing) => {
+                        // Submodule-only edits: Git saves nothing, so nothing can be set aside.
+                        *operation_failure.lock().unwrap() =
+                            Some(NativeHistoryMutationFailureKind::DirtyWorktree);
+                        return Err(ExecutionFailure::Definite);
+                    }
+                    Err(()) => {
+                        *operation_failure.lock().unwrap() =
+                            Some(NativeHistoryMutationFailureKind::Read);
+                        return Err(ExecutionFailure::Uncertain);
+                    }
+                }
+            }
             let id =
                 crate::activity::allocate_operation_id(crate::activity::OperationIntent::Change);
             activity_ids.lock().unwrap().push(id.get());
@@ -205,6 +273,34 @@ pub(crate) fn execute(
             git_started.store(true, Ordering::Release);
             let result =
                 ActivityGitRunner::run_private(command, id, Some(cancellation), &mut publish);
+            if let Some(stash) = saved {
+                // A revert stopped at conflicts keeps the changes aside until it is continued or
+                // aborted; any other ending, including a failure or cancellation, puts them back.
+                let stopped = crate::branch_facts::operation_in_progress(
+                    &plan.facts.git_dir,
+                    OperationKind::Revert,
+                );
+                let mut outcome = NativeHistorySetAside {
+                    stash_object_id: stash.as_str().to_owned(),
+                    restored: false,
+                    conflicted: false,
+                    pending: false,
+                };
+                if stopped {
+                    outcome.pending = set_aside::record(
+                        &plan.facts.common_git_dir,
+                        &plan.facts.git_dir,
+                        &stash,
+                        &plan.facts.branch_name,
+                    )
+                    .is_ok();
+                } else {
+                    let restored = restore(&stash);
+                    outcome.restored = restored.completed;
+                    outcome.conflicted = restored.conflicted;
+                }
+                *set_aside_result.lock().unwrap() = Some(outcome);
+            }
             match result.activity.status {
                 ActivityStatus::Succeeded { .. } => Ok(()),
                 ActivityStatus::Canceled { .. } => {
@@ -288,6 +384,7 @@ pub(crate) fn execute(
             .collect(),
         conflicting_paths,
         sequencer: interruption.map(|(kind, _)| kind),
+        set_aside: set_aside_result.into_inner().unwrap(),
     }
 }
 
@@ -576,11 +673,25 @@ fn build_plan(
         .status
         .as_ref()
         .ok_or(NativeHistoryMutationFailureKind::Read)?;
-    if status.working_tree != WorkingTreeState::Clean {
+    let revert = request.kind == NativeHistoryMutationKind::Revert;
+    // A revert may run over local changes (see `classify_local_changes`); merge and
+    // cherry-pick still start from a clean worktree.
+    if status.working_tree == WorkingTreeState::Conflicted
+        || (!revert && status.working_tree != WorkingTreeState::Clean)
+    {
         return Err(NativeHistoryMutationFailureKind::DirtyWorktree);
     }
     if !status.operations.is_empty() {
         return Err(NativeHistoryMutationFailureKind::ActiveOperation);
+    }
+    if revert {
+        // Never set changes aside while another set-aside or stash reapply is unresolved.
+        set_aside::forget_stale(&facts.common_git_dir, &facts.git_dir);
+        if crate::stash::active_conflict(&facts.common_git_dir).is_some()
+            || set_aside::pending(&facts.common_git_dir, &facts.git_dir).is_some()
+        {
+            return Err(NativeHistoryMutationFailureKind::ActiveOperation);
+        }
     }
     if facts.published
         && matches!(request.kind, NativeHistoryMutationKind::CherryPick)
@@ -613,6 +724,17 @@ fn build_plan(
             return Err(NativeHistoryMutationFailureKind::MergeCommit);
         }
     }
+    let changed = if revert && status.working_tree != WorkingTreeState::Clean {
+        changed_paths(&facts.worktree, &targets, activity)?
+    } else {
+        Vec::new()
+    };
+    let (local, overlap) = classify_local_changes(status, &changed);
+    if request.no_commit && local == NativeHistoryLocalChanges::SetAside {
+        // An apply-only revert leaves its result staged; mixing it with set-aside staging
+        // would hide which changes are the revert.
+        return Err(NativeHistoryMutationFailureKind::LocalChangesOverlap);
+    }
     let already_contained = request.kind == NativeHistoryMutationKind::Merge
         && is_ancestor(&facts.worktree, &targets[0], &facts.head, activity);
     Ok(Plan {
@@ -621,7 +743,54 @@ fn build_plan(
         arguments,
         facts,
         already_contained,
+        changed,
+        local,
+        overlap,
     })
+}
+
+/// Whether a revert can keep the local changes in place, or must set them aside first.
+fn classify_local_changes(
+    status: &RepositoryStatus,
+    changed: &[DiffPath],
+) -> (NativeHistoryLocalChanges, LocalChangeOverlap) {
+    if status.working_tree == WorkingTreeState::Clean {
+        return (
+            NativeHistoryLocalChanges::None,
+            LocalChangeOverlap::default(),
+        );
+    }
+    let overlap = local_change_overlap(&status.entries, changed);
+    let local = if overlap.is_empty() {
+        NativeHistoryLocalChanges::InPlace
+    } else {
+        NativeHistoryLocalChanges::SetAside
+    };
+    (local, overlap)
+}
+
+/// Every path the `targets` change, for comparison with the local changes.
+fn changed_paths(
+    worktree: &Path,
+    targets: &[ObjectId],
+    activity: &ActivityStore,
+) -> Result<Vec<DiffPath>, NativeHistoryMutationFailureKind> {
+    let mut changed = Vec::new();
+    for target in targets {
+        let paths = crate::git_probe::run_published_probe(activity, |executor| {
+            devmil_git::probes::changed_paths(
+                std::ffi::OsStr::new("git"),
+                worktree,
+                target,
+                executor,
+            )
+        })
+        .map_err(|_| NativeHistoryMutationFailureKind::Read)?;
+        changed.extend(paths);
+    }
+    changed.sort();
+    changed.dedup();
+    Ok(changed)
 }
 
 fn validate_live_preconditions(
@@ -642,8 +811,31 @@ fn validate_live_preconditions(
     if !status.operations.is_empty() {
         return Err(NativeHistoryMutationFailureKind::ActiveOperation);
     }
-    if status.working_tree != WorkingTreeState::Clean {
+    if plan.request.kind != NativeHistoryMutationKind::Revert {
+        if status.working_tree != WorkingTreeState::Clean {
+            return Err(NativeHistoryMutationFailureKind::DirtyWorktree);
+        }
+        return Ok(());
+    }
+    if status.working_tree == WorkingTreeState::Conflicted {
         return Err(NativeHistoryMutationFailureKind::DirtyWorktree);
+    }
+    // The user confirmed what happens to the local changes they had at preview time.
+    // Changes that now collide differently, or appear in a once clean worktree, need a new
+    // preview. The paths the commits change are immutable.
+    if status.working_tree != WorkingTreeState::Clean
+        && plan.local == NativeHistoryLocalChanges::None
+    {
+        return Err(NativeHistoryMutationFailureKind::DirtyWorktree);
+    }
+    if classify_local_changes(&status, &plan.changed) != (plan.local, plan.overlap.clone()) {
+        return Err(NativeHistoryMutationFailureKind::Stale);
+    }
+    if plan.local == NativeHistoryLocalChanges::SetAside
+        && (crate::stash::active_conflict(&plan.facts.common_git_dir).is_some()
+            || set_aside::pending(&plan.facts.common_git_dir, &plan.facts.git_dir).is_some())
+    {
+        return Err(NativeHistoryMutationFailureKind::ActiveOperation);
     }
     Ok(())
 }
@@ -745,6 +937,7 @@ fn execution_failure(
         activity_ids: Vec::new(),
         conflicting_paths: Vec::new(),
         sequencer: None,
+        set_aside: None,
     }
 }
 
@@ -776,6 +969,7 @@ crate::family_failures!(NativeHistoryMutationFailureKind, "historyMutation", {
     Failed => Git,
     Read => Read,
     MergeCommit => Precondition,
+    LocalChangesOverlap => Precondition,
 });
 
 #[cfg(test)]
@@ -809,8 +1003,9 @@ mod session_tests {
     };
 
     use crate::history_operation::{
-        NativeConflictPredictionKind, NativeHistoryMergeMode, NativeHistoryMutationExecutionState,
-        NativeHistoryMutationFailureKind, NativeHistoryMutationKind, NativeHistoryMutationRequest,
+        NativeConflictPredictionKind, NativeHistoryLocalChanges, NativeHistoryMergeMode,
+        NativeHistoryMutationExecutionState, NativeHistoryMutationFailureKind,
+        NativeHistoryMutationKind, NativeHistoryMutationRequest,
     };
 
     use devmil_git::RepositoryOptions;
@@ -1226,7 +1421,7 @@ mod session_tests {
     }
 
     #[test]
-    fn history_revert_refuses_existing_and_unobserved_changes_in_both_modes() {
+    fn history_revert_refuses_unobserved_changes_and_reviews_them_anew_in_both_modes() {
         for no_commit in [false, true] {
             for change in ["staged", "unstaged", "untracked", "operation", "head"] {
                 let (fixture, target, head) = revert_test_fixture(false);
@@ -1279,12 +1474,333 @@ mod session_tests {
                     session.generation,
                     revert_test_request(target, no_commit),
                 );
-                if change != "head" {
-                    assert!(refused.preview.is_none());
+                // A new preview reviews what happens to the changes: an unrelated untracked
+                // file stays in place, a change to the reverted file is set aside (which an
+                // apply-only revert refuses), and an operation in progress still blocks.
+                match change {
+                    "head" => {}
+                    "operation" => assert!(refused.preview.is_none()),
+                    "untracked" => assert_eq!(
+                        refused.preview.unwrap().local_changes,
+                        NativeHistoryLocalChanges::InPlace
+                    ),
+                    _ if no_commit => assert_eq!(
+                        refused.failure.unwrap().kind,
+                        NativeHistoryMutationFailureKind::LocalChangesOverlap
+                    ),
+                    _ => {
+                        let preview = refused.preview.unwrap();
+                        assert_eq!(preview.local_changes, NativeHistoryLocalChanges::SetAside);
+                        assert_eq!(preview.overlapping_paths, vec![b"tracked.txt".to_vec()]);
+                        assert_eq!(preview.staged_changes, change == "staged");
+                    }
                 }
                 assert!(repository_session_close(session.session_id, session.generation).accepted);
             }
         }
+    }
+
+    /// `lines.txt` has five lines; the target commit changes `b` to `B`. With `conflict`, a
+    /// later commit changes `B` to `L`, so reverting the target conflicts. `other.txt` is an
+    /// unrelated tracked file.
+    fn set_aside_fixture(conflict: bool) -> (GitFixture, String, String) {
+        let fixture = GitFixture::new();
+        fs::write(fixture.0.join("lines.txt"), b"a\nb\nc\nd\ne\n").unwrap();
+        fs::write(fixture.0.join("other.txt"), b"other\n").unwrap();
+        transfer_git(&fixture.0, &["add", "."]);
+        transfer_git(&fixture.0, &["commit", "-qm", "base"]);
+        fs::write(fixture.0.join("lines.txt"), b"a\nB\nc\nd\ne\n").unwrap();
+        transfer_git(&fixture.0, &["commit", "-qam", "target"]);
+        let target = git_line(&fixture, &["rev-parse", "HEAD"]);
+        if conflict {
+            fs::write(fixture.0.join("lines.txt"), b"a\nL\nc\nd\ne\n").unwrap();
+            transfer_git(&fixture.0, &["commit", "-qam", "later"]);
+        }
+        let head = git_line(&fixture, &["rev-parse", "HEAD"]);
+        (fixture, target, head)
+    }
+
+    fn git_line(fixture: &GitFixture, arguments: &[&str]) -> String {
+        String::from_utf8(transfer_git(&fixture.0, arguments))
+            .unwrap()
+            .trim()
+            .to_owned()
+    }
+
+    fn stash_subjects(fixture: &GitFixture) -> Vec<String> {
+        git_line(fixture, &["stash", "list", "--format=%s"])
+            .lines()
+            .map(str::to_owned)
+            .collect()
+    }
+
+    /// Local changes for a revert of the target: an edit of `lines.txt` far from the reverted
+    /// line, a staged edit of `other.txt` and an untracked file.
+    fn local_changes(fixture: &GitFixture, lines: &[u8]) {
+        fs::write(fixture.0.join("lines.txt"), lines).unwrap();
+        fs::write(fixture.0.join("other.txt"), b"other\nstaged\n").unwrap();
+        transfer_git(&fixture.0, &["add", "other.txt"]);
+        fs::write(fixture.0.join("new.txt"), b"new\0bytes").unwrap();
+    }
+
+    #[test]
+    fn history_revert_keeps_unrelated_local_changes_in_place() {
+        let (fixture, target, head) = set_aside_fixture(false);
+        fs::write(fixture.0.join("other.txt"), b"other\nunstaged\n").unwrap();
+        fs::write(fixture.0.join("new.txt"), b"new\n").unwrap();
+        let session = revert_test_session(&fixture, 2310);
+        let preview = repository_session_history_mutation_preview(
+            session.session_id,
+            session.generation,
+            revert_test_request(target, false),
+        )
+        .preview
+        .unwrap();
+        assert_eq!(preview.local_changes, NativeHistoryLocalChanges::InPlace);
+        assert!(preview.overlapping_paths.is_empty() && !preview.staged_changes);
+        let result = repository_session_history_mutation_execute(
+            session.session_id,
+            session.generation,
+            preview.token,
+        );
+        assert_eq!(result.state, NativeHistoryMutationExecutionState::Completed);
+        assert!(result.set_aside.is_none());
+        assert_eq!(git_line(&fixture, &["rev-parse", "HEAD~1"]), head);
+        assert_eq!(
+            fs::read(fixture.0.join("lines.txt")).unwrap(),
+            b"a\nb\nc\nd\ne\n"
+        );
+        assert_eq!(
+            fs::read(fixture.0.join("other.txt")).unwrap(),
+            b"other\nunstaged\n"
+        );
+        assert_eq!(fs::read(fixture.0.join("new.txt")).unwrap(), b"new\n");
+        assert!(stash_subjects(&fixture).is_empty());
+        assert!(repository_session_close(session.session_id, session.generation).accepted);
+    }
+
+    #[test]
+    fn history_revert_sets_colliding_changes_aside_and_restores_their_staging() {
+        let (fixture, target, head) = set_aside_fixture(false);
+        local_changes(&fixture, b"a\nB\nc\nd\nE\n");
+        let staged = transfer_git(&fixture.0, &["diff", "--cached", "--binary"]);
+        let session = revert_test_session(&fixture, 2311);
+        let preview = repository_session_history_mutation_preview(
+            session.session_id,
+            session.generation,
+            revert_test_request(target, false),
+        )
+        .preview
+        .unwrap();
+        assert_eq!(preview.local_changes, NativeHistoryLocalChanges::SetAside);
+        assert_eq!(preview.overlapping_paths, vec![b"lines.txt".to_vec()]);
+        assert!(preview.staged_changes);
+        let result = repository_session_history_mutation_execute(
+            session.session_id,
+            session.generation,
+            preview.token,
+        );
+        assert_eq!(result.state, NativeHistoryMutationExecutionState::Completed);
+        let saved = result.set_aside.unwrap();
+        assert!(saved.restored && !saved.conflicted && !saved.pending);
+        assert_eq!(git_line(&fixture, &["rev-parse", "HEAD~1"]), head);
+        // The revert and the local edit both landed; staging and untracked bytes are exact.
+        assert_eq!(
+            fs::read(fixture.0.join("lines.txt")).unwrap(),
+            b"a\nb\nc\nd\nE\n"
+        );
+        assert_eq!(
+            transfer_git(&fixture.0, &["diff", "--cached", "--binary"]),
+            staged
+        );
+        assert_eq!(fs::read(fixture.0.join("new.txt")).unwrap(), b"new\0bytes");
+        // The recovery copy stays, identified by its object.
+        let subjects = stash_subjects(&fixture);
+        assert_eq!(subjects.len(), 1);
+        assert!(subjects[0].contains("GitLama before revert"));
+        assert_eq!(
+            git_line(&fixture, &["rev-parse", "refs/stash"]),
+            saved.stash_object_id
+        );
+        assert!(repository_session_close(session.session_id, session.generation).accepted);
+    }
+
+    #[test]
+    fn history_revert_hands_conflicting_set_aside_changes_to_the_resolver() {
+        let (fixture, target, _) = set_aside_fixture(false);
+        // The local edit rewrites the very line the revert restores.
+        fs::write(fixture.0.join("lines.txt"), b"a\nX\nc\nd\ne\n").unwrap();
+        let session = revert_test_session(&fixture, 2312);
+        let preview = repository_session_history_mutation_preview(
+            session.session_id,
+            session.generation,
+            revert_test_request(target, false),
+        )
+        .preview
+        .unwrap();
+        let result = repository_session_history_mutation_execute(
+            session.session_id,
+            session.generation,
+            preview.token,
+        );
+        assert_eq!(result.state, NativeHistoryMutationExecutionState::Completed);
+        let saved = result.set_aside.unwrap();
+        assert!(saved.conflicted && !saved.restored && !saved.pending);
+        let reverted = git_line(&fixture, &["rev-parse", "HEAD"]);
+        refresh_session(&session);
+        let conflicts = repository_session_conflicts(session.session_id, session.generation)
+            .snapshot
+            .unwrap();
+        assert_eq!(conflicts.operation, NativeConflictOperationKind::Stash);
+        // Aborting the reapply keeps the revert and the recovery stash.
+        let aborted = repository_session_conflict_continue(
+            session.session_id,
+            session.generation,
+            NativeConflictSequencerAction::Abort,
+        );
+        assert_eq!(aborted.state, NativeConflictContinuationState::Aborted);
+        assert_eq!(git_line(&fixture, &["rev-parse", "HEAD"]), reverted);
+        assert_eq!(
+            fs::read(fixture.0.join("lines.txt")).unwrap(),
+            b"a\nb\nc\nd\ne\n"
+        );
+        assert_eq!(
+            git_line(&fixture, &["rev-parse", "refs/stash"]),
+            saved.stash_object_id
+        );
+        assert!(repository_session_close(session.session_id, session.generation).accepted);
+    }
+
+    #[test]
+    fn history_revert_conflict_restores_set_aside_changes_after_continue_or_abort() {
+        for abort in [false, true] {
+            let (fixture, target, head) = set_aside_fixture(true);
+            local_changes(&fixture, b"a\nL\nc\nd\nE\n");
+            let staged = transfer_git(&fixture.0, &["diff", "--cached", "--binary"]);
+            let session = revert_test_session(&fixture, 2313);
+            let preview = repository_session_history_mutation_preview(
+                session.session_id,
+                session.generation,
+                revert_test_request(target.clone(), false),
+            )
+            .preview
+            .unwrap();
+            assert_eq!(preview.local_changes, NativeHistoryLocalChanges::SetAside);
+            let started = repository_session_history_mutation_execute(
+                session.session_id,
+                session.generation,
+                preview.token,
+            );
+            assert_eq!(started.state, NativeHistoryMutationExecutionState::Conflict);
+            let saved = started.set_aside.unwrap();
+            assert!(saved.pending && !saved.restored);
+            // The resolver shows only the revert's conflict; the local changes wait aside.
+            assert!(!fixture.0.join("new.txt").exists());
+            // Another revert cannot set changes aside while these wait.
+            assert!(repository_session_history_mutation_preview(
+                session.session_id,
+                session.generation,
+                revert_test_request(target, false),
+            )
+            .preview
+            .is_none());
+            refresh_session(&session);
+            if !abort {
+                let snapshot = repository_session_conflicts(session.session_id, session.generation)
+                    .snapshot
+                    .unwrap();
+                let file = &snapshot.files[0];
+                assert!(
+                    repository_session_conflict_choose_side(
+                        session.session_id,
+                        session.generation,
+                        file.path.clone(),
+                        file.fingerprint,
+                        NativeConflictSideChoice::Incoming,
+                    )
+                    .snapshot
+                    .unwrap()
+                    .can_continue
+                );
+            }
+            let result = repository_session_conflict_continue(
+                session.session_id,
+                session.generation,
+                if abort {
+                    NativeConflictSequencerAction::Abort
+                } else {
+                    NativeConflictSequencerAction::Continue
+                },
+            );
+            assert_eq!(
+                result.state,
+                if abort {
+                    NativeConflictContinuationState::Aborted
+                } else {
+                    NativeConflictContinuationState::Completed
+                },
+                "abort={abort}"
+            );
+            if abort {
+                assert_eq!(git_line(&fixture, &["rev-parse", "HEAD"]), head);
+            } else {
+                assert_eq!(git_line(&fixture, &["rev-parse", "HEAD~1"]), head);
+            }
+            // Either way the local changes are back with their staging, on top of the revert
+            // or of the original HEAD.
+            assert_eq!(
+                fs::read(fixture.0.join("lines.txt")).unwrap(),
+                if abort {
+                    b"a\nL\nc\nd\nE\n"
+                } else {
+                    b"a\nb\nc\nd\nE\n"
+                }
+            );
+            assert_eq!(
+                transfer_git(&fixture.0, &["diff", "--cached", "--binary"]),
+                staged
+            );
+            assert_eq!(fs::read(fixture.0.join("new.txt")).unwrap(), b"new\0bytes");
+            assert_eq!(
+                git_line(&fixture, &["rev-parse", "refs/stash"]),
+                saved.stash_object_id
+            );
+            assert!(fs::read_dir(fixture.0.join(".git/gitlama/set-aside"))
+                .unwrap()
+                .next()
+                .is_none());
+            assert!(repository_session_close(session.session_id, session.generation).accepted);
+        }
+    }
+
+    #[test]
+    fn history_revert_in_place_preview_turns_stale_when_changes_start_to_collide() {
+        let (fixture, target, head) = set_aside_fixture(false);
+        fs::write(fixture.0.join("other.txt"), b"other\nunstaged\n").unwrap();
+        let session = revert_test_session(&fixture, 2314);
+        let preview = repository_session_history_mutation_preview(
+            session.session_id,
+            session.generation,
+            revert_test_request(target, false),
+        )
+        .preview
+        .unwrap();
+        assert_eq!(preview.local_changes, NativeHistoryLocalChanges::InPlace);
+        // The user edits the reverted file after reviewing; watchers are off.
+        fs::write(fixture.0.join("lines.txt"), b"a\nB\nc\nd\nE\n").unwrap();
+        let result = repository_session_history_mutation_execute(
+            session.session_id,
+            session.generation,
+            preview.token,
+        );
+        assert_eq!(result.state, NativeHistoryMutationExecutionState::Stale);
+        assert_eq!(git_line(&fixture, &["rev-parse", "HEAD"]), head);
+        assert_eq!(
+            fs::read(fixture.0.join("lines.txt")).unwrap(),
+            b"a\nB\nc\nd\nE\n"
+        );
+        assert!(stash_subjects(&fixture).is_empty());
+        assert!(repository_session_close(session.session_id, session.generation).accepted);
     }
 
     #[test]
@@ -1633,6 +2149,21 @@ pub(crate) static CHERRY_PICK: HistorySequencer =
     HistorySequencer(NativeHistoryMutationKind::CherryPick);
 pub(crate) static REVERT: HistorySequencer = HistorySequencer(NativeHistoryMutationKind::Revert);
 
+impl HistorySequencer {
+    /// Puts back the local changes a revert set aside before it stopped at conflicts.
+    fn restore_set_aside(&self, interruption: &Interruption<'_>) {
+        if self.0 == NativeHistoryMutationKind::Revert {
+            set_aside::restore_after_revert(
+                interruption.repository,
+                interruption.activity,
+                interruption.worktree,
+                interruption.git_dir,
+                interruption.common_git_dir,
+            );
+        }
+    }
+}
+
 impl InterruptedOperation for HistorySequencer {
     fn kind(&self) -> NativeConflictOperationKind {
         match self.0 {
@@ -1726,9 +2257,11 @@ impl InterruptedOperation for HistorySequencer {
         _current: &RepositorySnapshot,
     ) {
         discard_apply_only(interruption.common_git_dir, interruption.git_dir, self.0);
+        self.restore_set_aside(interruption);
     }
 
     fn aborted(&self, interruption: &Interruption<'_>, _step: &SequencerStep) {
         discard_apply_only(interruption.common_git_dir, interruption.git_dir, self.0);
+        self.restore_set_aside(interruption);
     }
 }
