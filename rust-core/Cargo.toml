@@ -1,6 +1,6 @@
 [package]
 name = "gitlama_core"
-version = "0.1.0-beta.64"
+version = "0.1.0-beta.65"
 edition = "2021"
 rust-version = "1.97.1"
 license = "MIT"

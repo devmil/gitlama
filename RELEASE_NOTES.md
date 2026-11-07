@@ -48,6 +48,8 @@
 
 ## Unreleased Beta
 
+## [0.1.0-beta.65] - 2026-11-07
+
 - GitLama is now open source under the MIT License. Its source code, releases and issue tracker are on GitHub.
 - On Windows, executable files in a commit saved as ZIP now stay executable when the archive is unpacked on macOS or Linux.
 

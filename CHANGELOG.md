@@ -50,6 +50,8 @@
 
 ## Unreleased Beta
 
+## [0.1.0-beta.65] - 2026-11-07
+
 - Publish GitLama as open source under the MIT License, with devmil-git, devmil-logging and meridian_ui. Releases, signed metadata and the website are built and published by GitHub Actions; packages are attached to GitHub releases. Rename the Meridian brand `northspline` to `gitlama`. The remote helper keeps version 22, so hosts keep their installed helper.
 - Fix ZIP snapshots saved on Windows losing the executable bit of their files: devmil-git now writes Unix file modes on every host.
 
