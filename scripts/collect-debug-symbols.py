@@ -11,6 +11,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -64,8 +65,14 @@ def provenance(helper: bool) -> dict:
     checkout = (ROOT / '.git').exists()
     if checkout and command('git', '-C', ROOT, 'rev-parse', 'HEAD') != commit:
         raise SymbolError('source_commit_does_not_match_checkout')
-    development = os.environ.get('GITLAMA_DIAGNOSTICS_DEVELOPMENT') == '1' or (
-        checkout and bool(command('git', '-C', ROOT, 'status', '--porcelain')))
+    changes = command('git', '-C', ROOT, 'status', '--porcelain') if checkout else ''
+    if changes:
+        # Name the changed paths: a release build that is unexpectedly marked as
+        # development is otherwise only reported later, without a cause.
+        print('collect-debug-symbols: checkout has changes, marking the build as development:',
+              file=sys.stderr)
+        print(changes, file=sys.stderr)
+    development = os.environ.get('GITLAMA_DIAGNOSTICS_DEVELOPMENT') == '1' or bool(changes)
     actual = json.loads(command('flutter', '--version', '--machine')) if not helper else {}
     pinned = json.loads((ROOT / '.fvmrc').read_text(encoding='utf-8'))['flutter']
     if actual and actual['frameworkVersion'] != pinned:
