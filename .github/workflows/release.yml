@@ -213,6 +213,24 @@ jobs:
           name: gitlama-remote-helper-macos
           path: dist/remote-helper
       - uses: ./.github/actions/flutter
+      - name: Install the CocoaPods version of the lock file
+        # pod install rewrites macos/Podfile.lock under another CocoaPods version,
+        # which marks the release diagnostics as a development build.
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^COCOAPODS: //p' macos/Podfile.lock)"
+          [[ -n "$version" ]] || { echo "::error::macos/Podfile.lock names no CocoaPods version" >&2; exit 1; }
+          if [[ "$(pod --version 2>/dev/null || true)" != "$version" ]]; then
+            # With several versions installed, `pod` runs the newest; keep only this one.
+            gem uninstall cocoapods --all --executables --ignore-dependencies
+            gem install cocoapods --version "$version" --no-document
+            hash -r
+          fi
+          [[ "$(pod --version)" == "$version" ]] || {
+            echo "::error::pod resolves to $(pod --version), not $version" >&2
+            exit 1
+          }
       - name: Cache the pinned Sparkle package
         uses: actions/cache@v4
         with:
