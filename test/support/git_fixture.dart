@@ -98,6 +98,24 @@ final class GitFixture {
     if (_sentinel.existsSync()) {
       throw StateError('credential_helper_executed');
     }
-    await root.delete(recursive: true);
+    await _deleteRoot();
+  }
+
+  /// Windows can hold a just-released file open briefly (a Git child process
+  /// that is still exiting, or a scanner), failing deletion with a sharing
+  /// violation. Retry there with growing pauses; elsewhere delete once.
+  Future<void> _deleteRoot() async {
+    const attempts = 8;
+    for (var attempt = 1; ; attempt++) {
+      try {
+        await root.delete(recursive: true);
+        return;
+      } on FileSystemException {
+        if (!Platform.isWindows || attempt == attempts || !root.existsSync()) {
+          rethrow;
+        }
+        await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+      }
+    }
   }
 }
