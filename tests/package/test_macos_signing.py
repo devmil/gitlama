@@ -61,6 +61,39 @@ class MacosSigningTest(unittest.TestCase):
         self.assertIn('echo "sign-macos-candidate: notarization credentials are required"', script)
         self.assertIn('xcrun stapler validate "$candidate"', script)
 
+    def test_stapling_retries_a_dropped_ticket_lookup(self) -> None:
+        import os
+        import subprocess
+        import tempfile
+
+        script = Path("scripts/sign-macos-candidate.sh").read_text(encoding="utf-8")
+        function = script.split("staple_with_retry() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('staple_with_retry "$candidate"', script)
+        self.assertLess(script.index('staple_with_retry "$candidate"'),
+                        script.index('xcrun stapler validate "$candidate"'))
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / "xcrun"
+            count = Path(directory) / "count"
+            # Fails twice like a dropped CloudKit connection, then staples.
+            fake.write_text(
+                f'#!/bin/bash\nn=$(( $(cat {count} 2>/dev/null || echo 0) + 1 ))\n'
+                f'echo $n > {count}\n(( n >= 3 ))\n'
+            )
+            fake.chmod(0o755)
+            environment = dict(os.environ, PATH=f"{directory}:{os.environ['PATH']}",
+                               GITLAMA_STAPLE_RETRY_SECONDS="0")
+            program = "staple_with_retry() {" + function + "\n}\nstaple_with_retry candidate.dmg"
+            result = subprocess.run(["bash", "-c", program], env=environment,
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(count.read_text().strip(), "3")
+
+            count.write_text("-10")
+            result = subprocess.run(["bash", "-c", program], env=environment,
+                                    capture_output=True, text=True, check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("stapling failed after 5 attempts", result.stderr)
+
     def test_release_uses_disposable_secret_backed_keychain(self) -> None:
         workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
         macos_job = workflow.split("\n  macos:\n", 1)[1].split("\n  linux:\n", 1)[0]

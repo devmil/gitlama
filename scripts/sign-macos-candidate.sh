@@ -23,6 +23,26 @@ resolve_identity() {
   printf '%s\n' "$resolved"
 }
 
+# Stapling fetches the fresh ticket from Apple's CloudKit service, which can drop
+# the connection right after notarization. Retry with growing pauses.
+staple_with_retry() {
+  local candidate="$1" attempt delay
+  for attempt in 1 2 3 4 5; do
+    if (( attempt == 1 )); then
+      xcrun stapler staple "$candidate" && return 0
+    else
+      # Verbose output shows where the ticket request fails.
+      xcrun stapler staple -v "$candidate" && return 0
+    fi
+    (( attempt < 5 )) || break
+    delay=$(( attempt * ${GITLAMA_STAPLE_RETRY_SECONDS:-30} ))
+    echo "sign-macos-candidate: stapling attempt $attempt failed; retrying in ${delay}s" >&2
+    sleep "$delay"
+  done
+  echo "sign-macos-candidate: stapling failed after $attempt attempts" >&2
+  return 1
+}
+
 case "$mode" in
   app)
     [[ -n "${CODESIGN_IDENTITY:-}" ]] || { echo "sign-macos-candidate: CODESIGN_IDENTITY is required" >&2; exit 1; }
@@ -65,7 +85,7 @@ case "$mode" in
       echo "sign-macos-candidate: notarization credentials are required" >&2
       exit 1
     fi
-    xcrun stapler staple "$candidate"
+    staple_with_retry "$candidate"
     xcrun stapler validate "$candidate"
     spctl -a -t open --context context:primary-signature -v "$candidate"
     ;;
