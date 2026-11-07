@@ -1922,6 +1922,8 @@
     "description": "File without an extension in diff information."
   },
   "aboutApp": "Über GitLama",
+  "aboutSourceCode": "Quellcode auf GitHub",
+  "aboutSourceCodeOpenFailed": "Die Quellcode-Seite konnte nicht geöffnet werden.",
   "aboutVersion": "Version {version} (Build {build})",
   "brandTooltip": "GitLama · by Devmil Solutions",
   "brandMaker": "by Devmil Solutions",

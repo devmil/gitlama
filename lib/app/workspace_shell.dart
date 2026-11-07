@@ -736,6 +736,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                     StatusBar(
                       active: _active,
                       installed: widget.updates.installed,
+                      onOpenSource: _openSourceCode,
                       host: switch (_active) {
                         final active? => switch (remoteAuthorityOf(active)) {
                           final authority? => RemoteHostStatus(

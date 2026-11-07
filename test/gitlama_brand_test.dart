@@ -13,19 +13,21 @@ void main() {
       testWidgets('signature opens About $locale ${brightness.name}', (
         tester,
       ) async {
+        var sourceOpened = 0;
         await tester.pumpWidget(
           MaterialApp(
             theme: buildAppTheme(brightness),
             locale: Locale(locale),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const Scaffold(
+            home: Scaffold(
               bottomNavigationBar: StatusBar(
                 active: null,
-                installed: InstalledRelease(
+                installed: const InstalledRelease(
                   version: '0.1.0-beta.30',
                   build: 31,
                 ),
+                onOpenSource: () => sourceOpened += 1,
               ),
             ),
           ),
@@ -63,6 +65,14 @@ void main() {
           MeridianChipTone.accent,
         );
         expect(find.widgetWithText(MeridianChip, 'ProcessLama'), findsOne);
+        // The source link opens GitHub through the shell's callback.
+        await tester.tap(
+          find.widgetWithText(
+            MeridianButton,
+            locale == 'en' ? 'Source code on GitHub' : 'Quellcode auf GitHub',
+          ),
+        );
+        expect(sourceOpened, 1);
         await tester.tap(
           find.byTooltip(locale == 'en' ? 'Close' : 'Schließen').last,
         );

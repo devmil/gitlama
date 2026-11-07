@@ -7060,6 +7060,14 @@
     "description": "File without an extension in diff information."
   },
   "aboutApp": "About GitLama",
+  "aboutSourceCode": "Source code on GitHub",
+  "@aboutSourceCode": {
+    "description": "Link in About that opens GitLama's public source repository in the browser."
+  },
+  "aboutSourceCodeOpenFailed": "The source code page could not be opened.",
+  "@aboutSourceCodeOpenFailed": {
+    "description": "Status line failure when the browser could not open the source repository."
+  },
   "aboutVersion": "Version {version} (build {build})",
   "@aboutVersion": {
     "description": "The installed version in About.",

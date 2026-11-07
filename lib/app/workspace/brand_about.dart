@@ -7,10 +7,12 @@ import '../app_theme.dart';
 import '../gitlama_layout.dart';
 
 /// GitLama's About: the mark, the name, the version and the maker,
-/// centred like a title page, then the Lama family with GitLama picked out.
+/// centred like a title page, a link to the source code, then the Lama
+/// family with GitLama picked out.
 Future<void> showBrandAbout(
   BuildContext context, {
   InstalledRelease? installed,
+  VoidCallback? onOpenSource,
 }) => showMeridianDialog<void>(
   context: context,
   builder: (context) => MeridianDialog(
@@ -18,14 +20,20 @@ Future<void> showBrandAbout(
     width: MeridianLayout.dialogConfirmWidth,
     onClose: () => Navigator.pop(context),
     scrollable: true,
-    content: BrandAboutContent(installed: installed),
+    content: BrandAboutContent(
+      installed: installed,
+      onOpenSource: onOpenSource,
+    ),
   ),
 );
 
 class BrandAboutContent extends StatelessWidget {
-  const BrandAboutContent({this.installed, super.key});
+  const BrandAboutContent({this.installed, this.onOpenSource, super.key});
 
   final InstalledRelease? installed;
+
+  /// Opens the public source repository; null hides the link.
+  final VoidCallback? onOpenSource;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +81,19 @@ class BrandAboutContent extends StatelessWidget {
                 key: const ValueKey('brand-about-version'),
                 textAlign: TextAlign.center,
                 style: context.text.caption.copyWith(color: colors.inkMuted),
+              ),
+            ),
+          ],
+          if (onOpenSource case final open?) ...[
+            const SizedBox(height: MeridianSpace.space5),
+            Center(
+              child: MeridianButton(
+                key: const ValueKey('brand-about-source'),
+                label: l10n.aboutSourceCode,
+                icon: MeridianIcons.externalLink,
+                variant: MeridianButtonVariant.quiet,
+                size: MeridianControlSize.small,
+                onPressed: open,
               ),
             ),
           ],

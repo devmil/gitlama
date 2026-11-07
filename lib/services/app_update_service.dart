@@ -104,6 +104,8 @@ final class AppUpdateService {
 
   Future<void> openIssues() => _index.openIssues();
 
+  Future<void> openSource() => _index.openSource();
+
   /// The newest release a subscriber of [channel] receives.
   static PublishedRelease? latestRelease(
     Iterable<PublishedRelease> releases,
