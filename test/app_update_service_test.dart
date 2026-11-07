@@ -77,6 +77,9 @@ final class _Index implements ReleaseIndexRepository {
 
   @override
   Future<void> openIssues() async => issuesOpened += 1;
+
+  @override
+  Future<void> openSource() async {}
 }
 
 const _beta14 = InstalledRelease(version: '0.1.0-beta.14', build: 15);
@@ -251,6 +254,20 @@ void main() {
         ),
       );
     });
+  });
+
+  test('opens only the fixed source repository', () async {
+    final opened = <Uri>[];
+    final repository = NativeReleaseIndexRepository(
+      available: true,
+      open: (uri) async {
+        opened.add(uri);
+        return true;
+      },
+    );
+
+    await repository.openSource();
+    expect(opened.single.toString(), 'https://github.com/devmil/gitlama');
   });
 
   group('index platforms', () {

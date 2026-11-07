@@ -904,4 +904,17 @@ extension _ShellCommands on _WorkspaceShellState {
       }
     }
   }
+
+  Future<void> _openSourceCode() async {
+    try {
+      await widget.updates.openSource();
+    } on AppUpdateException {
+      if (mounted) {
+        showWorkflowMessage(context, (
+          text: context.l10n.aboutSourceCodeOpenFailed,
+          error: true,
+        ));
+      }
+    }
+  }
 }

@@ -28,6 +28,7 @@
     "footer.label": "Rechtliches",
     "footer.releases": "Versionen",
     "footer.license": "Lizenz",
+    "footer.source": "Quellcode",
     "footer.imprint": "Impressum",
     "footer.privacy": "Datenschutz",
     "footer.note": "Keine Webanalyse. Keine Tracking-Skripte.",

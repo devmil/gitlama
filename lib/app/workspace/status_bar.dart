@@ -25,6 +25,7 @@ class StatusBar extends StatelessWidget {
     super.key,
     required this.active,
     this.installed,
+    this.onOpenSource,
     this.statusLabel,
     this.host,
     this.trailing,
@@ -32,6 +33,9 @@ class StatusBar extends StatelessWidget {
 
   final RepositoryTabState? active;
   final InstalledRelease? installed;
+
+  /// Opens the public source repository from About; null hides the link.
+  final VoidCallback? onOpenSource;
   final String? statusLabel;
 
   /// Names the computer the active repository lives on, when it is remote.
@@ -57,7 +61,11 @@ class StatusBar extends StatelessWidget {
         message: context.l10n.brandTooltip,
         excludeFromSemantics: true,
         child: MeridianInteraction(
-          onTap: () => showBrandAbout(context, installed: installed),
+          onTap: () => showBrandAbout(
+            context,
+            installed: installed,
+            onOpenSource: onOpenSource,
+          ),
           builder: (context, state) => SizedBox.square(
             dimension: MeridianSize.control,
             child: Center(
