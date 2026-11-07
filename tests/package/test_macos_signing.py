@@ -61,62 +61,83 @@ class MacosSigningTest(unittest.TestCase):
         self.assertIn('echo "sign-macos-candidate: notarization credentials are required"', script)
         self.assertIn('xcrun stapler validate "$candidate"', script)
 
-    def test_release_uses_disposable_vault_backed_keychain(self) -> None:
+    def test_release_uses_disposable_secret_backed_keychain(self) -> None:
         workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
         macos_job = workflow.split("\n  macos:\n", 1)[1].split("\n  linux:\n", 1)[0]
 
         for variable in (
-            "BW_SERVER",
-            "BW_CLIENTID",
-            "BW_CLIENTSECRET",
-            "BW_PASSWORD",
-            "BW_RELEASE_ITEM_ID",
+            "MACOS_DEVELOPER_ID_P12_BASE64",
+            "MACOS_DEVELOPER_ID_P12_PASSWORD",
+            "MACOS_CODESIGN_IDENTITY",
+            "APPLE_NOTARY_KEY_BASE64",
+            "APPLE_NOTARY_KEY_ID",
+            "APPLE_NOTARY_ISSUER_ID",
         ):
             self.assertIn(f"{variable}: ${{{{ secrets.{variable} }}}}", macos_job)
-        self.assertIn("source scripts/lib/vaultwarden-release.sh", macos_job)
+        self.assertIn("source scripts/lib/release-secrets.sh", macos_job)
         self.assertIn(
-            "gitlama_vault_attachment northspline-developer-id.p12",
+            'gitlama_secret_file MACOS_DEVELOPER_ID_P12_BASE64 "$release_tmp/developer-id.p12"',
             macos_job,
         )
         self.assertIn(
-            "gitlama_vault_attachment northspline-notary-api-key.p8",
+            'gitlama_secret_file APPLE_NOTARY_KEY_BASE64 "$release_tmp/notary-api-key.p8"',
             macos_job,
         )
         self.assertIn("security create-keychain", macos_job)
         self.assertIn("security delete-keychain", macos_job)
-        self.assertIn('echo "::add-mask::$p12_password"', macos_job)
+        self.assertIn('rm -rf -- "$release_tmp"', macos_job)
 
-    def test_vault_helper_never_prints_field_values(self) -> None:
-        helper = Path("scripts/lib/vaultwarden-release.sh").read_text(encoding="utf-8")
+    def test_secret_helper_never_prints_values(self) -> None:
+        helper = Path("scripts/lib/release-secrets.sh").read_text(encoding="utf-8")
 
-        self.assertIn("--passwordenv BW_PASSWORD", helper)
         self.assertNotIn("set -x", helper)
-        self.assertNotIn("echo \"$value\"", helper)
-        self.assertIn("chmod 600", helper)
+        self.assertIn("umask 077", helper)
+        self.assertIn('chmod 600 "$output"', helper)
+        self.assertIn(">/dev/null", helper.replace('>"$output" 2>/dev/null', ">/dev/null"))
+        for line in helper.splitlines():
+            if "echo" in line:
+                self.assertNotRegex(line, r"\$\{?!|\$data|\$text")
 
-    def test_vault_server_is_a_masked_secret_without_a_default(self) -> None:
-        helper = Path("scripts/lib/vaultwarden-release.sh").read_text(encoding="utf-8")
-        self.assertIn("for variable in BW_SERVER ", helper)
-        self.assertIn('echo "::add-mask::$BW_SERVER"', helper)
-        self.assertIn('bw config server "$BW_SERVER" >/dev/null 2>&1', helper)
-        self.assertNotIn("${BW_SERVER:-", helper)
-        # Bitwarden CLI errors can name the server, so none reaches the log.
-        for line in helper.replace("\\\n", " ").splitlines():
-            if line.strip().startswith("bw ") or "$(bw " in line:
-                self.assertTrue("2>/dev/null" in line or ">/dev/null 2>&1" in line, line)
-        workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
-        self.assertNotRegex(workflow, r"BW_SERVER: (?!\$\{\{ secrets\.BW_SERVER \}\})")
+    def test_secret_helper_decodes_and_rejects_values(self) -> None:
+        import base64
+        import os
+        import subprocess
+        import tempfile
 
-    def test_manifest_signing_uses_the_vault_attachment_as_a_file(self) -> None:
+        payload = b"-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n"
+        encoded = base64.encodebytes(payload).decode("ascii")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "key.pem"
+
+            def decode(value: str | None) -> subprocess.CompletedProcess[str]:
+                environment = {k: v for k, v in os.environ.items() if k != "TEST_SECRET"}
+                if value is not None:
+                    environment["TEST_SECRET"] = value
+                return subprocess.run(
+                    ["bash", "-c", 'source scripts/lib/release-secrets.sh && gitlama_secret_file TEST_SECRET "$1"', "-", str(output)],
+                    env=environment, capture_output=True, text=True, check=False,
+                )
+
+            result = decode(encoded)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(output.read_bytes(), payload)
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(result.stdout, "")
+
+            for value, message in ((None, "missing TEST_SECRET"), ("not*base64!", "TEST_SECRET is not valid base64")):
+                output.write_bytes(b"stale")
+                result = decode(value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn("not*base64", result.stderr)
+                self.assertFalse(output.exists())
+
+    def test_manifest_signing_uses_the_secret_key_as_a_file(self) -> None:
         workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
         publisher = Path("scripts/publish-candidate.sh").read_text(encoding="utf-8")
 
-        self.assertGreaterEqual(
-            workflow.count(
-                "gitlama_vault_attachment northspline-release-key.pem"
-            ),
-            2,
-        )
+        self.assertEqual(workflow.count("gitlama_secret_file RELEASE_SIGNING_KEY_BASE64"), 2)
+        self.assertNotIn("BW_", workflow)
         self.assertIn("GITLAMA_RELEASE_PRIVATE_KEY_FILE", publisher)
         self.assertIn('--key-file "$GITLAMA_RELEASE_PRIVATE_KEY_FILE"', publisher)
         self.assertIn('--key-env GITLAMA_RELEASE_PRIVATE_KEY', publisher)

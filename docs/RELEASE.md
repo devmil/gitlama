@@ -25,7 +25,7 @@ the downloaded bytes with `sha256sum -c` before extraction.
 ## Transaction
 
 1. **prepare** requires a clean checkout of `main`. Before changing anything it
-   reads the release credentials from Vaultwarden, derives the public key from
+   decodes the release credentials from repository secrets, derives the public key from
    the protected release key and compares it with the versioned trust root
    `release/northspline-release-ed25519.pub`. A missing or mismatched credential
    therefore cannot create a release commit or tag. It then updates all canonical
@@ -163,8 +163,8 @@ The versioned trust root is `release/northspline-release-ed25519.pub` (the file
 name predates the product name and is part of every published release). Its
 private Ed25519 key is a distinct GitLama credential: locally it may be supplied
 with `--key-file` or through `GITLAMA_RELEASE_PRIVATE_KEY`, either a
-standard-base64 32-byte seed or PEM. CI downloads it from the Vaultwarden release
-item into a disposable owner-only file. Do not reuse another product's update key.
+standard-base64 32-byte seed or PEM. CI decodes it from the
+`RELEASE_SIGNING_KEY_BASE64` secret into a disposable owner-only file. Do not reuse another product's update key.
 
 `scripts/release.py manifest` closes the exact six packages into a canonical,
 bounded JSON document and retains the five newest stable and five newest beta
@@ -183,24 +183,24 @@ metadata and website pointers are updated only after that verification succeeds.
 
 ## Credentials
 
-The release reads its signing material from a Vaultwarden item. The workflow
-receives only the means to read that item, as repository secrets:
+The release reads its signing material from repository secrets. Key files are
+stored as base64 text (`base64 -w0 FILE` on Linux, `base64 -i FILE` on macOS):
 
 | Secret | Purpose |
 | --- | --- |
-| `BW_SERVER` | Vaultwarden server URL. Masked in the log; never printed or defaulted. |
-| `BW_CLIENTID`, `BW_CLIENTSECRET` | API key of the Vaultwarden account that can read the release item. |
-| `BW_PASSWORD` | Master password that unlocks that account's vault. |
-| `BW_RELEASE_ITEM_ID` | ID of the release item. |
+| `RELEASE_SIGNING_KEY_BASE64` | Ed25519 release key (PEM) that signs the manifest, the release index and macOS updates. It must match `release/northspline-release-ed25519.pub`. |
+| `MACOS_DEVELOPER_ID_P12_BASE64` | Developer ID Application certificate and key (PKCS#12). |
+| `MACOS_DEVELOPER_ID_P12_PASSWORD` | Password of that PKCS#12 file. |
+| `MACOS_CODESIGN_IDENTITY` | Signing identity name, for example `Developer ID Application: NAME (TEAMID)`. |
+| `APPLE_NOTARY_KEY_BASE64` | App Store Connect API key (`.p8`) for notarization. |
+| `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER_ID` | ID and issuer of that API key. |
 
-The release item holds the fields `CODESIGN_IDENTITY`, `P12_PASSWORD`,
-`APPLE_NOTARY_KEY_ID` and `APPLE_NOTARY_ISSUER_ID`, and the attachments
-`northspline-release-key.pem` (Ed25519 manifest and update key),
-`northspline-developer-id.p12` (Developer ID Application certificate and key) and
-`northspline-notary-api-key.p8` (App Store Connect API key for notarization).
-The macOS job imports the certificate into a disposable keychain and deletes the
-keychain and downloaded files on every exit path. No credential value is stored
-in Git.
+`scripts/lib/release-secrets.sh` decodes the key files into owner-only temporary
+files and never prints a value. The prepare job checks that all three key files
+decode and that the release key matches the versioned trust root before it
+changes anything. The macOS job imports the certificate into a disposable
+keychain and deletes the keychain and decoded files on every exit path. No
+credential value is stored in Git.
 
 Windows payloads and the MSI remain unsigned when both Windows signing values
 are absent. Once either `WINDOWS_CERTIFICATE_THUMBPRINT` or `WINDOWS_TIMESTAMP_URL`

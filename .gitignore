@@ -55,3 +55,6 @@ app.*.map.json
 /test/failures/
 
 /tests/native_windows_ipc/target/
+
+# Local-only helpers, never committed
+/local/

@@ -284,12 +284,10 @@ class ReleasePrepareTest(unittest.TestCase):
         self.assertIn("PUBLIC_GITHUB_REPOSITORY: ${{ github.repository }}", workflow)
         self.assertIn("GITHUB_RELEASE_TOKEN: ${{ github.token }}", workflow)
         prepare_job = workflow.split("\n  prepare:\n", 1)[1].split("\n  helper:\n", 1)[0]
-        for variable in ("BW_SERVER", "BW_CLIENTID", "BW_CLIENTSECRET", "BW_PASSWORD", "BW_RELEASE_ITEM_ID"):
+        for variable in ("RELEASE_SIGNING_KEY_BASE64", "MACOS_DEVELOPER_ID_P12_BASE64", "APPLE_NOTARY_KEY_BASE64"):
             self.assertIn(f"{variable}: ${{{{ secrets.{variable} }}}}", prepare_job)
-        self.assertIn("gitlama_vault_attachment northspline-release-key.pem", prepare_job)
-        for attachment in ("northspline-developer-id.p12", "northspline-notary-api-key.p8"):
             self.assertLess(
-                prepare_job.index(f"gitlama_vault_attachment {attachment}"),
+                prepare_job.index(f"gitlama_secret_file {variable}"),
                 prepare_job.index("python3 scripts/release.py prepare"),
             )
         self.assertIn('--key-file "$release_key"', prepare_job)
@@ -353,7 +351,7 @@ class ReleasePrepareTest(unittest.TestCase):
         self.assertIn("python3 scripts/release.py tag", publish_job)
         self.assertIn("git push origin 'refs/tags/", publish_job)
         collect_job = workflow.split("\n  collect:\n", 1)[1].split("\n  publish:\n", 1)[0]
-        self.assertIn("gitlama_vault_attachment northspline-release-key.pem", collect_job)
+        self.assertIn("gitlama_secret_file RELEASE_SIGNING_KEY_BASE64", collect_job)
         self.assertIn("GITLAMA_RELEASE_PRIVATE_KEY_FILE", collect_job)
         self.assertIn("./scripts/publish-candidate.sh publication", collect_job)
         self.assertIn("gitlama-signed-publication-candidate", collect_job)
