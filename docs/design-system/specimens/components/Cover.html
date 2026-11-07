@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Cover · Meridian specimen</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../tokens/gitlama-tokens.css">
+<link rel="stylesheet" href="../../components/reference/bundle.css">
+<style>[data-density="compact"]{--size-row:var(--size-row-compact)}[data-density="comfortable"]{--size-row:var(--size-row-comfortable)}</style>
+<script>(function(){var q=new URLSearchParams(location.search);document.documentElement.setAttribute('data-theme',q.get('theme')||'light');document.documentElement.setAttribute('data-density',q.get('density')||'regular');})();</script>
+<script src="../lib/react.production.min.js"></script>
+<script src="../lib/react-dom.production.min.js"></script>
+<script src="../../components/reference/bundle.js"></script>
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--font-sans); overflow:hidden; }
+  .cover { position:relative; width:960px; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
+  .art svg { display:block; }
+  .blk { rx:var(--radius-lg); }
+  .polar { fill:var(--polar); }
+  .ink { fill:var(--fjord); }
+  .soft { fill:var(--polar-soft); }
+  .amber { fill:var(--lane-3); }
+  .teal { fill:var(--lane-2); }
+  .lane-op { fill:none; stroke:var(--on-polar); stroke-width:2; stroke-linecap:round; }
+  .lane-a { fill:none; stroke:var(--polar); stroke-width:2; stroke-linecap:round; }
+  .lane-b { fill:none; stroke:var(--lane-2); stroke-width:2; stroke-linecap:round; }
+  .ring-p { fill:var(--polar); stroke:var(--on-polar); stroke-width:2; }
+  .ring-i { fill:var(--fjord); stroke:var(--polar); stroke-width:2; }
+  .words { position:absolute; left:var(--space-8); bottom:var(--space-8); max-width:440px; }
+  .name { margin:0; font-size:64px; line-height:.95; font-weight:650; letter-spacing:-.025em; color:var(--ink); }
+  .tag { margin:var(--space-4) 0 0 2px; font-size:14px; line-height:20px; color:var(--ink-muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      polar 144x216 (the one accent, largest) · fjord 320x184 bleeding off top and right (the mark's square) · polar-soft 144x80 (tint) · lane-3 amber 64x80 and lane-2 teal 80x80 (the graph's lanes) — about 40% of 960x288
+  arrangement islands on a ground: one tall polar slab left, an ink slab bleeding top-right, a strip of three below it, space-6 gutters, bottoms on one line space-6 above the edge
+  pattern     the spline graph (literal motif: "a lane changes column along a curve, never a diagonal"): 2px lanes at size-lane pitch with ring nodes at size-row, cut in on-polar over polar and in polar/lane-2 over fjord
+  scales      gutters space-6 (16); lane pitch size-lane (14, doubled 28); node rows size-row (28); corners radius-lg
+-->
+<rect class="polar blk" x="16" y="48" width="144" height="216"/>
+<rect class="ink blk" x="176" y="-16" width="320" height="184"/>
+<rect class="soft blk" x="176" y="184" width="144" height="80"/>
+<rect class="amber blk" x="336" y="184" width="64" height="80"/>
+<rect class="teal blk" x="416" y="184" width="80" height="80"/>
+<path class="lane-op" d="M60 48V160C60 174 88 174 88 188V216C88 230 60 230 60 244V264"/>
+<path class="lane-op" d="M60 132C60 146 116 146 116 188V264" />
+<circle class="ring-p" cx="60" cy="76" r="5"/><circle class="ring-p" cx="60" cy="104" r="5"/><circle class="ring-p" cx="60" cy="132" r="5"/><circle class="ring-p" cx="88" cy="188" r="5"/><circle class="ring-p" cx="88" cy="216" r="5"/><circle class="ring-p" cx="60" cy="244" r="5"/>
+<path class="lane-a" d="M232 -16V48C232 62 260 62 260 76V104C260 118 232 118 232 132V168"/>
+<path class="lane-b" d="M288 -16V48C288 90 232 90 232 132"/>
+<circle class="ring-i" cx="232" cy="20" r="5"/><circle class="ring-i" cx="232" cy="48" r="5"/><circle class="ring-i" cx="260" cy="76" r="5"/><circle class="ring-i" cx="260" cy="104" r="5"/><circle class="ring-i" cx="288" cy="48" r="5"/><circle class="ring-i" cx="232" cy="132" r="5"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">GitLama</h1>
+<p class="tag">Meridian: a dense, keyboard-first Git workspace that feels calm.</p>
+</div>
+</div>
+</body>
+</html>

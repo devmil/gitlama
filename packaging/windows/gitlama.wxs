@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="GitLama"
+      Manufacturer="GitLama contributors"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="D030DC0E-04E1-4964-8B74-25AACD0B4E13"
+      Language="1033"
+      Scope="perMachine"
+      InstallerVersion="500">
+    <SummaryInformation Description="GitLama graph-first Git GUI" Manufacturer="GitLama contributors" />
+    <MajorUpgrade
+        AllowSameVersionUpgrades="no"
+        DowngradeErrorMessage="A newer version of GitLama is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+    <Property Id="GITLAMA_MARKETING_VERSION" Value="$(var.MarketingVersion)" />
+    <Property Id="GITLAMA_BUILD_NUMBER" Value="$(var.BuildNumber)" />
+    <Property Id="ARPCOMMENTS" Value="GitLama desktop Git client" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="GitLama" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="GitLama" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="GitLamaFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.StageDir)\**">
+        <Exclude Files="$(var.StageDir)\gitlama.exe" />
+        <Exclude Files="$(var.StageDir)\**\*.pdb" />
+      </Files>
+      <Component Id="GitLamaExecutable" Guid="{93422238-8022-4D64-83A0-A144E50E2BF0}" Bitness="always64">
+        <File Id="GitLamaExe" Source="$(var.StageDir)\gitlama.exe" KeyPath="yes">
+          <Shortcut
+              Id="GitLamaStartMenuShortcut"
+              Directory="ApplicationProgramsFolder"
+              Name="GitLama"
+              WorkingDirectory="INSTALLFOLDER"
+              Advertise="yes" />
+        </File>
+      </Component>
+      <Component Id="GitLamaInstallRegistration" Guid="{0EA0BC41-C79E-4EA3-8068-EEF5B7675FEF}" Bitness="always64">
+        <RegistryValue
+            Root="HKLM"
+            Key="Software\GitLama"
+            Name="InstallLocation"
+            Value="[INSTALLFOLDER]"
+            Type="string"
+            KeyPath="yes" />
+        <RemoveFolder Id="RemoveGitLamaInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+        <RemoveFolder Id="RemoveGitLamaProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="MainFeature" Title="GitLama" Level="1" AllowAbsent="no">
+      <ComponentGroupRef Id="GitLamaFiles" />
+    </Feature>
+  </Package>
+</Wix>

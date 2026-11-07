@@ -1,0 +1,409 @@
+{
+  "comment": "The remote control-plane contract. tooling/remote_wire/generate.py emits rust-core/application/src/wire/contract.rs and lib/models/remote_contract.g.dart from it; the helper, the core and the client use only the generated values.",
+  "capabilities": [
+    {
+      "name": "read",
+      "write": false,
+      "doc": "Repository reads."
+    },
+    {
+      "name": "listDirectory",
+      "write": false,
+      "doc": "Browsing host folders."
+    },
+    {
+      "name": "stage",
+      "write": true,
+      "receipt": true,
+      "doc": "Staging and unstaging."
+    },
+    {
+      "name": "commit",
+      "write": true,
+      "receipt": true,
+      "doc": "Commits, amends included."
+    },
+    {
+      "name": "refs",
+      "write": true,
+      "receipt": true,
+      "doc": "Branch, tag, upstream, remote configuration and checkout changes."
+    },
+    {
+      "name": "stash",
+      "write": true,
+      "receipt": true,
+      "doc": "Stash workflows."
+    },
+    {
+      "name": "transfer",
+      "write": true,
+      "receipt": true,
+      "doc": "Fetch, pull and push with the host's own Git credentials."
+    },
+    {
+      "name": "discard",
+      "write": true,
+      "receipt": true,
+      "doc": "Irreversible discard of working-tree changes and removal of untracked files."
+    },
+    {
+      "name": "history",
+      "write": true,
+      "receipt": true,
+      "doc": "Merge, cherry-pick, revert, rebase and restack, conflict resolution and the sequencer, and bisect."
+    },
+    {
+      "name": "recovery",
+      "write": true,
+      "receipt": true,
+      "doc": "Named snapshots, restoring files, applying patches and removing a stale index lock."
+    },
+    {
+      "name": "extensions",
+      "write": true,
+      "receipt": true,
+      "doc": "Worktrees, submodules, Git LFS and .gitignore entries."
+    },
+    {
+      "name": "initialize",
+      "write": true,
+      "receipt": false,
+      "doc": "Creating a repository in a missing or empty folder. A write offered with the others, but without a receipt: the folder holds nothing to change."
+    }
+  ],
+  "families": [
+    {
+      "name": "stage",
+      "method": "Stage",
+      "capability": "stage",
+      "direct": true
+    },
+    {
+      "name": "commit",
+      "method": "Commit",
+      "capability": "commit",
+      "direct": false
+    },
+    {
+      "name": "refs",
+      "method": "Refs",
+      "capability": "refs",
+      "direct": false
+    },
+    {
+      "name": "stash",
+      "method": "Stash",
+      "capability": "stash",
+      "direct": false
+    },
+    {
+      "name": "transfer",
+      "method": "Transfer",
+      "capability": "transfer",
+      "direct": false
+    },
+    {
+      "name": "discard",
+      "method": "Discard",
+      "capability": "discard",
+      "direct": false
+    },
+    {
+      "name": "history",
+      "method": "History",
+      "capability": "history",
+      "direct": false,
+      "doc": "Merge, cherry-pick or revert."
+    },
+    {
+      "name": "rebase",
+      "method": "Rebase",
+      "capability": "history",
+      "direct": false
+    },
+    {
+      "name": "restack",
+      "method": "Restack",
+      "capability": "history",
+      "direct": false
+    },
+    {
+      "name": "bisect",
+      "method": "Bisect",
+      "capability": "history",
+      "direct": false
+    },
+    {
+      "name": "conflict",
+      "method": "Conflict",
+      "capability": "history",
+      "direct": true,
+      "doc": "Resolving one conflicted file."
+    },
+    {
+      "name": "sequencer",
+      "method": "Sequencer",
+      "capability": "history",
+      "direct": true,
+      "doc": "Continuing, skipping or aborting an operation stopped on conflicts."
+    },
+    {
+      "name": "snapshot",
+      "method": "Snapshot",
+      "capability": "recovery",
+      "direct": true,
+      "doc": "Creating, deleting or branching from a named snapshot."
+    },
+    {
+      "name": "snapshotRestore",
+      "method": "SnapshotRestore",
+      "capability": "recovery",
+      "direct": false
+    },
+    {
+      "name": "restore",
+      "method": "Restore",
+      "capability": "recovery",
+      "direct": false,
+      "doc": "Restoring a file from a commit."
+    },
+    {
+      "name": "indexLock",
+      "method": "IndexLock",
+      "capability": "recovery",
+      "direct": false
+    },
+    {
+      "name": "patch",
+      "method": "Patch",
+      "capability": "recovery",
+      "direct": false,
+      "doc": "Applying a patch."
+    },
+    {
+      "name": "extension",
+      "method": "Extension",
+      "capability": "extensions",
+      "direct": true,
+      "doc": "Worktrees, submodules, Git LFS and .gitignore entries."
+    }
+  ],
+  "outcomes": [
+    {
+      "name": "succeeded",
+      "definite": true
+    },
+    {
+      "name": "failed",
+      "definite": true
+    },
+    {
+      "name": "notApplied",
+      "definite": true
+    },
+    {
+      "name": "desiredStateObserved",
+      "definite": false
+    },
+    {
+      "name": "partial",
+      "definite": true,
+      "doc": "Ran and left work to finish, such as conflicts or an edit stop."
+    },
+    {
+      "name": "unknown",
+      "definite": false
+    }
+  ],
+  "errors": [
+    "invalidRequest",
+    "unsupportedCommand",
+    "unknownSession",
+    "capacity",
+    "canceled",
+    "timedOut",
+    "pathInvalid",
+    "pathNotFound",
+    "permissionDenied",
+    "notDirectory",
+    "cursorExpired",
+    "directoryChanged",
+    "identityMismatch",
+    "writeNotPermitted",
+    "previewExpired",
+    "preconditionFailed",
+    "operationIdConflict",
+    "admissionEpochRetired",
+    "receiptCapacity",
+    "storeUnavailable",
+    "internal"
+  ],
+  "fatalErrors": [
+    "protocolViolation",
+    "handshakeRejected",
+    "handshakeTimeout",
+    "shutdown"
+  ],
+  "bulk": [
+    "repositorySessionHistoryComplete",
+    "repositorySessionHistoryQuery",
+    "repositorySessionBlameLoad",
+    "repositorySessionPathHistory",
+    "repositorySessionRangeHistory",
+    "repositorySessionDiffSearch",
+    "repositorySessionConflictPrediction",
+    "repositorySessionRebasePlan",
+    "repositorySessionRestackPlan",
+    "repositorySessionFixupSuggestion",
+    "repositorySessionDiffSyntaxPage",
+    "repositorySessionArchivePage"
+  ],
+  "limits": [
+    {
+      "name": "requestsPerConnection",
+      "value": 32,
+      "doc": "Requests a connection may have outstanding, including queued ones."
+    },
+    {
+      "name": "sessionsPerConnection",
+      "value": 16,
+      "doc": "Repository sessions one connection may hold open."
+    },
+    {
+      "name": "transactionBytes",
+      "value": 16777216,
+      "doc": "The largest reassembled transaction."
+    },
+    {
+      "name": "chunkBytes",
+      "value": 1048576,
+      "doc": "Messages above this size travel as chunk transactions."
+    },
+    {
+      "name": "frameBytes",
+      "value": 4194304,
+      "doc": "The largest frame payload either peer accepts."
+    },
+    {
+      "name": "helloBytes",
+      "value": 65536,
+      "doc": "The largest hello or hello acknowledgement."
+    },
+    {
+      "name": "jsonDepth",
+      "value": 16,
+      "doc": "The deepest JSON nesting in a frame or transaction."
+    },
+    {
+      "name": "frameCollection",
+      "value": 4096,
+      "doc": "Items per JSON array or object in one frame."
+    },
+    {
+      "name": "transactionCollection",
+      "value": 262144,
+      "doc": "Items per JSON array or object in a reassembled transaction."
+    },
+    {
+      "name": "pathBytes",
+      "value": 16384,
+      "doc": "Native bytes of an absolute host path."
+    },
+    {
+      "name": "patchBytes",
+      "value": 8388608,
+      "doc": "The largest patch a client hands over for applying, before encoding."
+    },
+    {
+      "name": "conflictResultBytes",
+      "value": 8388608,
+      "doc": "The largest merged file a conflict resolution saves."
+    },
+    {
+      "name": "stagePaths",
+      "value": 256,
+      "doc": "Paths one staging request names, on this computer and on a host."
+    },
+    {
+      "name": "stageRows",
+      "value": 4096,
+      "doc": "Rows one partial staging or discard request names."
+    },
+    {
+      "name": "stagePathBytes",
+      "value": 32768,
+      "doc": "Native bytes of one path in a staging request."
+    },
+    {
+      "name": "commitSubjectBytes",
+      "value": 4096,
+      "doc": "UTF-8 bytes of a commit subject."
+    },
+    {
+      "name": "commitDescriptionBytes",
+      "value": 1048576,
+      "doc": "UTF-8 bytes of a commit description."
+    },
+    {
+      "name": "textBytes",
+      "value": 4096,
+      "doc": "Names, targets and URLs in ref, stash and transfer requests."
+    },
+    {
+      "name": "pendingOperations",
+      "value": 1024,
+      "doc": "Remote writes kept in the local record; unresolved ones are never evicted."
+    },
+    {
+      "name": "summaryCharacters",
+      "value": 256,
+      "doc": "Unicode scalar values (Dart runes, Rust chars) of a pending operation's summary."
+    },
+    {
+      "name": "pageRows",
+      "value": 512,
+      "doc": "Rows of one history, diff, blame or list page."
+    },
+    {
+      "name": "branchFilterReferences",
+      "value": 1024,
+      "doc": "References one history branch filter names."
+    },
+    {
+      "name": "syntaxPageRows",
+      "value": 32,
+      "doc": "Diff rows one syntax request covers, sliced from an accepted text page."
+    },
+    {
+      "name": "syntaxReplyBytes",
+      "value": 16384,
+      "doc": "Encoded bytes of one syntax reply; a longer one returns fewer rows and a continuation offset."
+    },
+    {
+      "name": "syntaxSpansPerSide",
+      "value": 64,
+      "doc": "Category spans of one side of one diff row; a row side with more stays plain."
+    },
+    {
+      "name": "syntaxSourceBytes",
+      "value": 8388608,
+      "doc": "Bytes of one diff source side parsed for syntax; a larger side stays plain."
+    },
+    {
+      "name": "syntaxLineBytes",
+      "value": 16384,
+      "doc": "Bytes of one source line, terminator included, the syntax parser reads; it and later lines of that side stay plain."
+    },
+    {
+      "name": "syntaxRetainedSourceBytes",
+      "value": 33554432,
+      "doc": "Source bytes the syntax worker holds at once, queued, active and cached together."
+    },
+    {
+      "name": "textSyntaxPageLines",
+      "value": 128,
+      "doc": "Lines of a caller-held text one syntax request covers."
+    }
+  ]
+}

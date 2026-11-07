@@ -1,0 +1,32 @@
+{
+  "comment": "Accept/reject vectors both the helper tests and the Dart remote tests read. They pin the generated contract to concrete wire names.",
+  "methodCapabilities": [
+    ["previewStage", "stage"], ["executeStage", "stage"], ["executeCommit", "commit"],
+    ["previewRefs", "refs"], ["executeStash", "stash"], ["previewTransfer", "transfer"],
+    ["executeDiscard", "discard"], ["previewHistory", "history"], ["executeRebase", "history"],
+    ["previewRestack", "history"], ["executeBisect", "history"], ["previewConflict", "history"],
+    ["executeSequencer", "history"], ["executeSnapshot", "recovery"],
+    ["previewSnapshotRestore", "recovery"], ["executeRestore", "recovery"],
+    ["previewIndexLock", "recovery"], ["executePatch", "recovery"], ["previewExtension", "extensions"]
+  ],
+  "notWriteMethods": ["previewNothing", "execute", "preview", "executestage", "lookupOperation", "openRepository"],
+  "capabilities": {
+    "accept": ["read", "listDirectory", "stage", "commit", "refs", "stash", "transfer", "discard", "history", "recovery", "extensions", "initialize"],
+    "reject": ["", "Read", "write", "writes", "initialise", "receipt"]
+  },
+  "writeCapabilities": ["stage", "commit", "refs", "stash", "transfer", "discard", "history", "recovery", "extensions", "initialize"],
+  "receiptWriteCapabilities": ["stage", "commit", "refs", "stash", "transfer", "discard", "history", "recovery", "extensions"],
+  "outcomes": {
+    "definite": ["succeeded", "failed", "notApplied", "partial"],
+    "open": ["desiredStateObserved", "unknown"],
+    "reject": ["success", "Unknown", ""]
+  },
+  "errors": {
+    "accept": ["invalidRequest", "unsupportedCommand", "unknownSession", "capacity", "canceled", "timedOut", "pathInvalid", "pathNotFound", "permissionDenied", "notDirectory", "cursorExpired", "directoryChanged", "identityMismatch", "writeNotPermitted", "previewExpired", "preconditionFailed", "operationIdConflict", "admissionEpochRetired", "receiptCapacity", "storeUnavailable", "internal"],
+    "reject": ["disconnected", "protocolViolation", "invalid_request", ""]
+  },
+  "limits": {
+    "stagePaths": 256, "stageRows": 4096, "patchBytes": 8388608, "frameBytes": 4194304,
+    "transactionBytes": 16777216, "pathBytes": 16384, "summaryCharacters": 256, "pageRows": 512
+  }
+}

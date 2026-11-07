@@ -1,0 +1,60 @@
+name: gitlama
+description: "GitLama application."
+publish_to: none
+version: 0.1.0-beta.64+65
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  devmil_logging:
+    git:
+      url: https://github.com/devmil/devmil-logging.git
+      ref: aca7c46d78ed29e283bd01b6d3f43adb481cf297
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  logging: ^1.3.0
+  flutter_rust_bridge: 2.13.0-beta.5
+  code_assets: ^1.0.0
+  crypto: ^3.0.7
+  hooks: ^1.0.3
+  provider: ^6.1.5+1
+  flutter_svg: ^2.3.0
+  file_selector: ^1.1.0
+  desktop_drop: 0.8.4
+  screen_retriever: ^0.2.2
+  window_manager: ^0.5.2
+  desktop_multi_window: ^0.3.1
+  url_launcher: ^6.3.2
+  meridian_ui:
+    git:
+      url: https://github.com/devmil/meridian_ui.git
+      ref: 71e2febcb23886cbdf05d2dd5874ad6ff820ffcd
+  # Meridian's native menu companion, from the same commit as meridian_ui.
+  meridian_native_menus:
+    git:
+      url: https://github.com/devmil/meridian_ui.git
+      ref: 71e2febcb23886cbdf05d2dd5874ad6ff820ffcd
+      path: packages/meridian_native_menus
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - resources/brand/
+    - assets/brand/tile-64.png
+    - assets/brand/tile-256.png
+    - assets/fonts/OFL.txt
+    - assets/licenses/
+    - LICENSE
+    - THIRD_PARTY_NOTICES.md

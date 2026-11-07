@@ -1,0 +1,791 @@
+{
+  "comment": "Native (flutter_rust_bridge) enums and the model enums they map to by variant name. tooling/remote_wire/generate.py emits exhaustive switches for each direction; `rename` maps a native variant to its model name.",
+  "pairs": [
+    {
+      "native": "lib/rust/third_party/gitlama_contract/activity.dart:NativeActivityStatus",
+      "model": "lib/models/activity.dart:ActivityStatus",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/advanced_rebase.dart:NativeAdvancedRebaseFailureKind",
+      "model": "lib/models/advanced_rebase.dart:AdvancedRebaseFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/advanced_rebase.dart:NativeFixupSuggestionState",
+      "model": "lib/models/advanced_rebase.dart:FixupSuggestionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/advanced_rebase.dart:NativeRestackExecutionState",
+      "model": "lib/models/advanced_rebase.dart:RestackExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeChangeKind",
+      "model": "lib/models/repository_state.dart:ChangeKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeCommitExecutionState",
+      "model": "lib/models/commit.dart:CommitExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeCommitFailureKind",
+      "model": "lib/models/commit.dart:CommitFailureKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeCommitSigning",
+      "model": "lib/models/commit.dart:CommitSigning",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeCommitWarning",
+      "model": "lib/models/commit.dart:CommitWarning",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeDiffWhitespace",
+      "model": "lib/models/diff.dart:DiffWhitespace",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeDiscardExecutionState",
+      "model": "lib/models/discard.dart:DiscardExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeDiscardKind",
+      "model": "lib/models/discard.dart:DiscardKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeDiscardScope",
+      "model": "lib/models/discard.dart:DiscardScope",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeFileChangeKind",
+      "model": "lib/models/inspection.dart:CommitFileChangeKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeHeadKind",
+      "model": "lib/models/repository_state.dart:HeadKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeHistoryMetadataFailure",
+      "model": "lib/models/history.dart:HistoryMetadataFailure",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeIndexLockFailureKind",
+      "model": "lib/models/index_lock.dart:IndexLockFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeOperationCenterAction",
+      "model": "lib/models/operation_center.dart:OperationCenterAction",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeOperationCenterOrigin",
+      "model": "lib/models/operation_center.dart:OperationCenterOrigin",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeOperationCenterState",
+      "model": "lib/models/operation_center.dart:OperationCenterState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeOperationKind",
+      "model": "lib/models/repository_state.dart:RepositoryOperationKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativePatchApplyExecutionState",
+      "model": "lib/models/patch.dart:PatchApplyExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativePatchExportExecutionState",
+      "model": "lib/models/patch.dart:PatchExportExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativePatchExportScope",
+      "model": "lib/models/patch.dart:PatchExportScope",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativePatchFormat",
+      "model": "lib/models/patch.dart:PatchFormat",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativePatchSide",
+      "model": "lib/models/patch.dart:PatchSide",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRefMutationExecutionState",
+      "model": "lib/models/ref_mutation.dart:RefMutationExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRefMutationKind",
+      "model": "lib/models/ref_mutation.dart:RefMutationKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRefMutationWarning",
+      "model": "lib/models/ref_mutation.dart:RefMutationWarning",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRefResetMode",
+      "model": "lib/models/ref_mutation.dart:RefResetMode",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeReflogAction",
+      "model": "lib/models/history.dart:ReflogAction",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRepositoryFailureKind",
+      "model": "lib/models/repository_state.dart:RepositoryFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRepositoryKind",
+      "model": "lib/models/repository_state.dart:RepositoryKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRepositoryPhase",
+      "model": "lib/models/repository_state.dart:RepositoryPhase",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeRestoreState",
+      "model": "lib/models/inspection.dart:RestoreState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeStagingExecutionState",
+      "model": "lib/models/diff.dart:StagingExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeStagingScope",
+      "model": "lib/models/diff.dart:StagingScope",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeStagingSide",
+      "model": "lib/models/diff.dart:StagingSide",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeStatusEntryKind",
+      "model": "lib/models/repository_state.dart:StatusEntryKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeTreeEntryKind",
+      "model": "lib/models/inspection.dart:CommitTreeEntryKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeWorkingTreeState",
+      "model": "lib/models/repository_state.dart:WorkingTreeState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/cli_forwarding.dart:NativeCliCommandKind",
+      "model": "lib/models/cli_forwarding.dart:CliForwardedCommandKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/cli_forwarding.dart:NativeCliFailureKind",
+      "model": "lib/models/cli_forwarding.dart:CliForwardingFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/cli_forwarding.dart:NativeCliPullStrategy",
+      "model": "lib/models/cli_forwarding.dart:CliPullStrategy",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/cli_forwarding.dart:NativeCliResponseKind",
+      "model": "lib/models/cli_forwarding.dart:CliForwardingResponse",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/cli_forwarding.dart:NativeCliStartupState",
+      "model": "lib/models/cli_forwarding.dart:CliStartupState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeCloneFailureKind",
+      "model": "lib/models/clone_attempt.dart:CloneFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/clone.dart:NativeCloneState",
+      "model": "lib/models/clone_attempt.dart:CloneAttemptPhase",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictContinuationState",
+      "model": "lib/models/conflict.dart:ConflictContinuationState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictFailureKind",
+      "model": "lib/models/conflict.dart:ConflictFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictFileKind",
+      "model": "lib/models/conflict.dart:ConflictFileKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictOperationKind",
+      "model": "lib/models/conflict.dart:ConflictOperationKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictRegionChoice",
+      "model": "lib/models/conflict.dart:ConflictRegionChoice",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictSequencerAction",
+      "model": "lib/models/conflict.dart:ConflictSequencerAction",
+      "toModel": false,
+      "toNative": true,
+      "rename": {
+        "continue_": "continueOperation"
+      }
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/conflict.dart:NativeConflictSideChoice",
+      "model": "lib/models/conflict.dart:ConflictSideChoice",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff.dart:NativeDiffFileKind",
+      "model": "lib/models/diff.dart:DiffFileKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff.dart:NativeDiffLayout",
+      "model": "lib/models/diff.dart:DiffViewLayout",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff.dart:NativeDiffRowKind",
+      "model": "lib/models/diff.dart:DiffRowKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff.dart:NativeDiffSyntaxOrigin",
+      "model": "lib/models/diff_syntax.dart:DiffSyntaxOrigin",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff.dart:NativeSyntaxSideState",
+      "model": "lib/models/diff_syntax.dart:DiffSyntaxSideState",
+      "toModel": true,
+      "toNative": false,
+      "rename": {
+        "deferred_": "deferred"
+      }
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff.dart:NativeSyntaxTokenKind",
+      "model": "lib/models/diff_syntax.dart:DiffSyntaxKind",
+      "toModel": true,
+      "toNative": false,
+      "rename": {
+        "operator_": "operator"
+      }
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff_renderer.dart:NativeDiffRendererFailureKind",
+      "model": "lib/models/diff_renderer.dart:DiffRendererFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/diff_renderer.dart:NativeDiffRendererState",
+      "model": "lib/models/diff_renderer.dart:DiffRendererState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/extensions.dart:NativeExtensionFailureKind",
+      "model": "lib/models/repository_extensions.dart:RepositoryExtensionFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/extensions.dart:NativeExtensionMutationKind",
+      "model": "lib/models/repository_extensions.dart:RepositoryExtensionMutationKind",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/extensions.dart:NativeExtensionMutationState",
+      "model": "lib/models/repository_extensions.dart:RepositoryExtensionMutationState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/extensions.dart:NativeLfsPathState",
+      "model": "lib/models/repository_extensions.dart:LfsPathState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/extensions.dart:NativeSubmoduleState",
+      "model": "lib/models/repository_extensions.dart:SubmoduleState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeConflictPredictionKind",
+      "model": "lib/models/history_mutation.dart:ConflictPredictionKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeHistoryMergeMode",
+      "model": "lib/models/history_mutation.dart:HistoryMergeMode",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeHistoryMutationExecutionState",
+      "model": "lib/models/history_mutation.dart:HistoryMutationExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeHistoryMutationFailureKind",
+      "model": "lib/models/history_mutation.dart:HistoryMutationFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeHistoryMutationKind",
+      "model": "lib/models/history_mutation.dart:HistoryMutationKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingAuthentication",
+      "model": "lib/models/hosting.dart:HostingAuthentication",
+      "toModel": true,
+      "toNative": true,
+      "rename": {
+        "oAuth": "oauth"
+      }
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingBindingState",
+      "model": "lib/models/hosting.dart:HostingBindingState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingCapability",
+      "model": "lib/models/hosting.dart:HostingCapability",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingChangeRequestState",
+      "model": "lib/models/hosting.dart:HostingChangeRequestState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingCheckState",
+      "model": "lib/models/hosting.dart:HostingCheckState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingCredentialState",
+      "model": "lib/models/hosting.dart:HostingCredentialState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingFailureKind",
+      "model": "lib/models/hosting.dart:HostingFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingIssueState",
+      "model": "lib/models/hosting.dart:HostingIssueState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingMergeability",
+      "model": "lib/models/hosting.dart:HostingMergeability",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingPreset",
+      "model": "lib/models/hosting.dart:HostingPreset",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingRemoteReferenceKind",
+      "model": "lib/models/hosting.dart:HostingRemoteReferenceKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingResourceKind",
+      "model": "lib/models/hosting.dart:HostingResourceKind",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting.dart:NativeHostingReviewSummary",
+      "model": "lib/models/hosting.dart:HostingReviewSummary",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_reference.dart:NativeHostingReferenceFailure",
+      "model": "lib/models/hosting.dart:HostingReferenceFailure",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_review.dart:NativeHostingReviewAction",
+      "model": "lib/models/hosting.dart:HostingReviewAction",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_review.dart:NativeHostingReviewFailure",
+      "model": "lib/models/hosting.dart:HostingReviewFailure",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_review.dart:NativeHostingReviewSubmitState",
+      "model": "lib/models/hosting.dart:HostingReviewSubmitState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_runtime.dart:NativeHostingOAuthFailure",
+      "model": "lib/models/hosting.dart:HostingOAuthFailure",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_runtime.dart:NativeHostingOAuthState",
+      "model": "lib/models/hosting.dart:HostingOAuthState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_runtime.dart:NativeHostingResourceFailure",
+      "model": "lib/models/hosting.dart:HostingResourceFailure",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/hosting_runtime.dart:NativeHostingResourceLoadState",
+      "model": "lib/models/hosting.dart:HostingResourceLoadState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/integrations.dart:NativeIntegrationExecution",
+      "model": "lib/models/integrations.dart:IntegrationExecution",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/integrations.dart:NativeIntegrationExecutionState",
+      "model": "lib/models/integrations.dart:IntegrationExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/integrations.dart:NativeIntegrationFailureKind",
+      "model": "lib/models/integrations.dart:IntegrationFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/integrations.dart:NativeIntegrationKind",
+      "model": "lib/models/integrations.dart:IntegrationKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/integrations.dart:NativeIntegrationLaunchMode",
+      "model": "lib/models/integrations.dart:IntegrationLaunchMode",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/named_snapshot.dart:NativeNamedSnapshotExecutionState",
+      "model": "lib/models/named_snapshot.dart:NamedSnapshotExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/named_snapshot.dart:NativeNamedSnapshotFailureKind",
+      "model": "lib/models/named_snapshot.dart:NamedSnapshotFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/named_snapshot.dart:NativeNamedSnapshotState",
+      "model": "lib/models/named_snapshot.dart:NamedSnapshotState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/power_tools.dart:NativeBisectAction",
+      "model": "lib/models/power_tools.dart:BisectAction",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/power_tools.dart:NativeBisectExecutionState",
+      "model": "lib/models/power_tools.dart:BisectExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/power_tools.dart:NativeBisectMark",
+      "model": "lib/models/power_tools.dart:BisectMark",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/power_tools.dart:NativePowerFailureKind",
+      "model": "lib/models/power_tools.dart:PowerFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/power_tools.dart:NativePowerJobState",
+      "model": "lib/models/power_tools.dart:PowerJobState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/power_tools.dart:NativeSearchCompleteness",
+      "model": "lib/models/power_tools.dart:SearchCompleteness",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/rebase_operation.dart:NativeRebaseAction",
+      "model": "lib/models/rebase.dart:RebaseAction",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/rebase_operation.dart:NativeRebaseExecutionState",
+      "model": "lib/models/rebase.dart:RebaseExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/rebase_operation.dart:NativeRebaseFailureKind",
+      "model": "lib/models/rebase.dart:RebaseFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/recovery.dart:NativePreviousShutdown",
+      "model": "lib/models/recovery.dart:PreviousShutdown",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/recovery.dart:NativeRecoveryFailureKind",
+      "model": "lib/models/recovery.dart:RecoveryFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/recovery.dart:NativeSequencerKind",
+      "model": "lib/models/recovery.dart:SequencerKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/stash.dart:NativeStashExecutionState",
+      "model": "lib/models/stash.dart:StashExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/stash.dart:NativeStashFailureKind",
+      "model": "lib/models/stash.dart:StashFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/stash.dart:NativeStashKind",
+      "model": "lib/models/stash.dart:StashKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/domain/path_identity.dart:NativePathPlatform",
+      "model": "lib/models/settings.dart:NativePathPlatform",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/storage.dart:NativeSettingsFailureKind",
+      "model": "lib/models/settings.dart:SettingsFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/storage.dart:NativeSettingsLoadState",
+      "model": "lib/models/settings.dart:SettingsLoadState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/transfer.dart:NativePullStrategy",
+      "model": "lib/models/transfer.dart:PullStrategy",
+      "toModel": false,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/transfer.dart:NativeTransferExecutionState",
+      "model": "lib/models/transfer.dart:TransferExecutionState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/transfer.dart:NativeTransferDiagnosisKind",
+      "model": "lib/models/transfer.dart:TransferDiagnosisKind",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/transfer.dart:NativeTransferFailureKind",
+      "model": "lib/models/transfer.dart:TransferFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/transfer.dart:NativeTransferKind",
+      "model": "lib/models/transfer.dart:TransferKind",
+      "toModel": true,
+      "toNative": true
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeStagingFailureCode",
+      "model": "lib/models/diff.dart:StagingFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/archive.dart:NativeArchiveFailureKind",
+      "model": "lib/models/commit_archive.dart:CommitArchiveFailureCode",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/archive.dart:NativeArchiveState",
+      "model": "lib/models/commit_archive.dart:CommitArchiveState",
+      "toModel": true,
+      "toNative": false
+    },
+    {
+      "native": "lib/rust/third_party/gitlama_contract/dto.dart:NativeStagingPhase",
+      "model": "lib/models/diff.dart:StagingPhase",
+      "toModel": true,
+      "toNative": false
+    }
+  ]
+}

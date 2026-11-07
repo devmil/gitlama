@@ -1,0 +1,116 @@
+{
+  "schema": "gitlama.graph-row-layout.v1",
+  "revision": "2026-09-25",
+  "units": "logical-pixels",
+  "purpose": "Row geometry oracle for the integrated history row: shared graph/ref/subject area on the left, author/hash/date pinned right. Rust computes it; Flutter measures field widths.",
+  "inputContract": "rowWidth excludes scrollbar clearance. Field widths are measured/resolved for the current font/viewport. inkRightByPrimitive includes maximum stroke/ring extents of every primitive intersecting the row band, including offscreen-origin segments.",
+  "tokens": {
+    "contentGapPx": "space-4 (8)",
+    "metadataGapPx": "space-5 (12)",
+    "metadataFieldGapPx": "space-5 (12)",
+    "rightInsetPx": "space-5 (12)",
+    "laneOriginX": 9
+  },
+  "cases": [
+    {
+      "id": "sparse",
+      "rowWidth": 900,
+      "fieldWidths": [
+        140,
+        96,
+        110
+      ],
+      "inkRightByPrimitive": [
+        19
+      ],
+      "expected": {
+        "metadataLeft": 518,
+        "graphClipRight": 506,
+        "contentStart": 27,
+        "contentAvailable": 479
+      }
+    },
+    {
+      "id": "dense",
+      "rowWidth": 900,
+      "fieldWidths": [
+        140,
+        96,
+        110
+      ],
+      "inkRightByPrimitive": [
+        19,
+        51,
+        115
+      ],
+      "expected": {
+        "metadataLeft": 518,
+        "graphClipRight": 506,
+        "contentStart": 123,
+        "contentAvailable": 383
+      }
+    },
+    {
+      "id": "offscreen-continuation",
+      "rowWidth": 900,
+      "fieldWidths": [
+        140,
+        96,
+        110
+      ],
+      "inkRightByPrimitive": [
+        19,
+        83.25
+      ],
+      "expected": {
+        "metadataLeft": 518,
+        "graphClipRight": 506,
+        "contentStart": 92,
+        "contentAvailable": 414
+      }
+    },
+    {
+      "id": "clipped-dense-compact",
+      "rowWidth": 400,
+      "fieldWidths": [
+        80,
+        72,
+        88
+      ],
+      "inkRightByPrimitive": [
+        19,
+        180
+      ],
+      "expected": {
+        "metadataLeft": 124,
+        "graphClipRight": 112,
+        "contentStart": 188,
+        "contentAvailable": 0
+      }
+    },
+    {
+      "id": "font-scale-130",
+      "rowWidth": 600,
+      "fieldWidths": [
+        104,
+        125,
+        143
+      ],
+      "inkRightByPrimitive": [
+        35
+      ],
+      "expected": {
+        "metadataLeft": 192,
+        "graphClipRight": 180,
+        "contentStart": 43,
+        "contentAvailable": 137
+      }
+    }
+  ],
+  "visualAcceptance": [
+    "Author, hash and date stay visible and right-aligned at every capture viewport and text scale.",
+    "Sparse rows start the subject close to their graph ink; there is no global graph/subject divider.",
+    "Dense graphs clip before the metadata gap, in paint and in hit testing.",
+    "The selection bar is an inset radius-sm bar spanning shared content and metadata for the same OID."
+  ]
+}

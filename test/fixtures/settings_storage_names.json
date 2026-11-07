@@ -1,0 +1,15 @@
+{
+  "presets": ["github", "gitlab", "gitlabSelfManaged", "forgejo", "codeberg", "gitHubEnterprise"],
+  "authentications": ["oauth", "gitHubCli", "gitLabCli"],
+  "themes": ["system", "light", "dark"],
+  "densities": ["compact", "regular", "comfortable"],
+  "reduceMotion": ["followSystem", "reduce", "full"],
+  "fileLayouts": ["list", "tree"],
+  "inspectionOpenIn": ["pane", "window"],
+  "diffLayouts": ["unified", "sideBySide"],
+  "diffWhitespace": ["preserve", "ignoreAll", "ignoreAmount", "ignoreEndOfLine"],
+  "releaseChannels": ["stable", "beta"],
+  "integrationKinds": ["editor", "terminal", "fileManager", "browser", "diffTool", "mergeTool", "custom"],
+  "worktreePanes": ["changes", "history"],
+  "worktreeRoutes": ["repository", "commit", "file", "blame", "operation"]
+}

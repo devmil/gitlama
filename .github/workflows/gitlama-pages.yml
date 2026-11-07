@@ -1,16 +1,21 @@
-# northspline:public-site:v1 pages workflow
-# Runs on the public GitHub mirror only (Forgejo reads .forgejo/workflows).
-# Deploys webfront/, which Forgejo's sync-website workflow mirrors here.
+# Deploys webfront/ to GitHub Pages. The release workflow calls it after it
+# commits the signed release index, because pushes made with the workflow
+# token do not start other workflows.
 name: GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'webfront/**'
       - '.github/workflows/gitlama-pages.yml'
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit or branch whose webfront/ to deploy
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -25,14 +30,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Check website asset versions
+        run: python3 scripts/generate_webfront_versions.py --check
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: ./webfront
 

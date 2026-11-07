@@ -1,0 +1,2699 @@
+{
+  "schema": "gitlama.graph-fixture.v1",
+  "algorithm": "G-LANE-01",
+  "version": "3.0.0",
+  "layoutRevision": "2026-10-02",
+  "layoutOracle": "graph-row-layout-fixtures.json",
+  "geometry": {
+    "rowHeightCompact": 24,
+    "rowHeightRegular": 28,
+    "rowHeightComfortable": 32,
+    "lanePitch": 14,
+    "originX": 9,
+    "commitRingR": 4.5,
+    "ringStroke": 2,
+    "headOuterR": 7,
+    "headOuterStroke": 1.5,
+    "headInnerR": 4,
+    "mergeOuterR": 4.5,
+    "mergeInnerR": 1.75,
+    "wipR": 4.5,
+    "wipDash": [
+      2.2,
+      2.2
+    ],
+    "stashR": 4.5,
+    "stashDash": [
+      2.2,
+      2.2
+    ],
+    "boundarySquarePx": 7,
+    "stroke": 2,
+    "strokeLit": 2.5,
+    "unlitOpacity": 0.3,
+    "hitNode": 14,
+    "maxPills": 2,
+    "curve": "cubic S: control points at (fromX, midY) and (toX, midY); tangents vertical at both ends"
+  },
+  "algorithmNotes": [
+    "Walk visibleOrder newest-first.",
+    "HEAD first-parent spine is reserved for lane 0. Non-spine commits cannot occupy lane 0.",
+    "WIP occupies lane 0 and does not write parent reservations.",
+    "A non-spine commit whose first parent is on the spine reserves its own lane until that parent row, then joins lane 0. It does not write lane 0.",
+    "A spine commit writes its first parent onto lane 0.",
+    "Extra merge parents occupy the lowest free lane >= 1.",
+    "Lowest free lane ≥ min grows the array first so a non-spine commit cannot receive index 0.",
+    "Freed lanes may be reused by older unassigned commits. Assigned commits never change lane.",
+    "Color is laneIndex % 8. Column count may exceed 8; colors wrap.",
+    "Rust owns this assignment. Flutter paints the supplied projection only.",
+    "Lane colour is lane-(laneIndex % 8 + 1) from tokens/gitlama-tokens.json; lane 0 (HEAD's first-parent spine) is therefore always lane-1 (blue)."
+  ],
+  "fixtures": [
+    {
+      "id": "side-branch-joins-below-head",
+      "title": "Remote branch stays separate above HEAD until its actual parent",
+      "head": "head",
+      "selectedIds": ["head"],
+      "collapsedGroups": [],
+      "commits": [
+        {"id": "remote-tip", "parents": ["remote-base"], "refs": [{"kind": "remote", "label": "origin/feature"}]},
+        {"id": "remote-base", "parents": ["master"], "refs": []},
+        {"id": "head", "parents": ["master"], "refs": [{"kind": "head", "label": "HEAD"}]},
+        {"id": "other-tip", "parents": ["master"], "refs": [{"kind": "remote", "label": "origin/other"}]},
+        {"id": "master", "parents": ["base"], "refs": [{"kind": "branch", "label": "master"}]},
+        {"id": "base", "parents": [], "refs": []}
+      ],
+      "visibleOrder": ["remote-tip", "remote-base", "head", "other-tip", "master", "base"],
+      "expectedLanes": {"remote-tip": 1, "remote-base": 1, "head": 0, "other-tip": 2, "master": 0, "base": 0},
+      "expectedLaneSegments": [
+        {"from": "remote-tip", "to": "remote-base", "fromLane": 1, "toLane": 1, "kind": "straight"},
+        {"from": "remote-base", "to": "master", "fromLane": 1, "toLane": 0, "kind": "join"},
+        {"from": "head", "to": "master", "fromLane": 0, "toLane": 0, "kind": "straight"},
+        {"from": "other-tip", "to": "master", "fromLane": 2, "toLane": 0, "kind": "join"},
+        {"from": "master", "to": "base", "fromLane": 0, "toLane": 0, "kind": "straight"}
+      ],
+      "expectedShapes": {"remote-tip": "commit", "remote-base": "commit", "head": "commit", "other-tip": "commit", "master": "commit", "base": "commit"}
+    },
+    {
+      "id": "merged-release-branch-stays-separate",
+      "title": "A merged release parent stays separate across the first-parent row",
+      "head": "tip",
+      "selectedIds": ["release-side"],
+      "collapsedGroups": [],
+      "commits": [
+        {"id": "tip", "parents": ["new-release"], "refs": [{"kind": "head", "label": "HEAD"}]},
+        {"id": "new-release", "parents": ["linux-fix"], "refs": []},
+        {"id": "linux-fix", "parents": ["merge"], "refs": []},
+        {"id": "merge", "parents": ["search-fix", "release-side"], "refs": []},
+        {"id": "release-side", "parents": ["shared-base"], "refs": []},
+        {"id": "search-fix", "parents": ["shared-base"], "refs": []},
+        {"id": "shared-base", "parents": ["older"], "refs": []},
+        {"id": "older", "parents": [], "refs": []}
+      ],
+      "visibleOrder": ["tip", "new-release", "linux-fix", "merge", "release-side", "search-fix", "shared-base", "older"],
+      "expectedLanes": {"tip": 0, "new-release": 0, "linux-fix": 0, "merge": 0, "release-side": 1, "search-fix": 0, "shared-base": 0, "older": 0},
+      "expectedLaneSegments": [
+        {"from": "tip", "to": "new-release", "fromLane": 0, "toLane": 0, "kind": "straight"},
+        {"from": "new-release", "to": "linux-fix", "fromLane": 0, "toLane": 0, "kind": "straight"},
+        {"from": "linux-fix", "to": "merge", "fromLane": 0, "toLane": 0, "kind": "straight"},
+        {"from": "merge", "to": "search-fix", "fromLane": 0, "toLane": 0, "kind": "straight"},
+        {"from": "merge", "to": "release-side", "fromLane": 0, "toLane": 1, "kind": "merge"},
+        {"from": "release-side", "to": "shared-base", "fromLane": 1, "toLane": 0, "kind": "join"},
+        {"from": "search-fix", "to": "shared-base", "fromLane": 0, "toLane": 0, "kind": "straight"},
+        {"from": "shared-base", "to": "older", "fromLane": 0, "toLane": 0, "kind": "straight"}
+      ],
+      "expectedShapes": {"tip": "commit", "new-release": "commit", "linux-fix": "commit", "merge": "merge", "release-side": "commit", "search-fix": "commit", "shared-base": "commit", "older": "commit"}
+    },
+    {
+      "id": "linear-history",
+      "title": "Linear history",
+      "head": "c4",
+      "selectedIds": [
+        "c4"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "c4",
+          "parents": [
+            "c3"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "c3",
+          "parents": [
+            "c2"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c2",
+          "parents": [
+            "c1"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c1",
+          "parents": [
+            "c0"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c0",
+          "parents": [],
+          "refs": [
+            {
+              "kind": "tag",
+              "label": "v0.1"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "c4",
+        "c3",
+        "c2",
+        "c1",
+        "c0"
+      ],
+      "expectedLanes": {
+        "c4": 0,
+        "c3": 0,
+        "c2": 0,
+        "c1": 0,
+        "c0": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "c4",
+          "to": "c3",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c3",
+          "to": "c2",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c2",
+          "to": "c1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c1",
+          "to": "c0",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "c4": "commit",
+        "c3": "commit",
+        "c2": "commit",
+        "c1": "commit",
+        "c0": "commit"
+      }
+    },
+    {
+      "id": "fork",
+      "title": "Branch point: two children of one parent",
+      "head": "m1",
+      "selectedIds": [
+        "m1"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "f1",
+          "parents": [
+            "base"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "feature/graph"
+            }
+          ]
+        },
+        {
+          "id": "m1",
+          "parents": [
+            "base"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "base",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "f1",
+        "m1",
+        "base"
+      ],
+      "expectedLanes": {
+        "f1": 1,
+        "m1": 0,
+        "base": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "f1",
+          "to": "base",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "m1",
+          "to": "base",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "f1": "commit",
+        "m1": "commit",
+        "base": "commit"
+      }
+    },
+    {
+      "id": "join",
+      "title": "Join: merge of two branches",
+      "head": "M",
+      "selectedIds": [
+        "M"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "M",
+          "parents": [
+            "b",
+            "c"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "c",
+          "parents": [
+            "a"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "feature/graph"
+            }
+          ]
+        },
+        {
+          "id": "b",
+          "parents": [
+            "a"
+          ],
+          "refs": []
+        },
+        {
+          "id": "a",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "M",
+        "c",
+        "b",
+        "a"
+      ],
+      "expectedLanes": {
+        "M": 0,
+        "c": 1,
+        "b": 0,
+        "a": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "M",
+          "to": "b",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "M",
+          "to": "c",
+          "fromLane": 0,
+          "toLane": 1,
+          "kind": "merge"
+        },
+        {
+          "from": "c",
+          "to": "a",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "b",
+          "to": "a",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "M": "merge",
+        "c": "commit",
+        "b": "commit",
+        "a": "commit"
+      }
+    },
+    {
+      "id": "octopus-merge",
+      "title": "Octopus merge (four parents)",
+      "head": "M",
+      "selectedIds": [
+        "M"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "M",
+          "parents": [
+            "p0",
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "s3",
+          "parents": [
+            "base"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "topic-d"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "parents": [
+            "base"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "topic-c"
+            }
+          ]
+        },
+        {
+          "id": "s1",
+          "parents": [
+            "base"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "topic-b"
+            }
+          ]
+        },
+        {
+          "id": "p0",
+          "parents": [
+            "base"
+          ],
+          "refs": []
+        },
+        {
+          "id": "base",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "M",
+        "s3",
+        "s2",
+        "s1",
+        "p0",
+        "base"
+      ],
+      "expectedLanes": {
+        "M": 0,
+        "s3": 3,
+        "s2": 2,
+        "s1": 1,
+        "p0": 0,
+        "base": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "M",
+          "to": "p0",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "M",
+          "to": "s1",
+          "fromLane": 0,
+          "toLane": 1,
+          "kind": "octopus"
+        },
+        {
+          "from": "M",
+          "to": "s2",
+          "fromLane": 0,
+          "toLane": 2,
+          "kind": "octopus"
+        },
+        {
+          "from": "M",
+          "to": "s3",
+          "fromLane": 0,
+          "toLane": 3,
+          "kind": "octopus"
+        },
+        {
+          "from": "s3",
+          "to": "base",
+          "fromLane": 3,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "s2",
+          "to": "base",
+          "fromLane": 2,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "s1",
+          "to": "base",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "p0",
+          "to": "base",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "M": "merge",
+        "s3": "commit",
+        "s2": "commit",
+        "s1": "commit",
+        "p0": "commit",
+        "base": "commit"
+      }
+    },
+    {
+      "id": "boundary-shallow",
+      "title": "Shallow clone boundary",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "tip",
+          "parents": [
+            "mid"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "mid",
+          "parents": [
+            "grafted"
+          ],
+          "refs": []
+        },
+        {
+          "id": "grafted",
+          "parents": [
+            "missing-outside-window"
+          ],
+          "boundary": "shallow",
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "tip",
+        "mid",
+        "grafted"
+      ],
+      "expectedLanes": {
+        "tip": 0,
+        "mid": 0,
+        "grafted": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "tip",
+          "to": "mid",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "mid",
+          "to": "grafted",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "grafted",
+          "to": "missing-outside-window",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "boundary"
+        }
+      ],
+      "expectedShapes": {
+        "tip": "commit",
+        "mid": "commit",
+        "grafted": "boundary"
+      }
+    },
+    {
+      "id": "missing-parent",
+      "title": "Missing parent object",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "tip",
+          "parents": [
+            "dead00"
+          ],
+          "missingParents": [
+            "dead00"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "tip"
+      ],
+      "expectedLanes": {
+        "tip": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "tip",
+          "to": "dead00",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "missing"
+        }
+      ],
+      "expectedShapes": {
+        "tip": "commit"
+      }
+    },
+    {
+      "id": "many-refs",
+      "title": "Many refs on one commit",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "tip",
+          "parents": [
+            "base"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            },
+            {
+              "kind": "remote",
+              "label": "origin/main"
+            },
+            {
+              "kind": "remote",
+              "label": "origin/HEAD"
+            },
+            {
+              "kind": "tag",
+              "label": "v1.0"
+            },
+            {
+              "kind": "tag",
+              "label": "v1.0-rc.1"
+            },
+            {
+              "kind": "stash",
+              "label": "stash@{0}"
+            },
+            {
+              "kind": "worktree",
+              "label": "wt/review"
+            },
+            {
+              "kind": "pr",
+              "label": "#42"
+            }
+          ]
+        },
+        {
+          "id": "base",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "tip",
+        "base"
+      ],
+      "expectedLanes": {
+        "tip": 0,
+        "base": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "tip",
+          "to": "base",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedVisiblePills": [
+        "HEAD",
+        "main"
+      ],
+      "expectedOverflow": 7,
+      "expectedShapes": {
+        "tip": "commit",
+        "base": "commit"
+      }
+    },
+    {
+      "id": "wip-clean",
+      "title": "Clean working tree — no WIP row",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "wip": null,
+      "commits": [
+        {
+          "id": "tip",
+          "parents": [],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "tip"
+      ],
+      "expectedLanes": {
+        "tip": 0
+      },
+      "expectedLaneSegments": [],
+      "expectedShapes": {
+        "tip": "commit"
+      }
+    },
+    {
+      "id": "wip-mixed",
+      "title": "WIP mixed staged and unstaged",
+      "head": "tip",
+      "selectedIds": [
+        "wip"
+      ],
+      "collapsedGroups": [],
+      "wip": {
+        "id": "wip",
+        "variant": "mixed",
+        "staged": 1,
+        "unstaged": 3,
+        "untracked": 1,
+        "conflicts": 0
+      },
+      "commits": [
+        {
+          "id": "wip",
+          "type": "wip",
+          "variant": "mixed",
+          "parents": [
+            "tip"
+          ],
+          "refs": []
+        },
+        {
+          "id": "tip",
+          "parents": [],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "wip",
+        "tip"
+      ],
+      "expectedLanes": {
+        "wip": 0,
+        "tip": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "wip",
+          "to": "tip",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "wip": "wip",
+        "tip": "commit"
+      }
+    },
+    {
+      "id": "wip-conflicted",
+      "title": "WIP conflicted",
+      "head": "tip",
+      "selectedIds": [
+        "wip"
+      ],
+      "collapsedGroups": [],
+      "wip": {
+        "id": "wip",
+        "variant": "conflicted",
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "conflicts": 2
+      },
+      "commits": [
+        {
+          "id": "wip",
+          "type": "wip",
+          "variant": "conflicted",
+          "parents": [
+            "tip"
+          ],
+          "refs": []
+        },
+        {
+          "id": "tip",
+          "parents": [],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "wip",
+        "tip"
+      ],
+      "expectedLanes": {
+        "wip": 0,
+        "tip": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "wip",
+          "to": "tip",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "wip": "wip",
+        "tip": "commit"
+      }
+    },
+    {
+      "id": "collapsed-merge",
+      "title": "Collapsed merge group (P1 after base graph)",
+      "head": "M",
+      "selectedIds": [
+        "M"
+      ],
+      "collapsedGroups": [
+        {
+          "mergeId": "M",
+          "sideParent": "s12",
+          "hiddenIds": [
+            "s12",
+            "s11",
+            "s10",
+            "s09",
+            "s08",
+            "s07",
+            "s06",
+            "s05",
+            "s04",
+            "s03",
+            "s02",
+            "s01"
+          ],
+          "count": 12
+        }
+      ],
+      "commits": [
+        {
+          "id": "M",
+          "parents": [
+            "p0",
+            "s12"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "p0",
+          "parents": [
+            "base"
+          ],
+          "refs": []
+        },
+        {
+          "id": "base",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "M",
+        "p0",
+        "base"
+      ],
+      "expectedLanes": {
+        "M": 0,
+        "p0": 0,
+        "base": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "M",
+          "to": "p0",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "M",
+          "to": "s12",
+          "fromLane": 0,
+          "toLane": 1,
+          "kind": "collapsed-merge"
+        },
+        {
+          "from": "p0",
+          "to": "base",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "M": "merge",
+        "p0": "commit",
+        "base": "commit"
+      }
+    },
+    {
+      "id": "replace-ref",
+      "title": "Replace-ref and graft",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "tip",
+          "type": "replace",
+          "parents": [
+            "graft"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            }
+          ]
+        },
+        {
+          "id": "graft",
+          "type": "graft",
+          "parents": [
+            "root"
+          ],
+          "refs": []
+        },
+        {
+          "id": "root",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "tip",
+        "graft",
+        "root"
+      ],
+      "expectedLanes": {
+        "tip": 0,
+        "graft": 0,
+        "root": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "tip",
+          "to": "graft",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "graft",
+          "to": "root",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "tip": "replace",
+        "graft": "graft",
+        "root": "commit"
+      }
+    },
+    {
+      "id": "no-commits",
+      "title": "Repository with no commits",
+      "head": null,
+      "selectedIds": [],
+      "collapsedGroups": [],
+      "commits": [],
+      "visibleOrder": [],
+      "expectedLanes": {},
+      "expectedLaneSegments": [],
+      "emptyState": "No commits yet. Make the first commit from Changes.",
+      "expectedShapes": {}
+    },
+    {
+      "id": "two-commit-compare",
+      "title": "Two-commit comparison",
+      "head": "c4",
+      "selectedIds": [
+        "c4",
+        "c1"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "c4",
+          "parents": [
+            "c3"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "c3",
+          "parents": [
+            "c2"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c2",
+          "parents": [
+            "c1"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c1",
+          "parents": [
+            "c0"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c0",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "c4",
+        "c3",
+        "c2",
+        "c1",
+        "c0"
+      ],
+      "expectedLanes": {
+        "c4": 0,
+        "c3": 0,
+        "c2": 0,
+        "c1": 0,
+        "c0": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "c4",
+          "to": "c3",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c3",
+          "to": "c2",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c2",
+          "to": "c1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c1",
+          "to": "c0",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "c4": "commit",
+        "c3": "commit",
+        "c2": "commit",
+        "c1": "commit",
+        "c0": "commit"
+      }
+    },
+    {
+      "id": "discontiguous-multi",
+      "title": "Discontiguous multi-selection",
+      "head": "c4",
+      "selectedIds": [
+        "c4",
+        "c2",
+        "c0"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "c4",
+          "parents": [
+            "c3"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            }
+          ]
+        },
+        {
+          "id": "c3",
+          "parents": [
+            "c2"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c2",
+          "parents": [
+            "c1"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c1",
+          "parents": [
+            "c0"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c0",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "c4",
+        "c3",
+        "c2",
+        "c1",
+        "c0"
+      ],
+      "expectedLanes": {
+        "c4": 0,
+        "c3": 0,
+        "c2": 0,
+        "c1": 0,
+        "c0": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "c4",
+          "to": "c3",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c3",
+          "to": "c2",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c2",
+          "to": "c1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "c1",
+          "to": "c0",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "c4": "commit",
+        "c3": "commit",
+        "c2": "commit",
+        "c1": "commit",
+        "c0": "commit"
+      }
+    },
+    {
+      "id": "complex-history",
+      "title": "Complex history with overlapping then reused lane",
+      "head": "a1c3f2",
+      "selectedIds": [
+        "a1c3f2"
+      ],
+      "collapsedGroups": [],
+      "wip": {
+        "id": "wip",
+        "variant": "mixed",
+        "staged": 1,
+        "unstaged": 3,
+        "untracked": 0,
+        "conflicts": 0
+      },
+      "commits": [
+        {
+          "id": "wip",
+          "type": "wip",
+          "variant": "mixed",
+          "parents": [
+            "a1c3f2"
+          ],
+          "refs": []
+        },
+        {
+          "id": "a1c3f2",
+          "parents": [
+            "9e8b11"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "9e8b11",
+          "parents": [
+            "b90e1c",
+            "c4d2aa"
+          ],
+          "refs": []
+        },
+        {
+          "id": "c4d2aa",
+          "parents": [
+            "77ab02"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "feature/graph"
+            }
+          ]
+        },
+        {
+          "id": "77ab02",
+          "parents": [
+            "b90e1c"
+          ],
+          "refs": []
+        },
+        {
+          "id": "b90e1c",
+          "parents": [
+            "3fa1de"
+          ],
+          "refs": []
+        },
+        {
+          "id": "3fa1de",
+          "parents": [
+            "88c0e4",
+            "d12c88"
+          ],
+          "refs": []
+        },
+        {
+          "id": "d12c88",
+          "parents": [
+            "88c0e4"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "hotfix/utf16"
+            }
+          ]
+        },
+        {
+          "id": "88c0e4",
+          "parents": [
+            "1b7a55"
+          ],
+          "refs": []
+        },
+        {
+          "id": "1b7a55",
+          "parents": [
+            "5e2d90"
+          ],
+          "refs": []
+        },
+        {
+          "id": "5e2d90",
+          "parents": [
+            "0a11ce"
+          ],
+          "refs": [
+            {
+              "kind": "remote",
+              "label": "origin/main"
+            }
+          ]
+        },
+        {
+          "id": "0a11ce",
+          "parents": [],
+          "refs": [
+            {
+              "kind": "tag",
+              "label": "v0.1"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "wip",
+        "a1c3f2",
+        "9e8b11",
+        "c4d2aa",
+        "77ab02",
+        "b90e1c",
+        "3fa1de",
+        "d12c88",
+        "88c0e4",
+        "1b7a55",
+        "5e2d90",
+        "0a11ce"
+      ],
+      "expectedLanes": {
+        "wip": 0,
+        "a1c3f2": 0,
+        "9e8b11": 0,
+        "c4d2aa": 1,
+        "77ab02": 1,
+        "b90e1c": 0,
+        "3fa1de": 0,
+        "d12c88": 1,
+        "88c0e4": 0,
+        "1b7a55": 0,
+        "5e2d90": 0,
+        "0a11ce": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "wip",
+          "to": "a1c3f2",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "a1c3f2",
+          "to": "9e8b11",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "9e8b11",
+          "to": "b90e1c",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "9e8b11",
+          "to": "c4d2aa",
+          "fromLane": 0,
+          "toLane": 1,
+          "kind": "merge"
+        },
+        {
+          "from": "c4d2aa",
+          "to": "77ab02",
+          "fromLane": 1,
+          "toLane": 1,
+          "kind": "straight"
+        },
+        {
+          "from": "77ab02",
+          "to": "b90e1c",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "b90e1c",
+          "to": "3fa1de",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "3fa1de",
+          "to": "88c0e4",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "3fa1de",
+          "to": "d12c88",
+          "fromLane": 0,
+          "toLane": 1,
+          "kind": "merge"
+        },
+        {
+          "from": "d12c88",
+          "to": "88c0e4",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "88c0e4",
+          "to": "1b7a55",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "1b7a55",
+          "to": "5e2d90",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "5e2d90",
+          "to": "0a11ce",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "wip": "wip",
+        "a1c3f2": "commit",
+        "9e8b11": "merge",
+        "c4d2aa": "commit",
+        "77ab02": "commit",
+        "b90e1c": "commit",
+        "3fa1de": "merge",
+        "d12c88": "commit",
+        "88c0e4": "commit",
+        "1b7a55": "commit",
+        "5e2d90": "commit",
+        "0a11ce": "commit"
+      }
+    },
+    {
+      "id": "overlapping-three",
+      "title": "Three overlapping live branches",
+      "head": "m2",
+      "selectedIds": [
+        "m2"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "f2",
+          "parents": [
+            "f1"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "feature/graph"
+            }
+          ]
+        },
+        {
+          "id": "h1",
+          "parents": [
+            "m1"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "hotfix/utf16"
+            }
+          ]
+        },
+        {
+          "id": "m2",
+          "parents": [
+            "m1"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "f1",
+          "parents": [
+            "m1"
+          ],
+          "refs": []
+        },
+        {
+          "id": "m1",
+          "parents": [
+            "base"
+          ],
+          "refs": []
+        },
+        {
+          "id": "base",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "f2",
+        "h1",
+        "m2",
+        "f1",
+        "m1",
+        "base"
+      ],
+      "expectedLanes": {
+        "f2": 1,
+        "h1": 2,
+        "m2": 0,
+        "f1": 1,
+        "m1": 0,
+        "base": 0
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "f2",
+          "to": "f1",
+          "fromLane": 1,
+          "toLane": 1,
+          "kind": "straight"
+        },
+        {
+          "from": "h1",
+          "to": "m1",
+          "fromLane": 2,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "m2",
+          "to": "m1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "f1",
+          "to": "m1",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "m1",
+          "to": "base",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedShapes": {
+        "f2": "commit",
+        "h1": "commit",
+        "m2": "commit",
+        "f1": "commit",
+        "m1": "commit",
+        "base": "commit"
+      }
+    },
+    {
+      "id": "crossing-merge",
+      "title": "Merge edge crosses a live lane (X rule)",
+      "head": "M",
+      "selectedIds": [
+        "M"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "M",
+          "parents": [
+            "p0",
+            "s2"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "s1",
+          "parents": [
+            "b1"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "feat-c"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "parents": [
+            "b1"
+          ],
+          "refs": [
+            {
+              "kind": "branch",
+              "label": "feat-b"
+            }
+          ]
+        },
+        {
+          "id": "p0",
+          "parents": [
+            "b1"
+          ],
+          "refs": []
+        },
+        {
+          "id": "b1",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "M",
+        "s1",
+        "s2",
+        "p0",
+        "b1"
+      ],
+      "expectedLanes": {
+        "M": 0,
+        "s1": 2,
+        "s2": 1,
+        "p0": 0,
+        "b1": 0
+      },
+      "expectedShapes": {
+        "M": "merge",
+        "s1": "commit",
+        "s2": "commit",
+        "p0": "commit",
+        "b1": "commit"
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "M",
+          "to": "p0",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "M",
+          "to": "s2",
+          "fromLane": 0,
+          "toLane": 1,
+          "kind": "merge"
+        },
+        {
+          "from": "s1",
+          "to": "b1",
+          "fromLane": 2,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "s2",
+          "to": "b1",
+          "fromLane": 1,
+          "toLane": 0,
+          "kind": "join"
+        },
+        {
+          "from": "p0",
+          "to": "b1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "expectedCrossings": 1,
+      "note": "G-LANE-01 reserves lane 1 for merge parent s2 before s1 is visited, so s1 takes lane 2. The s1->b1 join crosses the live M->s2 merge edge. Edges never re-route; the younger commit's edge paints above."
+    },
+    {
+      "id": "virtualization-window",
+      "title": "40-row history rendered through a recycled window",
+      "head": "z39",
+      "selectedIds": [
+        "z39"
+      ],
+      "collapsedGroups": [],
+      "commits": [
+        {
+          "id": "z39",
+          "parents": [
+            "z38"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "z38",
+          "parents": [
+            "z37"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z37",
+          "parents": [
+            "z36"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z36",
+          "parents": [
+            "z35"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z35",
+          "parents": [
+            "z34"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z34",
+          "parents": [
+            "z33"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z33",
+          "parents": [
+            "z32"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z32",
+          "parents": [
+            "z31"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z31",
+          "parents": [
+            "z30"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z30",
+          "parents": [
+            "z29"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z29",
+          "parents": [
+            "z28"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z28",
+          "parents": [
+            "z27"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z27",
+          "parents": [
+            "z26"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z26",
+          "parents": [
+            "z25"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z25",
+          "parents": [
+            "z24"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z24",
+          "parents": [
+            "z23"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z23",
+          "parents": [
+            "z22"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z22",
+          "parents": [
+            "z21"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z21",
+          "parents": [
+            "z20"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z20",
+          "parents": [
+            "z19"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z19",
+          "parents": [
+            "z18"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z18",
+          "parents": [
+            "z17"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z17",
+          "parents": [
+            "z16"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z16",
+          "parents": [
+            "z15"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z15",
+          "parents": [
+            "z14"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z14",
+          "parents": [
+            "z13"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z13",
+          "parents": [
+            "z12"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z12",
+          "parents": [
+            "z11"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z11",
+          "parents": [
+            "z10"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z10",
+          "parents": [
+            "z09"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z09",
+          "parents": [
+            "z08"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z08",
+          "parents": [
+            "z07"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z07",
+          "parents": [
+            "z06"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z06",
+          "parents": [
+            "z05"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z05",
+          "parents": [
+            "z04"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z04",
+          "parents": [
+            "z03"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z03",
+          "parents": [
+            "z02"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z02",
+          "parents": [
+            "z01"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z01",
+          "parents": [
+            "z00"
+          ],
+          "refs": []
+        },
+        {
+          "id": "z00",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "z39",
+        "z38",
+        "z37",
+        "z36",
+        "z35",
+        "z34",
+        "z33",
+        "z32",
+        "z31",
+        "z30",
+        "z29",
+        "z28",
+        "z27",
+        "z26",
+        "z25",
+        "z24",
+        "z23",
+        "z22",
+        "z21",
+        "z20",
+        "z19",
+        "z18",
+        "z17",
+        "z16",
+        "z15",
+        "z14",
+        "z13",
+        "z12",
+        "z11",
+        "z10",
+        "z09",
+        "z08",
+        "z07",
+        "z06",
+        "z05",
+        "z04",
+        "z03",
+        "z02",
+        "z01",
+        "z00"
+      ],
+      "expectedLanes": {
+        "z39": 0,
+        "z38": 0,
+        "z37": 0,
+        "z36": 0,
+        "z35": 0,
+        "z34": 0,
+        "z33": 0,
+        "z32": 0,
+        "z31": 0,
+        "z30": 0,
+        "z29": 0,
+        "z28": 0,
+        "z27": 0,
+        "z26": 0,
+        "z25": 0,
+        "z24": 0,
+        "z23": 0,
+        "z22": 0,
+        "z21": 0,
+        "z20": 0,
+        "z19": 0,
+        "z18": 0,
+        "z17": 0,
+        "z16": 0,
+        "z15": 0,
+        "z14": 0,
+        "z13": 0,
+        "z12": 0,
+        "z11": 0,
+        "z10": 0,
+        "z09": 0,
+        "z08": 0,
+        "z07": 0,
+        "z06": 0,
+        "z05": 0,
+        "z04": 0,
+        "z03": 0,
+        "z02": 0,
+        "z01": 0,
+        "z00": 0
+      },
+      "expectedShapes": {
+        "z39": "commit",
+        "z38": "commit",
+        "z37": "commit",
+        "z36": "commit",
+        "z35": "commit",
+        "z34": "commit",
+        "z33": "commit",
+        "z32": "commit",
+        "z31": "commit",
+        "z30": "commit",
+        "z29": "commit",
+        "z28": "commit",
+        "z27": "commit",
+        "z26": "commit",
+        "z25": "commit",
+        "z24": "commit",
+        "z23": "commit",
+        "z22": "commit",
+        "z21": "commit",
+        "z20": "commit",
+        "z19": "commit",
+        "z18": "commit",
+        "z17": "commit",
+        "z16": "commit",
+        "z15": "commit",
+        "z14": "commit",
+        "z13": "commit",
+        "z12": "commit",
+        "z11": "commit",
+        "z10": "commit",
+        "z09": "commit",
+        "z08": "commit",
+        "z07": "commit",
+        "z06": "commit",
+        "z05": "commit",
+        "z04": "commit",
+        "z03": "commit",
+        "z02": "commit",
+        "z01": "commit",
+        "z00": "commit"
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "z39",
+          "to": "z38",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z38",
+          "to": "z37",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z37",
+          "to": "z36",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z36",
+          "to": "z35",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z35",
+          "to": "z34",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z34",
+          "to": "z33",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z33",
+          "to": "z32",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z32",
+          "to": "z31",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z31",
+          "to": "z30",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z30",
+          "to": "z29",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z29",
+          "to": "z28",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z28",
+          "to": "z27",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z27",
+          "to": "z26",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z26",
+          "to": "z25",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z25",
+          "to": "z24",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z24",
+          "to": "z23",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z23",
+          "to": "z22",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z22",
+          "to": "z21",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z21",
+          "to": "z20",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z20",
+          "to": "z19",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z19",
+          "to": "z18",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z18",
+          "to": "z17",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z17",
+          "to": "z16",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z16",
+          "to": "z15",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z15",
+          "to": "z14",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z14",
+          "to": "z13",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z13",
+          "to": "z12",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z12",
+          "to": "z11",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z11",
+          "to": "z10",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z10",
+          "to": "z09",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z09",
+          "to": "z08",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z08",
+          "to": "z07",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z07",
+          "to": "z06",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z06",
+          "to": "z05",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z05",
+          "to": "z04",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z04",
+          "to": "z03",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z03",
+          "to": "z02",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z02",
+          "to": "z01",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "z01",
+          "to": "z00",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "virtualization": {
+        "rowHeight": 24,
+        "realizedWindow": [
+          12,
+          22
+        ],
+        "realizedRows": [
+          "z27",
+          "z26",
+          "z25",
+          "z24",
+          "z23",
+          "z22",
+          "z21",
+          "z20",
+          "z19",
+          "z18"
+        ],
+        "stickyHeaderRow": "headers float; graph continuity is drawn from row-local coordinates so recycling never breaks edges",
+        "selectedId": "z39",
+        "note": "Selection and graph projection live outside the component tree; recycling must not re-run lane assignment."
+      }
+    },
+    {
+      "id": "incremental-loading",
+      "title": "Older history loading",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "loadingOlder": true,
+      "commits": [
+        {
+          "id": "tip",
+          "parents": [
+            "a2"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "a2",
+          "parents": [
+            "a1"
+          ],
+          "refs": []
+        },
+        {
+          "id": "a1",
+          "parents": [],
+          "refs": []
+        }
+      ],
+      "visibleOrder": [
+        "tip",
+        "a2",
+        "a1"
+      ],
+      "expectedLanes": {
+        "tip": 0,
+        "a2": 0,
+        "a1": 0
+      },
+      "expectedShapes": {
+        "tip": "commit",
+        "a2": "commit",
+        "a1": "commit"
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "tip",
+          "to": "a2",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        },
+        {
+          "from": "a2",
+          "to": "a1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "note": "Spinner row renders at the list tail; lane reservation must not shift existing rows."
+    },
+    {
+      "id": "end-of-history",
+      "title": "End of history footer",
+      "head": "tip",
+      "selectedIds": [
+        "tip"
+      ],
+      "collapsedGroups": [],
+      "endOfHistory": true,
+      "commits": [
+        {
+          "id": "tip",
+          "parents": [
+            "a1"
+          ],
+          "refs": [
+            {
+              "kind": "head",
+              "label": "HEAD"
+            },
+            {
+              "kind": "branch",
+              "label": "main"
+            }
+          ]
+        },
+        {
+          "id": "a1",
+          "parents": [],
+          "refs": [
+            {
+              "kind": "tag",
+              "label": "v0.1"
+            }
+          ]
+        }
+      ],
+      "visibleOrder": [
+        "tip",
+        "a1"
+      ],
+      "expectedLanes": {
+        "tip": 0,
+        "a1": 0
+      },
+      "expectedShapes": {
+        "tip": "commit",
+        "a1": "commit"
+      },
+      "expectedLaneSegments": [
+        {
+          "from": "tip",
+          "to": "a1",
+          "fromLane": 0,
+          "toLane": 0,
+          "kind": "straight"
+        }
+      ],
+      "note": "Footer row 'End of history — 2 commits' replaces the spinner when loadingOlder completes."
+    }
+  ],
+  "shapeRules": {
+    "commit": "hollow ring r=4.5, 2px stroke in the lane colour, filled with the row background",
+    "head": "filled dot r=4 in the lane colour inside a ring r=7 (1.5px), separated by a 2px row-background gap; applied to the commit HEAD points at",
+    "merge": "ring r=4.5 with a centre dot r=1.75 (commits with >1 parent)",
+    "wip": "dashed ring r=4.5 in ink-muted; mixed staging fills the lower half with added-bg; conflicted uses a conflict-coloured dashed ring",
+    "stash": "dashed ring r=4.5 in the lane colour",
+    "boundary": "hollow square 7px, ink-muted, 1.5px stroke (boundary='shallow')",
+    "graft": "ring r=4.5 plus a concentric ring r=7 (type='graft')",
+    "replace": "ring r=4.5 with a 90-degree arc segment at r=7 (type='replace')",
+    "missing-parent": "edge stub ending in a 2px hollow dot at the row edge, ink-faint",
+    "collapsed-group": "pill node on the merge row carrying a Count badge with the hidden commit count"
+  }
+}

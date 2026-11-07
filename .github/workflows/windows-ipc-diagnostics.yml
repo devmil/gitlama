@@ -1,0 +1,39 @@
+name: Diagnose Windows IPC credential storage
+
+# Compiles and tests the production Windows IPC and protocol modules through
+# tests/native_windows_ipc, without a Flutter build. Use it when the release's
+# Windows credential preflight fails.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check production Windows IPC without building the UI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python scripts/windows-credential-probe.py --require --output dist/qualification/windows-credential-preflight.json
+          if ($LASTEXITCODE -ne 0) { throw 'credential_capability_preflight_failed' }
+          ./scripts/install-rustup-windows.ps1
+          $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+          $env:CARGO_TARGET_DIR = Join-Path (Get-Location) 'build/windows-ipc-probe-target'
+          cargo test --manifest-path tests/native_windows_ipc/Cargo.toml --locked
+          if ($LASTEXITCODE -ne 0) { throw 'production_windows_ipc_regressions_failed' }
+      - name: Keep safe probe evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-windows-ipc-diagnostic
+          path: dist/qualification/*.json
+          if-no-files-found: ignore
+          retention-days: 30

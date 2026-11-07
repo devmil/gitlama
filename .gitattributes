@@ -1,0 +1,37 @@
+* text=auto
+*.sh text eol=lf
+*.json text eol=lf
+*.svg text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=crlf
+# Flutter generators emit LF; keep release checkouts clean on Windows too.
+/lib/l10n/app_localizations*.dart text eol=lf
+/linux/flutter/generated* text eol=lf
+/windows/flutter/generated* text eol=lf
+/macos/Flutter/GeneratedPluginRegistrant.swift text eol=lf
+# Generated notices preserve upstream text and Markdown hard line breaks.
+# Keep LF-stable bytes; intentional trailing spaces are not source-code defects.
+assets/licenses/*.md text eol=lf whitespace=-blank-at-eol
+*.png binary
+*.ico binary
+*.woff2 binary
+*.dmg binary
+*.msi binary
+*.AppImage binary
+*.flatpak binary
+*.tar.zst binary
+release/*.pub text eol=lf
+webfront/*.pub text eol=lf
+release/metadata.json text eol=lf
+release/metadata.json.sig text eol=lf
+webfront/_data/*.json text eol=lf
+webfront/_data/*.sig text eol=lf
+webfront/appcast.xml text eol=lf
+test/fixtures/release_index.json text eol=lf
+test/fixtures/appcast.xml text eol=lf
+test/fixtures/release_test_only.pub text eol=lf
+# Recorded fixtures compared byte for byte in tests.
+rust-core/**/test-fixtures/**/*.txt text eol=lf

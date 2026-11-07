@@ -1,0 +1,547 @@
+{
+  "schema": "gitlama.design-manifest.v1",
+  "name": "Meridian",
+  "product": "GitLama",
+  "version": "3.0.2",
+  "adopted": "2026-09-25",
+  "entry": "README.md",
+  "specimen": "specimens/index.html",
+  "authorityOrder": [
+    "tokens/gitlama-tokens.json",
+    "specs/*.md",
+    "specs/*.json",
+    "foundations.md",
+    "components/*.md",
+    "specimens/*.html",
+    "components/reference/*"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "densities": {
+    "compact": 24,
+    "regular": 28,
+    "comfortable": 32
+  },
+  "viewports": [
+    {
+      "id": "compact-minimum",
+      "width": 900,
+      "height": 600,
+      "fontScale": 1,
+      "sidebar": "rail"
+    },
+    {
+      "id": "laptop",
+      "width": 1280,
+      "height": 720,
+      "fontScale": 1,
+      "sidebar": "expanded"
+    },
+    {
+      "id": "desktop",
+      "width": 1440,
+      "height": 900,
+      "fontScale": 1,
+      "sidebar": "expanded"
+    },
+    {
+      "id": "wide",
+      "width": 1920,
+      "height": 1080,
+      "fontScale": 1,
+      "sidebar": "expanded"
+    },
+    {
+      "id": "desktop-scaled",
+      "width": 1440,
+      "height": 900,
+      "fontScale": 1.3,
+      "sidebar": "content-dependent"
+    }
+  ],
+  "surfaces": {
+    "shell": [
+      "welcome",
+      "loading",
+      "repository-error",
+      "history",
+      "changes"
+    ],
+    "persistent": [
+      "toolbar-and-compass",
+      "repository-tabs",
+      "sidebar",
+      "logbook",
+      "status-bar"
+    ],
+    "workflows": [
+      "rebase",
+      "conflict",
+      "blame-path-history",
+      "stashes",
+      "pull-request-review",
+      "patch",
+      "deep-graph-tools",
+      "settings",
+      "palette",
+      "shortcut-reference"
+    ]
+  },
+  "requiredStates": [
+    "ready",
+    "loading",
+    "empty",
+    "disabled",
+    "attention",
+    "error",
+    "running",
+    "complete"
+  ],
+  "contracts": {
+    "foundations": "foundations.md",
+    "tokens": "tokens/gitlama-tokens.json",
+    "tokensCss": "tokens/gitlama-tokens.css",
+    "components": "components/README.md",
+    "icons": "assets/icons/inventory.json",
+    "graph": "specs/graph.md",
+    "changesAndDiff": "specs/changes-and-diff.md",
+    "workflows": "specs/workflows.md",
+    "inspector": "specs/inspector.md",
+    "interactionAccessibility": "specs/interaction-accessibility.md",
+    "captures": "specs/capture-matrix.json",
+    "flutter": "FLUTTER_ADAPTATION.md"
+  },
+  "fixtureOracles": {
+    "graph": {
+      "file": "specs/graph-fixtures.json",
+      "schema": "gitlama.graph-fixture.v1",
+      "algorithm": "G-LANE-01",
+      "layoutFile": "specs/graph-row-layout-fixtures.json"
+    },
+    "graphRowLayout": {
+      "file": "specs/graph-row-layout-fixtures.json",
+      "schema": "gitlama.graph-row-layout.v1"
+    },
+    "diff": {
+      "file": "specs/diff-fixtures.json",
+      "schema": "gitlama.diff-fixture.v1"
+    },
+    "conflict": {
+      "file": "specs/conflict-fixtures.json",
+      "schema": "gitlama.conflict-fixture.v1"
+    },
+    "patch": {
+      "file": "specs/patch-scopes.json",
+      "schema": "gitlama.patch-scope.v1"
+    },
+    "captures": {
+      "file": "specs/capture-matrix.json",
+      "schema": "gitlama.capture-matrix.v1"
+    }
+  },
+  "contrastPairs": [
+    {
+      "fg": "ink",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "ground",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "raised",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "polar-soft",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "pane-alt",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "ground",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "pane-alt",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "polar-soft",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "raised",
+      "min": 4.5
+    },
+    {
+      "fg": "on-polar",
+      "bg": "polar",
+      "min": 4.5
+    },
+    {
+      "fg": "on-polar-muted",
+      "bg": "polar",
+      "min": 4.5
+    },
+    {
+      "fg": "polar-ink",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "polar-ink",
+      "bg": "polar-soft",
+      "min": 4.5
+    },
+    {
+      "fg": "added",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "added",
+      "bg": "added-bg",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "added-strong",
+      "min": 4.5
+    },
+    {
+      "fg": "deleted",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "deleted",
+      "bg": "deleted-bg",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "deleted-strong",
+      "min": 4.5
+    },
+    {
+      "fg": "modified",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "modified",
+      "bg": "modified-bg",
+      "min": 4.5
+    },
+    {
+      "fg": "danger",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "danger",
+      "bg": "danger-bg",
+      "min": 4.5
+    },
+    {
+      "fg": "on-danger",
+      "bg": "danger",
+      "min": 4.5
+    },
+    {
+      "fg": "conflict",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "conflict",
+      "bg": "conflict-bg",
+      "min": 4.5
+    },
+    {
+      "fg": "tag-ink",
+      "bg": "tag-bg",
+      "min": 4.5
+    },
+    {
+      "fg": "renamed",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "side-ours",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "side-theirs",
+      "bg": "pane",
+      "min": 4.5
+    },
+    {
+      "fg": "ink",
+      "bg": "ground-hover",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "ground-hover",
+      "min": 4.5
+    },
+    {
+      "fg": "ink-muted",
+      "bg": "pane-hover",
+      "min": 4.5
+    },
+    {
+      "fg": "control-edge",
+      "bg": "pane",
+      "min": 3
+    },
+    {
+      "fg": "control-edge",
+      "bg": "raised",
+      "min": 3
+    },
+    {
+      "fg": "focus",
+      "bg": "pane",
+      "min": 3
+    },
+    {
+      "fg": "focus",
+      "bg": "ground",
+      "min": 3
+    },
+    {
+      "fg": "focus",
+      "bg": "raised",
+      "min": 3
+    }
+  ],
+  "mirroredAssets": {
+    "assets/brand/gitlama-mark.svg": "assets/brand/icon.svg",
+    "assets/fonts/OFL.txt": "assets/fonts/OFL.txt"
+  },
+  "implementationRules": [
+    "Rust owns durable identity, selection, graph layout, diff and staging semantics, operation state, persistence and background work.",
+    "Flutter renders bounded projections, restores focus by stable identity and never keeps durable row state.",
+    "Widgets read colours, spacing, radii and motion only from GitLamaTheme and AppTokens, which are derived from tokens/gitlama-tokens.json.",
+    "Icons come only from the Lucide 1.37.0 set in assets/icons/lucide."
+  ],
+  "sourceFiles": [
+    "FLUTTER_ADAPTATION.md",
+    "GLOSSARY.md",
+    "MANIFEST.json",
+    "README.md",
+    "assets/README.md",
+    "assets/brand/gitlama-mark.svg",
+    "assets/fonts/JetBrainsMono-Regular.ttf",
+    "assets/fonts/OFL.txt",
+    "assets/icons/accessibility.svg",
+    "assets/icons/arrow-down-to-line.svg",
+    "assets/icons/arrow-down.svg",
+    "assets/icons/arrow-left-right.svg",
+    "assets/icons/arrow-left.svg",
+    "assets/icons/arrow-right.svg",
+    "assets/icons/arrow-up-to-line.svg",
+    "assets/icons/arrow-up.svg",
+    "assets/icons/back.svg",
+    "assets/icons/badge-check.svg",
+    "assets/icons/ban.svg",
+    "assets/icons/binary.svg",
+    "assets/icons/blame.svg",
+    "assets/icons/box.svg",
+    "assets/icons/branch.svg",
+    "assets/icons/brush-cleaning.svg",
+    "assets/icons/changes.svg",
+    "assets/icons/check-check.svg",
+    "assets/icons/check.svg",
+    "assets/icons/chevron-down.svg",
+    "assets/icons/chevron-right.svg",
+    "assets/icons/chevron-up.svg",
+    "assets/icons/chevrons-down-up.svg",
+    "assets/icons/circle-alert.svg",
+    "assets/icons/circle-check.svg",
+    "assets/icons/circle-dot.svg",
+    "assets/icons/circle-help.svg",
+    "assets/icons/circle-x.svg",
+    "assets/icons/clock.svg",
+    "assets/icons/close.svg",
+    "assets/icons/cloud-off.svg",
+    "assets/icons/cloud.svg",
+    "assets/icons/co-author.svg",
+    "assets/icons/command.svg",
+    "assets/icons/commit-push.svg",
+    "assets/icons/copy.svg",
+    "assets/icons/external-link.svg",
+    "assets/icons/fetch.svg",
+    "assets/icons/file-diff.svg",
+    "assets/icons/file-text.svg",
+    "assets/icons/file.svg",
+    "assets/icons/fixup.svg",
+    "assets/icons/focus.svg",
+    "assets/icons/folder-closed.svg",
+    "assets/icons/folder-history.svg",
+    "assets/icons/folder-open.svg",
+    "assets/icons/folder-symlink.svg",
+    "assets/icons/forward.svg",
+    "assets/icons/git-commit-horizontal.svg",
+    "assets/icons/git-fork.svg",
+    "assets/icons/git-merge.svg",
+    "assets/icons/git-pull-request.svg",
+    "assets/icons/grip-vertical.svg",
+    "assets/icons/history.svg",
+    "assets/icons/image.svg",
+    "assets/icons/info.svg",
+    "assets/icons/inspect.svg",
+    "assets/icons/inventory.json",
+    "assets/icons/key.svg",
+    "assets/icons/link.svg",
+    "assets/icons/list-filter-plus.svg",
+    "assets/icons/list-view.svg",
+    "assets/icons/locate.svg",
+    "assets/icons/log-in.svg",
+    "assets/icons/manage.svg",
+    "assets/icons/map.svg",
+    "assets/icons/message-square-text.svg",
+    "assets/icons/minus.svg",
+    "assets/icons/more.svg",
+    "assets/icons/palette.svg",
+    "assets/icons/panel-left.svg",
+    "assets/icons/pencil.svg",
+    "assets/icons/plus.svg",
+    "assets/icons/pull.svg",
+    "assets/icons/push.svg",
+    "assets/icons/puzzle.svg",
+    "assets/icons/recovery.svg",
+    "assets/icons/redo.svg",
+    "assets/icons/refresh.svg",
+    "assets/icons/rotate-ccw.svg",
+    "assets/icons/rotate-cw.svg",
+    "assets/icons/save.svg",
+    "assets/icons/search.svg",
+    "assets/icons/settings.svg",
+    "assets/icons/shield-check.svg",
+    "assets/icons/shortcuts.svg",
+    "assets/icons/side-by-side.svg",
+    "assets/icons/signature.svg",
+    "assets/icons/skip-forward.svg",
+    "assets/icons/sliders-horizontal.svg",
+    "assets/icons/spellcheck.svg",
+    "assets/icons/square-plus.svg",
+    "assets/icons/squash.svg",
+    "assets/icons/stage-all.svg",
+    "assets/icons/stash.svg",
+    "assets/icons/tag.svg",
+    "assets/icons/template.svg",
+    "assets/icons/trash.svg",
+    "assets/icons/tree-view.svg",
+    "assets/icons/triangle-alert.svg",
+    "assets/icons/type.svg",
+    "assets/icons/undo.svg",
+    "assets/icons/unified-diff.svg",
+    "assets/icons/unstage-all.svg",
+    "assets/icons/wand-sparkles.svg",
+    "assets/icons/whitespace.svg",
+    "assets/icons/wrap.svg",
+    "components/Avatar.md",
+    "components/Banner.md",
+    "components/Button.md",
+    "components/Checkbox.md",
+    "components/CommitRow.md",
+    "components/Compass.md",
+    "components/Composer.md",
+    "components/Dialog.md",
+    "components/DiffHunk.md",
+    "components/FileRow.md",
+    "components/Graph.md",
+    "components/IconButton.md",
+    "components/Island.md",
+    "components/Kbd.md",
+    "components/Logbook.md",
+    "components/Palette.md",
+    "components/README.md",
+    "components/RefChip.md",
+    "components/RepoTabs.md",
+    "components/Segmented.md",
+    "components/Select.md",
+    "components/SettingsRow.md",
+    "components/SidebarRow.md",
+    "components/StatusGlyph.md",
+    "components/SyncBadge.md",
+    "components/TextField.md",
+    "components/ToolbarButton.md",
+    "components/Workspace.md",
+    "components/reference/bundle.css",
+    "components/reference/bundle.js",
+    "components/reference/index.d.ts",
+    "foundations.md",
+    "specimens/components/Avatar.html",
+    "specimens/components/Banner.html",
+    "specimens/components/Button.html",
+    "specimens/components/Checkbox.html",
+    "specimens/components/CommitRow.html",
+    "specimens/components/Compass.html",
+    "specimens/components/Composer.html",
+    "specimens/components/Cover.html",
+    "specimens/components/Dialog.html",
+    "specimens/components/DiffHunk.html",
+    "specimens/components/FileRow.html",
+    "specimens/components/Graph.html",
+    "specimens/components/IconButton.html",
+    "specimens/components/Island.html",
+    "specimens/components/Kbd.html",
+    "specimens/components/Logbook.html",
+    "specimens/components/Palette.html",
+    "specimens/components/RefChip.html",
+    "specimens/components/RepoTabs.html",
+    "specimens/components/Segmented.html",
+    "specimens/components/Select.html",
+    "specimens/components/SettingsRow.html",
+    "specimens/components/SidebarRow.html",
+    "specimens/components/StatusGlyph.html",
+    "specimens/components/SyncBadge.html",
+    "specimens/components/TextField.html",
+    "specimens/components/ToolbarButton.html",
+    "specimens/components/Workspace.html",
+    "specimens/index.html",
+    "specimens/lib/react-dom.production.min.js",
+    "specimens/lib/react.production.min.js",
+    "specimens/motion-lab.html",
+    "specimens/workspace.html",
+    "specs/capture-matrix.json",
+    "specs/changes-and-diff.md",
+    "specs/conflict-fixtures.json",
+    "specs/diff-fixtures.json",
+    "specs/graph-fixtures.json",
+    "specs/graph-row-layout-fixtures.json",
+    "specs/graph.md",
+    "specs/inspector.md",
+    "specs/interaction-accessibility.md",
+    "specs/motion.md",
+    "specs/patch-scopes.json",
+    "specs/workflows.md",
+    "tokens/gitlama-tokens.css",
+    "tokens/gitlama-tokens.json"
+  ]
+}

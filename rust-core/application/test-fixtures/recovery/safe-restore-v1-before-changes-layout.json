@@ -1,0 +1,54 @@
+{
+  "schema": "gitlama.safe-restore.v1",
+  "document": {
+    "appearance": {
+      "theme": "system",
+      "density": "regular",
+      "reduceMotion": "followSystem",
+      "dateFormat": "relative",
+      "sidebarWidth": 200,
+      "diffWidth": 420,
+      "windowX": null,
+      "windowY": null,
+      "windowWidth": null,
+      "windowHeight": null,
+      "windowMaximized": false
+    },
+    "recentRepositories": [
+      {
+        "platform": "unix",
+        "units": [47, 114, 101, 112, 111]
+      }
+    ],
+    "worktrees": [
+      {
+        "identity": {
+          "platform": "unix",
+          "units": [47, 114, 101, 112, 111]
+        },
+        "filter": "",
+        "anchor": null,
+        "pane": "changes",
+        "route": "repository",
+        "changesScrollOffset": 0,
+        "historyScrollOffset": 0,
+        "draft": {
+          "subject": "",
+          "description": ""
+        }
+      }
+    ],
+    "openWorktrees": [
+      {
+        "platform": "unix",
+        "units": [47, 114, 101, 112, 111]
+      }
+    ],
+    "activeWorktree": {
+      "platform": "unix",
+      "units": [47, 114, 101, 112, 111]
+    },
+    "integrations": [],
+    "diffRenderer": null
+  }
+}

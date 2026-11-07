@@ -1,0 +1,38 @@
+[package]
+name = "gitlama_application"
+# Fixed: the desktop library (gitlama_core) carries the release version.
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.97.1"
+license = "MIT"
+publish = false
+description = "GitLama's domain, use cases and remote wire adapter, shared by the desktop library and the remote helper."
+
+[features]
+default = ["image-codecs"]
+# Raster and SVG decoding for image diffs. The headless remote helper builds without it and
+# answers every decode as unsupported.
+image-codecs = ["dep:image", "dep:resvg", "dep:roxmltree"]
+
+[dependencies]
+gitlama_contract = { workspace = true }
+devmil-git = { workspace = true }
+cap-std = { workspace = true }
+cap-primitives = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+getrandom = { workspace = true }
+image = { workspace = true, optional = true }
+resvg = { workspace = true, optional = true }
+roxmltree = { workspace = true, optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }
+
+# The syntax worker's background thread priority.
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "=0.2.189"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true, features = ["process", "thread"] }

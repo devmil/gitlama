@@ -1,0 +1,6 @@
+{
+  "repository": "Devmil/brand vendored masters",
+  "commit": "637ff2e9ffa9d5455a93217409f53a189dd20d70",
+  "meridianId": "gitlama",
+  "refresh": "Copy these masters from the recorded brand commit (web/ from assets/web), then run python3 scripts/generate-brand.py."
+}

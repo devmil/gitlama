@@ -1,0 +1,7 @@
+tags:
+  native:
+  visual:
+  # Drives the real remote helper; needs `cargo test -p gitlama-remote-helper` first.
+  remote:
+  # Real OpenSSH against the loopback fixture of scripts/verify_remote_workspaces.py.
+  ssh:

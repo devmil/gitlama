@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Palette · Meridian specimen</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../tokens/gitlama-tokens.css">
+<link rel="stylesheet" href="../../components/reference/bundle.css">
+<style>[data-density="compact"]{--size-row:var(--size-row-compact)}[data-density="comfortable"]{--size-row:var(--size-row-comfortable)}</style>
+<script>(function(){var q=new URLSearchParams(location.search);document.documentElement.setAttribute('data-theme',q.get('theme')||'light');document.documentElement.setAttribute('data-density',q.get('density')||'regular');})();</script>
+<script src="../lib/react.production.min.js"></script>
+<script src="../lib/react-dom.production.min.js"></script>
+<script src="../../components/reference/bundle.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+var N = window.GitLama, h = React.createElement;
+// Sample history (the GitLama repo, 25 Sep 2026). Lanes: 1 = HEAD first-parent (blue), 2 = main, 3 = release branch.
+var HISTORY = [
+  { wip: true, subject: 'Uncommitted changes · 3 files', graph: { cols: 2, segs: [{ t: 'bot', c: 0, lane: 1 }], node: { c: 0, kind: 'wip' } }, when: 'now' },
+  { subject: 'Move Windows diagnostics earlier and classify IPC failures', refs: [{ kind: 'head', name: 'windows-soak-cleanup', upstream: 'origin', lane: 1 }], author: 'Michael Lamers', hash: '857ece851c', when: '7 min', graph: { cols: 2, segs: [{ t: 'top', c: 0, lane: 1 }, { t: 'bot', c: 0, lane: 1 }], node: { c: 0, lane: 1, kind: 'head' } } },
+  { subject: 'Recover Windows named pipe after early client disconnect', author: 'Michael Lamers', hash: '802239cf50', when: '28 min', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 1 }], node: { c: 0, lane: 1 } } },
+  { subject: 'Classify Windows forwarding readiness failures', author: 'Michael Lamers', hash: 'c6b9b3c81c', when: '49 min', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 1 }], node: { c: 0, lane: 1 } } },
+  { subject: 'Preserve Windows soak failures through process cleanup', author: 'Michael Lamers', hash: 'f4b34279b4', when: '1 h', graph: { cols: 2, segs: [{ t: 'top', c: 0, lane: 1 }, { t: 'bot', c: 0, lane: 1 }], node: { c: 0, lane: 1 } } },
+  { subject: 'Prepare v0.1.0-beta.11-12 release', refs: [{ kind: 'local', name: 'main', lane: 2, behind: 6 }, { kind: 'remote', name: 'origin/main' }], author: 'GitLama Release Bot', hash: '788e575954', when: '2 h', graph: { cols: 2, segs: [{ t: 'top', c: 0, lane: 1 }, { t: 'bot', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: "Merge pull request 'Fix Windows release gates' (#1)", author: 'ada', hash: 'af35cf0693', when: '2 h', graph: { cols: 2, segs: [{ t: 'top', c: 0, lane: 2 }, { t: 'bot', c: 0, lane: 2 }, { t: 'out', from: 0, to: 1, lane: 3 }], node: { c: 0, lane: 2, kind: 'merge' } } },
+  { subject: 'Format credential retry diagnostic', refs: [{ kind: 'remote', name: 'feature/release-publication-windows' }], author: 'Michael Lamers', hash: '4a86f1ea4f', when: '3 h', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }, { t: 'top', c: 1, lane: 3 }, { t: 'bot', c: 1, lane: 3 }], node: { c: 1, lane: 3 } } },
+  { subject: 'Diagnose Windows credential retry without logging content', author: 'Michael Lamers', hash: '7902345e0f', when: '3 h', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }, { t: 'v', c: 1, lane: 3 }], node: { c: 1, lane: 3 } } },
+  { subject: 'Publish complete release after qualification and stabilize Windows gates', author: 'Michael Lamers', hash: '3ea56bea3a', when: '3 h', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }, { t: 'top', c: 1, lane: 3 }, { t: 'out', from: 1, to: 0, lane: 3 }], node: { c: 1, lane: 3 } } },
+  { subject: 'Prepare v0.1.0-beta.10-11 release', refs: [{ kind: 'tag', name: 'v0.1.0-beta.10-11' }], author: 'GitLama Release Bot', hash: 'cd1cbfee30', when: '6 h', graph: { cols: 2, segs: [{ t: 'top', c: 0, lane: 2 }, { t: 'bot', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: 'Improve large repository opening and Windows forwarding qualification', author: 'Michael Lamers', hash: 'cc1b110a16', when: '7 h', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: 'Prepare v0.1.0-beta.9-10 release', refs: [{ kind: 'tag', name: 'v0.1.0-beta.9-10' }], author: 'GitLama Release Bot', hash: '2b827c4c3c', when: '17 h', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: 'Fix release shared Git revision pin', author: 'Michael Lamers', hash: '56614aef1d', when: '17 h', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: 'Allow CMD+A to select all files in a (un)staged list', author: 'Michael Lamers', hash: '161e24832a', when: '1 d', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: 'Conflict resolution v1.5', author: 'Michael Lamers', hash: '328a82a3eb', when: '1 d', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } },
+  { subject: 'Worked through a whole bunch of improvements', author: 'Michael Lamers', hash: '534f91f4c0', when: '1 d', graph: { cols: 2, segs: [{ t: 'v', c: 0, lane: 2 }], node: { c: 0, lane: 2 } } }
+];
+function mount(el) { ReactDOM.createRoot(document.getElementById('root')).render(el); }
+
+mount(h('div', { className: 'ns-demo', style: { justifyContent: 'center' } }, h(N.Palette, { query: 'reb', groups: [
+  { title: 'Commands', items: [
+    { label: '⟦Reb⟧ase windows-soak-cleanup onto origin/main', icon: 'arrow-left-right', hl: true, kbd: ['↵'] },
+    { label: 'Interactive ⟦reb⟧ase…', icon: 'squash', hint: 'last 5 commits' }] },
+  { title: 'Branches', items: [
+    { label: 'feature/⟦reb⟧uild-graph-cache', icon: 'branch', hint: 'origin' }] },
+  { title: 'Recent', items: [
+    { label: 'Abort ⟦reb⟧ase', icon: 'ban', hint: 'yesterday', disabled: true }] }] })));
+</script>
+</body>
+</html>

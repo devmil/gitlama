@@ -1,0 +1,278 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+  # Incremental artifacts only help repeated local edits; in the cache they
+  # would grow it without speeding a new commit.
+  CARGO_INCREMENTAL: '0'
+  RUST_VERSION: '1.97.1'
+
+jobs:
+  # Website, documentation, signed release metadata and a version-only release
+  # preparation cannot change the application. They run the source lane on one
+  # runner instead of building every platform. The release workflow builds and
+  # qualifies its prepared commit itself.
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      lane: ${{ steps.scope.outputs.lane }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose the lane for the changed paths
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          # The checkout is shallow; the start of the range is fetched alone.
+          # A start that cannot be fetched selects the desktop lane.
+          if [[ "$BEFORE" =~ ^[0-9a-f]{40}$ && ! "$BEFORE" =~ ^0+$ ]]; then
+            git fetch --no-tags --depth=1 origin "$BEFORE" || true
+          fi
+          python3 scripts/ci_scope.py --event "$EVENT_NAME" --before "$BEFORE" \
+            --after "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  source:
+    needs: scope
+    if: ${{ needs.scope.outputs.lane == 'source' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source without a build
+        run: python3 scripts/verify.py --source
+
+  desktop:
+    needs: scope
+    if: ${{ needs.scope.outputs.lane == 'desktop' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: macos
+            target: aarch64-apple-darwin
+            bundle: build/macos/Build/Products/Debug/GitLama.app
+            artifact: build/ci-artifacts/gitlama-macos-debug.tar.gz
+          - runner: ubuntu-24.04
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+            bundle: build/linux/x64/debug/bundle
+            artifact: build/ci-artifacts/gitlama-linux-debug.tar.gz
+          - runner: windows-2025
+            platform: windows
+            target: x86_64-pc-windows-msvc
+            bundle: build/windows/x64/runner/Debug
+            artifact: build/ci-artifacts/gitlama-windows-debug.zip
+    runs-on: ${{ matrix.runner }}
+    # Bounds a stalled dependency or Swift package download.
+    timeout-minutes: 120
+    steps:
+      - name: Free disk space for the Linux build
+        if: ${{ matrix.platform == 'linux' }}
+        shell: bash
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/flutter
+      - name: Cache the pinned Sparkle package
+        if: ${{ matrix.platform == 'macos' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm/repositories/Sparkle-*
+            ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_sparkle_project_Sparkle_releases_download_*
+          key: ${{ runner.os }}-gitlama-sparkle-v1-${{ hashFiles('macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+      - name: Set up Python
+        if: ${{ matrix.platform == 'windows' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Ensure Windows Git LFS
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          if (-not (Get-Command git-lfs -ErrorAction SilentlyContinue)) {
+            choco install git-lfs --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Git LFS installation failed with exit code $LASTEXITCODE" }
+          }
+          git lfs version
+          if ($LASTEXITCODE -ne 0) { throw "Git LFS validation failed with exit code $LASTEXITCODE" }
+      - name: Install Linux desktop prerequisites
+        if: ${{ matrix.platform == 'linux' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang cmake ninja-build pkg-config libgtk-3-dev git-lfs
+          pkg-config --exists gtk+-3.0
+      - name: Prepare Rust
+        if: ${{ matrix.platform != 'windows' }}
+        shell: bash
+        run: |
+          ./scripts/install-rustup-unix.sh
+          export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt,clippy --target ${{ matrix.target }}
+      - name: Prepare Rust on Windows
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          ./scripts/install-rustup-windows.ps1
+          rustup toolchain install $env:RUST_VERSION --profile minimal --component rustfmt,clippy --target ${{ matrix.target }}
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain setup failed with exit code $LASTEXITCODE" }
+      # Rust builds reuse the previous run's output instead of compiling every
+      # crate again. rust-core/target is the default path, so cargo, the
+      # Flutter build hook (which does not see CARGO_* variables), tests and
+      # packaging share it.
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust-core -> target
+          key: ${{ matrix.platform }}-desktop
+      - name: Resolve locked dependencies
+        if: ${{ matrix.platform != 'windows' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! flutter pub get --enforce-lockfile; then
+            # Refresh package metadata for diagnostics. A transient resolver or
+            # cache failure can recover here without changing any locked package.
+            echo "Dependency diagnostics:"
+            command -v flutter
+            flutter --version
+            git --version
+            flutter pub get || true
+            git diff -- pubspec.lock | head -120
+            # Never accept a repaired resolution that changes the checked-in
+            # lockfile. Retry enforcement once against the unchanged lockfile.
+            git diff --exit-code --quiet -- pubspec.lock
+            flutter pub get --enforce-lockfile
+          fi
+          # Fetch for every platform: the license inventory reads all packages offline.
+          cargo fetch --manifest-path rust-core/Cargo.toml --locked
+      - name: Resolve locked dependencies on Windows
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          flutter pub get --enforce-lockfile
+          if ($LASTEXITCODE -ne 0) {
+            # Same recovery as the Unix step: refresh once for diagnostics, but
+            # never accept a resolution that changes the checked-in lockfile.
+            Write-Host "Dependency diagnostics:"
+            flutter --version
+            git --version
+            flutter pub get
+            git --no-pager diff -- pubspec.lock | Select-Object -First 120
+            # Never accept a repaired resolution that changes the checked-in
+            # lockfile. Retry enforcement once against the unchanged lockfile.
+            git diff --exit-code --quiet -- pubspec.lock
+            if ($LASTEXITCODE -ne 0) { throw "Unlocked resolution changed pubspec.lock" }
+            flutter pub get --enforce-lockfile
+            if ($LASTEXITCODE -ne 0) { throw "Dependency resolution failed with exit code $LASTEXITCODE" }
+          }
+          cargo fetch --manifest-path rust-core/Cargo.toml --locked
+          if ($LASTEXITCODE -ne 0) { throw "Dependency fetch failed with exit code $LASTEXITCODE" }
+      # Linux runs the full gate. Dart, Python and formatting checks give the
+      # same result everywhere, so macOS and Windows run only the Rust lints
+      # and tests, the desktop build and the native smoke test.
+      - name: Validate source
+        if: ${{ matrix.platform != 'windows' }}
+        shell: bash
+        env:
+          LANE: ${{ matrix.platform != 'linux' && '--platform' || '' }}
+        run: python3 scripts/verify.py $LANE
+      - name: Build desktop bundle
+        if: ${{ matrix.platform != 'windows' }}
+        shell: bash
+        run: flutter build ${{ matrix.platform }} --debug
+      - name: Build desktop bundle on Windows
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          flutter build windows --debug
+          if ($LASTEXITCODE -ne 0) { throw "Desktop build failed with exit code $LASTEXITCODE" }
+      - name: Load bundled Rust
+        if: ${{ matrix.platform != 'windows' }}
+        shell: bash
+        # A staging mutation may wait up to 30 s for its refresh
+        # (RECONCILIATION_TIMEOUT), so one slow refresh on a busy runner
+        # exceeds the 30 s native test default.
+        env:
+          GITLAMA_NATIVE_TEST_TIMEOUT_SECONDS: '180'
+          GITLAMA_NATIVE_TEST_WAIT_SECONDS: '30'
+        run: python3 scripts/native-smoke.py "${{ matrix.bundle }}"
+      - name: Load bundled Rust on Windows
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        env:
+          GITLAMA_NATIVE_TEST_TIMEOUT_SECONDS: '180'
+          GITLAMA_NATIVE_TEST_WAIT_SECONDS: '30'
+        run: |
+          python scripts/native-smoke.py "${{ matrix.bundle }}"
+          if ($LASTEXITCODE -ne 0) { throw "Bundled Rust smoke test failed with exit code $LASTEXITCODE" }
+      - name: Validate source on Windows
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          & ./tests/package/windows_quiescence_cases.ps1
+          & ./tests/package/windows_soak_policy_cases.ps1
+          python -m unittest discover -s tests/package -p test_windows_launch_probe.py
+          if ($LASTEXITCODE -ne 0) { throw "Windows launch probe regressions failed" }
+          # Fixture repositories compare exact bytes; append to any shared
+          # dependency rewrite already configured.
+          $n = if ($env:GIT_CONFIG_COUNT) { [int]$env:GIT_CONFIG_COUNT } else { 0 }
+          Set-Item "env:GIT_CONFIG_KEY_$n" "core.autocrlf"
+          Set-Item "env:GIT_CONFIG_VALUE_$n" "false"
+          Set-Item "env:GIT_CONFIG_KEY_$($n + 1)" "core.eol"
+          Set-Item "env:GIT_CONFIG_VALUE_$($n + 1)" "lf"
+          $env:GIT_CONFIG_COUNT = "$($n + 2)"
+          python scripts/verify.py --platform
+          if ($LASTEXITCODE -ne 0) { throw "Source validation failed with exit code $LASTEXITCODE" }
+      # The release builds the Linux remote helper in the Ubuntu 22.04 container;
+      # build it the same way here so a packaging break fails the pull request,
+      # not the release.
+      - name: Build the remote helper in the release container
+        if: ${{ matrix.platform == 'linux' }}
+        shell: bash
+        run: ./scripts/qualify-linux-local.sh --remote-helper
+      - name: Archive debug bundle
+        if: ${{ matrix.platform != 'windows' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "${{ matrix.artifact }}")"
+          tar -C "$(dirname "${{ matrix.bundle }}")" -czf "${{ matrix.artifact }}" \
+            "$(basename "${{ matrix.bundle }}")"
+      - name: Archive debug bundle on Windows
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path (Split-Path -Parent "${{ matrix.artifact }}") | Out-Null
+          Compress-Archive -LiteralPath "${{ matrix.bundle }}" -DestinationPath "${{ matrix.artifact }}" -CompressionLevel Fastest
+          if (-not (Test-Path -LiteralPath "${{ matrix.artifact }}")) { throw "Debug bundle archive was not created" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-${{ matrix.platform }}-debug
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 14

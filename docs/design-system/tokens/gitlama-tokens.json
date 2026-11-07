@@ -1,0 +1,672 @@
+{
+ "name": "GitLama",
+ "version": 3,
+ "meta": {
+  "source": "GitLama Meridian 3.0 — docs/design-system/tokens/gitlama-tokens.json is the single token source",
+  "themes": "light is the first theme; a token without a dark value inherits light"
+ },
+ "color": {
+  "themes": [
+   {
+    "id": "light",
+    "name": "Light"
+   },
+   {
+    "id": "dark",
+    "name": "Dark"
+   }
+  ],
+  "tokens": [
+   {
+    "name": "ground",
+    "value": {
+     "light": "#E8ECEE",
+     "dark": "#0B151A"
+    },
+    "usage": "The window canvas behind the islands; also the sidebar's surface. Nothing but the sidebar, toolbar and repo tabs sit directly on it."
+   },
+   {
+    "name": "ground-hover",
+    "value": {
+     "light": "#DCE2E5",
+     "dark": "#13222A"
+    },
+    "usage": "Hover fill for sidebar rows, toolbar buttons and tabs that sit on `ground`."
+   },
+   {
+    "name": "pane",
+    "value": {
+     "light": "#FFFFFF",
+     "dark": "#122027"
+    },
+    "usage": "Island surface: History, Changes, Detail, Diff. The default reading surface."
+   },
+   {
+    "name": "pane-alt",
+    "value": {
+     "light": "#F6F8F9",
+     "dark": "#0F1B21"
+    },
+    "usage": "Inset areas inside an island: the commit Composer, file-list headers, the hunk header strip, zebra rows in dense tables."
+   },
+   {
+    "name": "pane-hover",
+    "value": {
+     "light": "#EEF2F4",
+     "dark": "#1A2B34"
+    },
+    "usage": "Hover fill for rows and quiet controls inside an island."
+   },
+   {
+    "name": "raised",
+    "value": {
+     "light": "#FFFFFF",
+     "dark": "#1A2A32"
+    },
+    "usage": "Popovers, menus, the Logbook, dialogs and the Compass palette. Always paired with `shadow-float`."
+   },
+   {
+    "name": "scrim",
+    "value": {
+     "light": "rgba(11,21,26,0.32)",
+     "dark": "rgba(0,0,0,0.55)"
+    },
+    "usage": "Backdrop behind modal dialogs only (never behind popovers)."
+   },
+   {
+    "name": "ink",
+    "value": {
+     "light": "#0F1B21",
+     "dark": "#E4ECEF"
+    },
+    "usage": "Primary text and icons on `pane`, `pane-alt`, `ground`, `raised` and `polar-soft`."
+   },
+   {
+    "name": "ink-muted",
+    "value": {
+     "light": "#52616A",
+     "dark": "#93A5AE"
+    },
+    "usage": "Secondary text: authors, dates, counts, captions, section headers, idle icons. Reads on `pane`, `pane-alt`, `ground` and `polar-soft` (≥5:1 both themes)."
+   },
+   {
+    "name": "ink-faint",
+    "value": {
+     "light": "#8795A0",
+     "dark": "#5E717B"
+    },
+    "usage": "Disabled labels, placeholders and the graph's distant lanes when a lane is focused. Never for text a person must read (≈3:1)."
+   },
+   {
+    "name": "line",
+    "value": {
+     "light": "#D8DFE3",
+     "dark": "#21323B"
+    },
+    "usage": "Hairlines: dividers inside islands, list separators, island edge (with `shadow-pane`). Decorative, not a boundary that carries meaning."
+   },
+   {
+    "name": "line-strong",
+    "value": {
+     "light": "#C3CCD1",
+     "dark": "#2C414B"
+    },
+    "usage": "Button outlines and the splitter grip — controls that also carry a text label or icon."
+   },
+   {
+    "name": "control-edge",
+    "value": {
+     "light": "#85929A",
+     "dark": "#667A84"
+    },
+    "usage": "Boundary of text fields, checkboxes, switches and the segmented track (3:1 on `pane` and `raised`)."
+   },
+   {
+    "name": "polar",
+    "value": {
+     "light": "#056CB3",
+     "dark": "#5BB1FE"
+    },
+    "usage": "The one accent: cerulean, the icon's ground (Meridian `accent`; `polar` is GitLama's historical reference name). Primary button fill, selected row in the focused island, focus ring, active tab underline, progress."
+   },
+   {
+    "name": "on-polar",
+    "value": {
+     "light": "#FFFFFF",
+     "dark": "#06111D"
+    },
+    "usage": "Text and icons on `polar` fills."
+   },
+   {
+    "name": "on-polar-muted",
+    "value": {
+     "light": "#E2EFFB",
+     "dark": "#123452"
+    },
+    "usage": "Secondary text (author, date, hash) inside a `polar`-filled selected row."
+   },
+   {
+    "name": "polar-soft",
+    "value": {
+     "light": "#DBEBFC",
+     "dark": "#16334D"
+    },
+    "usage": "Selection in an island that does not have focus; the active sidebar row; tinted local-branch chips. Ink and `polar-ink` read on it."
+   },
+   {
+    "name": "polar-ink",
+    "value": {
+     "light": "#0160A0",
+     "dark": "#87C4FE"
+    },
+    "usage": "Accent-colored text: links, the Compass branch name, local ref labels on `polar-soft` and `pane`."
+   },
+   {
+    "name": "focus",
+    "value": {
+     "light": "#056CB3",
+     "dark": "#87C4FE"
+    },
+    "usage": "2px focus ring, offset 1px, on every focusable control. ≥3:1 on `pane`, `ground` and `raised` in both themes."
+   },
+   {
+    "name": "added",
+    "value": {
+     "light": "#16733A",
+     "dark": "#4AC26B"
+    },
+    "usage": "Added lines' gutter sign, the A status glyph, +N counts. Text on `pane` and `added-bg`."
+   },
+   {
+    "name": "added-bg",
+    "value": {
+     "light": "#E6F4EA",
+     "dark": "#0F2E1C"
+    },
+    "usage": "Background of added diff lines."
+   },
+   {
+    "name": "added-strong",
+    "value": {
+     "light": "#BFE5C9",
+     "dark": "#1D4A2E"
+    },
+    "usage": "Intraline highlight of the changed words inside an added line (ink on it)."
+   },
+   {
+    "name": "deleted",
+    "value": {
+     "light": "#C4302B",
+     "dark": "#FF7B72"
+    },
+    "usage": "Removed lines' gutter sign, the D status glyph, −N counts. Text on `pane` and `deleted-bg`."
+   },
+   {
+    "name": "deleted-bg",
+    "value": {
+     "light": "#FCEBEA",
+     "dark": "#3A1A1B"
+    },
+    "usage": "Background of removed diff lines."
+   },
+   {
+    "name": "deleted-strong",
+    "value": {
+     "light": "#F6C6C2",
+     "dark": "#5E2A29"
+    },
+    "usage": "Intraline highlight inside a removed line (ink on it)."
+   },
+   {
+    "name": "modified",
+    "value": {
+     "light": "#9A5B00",
+     "dark": "#E3A948"
+    },
+    "usage": "The M status glyph, dirty-worktree dot, warnings. Text on `pane` and `modified-bg`."
+   },
+   {
+    "name": "modified-bg",
+    "value": {
+     "light": "#FDF1DC",
+     "dark": "#3A2A10"
+    },
+    "usage": "Warning banner and Logbook warning row background."
+   },
+   {
+    "name": "renamed",
+    "value": {
+     "light": "#6B4FC8",
+     "dark": "#B39DFF"
+    },
+    "usage": "The R / C status glyphs (renamed, copied)."
+   },
+   {
+    "name": "danger",
+    "value": {
+     "light": "#B42318",
+     "dark": "#FF6B61"
+    },
+    "usage": "Destructive actions (Discard, Delete branch, Force push), error text and error icons on `pane` and `raised`."
+   },
+   {
+    "name": "on-danger",
+    "value": {
+     "light": "#FFFFFF",
+     "dark": "#1A0503"
+    },
+    "usage": "Text on a `danger` fill."
+   },
+   {
+    "name": "danger-bg",
+    "value": {
+     "light": "#FCEBEA",
+     "dark": "#3A1A1B"
+    },
+    "usage": "Error banner and failed Logbook row background."
+   },
+   {
+    "name": "conflict",
+    "value": {
+     "light": "#B03A08",
+     "dark": "#FF9E5E"
+    },
+    "usage": "Conflict glyph (!), unresolved-count badge, conflict region rails. Orange, not red: a conflict is work to do, not a failure."
+   },
+   {
+    "name": "conflict-bg",
+    "value": {
+     "light": "#FDEBDD",
+     "dark": "#3D2413"
+    },
+    "usage": "Background of unresolved conflict regions."
+   },
+   {
+    "name": "side-ours",
+    "value": {
+     "light": "#6B4FC8",
+     "dark": "#B39DFF"
+    },
+    "usage": "Rail and label of the current (ours) side in the Conflict resolver."
+   },
+   {
+    "name": "side-theirs",
+    "value": {
+     "light": "#0E7C86",
+     "dark": "#4FD1DB"
+    },
+    "usage": "Rail and label of the incoming (theirs) side in the Conflict resolver."
+   },
+   {
+    "name": "tag-ink",
+    "value": {
+     "light": "#7A4A00",
+     "dark": "#F2C46B"
+    },
+    "usage": "Tag chip label and notch."
+   },
+   {
+    "name": "tag-bg",
+    "value": {
+     "light": "#FBF0D9",
+     "dark": "#33270F"
+    },
+    "usage": "Tag chip fill."
+   },
+   {
+    "name": "fjord",
+    "value": {
+     "light": "#14242B",
+     "dark": "#1F3A48"
+    },
+    "usage": "Brand only: the slate brand ground (Meridian `brand`). Welcome screen hero, About box and the cover. Never a UI surface."
+   },
+   {
+    "name": "lane-1",
+    "value": {
+     "light": "#1F6FD6",
+     "dark": "#6AAEFF"
+    },
+    "usage": "Graph lane 1 (blue — the first-parent lane of HEAD's branch): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-2",
+    "value": {
+     "light": "#0B8A7A",
+     "dark": "#3DD6C0"
+    },
+    "usage": "Graph lane 2 (teal): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-3",
+    "value": {
+     "light": "#B26A00",
+     "dark": "#F2C14E"
+    },
+    "usage": "Graph lane 3 (amber): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-4",
+    "value": {
+     "light": "#D4521E",
+     "dark": "#FF8A5B"
+    },
+    "usage": "Graph lane 4 (orange): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-5",
+    "value": {
+     "light": "#C7306B",
+     "dark": "#FF6B9A"
+    },
+    "usage": "Graph lane 5 (rose): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-6",
+    "value": {
+     "light": "#7A55D3",
+     "dark": "#B49BFF"
+    },
+    "usage": "Graph lane 6 (violet): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-7",
+    "value": {
+     "light": "#0784A8",
+     "dark": "#4CC9F0"
+    },
+    "usage": "Graph lane 7 (cyan): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   },
+   {
+    "name": "lane-8",
+    "value": {
+     "light": "#5D8A12",
+     "dark": "#A3D65C"
+    },
+    "usage": "Graph lane 8 (olive): the lane stroke, its node ring and the dot on ref chips that sit on it. ≥4:1 on `pane` both themes."
+   }
+  ]
+ },
+ "type": {
+  "fonts": [
+   {
+    "family": "JetBrains Mono",
+    "file": "fonts/JetBrainsMono-Regular.ttf",
+    "weight": "400"
+   }
+  ],
+  "families": {
+   "sans": "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Segoe UI Variable Text\", \"Segoe UI\", Cantarell, \"Noto Sans\", sans-serif",
+   "mono": "\"JetBrains Mono\", ui-monospace, Menlo, Consolas, monospace"
+  },
+  "groups": [
+   {
+    "name": "Headlines",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "display",
+      "fontSize": "26px",
+      "lineHeight": "32px",
+      "fontWeight": 650,
+      "letterSpacing": "-0.015em",
+      "sample": "Open a repository",
+      "usage": "Welcome screen and empty-state headline only. One per window."
+     },
+     {
+      "name": "title",
+      "fontSize": "17px",
+      "lineHeight": "22px",
+      "fontWeight": 600,
+      "letterSpacing": "-0.01em",
+      "sample": "Rebase onto origin/main",
+      "usage": "Dialog and sheet titles; Settings page titles."
+     },
+     {
+      "name": "subject",
+      "fontSize": "15px",
+      "lineHeight": "20px",
+      "fontWeight": 600,
+      "sample": "Preserve Windows soak failures through process cleanup",
+      "usage": "The commit subject at the top of the Detail island."
+     }
+    ]
+   },
+   {
+    "name": "Interface",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "body",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "fontWeight": 400,
+      "sample": "Recover Windows named pipe after early client disconnect",
+      "usage": "Default for rows (commit subjects, file names, sidebar items), fields and menus."
+     },
+     {
+      "name": "body-strong",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "fontWeight": 600,
+      "sample": "windows-soak-cleanup",
+      "usage": "The checked-out branch in the sidebar, the Compass repo name, emphasised row text."
+     },
+     {
+      "name": "label",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 500,
+      "sample": "Stage hunk",
+      "usage": "Buttons, segmented options, chips, tab labels, settings labels."
+     },
+     {
+      "name": "caption",
+      "fontSize": "11px",
+      "lineHeight": "14px",
+      "fontWeight": 500,
+      "sample": "Fetch · 2 min ago",
+      "usage": "Toolbar button labels, metadata lines, counts, the status bar."
+     },
+     {
+      "name": "overline",
+      "fontSize": "11px",
+      "lineHeight": "14px",
+      "fontWeight": 600,
+      "letterSpacing": "0.06em",
+      "sample": "BRANCHES",
+      "usage": "Sidebar and palette section headers, set in capitals, in `ink-muted`."
+     }
+    ]
+   },
+   {
+    "name": "Code",
+    "family": "mono",
+    "styles": [
+     {
+      "name": "code",
+      "fontSize": "12px",
+      "lineHeight": "18px",
+      "fontWeight": 400,
+      "sample": "if ($LASTEXITCODE -ne 0) { throw }",
+      "usage": "Diff, blame, file content and Logbook command output."
+     },
+     {
+      "name": "hash",
+      "fontSize": "11px",
+      "lineHeight": "16px",
+      "fontWeight": 400,
+      "letterSpacing": "0.01em",
+      "sample": "f4b34279b4",
+      "usage": "Commit hashes, line numbers, git command lines. Always `ink-muted` unless selected."
+     }
+    ]
+   }
+  ]
+ },
+ "spacing": {
+  "tokens": [
+   {
+    "name": "space-1",
+    "value": "2px",
+    "usage": "Icon-to-badge nudges; the gap inside the tracking-pair chip."
+   },
+   {
+    "name": "space-2",
+    "value": "4px",
+    "usage": "Gap between icon and label in chips and toolbar buttons; ref chip padding-y."
+   },
+   {
+    "name": "space-3",
+    "value": "6px",
+    "usage": "Gap between island edges and the ground (the gutter); row inset from island edge."
+   },
+   {
+    "name": "space-4",
+    "value": "8px",
+    "usage": "Default control padding-x, gap between related controls, row padding-x."
+   },
+   {
+    "name": "space-5",
+    "value": "12px",
+    "usage": "Island header padding-x; gap between control groups."
+   },
+   {
+    "name": "space-6",
+    "value": "16px",
+    "usage": "Popover and Logbook padding; Detail island content inset."
+   },
+   {
+    "name": "space-7",
+    "value": "20px",
+    "usage": "Dialog padding; settings row spacing."
+   },
+   {
+    "name": "space-8",
+    "value": "24px",
+    "usage": "Dialog section gaps; welcome screen gutters."
+   },
+   {
+    "name": "space-9",
+    "value": "32px",
+    "usage": "Empty-state vertical rhythm."
+   }
+  ]
+ },
+ "radius": {
+  "tokens": [
+   {
+    "name": "radius-xs",
+    "value": "3px",
+    "usage": "Status glyph tiles, Kbd keys, the diff intraline highlight."
+   },
+   {
+    "name": "radius-sm",
+    "value": "5px",
+    "usage": "Rows (selection is an inset rounded bar, not a full-bleed stripe), ref chips, sidebar items."
+   },
+   {
+    "name": "radius-md",
+    "value": "7px",
+    "usage": "Buttons, fields, segmented track, repo tabs."
+   },
+   {
+    "name": "radius-lg",
+    "value": "10px",
+    "usage": "Islands (History, Changes, Detail) and banners."
+   },
+   {
+    "name": "radius-xl",
+    "value": "14px",
+    "usage": "Popovers, the Logbook, dialogs, the Compass palette."
+   },
+   {
+    "name": "radius-pill",
+    "value": "999px",
+    "usage": "The Compass bar, count badges, switches, progress bars."
+   }
+  ]
+ },
+ "shadow": {
+  "tokens": [
+   {
+    "name": "shadow-pane",
+    "value": {
+     "light": "0 0 0 1px rgba(15,27,33,0.07), 0 1px 2px rgba(15,27,33,0.05)",
+     "dark": "0 0 0 1px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.35)"
+    },
+    "usage": "Every island. It is the island's edge — islands have no separate border."
+   },
+   {
+    "name": "shadow-float",
+    "value": {
+     "light": "0 0 0 1px rgba(15,27,33,0.09), 0 16px 40px -12px rgba(15,27,33,0.28)",
+     "dark": "0 0 0 1px rgba(255,255,255,0.08), 0 16px 40px -12px rgba(0,0,0,0.7)"
+    },
+    "usage": "Popovers, menus, the Logbook, the Compass palette and dialogs."
+   },
+   {
+    "name": "shadow-control",
+    "value": {
+     "light": "0 1px 0 rgba(15,27,33,0.06)",
+     "dark": "0 1px 0 rgba(0,0,0,0.3)"
+    },
+    "usage": "Secondary buttons and the selected segmented option — a 1px lip, never a blur."
+   }
+  ]
+ },
+ "size": {
+  "tokens": [
+   {
+    "name": "size-row-compact",
+    "value": "24px",
+    "usage": "Row height at Compact density."
+   },
+   {
+    "name": "size-row",
+    "value": "28px",
+    "usage": "Row height at Regular density (default) — commit rows, file rows, sidebar rows."
+   },
+   {
+    "name": "size-row-comfortable",
+    "value": "32px",
+    "usage": "Row height at Comfortable density."
+   },
+   {
+    "name": "size-control",
+    "value": "28px",
+    "usage": "Buttons, fields, segmented controls, select."
+   },
+   {
+    "name": "size-control-sm",
+    "value": "22px",
+    "usage": "Controls inside island headers and rows (hover actions, filters)."
+   },
+   {
+    "name": "size-toolbar",
+    "value": "52px",
+    "usage": "Unified title bar + toolbar height."
+   },
+   {
+    "name": "size-tabbar",
+    "value": "34px",
+    "usage": "Repository tab strip."
+   },
+   {
+    "name": "size-sidebar",
+    "value": "248px",
+    "usage": "Default sidebar width (resizable 200–360)."
+   },
+   {
+    "name": "size-icon",
+    "value": "16px",
+    "usage": "All UI icons; 14px inside chips and size-control-sm controls."
+   },
+   {
+    "name": "size-lane",
+    "value": "14px",
+    "usage": "Horizontal pitch between graph lanes."
+   }
+  ]
+ }
+}

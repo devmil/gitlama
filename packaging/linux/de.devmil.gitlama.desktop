@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GitLama
+Comment=Graph-first desktop Git client
+Exec=gitlama
+Icon=de.devmil.gitlama
+Terminal=false
+Categories=Development;RevisionControl;
+StartupWMClass=de.devmil.gitlama

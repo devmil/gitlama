@@ -1,0 +1,144 @@
+{
+  "schema": "gitlama.patch-scope.v1",
+  "version": "3.0.0",
+  "shortcut": {
+    "macos": "Shift+Meta+P",
+    "windows": "Ctrl+Shift+P",
+    "linux": "Ctrl+Shift+P"
+  },
+  "outputRules": [
+    "Create patch writes exactly one output file.",
+    "Success never leaves a zero-byte file.",
+    "Failure removes the temporary output and leaves an existing destination untouched.",
+    "Apply patch runs git apply --check before mutation and captures a recovery snapshot."
+  ],
+  "precedence": [
+    "lines",
+    "selected-files",
+    "focused-pane",
+    "comparison",
+    "commit-range",
+    "workspace-default"
+  ],
+  "scopes": [
+    {
+      "id": "lines",
+      "when": "Diff line selection is non-empty",
+      "format": "unified-diff",
+      "commandKind": "constructed-selection-patch",
+      "filename": "{basename}.partial.patch",
+      "preview": "N selected lines from {path}"
+    },
+    {
+      "id": "selected-files-unstaged",
+      "when": "One or more unstaged files are selected and no line selection exists",
+      "format": "unified-diff",
+      "commandKind": "git-diff-pathspecs",
+      "filename": "{repo}-selected.patch",
+      "preview": "N unstaged files"
+    },
+    {
+      "id": "selected-files-staged",
+      "when": "One or more staged files are selected and no line selection exists",
+      "format": "unified-diff",
+      "commandKind": "git-diff-cached-pathspecs",
+      "filename": "{repo}-selected-staged.patch",
+      "preview": "N staged files"
+    },
+    {
+      "id": "unstaged",
+      "when": "Changes mode has no selection and Unstaged is focused",
+      "format": "unified-diff",
+      "commandKind": "git-diff",
+      "filename": "{repo}-unstaged.patch",
+      "preview": "All unstaged changes"
+    },
+    {
+      "id": "staged",
+      "when": "Changes mode has no selection and Staged is focused",
+      "format": "unified-diff",
+      "commandKind": "git-diff-cached",
+      "filename": "{repo}-staged.patch",
+      "preview": "All staged changes"
+    },
+    {
+      "id": "head",
+      "when": "The user chooses HEAD versus working tree",
+      "format": "unified-diff",
+      "commandKind": "git-diff-head",
+      "filename": "{repo}.patch",
+      "preview": "HEAD versus working tree"
+    },
+    {
+      "id": "commit",
+      "when": "One commit is selected, or Create patch is chosen in the diff of one commit",
+      "paths": "Limited to the open file when the diff shows one file; a renamed file includes its previous path. The filename is then 0001-{slug}-{basename}.patch",
+      "format": "format-patch",
+      "commandKind": "git-format-patch-one",
+      "filename": "0001-{slug}.patch",
+      "preview": "Commit {short-id}"
+    },
+    {
+      "id": "range",
+      "when": "A contiguous first-parent chain of two or more commits is selected",
+      "format": "format-patch",
+      "commandKind": "git-format-patch-range",
+      "filename": "{oldest}-{newest}.patch",
+      "preview": "N commits from {oldest} through {newest}"
+    },
+    {
+      "id": "compare",
+      "when": "A two-commit comparison is active, or Create patch is chosen in its diff",
+      "paths": "Limited to the open file when the diff shows one file; a renamed file includes its previous path. The filename is then {old}-{new}-{basename}.patch",
+      "format": "unified-diff",
+      "commandKind": "git-diff-comparison",
+      "filename": "{old}-{new}.patch",
+      "preview": "Comparison {old} to {new}"
+    }
+  ],
+  "disabled": [
+    {
+      "id": "discontiguous",
+      "reason": "Selection is not a contiguous first-parent chain. Select a range or compare two commits."
+    },
+    {
+      "id": "binary-only",
+      "reason": "The selected change has no textual patch representation."
+    },
+    {
+      "id": "clean",
+      "reason": "The working tree has no changes."
+    },
+    {
+      "id": "empty-repository",
+      "reason": "The repository has no commits."
+    },
+    {
+      "id": "operation-running",
+      "reason": "Wait for the current index-changing operation to finish."
+    },
+    {
+      "id": "unavailable-path",
+      "reason": "The selected path is no longer present in the current generation."
+    }
+  ],
+  "dialogStates": [
+    "ready",
+    "disabled",
+    "choosing-destination",
+    "overwrite-confirmation",
+    "writing",
+    "complete",
+    "failed"
+  ],
+  "applyStates": [
+    "checking",
+    "check-failed",
+    "ready",
+    "snapshotting",
+    "applying",
+    "complete",
+    "failed",
+    "recovery-available"
+  ]
+}

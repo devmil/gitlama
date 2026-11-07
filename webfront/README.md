@@ -7,8 +7,7 @@ state until an authorized release transaction writes `_data/releases.json`.
 The page contains no analytics, cookies or third-party scripts. Platform links
 are rendered only from the signed retained release index and are restricted in
 the browser to unauthenticated `https://github.com/` URLs. The release workflow
-verifies Forgejo and the complete public GitHub mirror before it updates the
-index. `northspline-release-ed25519.pub` is the versioned offline trust root.
+verifies every published GitHub release asset before it updates the index. `northspline-release-ed25519.pub` is the versioned offline trust root.
 
 `language.js` switches the main pages (index, release notes, license) between
 English and German. English is the source text in the HTML; an element with
@@ -52,17 +51,10 @@ system's JetBrains Mono, made with `pyftsubset --flavor=woff2`. The workspace sc
 app by the opt-in `website workspace capture` test in
 `test/home_screen_test.dart`; its comment has the command.
 
-Forgejo is authoritative and the public GitHub repository is a mirror.
-`.forgejo/workflows/sync-website.yml` runs on every push to `main` that touches
-the site and mirrors `webfront/` into the GitHub repository's `webfront/`
-directory, together with `.github/workflows/gitlama-pages.yml`, which
-deploys it with GitHub Pages. Releases publish the signed index through the
-same mirror. The mirror owns only files recorded by
-`.northspline-managed-files.json` in a directory carrying the exact
-`.northspline-site-owner` marker, and a Pages workflow carrying its ownership
-line. It uses a separate checkout credential and a normal fast-forward push; it
-never force-pushes or claims an unrelated tree. GitHub Pages must be set to
-deploy from GitHub Actions in the mirror's settings.
+`.github/workflows/gitlama-pages.yml` deploys `webfront/` with GitHub Pages on
+every push to `main` that touches the site. The release workflow commits the
+signed index and the update feed, then runs the same deployment. Pushes made by
+the release workflow do not start the Pages workflow on their own.
 
 Local asset references in the pages and `style.css` carry a `?v=` content
 digest, so a returning browser fetches changed styles, scripts and images.

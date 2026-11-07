@@ -1,0 +1,17 @@
+name: Set up pinned Flutter
+description: Installs the Flutter SDK that .fvmrc pins and checks its version.
+runs:
+  using: composite
+  steps:
+    - name: Read the pinned Flutter version
+      id: version
+      shell: bash
+      run: echo "flutter=$(python3 -c 'import json; print(json.load(open(".fvmrc"))["flutter"])' 2>/dev/null || python -c 'import json; print(json.load(open(".fvmrc"))["flutter"])')" >> "$GITHUB_OUTPUT"
+    - uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+        flutter-version: ${{ steps.version.outputs.flutter }}
+        cache: true
+    - name: Verify Flutter version
+      shell: bash
+      run: flutter --version

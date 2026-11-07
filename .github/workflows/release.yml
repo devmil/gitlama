@@ -1,0 +1,650 @@
+name: Publish GitLama release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version change or immutable recovery
+        required: true
+        type: choice
+        options: [none, beta, patch, minor, major]
+      channel:
+        description: Release channel
+        required: true
+        type: choice
+        options: [stable, beta]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+  RUST_VERSION: '1.97.1'
+  # Apply to independently built plugin crates as well as the app workspace.
+  CARGO_PROFILE_RELEASE_DEBUG: '1'
+  CARGO_PROFILE_RELEASE_STRIP: 'none'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      mode: ${{ steps.identity.outputs.mode }}
+      revision: ${{ steps.identity.outputs.revision }}
+      tag: ${{ steps.identity.outputs.tag }}
+      version: ${{ steps.identity.outputs.version }}
+      build: ${{ steps.identity.outputs.build }}
+    steps:
+      - name: Free disk space for the source gate
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/flutter
+      - uses: ./.github/actions/bitwarden-cli
+      - name: Install Linux desktop prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang cmake ninja-build pkg-config libgtk-3-dev git-lfs
+      - name: Prepare or resume release identity
+        id: identity
+        shell: bash
+        env:
+          BW_SERVER: ${{ secrets.BW_SERVER }}
+          BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
+          BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
+          BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
+          BW_RELEASE_ITEM_ID: ${{ secrets.BW_RELEASE_ITEM_ID }}
+          BITWARDENCLI_APPDATA_DIR: ${{ runner.temp }}/gitlama-bw-prepare
+        run: |
+          set -euo pipefail
+          release_tmp=""
+          cleanup() {
+            if declare -F gitlama_vault_logout >/dev/null; then
+              gitlama_vault_logout
+            fi
+            [[ -z "$release_tmp" ]] || rm -rf -- "$release_tmp"
+            rm -rf -- "$BITWARDENCLI_APPDATA_DIR"
+          }
+          trap cleanup EXIT
+          ./scripts/install-rustup-unix.sh
+          export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt,clippy
+          plan="$(python3 scripts/release.py plan --bump '${{ inputs.bump }}' --channel '${{ inputs.channel }}')"
+          mode="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["mode"])' <<<"$plan")"
+          if [[ "$mode" != recover ]]; then
+            source scripts/lib/vaultwarden-release.sh
+            release_tmp="$(mktemp -d)"
+            gitlama_vault_login
+            release_key="$release_tmp/northspline-release-key.pem"
+            gitlama_vault_attachment northspline-release-key.pem "$release_key"
+            # Protected vault filenames survive the product rename. Check signing inputs before mutation.
+            gitlama_vault_attachment northspline-developer-id.p12 "$release_tmp/developer-id.p12"
+            gitlama_vault_attachment northspline-notary-api-key.p8 "$release_tmp/notary-api-key.p8"
+            (
+              trust_check="$(mktemp -d)"
+              trap 'rm -rf -- "$trust_check"' EXIT
+              python3 scripts/release.py public-key --key-file "$release_key" \
+                --output "$trust_check/public-key" >/dev/null
+              cmp -s "$trust_check/public-key" release/northspline-release-ed25519.pub || {
+                echo "::error::The protected release key does not match the versioned trust root" >&2
+                exit 1
+              }
+            )
+            flutter pub get --enforce-lockfile
+          fi
+          if [[ "$mode" == prepare ]]; then
+            python3 scripts/release.py prepare --bump '${{ inputs.bump }}' --channel '${{ inputs.channel }}'
+            ./scripts/verify.sh
+            git config user.name "GitLama Release Bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add VERSION pubspec.yaml rust-core/Cargo.toml rust-core/Cargo.lock CHANGELOG.md RELEASE_NOTES.md
+            version="$(sed -n '1p' VERSION)"
+            build="$(sed -n '2p' VERSION)"
+            git commit -m "Prepare v${version}-${build} release" \
+              -m "Promote the ${{ inputs.channel }} notes and apply the requested ${{ inputs.bump }} version change."
+            git push origin HEAD:main
+          elif [[ "$mode" == resume-prepared ]]; then
+            ./scripts/verify.sh
+          fi
+          if [[ "$mode" != recover ]]; then
+            tag="v$(sed -n '1p' VERSION)-$(sed -n '2p' VERSION)"
+            revision="$(git rev-parse HEAD)"
+            version="$(sed -n '1p' VERSION)"
+            build="$(sed -n '2p' VERSION)"
+          else
+            tag="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["tag"])' <<<"$plan")"
+            revision="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["revision"])' <<<"$plan")"
+            version="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' <<<"$plan")"
+            build="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["build"])' <<<"$plan")"
+          fi
+          {
+            echo "mode=$mode"
+            echo "revision=$revision"
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "build=$build"
+          } >> "$GITHUB_OUTPUT"
+
+  helper:
+    if: ${{ needs.prepare.outputs.mode != 'recover' }}
+    needs: prepare
+    # The Linux remote helpers every desktop package bundles, built once on the
+    # glibc 2.35 baseline from the release revision. helper-macos builds the macOS ones.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - name: Build the remote helper on the Ubuntu 22.04 baseline
+        env:
+          GITLAMA_COLLECT_DIAGNOSTICS: "1"
+          GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
+        run: ./scripts/qualify-linux-local.sh --remote-helper
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-remote-helper
+          path: dist/remote-helper/gitlama-remote-helper-*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload private diagnostics handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-diagnostics-helper
+          path: dist/diagnostics/*-diagnostics.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  helper-macos:
+    if: ${{ needs.prepare.outputs.mode != 'recover' }}
+    needs: prepare
+    # The macOS remote helpers for Apple silicon and Intel hosts, built with the macOS SDK and
+    # signed ad hoc. The macOS package re-signs its copies with the Developer ID.
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - name: Build the macOS remote helpers
+        env:
+          GITLAMA_COLLECT_DIAGNOSTICS: "1"
+          GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
+        run: |
+          set -euo pipefail
+          ./scripts/install-rustup-unix.sh
+          export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup target add --toolchain "$RUST_VERSION" \
+            aarch64-apple-darwin x86_64-apple-darwin
+          for target in macos-arm64 macos-x86_64; do
+            python3 scripts/package_remote_helper.py --target "$target" \
+              --output dist/remote-helper
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-remote-helper-macos
+          path: dist/remote-helper/gitlama-remote-helper-*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload private diagnostics handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-diagnostics-helper-macos
+          path: dist/diagnostics/*-diagnostics.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  macos:
+    if: ${{ needs.prepare.outputs.mode != 'recover' }}
+    needs: [prepare, helper, helper-macos]
+    runs-on: macos-15
+    # Bounds a stalled Swift package download or notarization wait.
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - name: Download the remote helper to bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-remote-helper
+          path: dist/remote-helper
+      - name: Download the macOS remote helpers to bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-remote-helper-macos
+          path: dist/remote-helper
+      - uses: ./.github/actions/flutter
+      - uses: ./.github/actions/bitwarden-cli
+      - name: Cache the pinned Sparkle package
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm/repositories/Sparkle-*
+            ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_sparkle_project_Sparkle_releases_download_*
+          key: ${{ runner.os }}-gitlama-sparkle-v1-${{ hashFiles('macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+      - name: Build, sign, notarize and qualify DMG
+        shell: bash
+        env:
+          GITLAMA_COLLECT_DIAGNOSTICS: "1"
+          GITLAMA_REMOTE_HELPER_DIR: ${{ github.workspace }}/dist/remote-helper
+          GITLAMA_REQUIRE_REMOTE_HELPER: "1"
+          GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
+          BW_SERVER: ${{ secrets.BW_SERVER }}
+          BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
+          BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
+          BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
+          BW_RELEASE_ITEM_ID: ${{ secrets.BW_RELEASE_ITEM_ID }}
+          BITWARDENCLI_APPDATA_DIR: ${{ runner.temp }}/gitlama-bw-macos
+        run: |
+          set -euo pipefail
+          release_tmp=""
+          keychain=""
+          original_keychains=()
+          source scripts/lib/macos-keychains.sh
+          while IFS= read -r keychain_path; do
+            original_keychains+=("$keychain_path")
+          done < <(security list-keychains -d user | gitlama_existing_keychains)
+          if (( ${#original_keychains[@]} == 0 )); then
+            echo "::error::No usable user keychain in the search list" >&2
+            exit 1
+          fi
+          cleanup() {
+            if [[ -n "$keychain" ]]; then
+              security list-keychains -d user -s "${original_keychains[@]}" >/dev/null 2>&1 || true
+              security delete-keychain "$keychain" >/dev/null 2>&1 || true
+            fi
+            if declare -F gitlama_vault_logout >/dev/null; then
+              gitlama_vault_logout
+            fi
+            [[ -z "$release_tmp" ]] || rm -rf -- "$release_tmp"
+            rm -rf -- "$BITWARDENCLI_APPDATA_DIR"
+          }
+          trap cleanup EXIT
+          for tool in bw codesign jq openssl security xcrun; do
+            command -v "$tool" >/dev/null || { echo "::error::Missing $tool" >&2; exit 1; }
+          done
+          source scripts/lib/vaultwarden-release.sh
+          release_tmp="$(mktemp -d)"
+          keychain="$release_tmp/gitlama-release.keychain-db"
+          gitlama_vault_login
+          item_json="$(gitlama_vault_item)"
+          CODESIGN_IDENTITY="$(gitlama_vault_field "$item_json" CODESIGN_IDENTITY)"
+          p12_password="$(gitlama_vault_field "$item_json" P12_PASSWORD)"
+          APPLE_API_KEY_ID="$(gitlama_vault_field "$item_json" APPLE_NOTARY_KEY_ID)"
+          APPLE_API_ISSUER_ID="$(gitlama_vault_field "$item_json" APPLE_NOTARY_ISSUER_ID)"
+          echo "::add-mask::$p12_password"
+          echo "::add-mask::$APPLE_API_KEY_ID"
+          echo "::add-mask::$APPLE_API_ISSUER_ID"
+          export CODESIGN_IDENTITY APPLE_API_KEY_ID APPLE_API_ISSUER_ID
+          gitlama_vault_attachment northspline-developer-id.p12 "$release_tmp/developer-id.p12"
+          gitlama_vault_attachment northspline-notary-api-key.p8 "$release_tmp/notary-api-key.p8"
+          export APPLE_API_KEY_FILE="$release_tmp/notary-api-key.p8"
+          keychain_password="$(openssl rand -hex 32)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$release_tmp/developer-id.p12" -k "$keychain" \
+            -P "$p12_password" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" "${original_keychains[@]}"
+          security find-identity -v -p codesigning "$keychain" | grep -qF "$CODESIGN_IDENTITY"
+          ./scripts/install-rustup-unix.sh
+          export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup target add --toolchain "$RUST_VERSION" \
+            aarch64-apple-darwin x86_64-apple-darwin
+          flutter pub get --enforce-lockfile
+          python3 scripts/package.py dmg --sign --notarize
+          python3 scripts/qualify-macos-package.py "dist/GitLama-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}-macos-arm64.dmg" \
+            --require-signature --require-notarization
+          python3 scripts/collect-debug-symbols.py --unit macos-arm64 \
+            --dmg "dist/GitLama-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}-macos-arm64.dmg" \
+            --search build/macos --search .dart_tool/hooks_runner --search rust-core/target/aarch64-apple-darwin/release \
+            --dart-dir build/symbols/dart/macos \
+            --package "dist/GitLama-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}-macos-arm64.dmg"
+      - name: Keep qualification reports of a failed build
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-macos-failed-qualification
+          path: dist/qualification/*.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-macos-candidate
+          path: |
+            dist/GitLama-*-macos-arm64.dmg
+            dist/qualification/macos-arm64.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload private diagnostics handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-diagnostics-macos
+          path: dist/diagnostics/*-diagnostics.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  linux:
+    if: ${{ needs.prepare.outputs.mode != 'recover' }}
+    needs: [prepare, helper, helper-macos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - name: Free disk space for the package build
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - name: Download the remote helper to bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-remote-helper
+          path: dist/remote-helper
+      - name: Download the macOS remote helpers to bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-remote-helper-macos
+          path: dist/remote-helper
+      - name: Build and qualify four formats on the Ubuntu 22.04 baseline
+        env:
+          GITLAMA_COLLECT_DIAGNOSTICS: "1"
+          GITLAMA_REMOTE_HELPER_DIR: ${{ github.workspace }}/dist/remote-helper
+          GITLAMA_REQUIRE_REMOTE_HELPER: "1"
+          GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
+          GITLAMA_SOAK_SECONDS: 600
+        run: ./scripts/qualify-linux-local.sh
+      - name: Keep qualification reports of a failed build
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-linux-failed-qualification
+          path: dist/qualification/*.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-linux-candidates
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+            dist/qualification/linux-x86_64.json
+            dist/qualification/linux-soak-x86_64.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload private diagnostics handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-diagnostics-linux
+          path: dist/diagnostics/*-diagnostics.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  windows:
+    if: ${{ needs.prepare.outputs.mode != 'recover' }}
+    needs: [prepare, helper, helper-macos]
+    runs-on: windows-2025
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - name: Download the remote helper to bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-remote-helper
+          path: dist/remote-helper
+      - name: Download the macOS remote helpers to bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-remote-helper-macos
+          path: dist/remote-helper
+      - uses: ./.github/actions/flutter
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check Windows credential capability before building
+        shell: pwsh
+        run: |
+          python scripts/windows-credential-probe.py --require --output dist/qualification/windows-credential-preflight.json
+          if ($LASTEXITCODE -ne 0) { throw "Windows credential preflight failed; inspect windows-credential-preflight.json" }
+      - name: Set up .NET SDK for WiX
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.414'
+      - name: Prepare Rust
+        shell: pwsh
+        run: |
+          ./scripts/install-rustup-windows.ps1
+          rustup toolchain install $env:RUST_VERSION --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain setup failed with exit code $LASTEXITCODE" }
+      - name: Verify production Windows IPC credential storage
+        shell: pwsh
+        run: |
+          $env:CARGO_TARGET_DIR = Join-Path (Get-Location) 'build/windows-ipc-probe-target'
+          cargo test --manifest-path tests/native_windows_ipc/Cargo.toml --locked
+          if ($LASTEXITCODE -ne 0) { throw "Windows IPC credential regressions failed" }
+      - name: Build and qualify MSI
+        shell: pwsh
+        env:
+          GITLAMA_COLLECT_DIAGNOSTICS: "1"
+          GITLAMA_REMOTE_HELPER_DIR: ${{ github.workspace }}/dist/remote-helper
+          GITLAMA_REQUIRE_REMOTE_HELPER: "1"
+          GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
+          # Windows signing is optional; see docs/RELEASE.md. Both values or neither.
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          & ./tests/package/windows_quiescence_cases.ps1
+          & ./tests/package/windows_soak_policy_cases.ps1
+          python -m unittest discover -s tests/package -p test_windows_launch_probe.py
+          if ($LASTEXITCODE -ne 0) { throw "Windows launch probe regressions failed" }
+          $wixRoot = Join-Path $env:RUNNER_TEMP "gitlama-wix-${{ github.run_id }}"
+          dotnet tool install --tool-path $wixRoot wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw "WiX setup failed with exit code $LASTEXITCODE" }
+          $env:PATH = "$wixRoot;$env:PATH"
+          flutter pub get --enforce-lockfile
+          if ($LASTEXITCODE -ne 0) { throw "Flutter dependency resolution failed with exit code $LASTEXITCODE" }
+          flutter build windows --release --split-debug-info=build/symbols/dart/windows
+          if ($LASTEXITCODE -ne 0) { throw "Windows release build failed with exit code $LASTEXITCODE" }
+          powershell -File scripts/sign-windows-candidate.ps1 `
+            -BundlePath "build/windows/x64/runner/Release"
+          if ($LASTEXITCODE -ne 0) { throw "Windows bundle signing failed with exit code $LASTEXITCODE" }
+          python scripts/package.py msi --skip-build
+          if ($LASTEXITCODE -ne 0) { throw "MSI packaging failed with exit code $LASTEXITCODE" }
+          powershell -File scripts/sign-windows-candidate.ps1 `
+            -MsiPath "dist/GitLama-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}-windows-x86_64.msi"
+          if ($LASTEXITCODE -ne 0) { throw "MSI signing failed with exit code $LASTEXITCODE" }
+          $signatureArguments = @()
+          if ($env:WINDOWS_CERTIFICATE_THUMBPRINT -or $env:WINDOWS_TIMESTAMP_URL) {
+            $signatureArguments += "-RequireSignature"
+          }
+          powershell -File scripts/validate-windows-installer.ps1 `
+            -MsiPath "dist/GitLama-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}-windows-x86_64.msi" `
+            -Wix (Join-Path $wixRoot "wix.exe") `
+            -SoakSeconds 600 -SoakAdvisory `
+            -SoakOutputPath dist/qualification/windows-soak-x86_64.json `
+            -OutputPath dist/qualification/windows-x86_64.json `
+            @signatureArguments
+          if ($LASTEXITCODE -ne 0) { throw "MSI qualification failed with exit code $LASTEXITCODE" }
+          python scripts/collect-debug-symbols.py --unit windows-x86_64 `
+            --bundle build/windows/x64/runner/Release `
+            --search build/windows/x64 --search rust-core/target/x86_64-pc-windows-msvc/release `
+            --dart-dir build/symbols/dart/windows `
+            --package "dist/GitLama-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}-windows-x86_64.msi"
+          if ($LASTEXITCODE -ne 0) { throw "Windows diagnostics collection failed with exit code $LASTEXITCODE" }
+      - name: Keep qualification reports of a failed build
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-windows-failed-qualification
+          path: dist/qualification/*.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-windows-candidate
+          path: |
+            dist/GitLama-*-windows-x86_64.msi
+            dist/qualification/windows-x86_64.json
+            dist/qualification/windows-launch-*.json
+            dist/qualification/windows-soak-x86_64.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload private diagnostics handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-diagnostics-windows
+          path: dist/diagnostics/*-diagnostics.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  collect:
+    if: ${{ needs.prepare.outputs.mode != 'recover' }}
+    needs: [prepare, macos, linux, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: ./.github/actions/bitwarden-cli
+      - uses: actions/download-artifact@v4
+        with:
+          path: collected
+      - name: Close and sign the exact candidate set
+        env:
+          PUBLIC_GITHUB_REPOSITORY: ${{ github.repository }}
+          BW_SERVER: ${{ secrets.BW_SERVER }}
+          BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
+          BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
+          BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
+          BW_RELEASE_ITEM_ID: ${{ secrets.BW_RELEASE_ITEM_ID }}
+          BITWARDENCLI_APPDATA_DIR: ${{ runner.temp }}/gitlama-bw-collect
+        run: |
+          set -euo pipefail
+          release_tmp="$(mktemp -d)"
+          cleanup() {
+            if declare -F gitlama_vault_logout >/dev/null; then
+              gitlama_vault_logout
+            fi
+            rm -rf -- "$release_tmp" "$BITWARDENCLI_APPDATA_DIR"
+          }
+          trap cleanup EXIT
+          mkdir candidate
+          # The remote helper ships inside every package, not as a release asset.
+          find collected -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o -name '*.tar.gz' \) \
+            ! -name 'gitlama-remote-helper-*' ! -name '*-diagnostics.tar.gz' -exec cp '{}' candidate/ \;
+          # Private crash diagnostics stay out of the public release; they are kept
+          # as a workflow artifact of this run.
+          python3 scripts/retain-debug-symbols.py --archives collected --packages candidate \
+            --source-commit '${{ needs.prepare.outputs.revision }}' \
+            --root diagnostics
+          python3 scripts/release-state.py candidate
+          source scripts/lib/vaultwarden-release.sh
+          gitlama_vault_login
+          export GITLAMA_RELEASE_PRIVATE_KEY_FILE="$release_tmp/northspline-release-key.pem"
+          gitlama_vault_attachment northspline-release-key.pem \
+            "$GITLAMA_RELEASE_PRIVATE_KEY_FILE"
+          mkdir publication
+          find candidate -type f ! -name release-state.json -exec cp '{}' publication/ \;
+          ./scripts/publish-candidate.sh publication '${{ needs.prepare.outputs.tag }}' '${{ inputs.channel }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-release-candidate
+          path: candidate/
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-signed-publication-candidate
+          path: publication/
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlama-private-diagnostics-${{ needs.prepare.outputs.tag }}
+          path: diagnostics/
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.collect.result == 'success' || needs.prepare.outputs.mode == 'recover') }}
+    needs: [prepare, collect]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Check out current main for release metadata
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Create the immutable release tag
+        run: |
+          set -euo pipefail
+          if [[ '${{ needs.prepare.outputs.mode }}' != recover ]]; then
+            [[ "$(git rev-parse HEAD)" == '${{ needs.prepare.outputs.revision }}' ]] || {
+              echo "::error::Main changed after release preparation" >&2; exit 1;
+            }
+            if ! git rev-parse -q --verify 'refs/tags/${{ needs.prepare.outputs.tag }}' >/dev/null; then
+              git config user.name "GitLama Release Bot"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              python3 scripts/release.py tag --channel '${{ inputs.channel }}'
+              git push origin 'refs/tags/${{ needs.prepare.outputs.tag }}'
+            fi
+          fi
+          [[ "$(git cat-file -t 'refs/tags/${{ needs.prepare.outputs.tag }}')" == tag ]] || {
+            echo "::error::Release tag must be annotated" >&2; exit 1;
+          }
+          [[ "$(git rev-parse 'refs/tags/${{ needs.prepare.outputs.tag }}^{commit}')" == '${{ needs.prepare.outputs.revision }}' ]] || {
+            echo "::error::Release tag points to another commit" >&2; exit 1;
+          }
+      - name: Download signed candidate
+        if: ${{ needs.prepare.outputs.mode != 'recover' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: gitlama-signed-publication-candidate
+          path: publication
+      - name: Stage, verify and publish the GitHub release
+        env:
+          GITHUB_RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ '${{ needs.prepare.outputs.mode }}' == recover ]]; then
+            ./scripts/recover-publication.sh recovered '${{ needs.prepare.outputs.tag }}' \
+              '${{ needs.prepare.outputs.revision }}' '${{ github.repository }}'
+          else
+            ./scripts/publish-signed-candidate.sh publication '${{ needs.prepare.outputs.tag }}' \
+              '${{ needs.prepare.outputs.revision }}' '${{ github.repository }}'
+          fi
+      - name: Commit the verified signed metadata and website index
+        run: |
+          set -euo pipefail
+          git config user.name "GitLama Release Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add release/metadata.json release/metadata.json.sig webfront/_data webfront/appcast.xml
+          git diff --cached --quiet || git commit -m "Publish signed metadata for ${{ needs.prepare.outputs.tag }}"
+          git push origin HEAD:main
+
+  website:
+    needs: [prepare, publish]
+    if: ${{ always() && needs.publish.result == 'success' }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/gitlama-pages.yml
+    with:
+      ref: main

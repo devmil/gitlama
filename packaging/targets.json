@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "product": "GitLama",
+  "identifier": "de.devmil.gitlama",
+  "targets": [
+    {"os":"macos","arch":"arm64","format":"dmg","minimum":"macOS 13.0"},
+    {"os":"windows","arch":"x86_64","format":"msi","minimum":"Windows 10 1809"},
+    {"os":"linux","arch":"x86_64","format":"AppImage","minimum":"glibc 2.35"},
+    {"os":"linux","arch":"x86_64","format":"deb","minimum":"glibc 2.35"},
+    {"os":"linux","arch":"x86_64","format":"rpm","minimum":"glibc 2.35"},
+    {"os":"linux","arch":"x86_64","format":"tar.gz","minimum":"glibc 2.35"}
+  ],
+  "minimum_git": "2.39.0"
+}

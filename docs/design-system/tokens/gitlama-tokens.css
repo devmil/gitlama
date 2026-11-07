@@ -1,0 +1,196 @@
+/* GENERATED from gitlama-tokens.json by scripts/check_design_contract.py --write-css. Do not edit by hand. */
+@font-face { font-family: 'JetBrains Mono'; src: url('../assets/fonts/JetBrainsMono-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; }
+:root, [data-theme="light"] {
+  --ground: #E8ECEE;
+  --ground-hover: #DCE2E5;
+  --pane: #FFFFFF;
+  --pane-alt: #F6F8F9;
+  --pane-hover: #EEF2F4;
+  --raised: #FFFFFF;
+  --scrim: rgba(11,21,26,0.32);
+  --ink: #0F1B21;
+  --ink-muted: #52616A;
+  --ink-faint: #8795A0;
+  --line: #D8DFE3;
+  --line-strong: #C3CCD1;
+  --control-edge: #85929A;
+  --polar: #056CB3;
+  --on-polar: #FFFFFF;
+  --on-polar-muted: #E2EFFB;
+  --polar-soft: #DBEBFC;
+  --polar-ink: #0160A0;
+  --focus: #056CB3;
+  --added: #16733A;
+  --added-bg: #E6F4EA;
+  --added-strong: #BFE5C9;
+  --deleted: #C4302B;
+  --deleted-bg: #FCEBEA;
+  --deleted-strong: #F6C6C2;
+  --modified: #9A5B00;
+  --modified-bg: #FDF1DC;
+  --renamed: #6B4FC8;
+  --danger: #B42318;
+  --on-danger: #FFFFFF;
+  --danger-bg: #FCEBEA;
+  --conflict: #B03A08;
+  --conflict-bg: #FDEBDD;
+  --side-ours: #6B4FC8;
+  --side-theirs: #0E7C86;
+  --tag-ink: #7A4A00;
+  --tag-bg: #FBF0D9;
+  --fjord: #14242B;
+  --lane-1: #1F6FD6;
+  --lane-2: #0B8A7A;
+  --lane-3: #B26A00;
+  --lane-4: #D4521E;
+  --lane-5: #C7306B;
+  --lane-6: #7A55D3;
+  --lane-7: #0784A8;
+  --lane-8: #5D8A12;
+  --shadow-pane: 0 0 0 1px rgba(15,27,33,0.07), 0 1px 2px rgba(15,27,33,0.05);
+  --shadow-float: 0 0 0 1px rgba(15,27,33,0.09), 0 16px 40px -12px rgba(15,27,33,0.28);
+  --shadow-control: 0 1px 0 rgba(15,27,33,0.06);
+}
+[data-theme="dark"] {
+  --ground: #0B151A;
+  --ground-hover: #13222A;
+  --pane: #122027;
+  --pane-alt: #0F1B21;
+  --pane-hover: #1A2B34;
+  --raised: #1A2A32;
+  --scrim: rgba(0,0,0,0.55);
+  --ink: #E4ECEF;
+  --ink-muted: #93A5AE;
+  --ink-faint: #5E717B;
+  --line: #21323B;
+  --line-strong: #2C414B;
+  --control-edge: #667A84;
+  --polar: #5BB1FE;
+  --on-polar: #06111D;
+  --on-polar-muted: #123452;
+  --polar-soft: #16334D;
+  --polar-ink: #87C4FE;
+  --focus: #87C4FE;
+  --added: #4AC26B;
+  --added-bg: #0F2E1C;
+  --added-strong: #1D4A2E;
+  --deleted: #FF7B72;
+  --deleted-bg: #3A1A1B;
+  --deleted-strong: #5E2A29;
+  --modified: #E3A948;
+  --modified-bg: #3A2A10;
+  --renamed: #B39DFF;
+  --danger: #FF6B61;
+  --on-danger: #1A0503;
+  --danger-bg: #3A1A1B;
+  --conflict: #FF9E5E;
+  --conflict-bg: #3D2413;
+  --side-ours: #B39DFF;
+  --side-theirs: #4FD1DB;
+  --tag-ink: #F2C46B;
+  --tag-bg: #33270F;
+  --fjord: #1F3A48;
+  --lane-1: #6AAEFF;
+  --lane-2: #3DD6C0;
+  --lane-3: #F2C14E;
+  --lane-4: #FF8A5B;
+  --lane-5: #FF6B9A;
+  --lane-6: #B49BFF;
+  --lane-7: #4CC9F0;
+  --lane-8: #A3D65C;
+  --shadow-pane: 0 0 0 1px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-float: 0 0 0 1px rgba(255,255,255,0.08), 0 16px 40px -12px rgba(0,0,0,0.7);
+  --shadow-control: 0 1px 0 rgba(0,0,0,0.3);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B151A;
+    --ground-hover: #13222A;
+    --pane: #122027;
+    --pane-alt: #0F1B21;
+    --pane-hover: #1A2B34;
+    --raised: #1A2A32;
+    --scrim: rgba(0,0,0,0.55);
+    --ink: #E4ECEF;
+    --ink-muted: #93A5AE;
+    --ink-faint: #5E717B;
+    --line: #21323B;
+    --line-strong: #2C414B;
+    --control-edge: #667A84;
+    --polar: #5BB1FE;
+    --on-polar: #06111D;
+    --on-polar-muted: #123452;
+    --polar-soft: #16334D;
+    --polar-ink: #87C4FE;
+    --focus: #87C4FE;
+    --added: #4AC26B;
+    --added-bg: #0F2E1C;
+    --added-strong: #1D4A2E;
+    --deleted: #FF7B72;
+    --deleted-bg: #3A1A1B;
+    --deleted-strong: #5E2A29;
+    --modified: #E3A948;
+    --modified-bg: #3A2A10;
+    --renamed: #B39DFF;
+    --danger: #FF6B61;
+    --on-danger: #1A0503;
+    --danger-bg: #3A1A1B;
+    --conflict: #FF9E5E;
+    --conflict-bg: #3D2413;
+    --side-ours: #B39DFF;
+    --side-theirs: #4FD1DB;
+    --tag-ink: #F2C46B;
+    --tag-bg: #33270F;
+    --fjord: #1F3A48;
+    --lane-1: #6AAEFF;
+    --lane-2: #3DD6C0;
+    --lane-3: #F2C14E;
+    --lane-4: #FF8A5B;
+    --lane-5: #FF6B9A;
+    --lane-6: #B49BFF;
+    --lane-7: #4CC9F0;
+    --lane-8: #A3D65C;
+    --shadow-pane: 0 0 0 1px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.35);
+    --shadow-float: 0 0 0 1px rgba(255,255,255,0.08), 0 16px 40px -12px rgba(0,0,0,0.7);
+    --shadow-control: 0 1px 0 rgba(0,0,0,0.3);
+  }
+}
+:root {
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-pill: 999px;
+  --size-row-compact: 24px;
+  --size-row: 28px;
+  --size-row-comfortable: 32px;
+  --size-control: 28px;
+  --size-control-sm: 22px;
+  --size-toolbar: 52px;
+  --size-tabbar: 34px;
+  --size-sidebar: 248px;
+  --size-icon: 16px;
+  --size-lane: 14px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Cantarell, "Noto Sans", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+.display { font-family: var(--font-sans); font-size: 26px; line-height: 32px; font-weight: 650; letter-spacing: -0.015em; }
+.title { font-family: var(--font-sans); font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.subject { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 600; }
+.body { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
+.body-strong { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 600; }
+.label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500; }
+.caption { font-family: var(--font-sans); font-size: 11px; line-height: 14px; font-weight: 500; }
+.overline { font-family: var(--font-sans); font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.code { font-family: var(--font-mono); font-size: 12px; line-height: 18px; font-weight: 400; }
+.hash { font-family: var(--font-mono); font-size: 11px; line-height: 16px; font-weight: 400; letter-spacing: 0.01em; }

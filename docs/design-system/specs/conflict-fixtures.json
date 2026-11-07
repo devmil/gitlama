@@ -1,0 +1,169 @@
+{
+  "schema": "gitlama.conflict-fixture.v1",
+  "version": "3.0.0",
+  "rules": [
+    "Result is the working-tree file and remains editable.",
+    "Continue is enabled only when every conflicted path is marker-free and marked resolved.",
+    "Take both writes current then incoming without an ancestor or inserted separator.",
+    "An empty marker-free result is valid.",
+    "Binary and huge files use external or whole-file resolution and never instantiate a text editor."
+  ],
+  "geometry": {
+    "lineHeight": 18,
+    "gutterWidth": 44,
+    "fileListMinWidth": 180,
+    "fileListDefaultWidth": 220,
+    "textPaneMinWidth": 220,
+    "resultMinHeightRatio": 0.4,
+    "compactBreakpoint": 1100
+  },
+  "fixtures": [
+    {
+      "id": "single-region-merge-style",
+      "operation": "merge",
+      "path": "src/graph/spline.rs",
+      "kind": "text",
+      "conflictStyle": "merge",
+      "currentLabel": "main",
+      "incomingLabel": "feature/graph",
+      "unresolvedRegions": 1,
+      "markerFree": false,
+      "markedResolved": false,
+      "buffer": "    let mid = (y0 + y1) * 0.5;\n<<<<<<< HEAD\n    path.line_to(x1, y1);\n=======\n    path.cubic_to(x0, mid, x1, mid, x1, y1);\n    if lit { path.set_width(2.5); }\n>>>>>>> feature/graph\n    path.stroke();\n",
+      "currentSide": "    let mid = (y0 + y1) * 0.5;\n    path.line_to(x1, y1);\n    path.stroke();\n",
+      "incomingSide": "    let mid = (y0 + y1) * 0.5;\n    path.cubic_to(x0, mid, x1, mid, x1, y1);\n    if lit { path.set_width(2.5); }\n    path.stroke();\n",
+      "expectedActions": {
+        "takeCurrent": "    let mid = (y0 + y1) * 0.5;\n    path.line_to(x1, y1);\n    path.stroke();\n",
+        "takeIncoming": "    let mid = (y0 + y1) * 0.5;\n    path.cubic_to(x0, mid, x1, mid, x1, y1);\n    if lit { path.set_width(2.5); }\n    path.stroke();\n",
+        "takeBoth": "    let mid = (y0 + y1) * 0.5;\n    path.line_to(x1, y1);\n    path.cubic_to(x0, mid, x1, mid, x1, y1);\n    if lit { path.set_width(2.5); }\n    path.stroke();\n"
+      },
+      "continueEnabled": false,
+      "accessibleSummary": "Unresolved text conflict in src/graph/spline.rs, region 1 of 1"
+    },
+    {
+      "id": "multi-region-rebase",
+      "operation": "rebase",
+      "path": "lib/widgets/history_graph_view.dart",
+      "kind": "text",
+      "conflictStyle": "merge",
+      "currentLabel": "current commit",
+      "incomingLabel": "rebased commit",
+      "unresolvedRegions": 2,
+      "markerFree": false,
+      "markedResolved": false,
+      "buffer": "<<<<<<< HEAD\nextent: tokens.rowExtent\n=======\nextent: projection.rowExtent\n>>>>>>> rebased\nText(\n<<<<<<< HEAD\nstyle: body\n=======\nstyle: bodyStrong\n>>>>>>> rebased\n)\n",
+      "regionOffsets": [
+        [
+          0,
+          5
+        ],
+        [
+          6,
+          12
+        ]
+      ],
+      "continueEnabled": false,
+      "accessibleSummary": "Two unresolved text conflicts in history_graph_view.dart"
+    },
+    {
+      "id": "diff3-style",
+      "operation": "merge",
+      "path": "src/graph/lane.rs",
+      "kind": "text",
+      "conflictStyle": "diff3",
+      "currentLabel": "main",
+      "incomingLabel": "feature/graph",
+      "unresolvedRegions": 1,
+      "markerFree": false,
+      "markedResolved": false,
+      "buffer": "<<<<<<< HEAD\nfn pitch() -> i32 { 16 }\n||||||| merged common ancestors\nfn pitch() -> i32 { 14 }\n=======\nfn pitch() -> i32 { 18 }\n>>>>>>> feature/graph\n",
+      "ancestorSide": "fn pitch() -> i32 { 14 }\n",
+      "continueEnabled": false,
+      "note": "Take both drops the ancestor block."
+    },
+    {
+      "id": "hand-edited-clean",
+      "operation": "merge",
+      "path": "src/graph/spline.rs",
+      "kind": "text",
+      "unresolvedRegions": 0,
+      "markerFree": true,
+      "markedResolved": true,
+      "buffer": "    let mid = (y0 + y1) * 0.5;\n    path.cubic_to(x0, mid, x1, mid, x1, y1);\n    path.stroke();\n",
+      "continueEnabled": true,
+      "note": "The user-authored result need not equal either side."
+    },
+    {
+      "id": "empty-result",
+      "operation": "cherry-pick",
+      "path": "scratch.txt",
+      "kind": "text",
+      "unresolvedRegions": 0,
+      "markerFree": true,
+      "markedResolved": true,
+      "buffer": "",
+      "continueEnabled": true
+    },
+    {
+      "id": "add-add",
+      "operation": "merge",
+      "path": "docs/new-note.md",
+      "kind": "add-add",
+      "unresolvedRegions": 1,
+      "markerFree": false,
+      "markedResolved": false,
+      "currentSide": "# Local title\n",
+      "incomingSide": "# Incoming title\n",
+      "continueEnabled": false
+    },
+    {
+      "id": "delete-modify",
+      "operation": "rebase",
+      "path": "src/legacy.rs",
+      "kind": "delete-modify",
+      "unresolvedRegions": 1,
+      "markerFree": false,
+      "markedResolved": false,
+      "currentSide": null,
+      "incomingSide": "pub fn replacement() {}\n",
+      "wholeFileActions": [
+        "Keep deletion",
+        "Keep incoming file"
+      ],
+      "continueEnabled": false
+    },
+    {
+      "id": "binary",
+      "operation": "merge",
+      "path": "assets/icon.png",
+      "kind": "binary",
+      "unresolvedRegions": 1,
+      "markerFree": false,
+      "markedResolved": false,
+      "buffer": null,
+      "wholeFileActions": [
+        "Use current",
+        "Use incoming",
+        "Open external tool"
+      ],
+      "continueEnabled": false
+    },
+    {
+      "id": "huge",
+      "operation": "merge",
+      "path": "generated.rs",
+      "kind": "huge",
+      "bytes": 1200000,
+      "lines": 48000,
+      "unresolvedRegions": 1,
+      "markerFree": false,
+      "markedResolved": false,
+      "buffer": null,
+      "wholeFileActions": [
+        "Open external tool",
+        "Mark resolved"
+      ],
+      "continueEnabled": false
+    }
+  ]
+}

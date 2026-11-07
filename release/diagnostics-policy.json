@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "required_from_build": 56,
+  "storage": "private-runner-retention",
+  "automatic_deletion": false
+}

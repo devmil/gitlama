@@ -1,0 +1,21 @@
+{
+  "comment": "Whether a merge result still holds a conflict marker. The Rust resolver and the Dart resolver both test against these.",
+  "markers": [
+    "<<<<<<< HEAD\n",
+    "<<<<<<<\n",
+    "text\n||||||| base\n",
+    "text\n=======\nmore\n",
+    ">>>>>>> topic",
+    "a\r\n=======\r\nb\r\n"
+  ],
+  "content": [
+    "",
+    "a clean result\n",
+    "Title\n==========\n",
+    "Title\n======\n",
+    "<<<<<<<< not a marker\n",
+    "x <<<<<<< HEAD\n",
+    ">>>>>>>>\n",
+    "=======x\n"
+  ]
+}

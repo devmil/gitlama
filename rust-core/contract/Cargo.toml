@@ -1,0 +1,12 @@
+[package]
+name = "gitlama_contract"
+# Fixed: the desktop library (gitlama_core) carries the release version.
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.97.1"
+license = "MIT"
+publish = false
+description = "GitLama's bridge types: plain data, no public functions or methods."
+
+[dependencies]
+serde = { workspace = true }

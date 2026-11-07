@@ -1,0 +1,554 @@
+{
+  "schema": "gitlama.icon-inventory.v1",
+  "library": "Lucide (lucide-static)",
+  "pinnedVersion": "1.37.0",
+  "license": "ISC (Feather Icons MIT); the upstream @license header is kept in every SVG",
+  "rendering": {
+    "sizes": [
+      14,
+      16,
+      18
+    ],
+    "stroke": 2,
+    "toolbarStroke": 1.75,
+    "color": "currentColor"
+  },
+  "forbidden": [
+    "icon fonts",
+    "Unicode action glyphs",
+    "hand-drawn or generated substitutes",
+    "a second icon family"
+  ],
+  "icons": [
+    {
+      "file": "accessibility.svg",
+      "lucide": "accessibility",
+      "purpose": "Accessibility settings"
+    },
+    {
+      "file": "arrow-down-to-line.svg",
+      "lucide": "arrow-down-to-line",
+      "purpose": "Jump to bottom"
+    },
+    {
+      "file": "arrow-down.svg",
+      "lucide": "arrow-down",
+      "purpose": "behind count in sync badges"
+    },
+    {
+      "file": "arrow-left-right.svg",
+      "lucide": "arrow-left-right",
+      "purpose": "rebase onto; compare"
+    },
+    {
+      "file": "arrow-left.svg",
+      "lucide": "arrow-left",
+      "purpose": "navigate to child commit"
+    },
+    {
+      "file": "arrow-right.svg",
+      "lucide": "arrow-right",
+      "purpose": "rebase and compare flow arrows"
+    },
+    {
+      "file": "arrow-up-to-line.svg",
+      "lucide": "arrow-up-to-line",
+      "purpose": "Jump to top"
+    },
+    {
+      "file": "arrow-up.svg",
+      "lucide": "arrow-up",
+      "purpose": "ahead count in sync badges"
+    },
+    {
+      "file": "back.svg",
+      "lucide": "chevron-left",
+      "purpose": "history navigation; menu back"
+    },
+    {
+      "file": "badge-check.svg",
+      "lucide": "badge-check",
+      "purpose": "verified host / GPG signed"
+    },
+    {
+      "file": "ban.svg",
+      "lucide": "ban",
+      "purpose": "rebase abort"
+    },
+    {
+      "file": "binary.svg",
+      "lucide": "binary",
+      "purpose": "binary diff header (box.svg acceptable fallback)"
+    },
+    {
+      "file": "blame.svg",
+      "lucide": "file-user",
+      "purpose": "blame entry"
+    },
+    {
+      "file": "box.svg",
+      "lucide": "box",
+      "purpose": "binary file row; packages"
+    },
+    {
+      "file": "branch.svg",
+      "lucide": "git-branch",
+      "purpose": "branch toolbar; local branch rows"
+    },
+    {
+      "file": "brush-cleaning.svg",
+      "lucide": "brush-cleaning",
+      "purpose": "Clean untracked files"
+    },
+    {
+      "file": "changes.svg",
+      "lucide": "git-compare-arrows",
+      "purpose": "Changes workspace tab"
+    },
+    {
+      "file": "check-check.svg",
+      "lucide": "check-check",
+      "purpose": "Resolve all"
+    },
+    {
+      "file": "check.svg",
+      "lucide": "check",
+      "purpose": "checked menu item; stage line"
+    },
+    {
+      "file": "chevron-down.svg",
+      "lucide": "chevron-down",
+      "purpose": "group expand; combo"
+    },
+    {
+      "file": "chevron-right.svg",
+      "lucide": "chevron-right",
+      "purpose": "group collapse; details"
+    },
+    {
+      "file": "chevron-up.svg",
+      "lucide": "chevron-up",
+      "purpose": "sort asc"
+    },
+    {
+      "file": "chevrons-down-up.svg",
+      "lucide": "chevrons-down-up",
+      "purpose": "expand diff context"
+    },
+    {
+      "file": "circle-alert.svg",
+      "lucide": "circle-alert",
+      "purpose": "runtime error banner / repository error state"
+    },
+    {
+      "file": "circle-check.svg",
+      "lucide": "circle-check",
+      "purpose": "Passed check and all resolved"
+    },
+    {
+      "file": "circle-dot.svg",
+      "lucide": "circle-dot",
+      "purpose": "detached HEAD banner / current-checkout indicator / idle Logbook"
+    },
+    {
+      "file": "circle-help.svg",
+      "lucide": "circle-help",
+      "purpose": "Help and unknown check state"
+    },
+    {
+      "file": "circle-x.svg",
+      "lucide": "circle-x",
+      "purpose": "operation cancel"
+    },
+    {
+      "file": "clock.svg",
+      "lucide": "clock",
+      "purpose": "Pending check"
+    },
+    {
+      "file": "close.svg",
+      "lucide": "x",
+      "purpose": "tab close; dismiss; clear"
+    },
+    {
+      "file": "cloud-off.svg",
+      "lucide": "cloud-off",
+      "purpose": "Hosting offline"
+    },
+    {
+      "file": "cloud.svg",
+      "lucide": "cloud",
+      "purpose": "hosting accounts group"
+    },
+    {
+      "file": "co-author.svg",
+      "lucide": "user-plus",
+      "purpose": "commit editor co-authors"
+    },
+    {
+      "file": "command.svg",
+      "lucide": "square-terminal",
+      "purpose": "command palette trigger"
+    },
+    {
+      "file": "commit-push.svg",
+      "lucide": "upload",
+      "purpose": "commit & push"
+    },
+    {
+      "file": "copy.svg",
+      "lucide": "copy",
+      "purpose": "copy SHA / path / output"
+    },
+    {
+      "file": "external-link.svg",
+      "lucide": "external-link",
+      "purpose": "open in hosting / external tool"
+    },
+    {
+      "file": "fetch.svg",
+      "lucide": "arrow-down-to-line",
+      "purpose": "toolbar fetch"
+    },
+    {
+      "file": "file-diff.svg",
+      "lucide": "file-diff",
+      "purpose": "Diff renderer settings"
+    },
+    {
+      "file": "file-text.svg",
+      "lucide": "file-text",
+      "purpose": "Text file"
+    },
+    {
+      "file": "file.svg",
+      "lucide": "file",
+      "purpose": "generic file row"
+    },
+    {
+      "file": "fixup.svg",
+      "lucide": "git-commit-horizontal",
+      "purpose": "commit editor fixup"
+    },
+    {
+      "file": "focus.svg",
+      "lucide": "focus",
+      "purpose": "graph focus / pane mode toggle"
+    },
+    {
+      "file": "folder-closed.svg",
+      "lucide": "folder-closed",
+      "purpose": "collapsed folder row"
+    },
+    {
+      "file": "folder-history.svg",
+      "lucide": "folder-clock",
+      "purpose": "path history"
+    },
+    {
+      "file": "folder-open.svg",
+      "lucide": "folder-open",
+      "purpose": "open repository; expanded folder"
+    },
+    {
+      "file": "folder-symlink.svg",
+      "lucide": "folder-symlink",
+      "purpose": "worktrees group"
+    },
+    {
+      "file": "forward.svg",
+      "lucide": "chevron-right",
+      "purpose": "history forward"
+    },
+    {
+      "file": "git-commit-horizontal.svg",
+      "lucide": "git-commit-horizontal",
+      "purpose": "Commit reference"
+    },
+    {
+      "file": "git-fork.svg",
+      "lucide": "git-fork",
+      "purpose": "rebase toolbar (topology metaphor); fork links"
+    },
+    {
+      "file": "git-merge.svg",
+      "lucide": "git-merge",
+      "purpose": "conflict banner and rebase plan rows (distinct from squash.svg alias; import canonical asset)"
+    },
+    {
+      "file": "git-pull-request.svg",
+      "lucide": "git-pull-request",
+      "purpose": "sidebar Hosting pull-request rows (pr pills in graph reuse text pill, not icon)"
+    },
+    {
+      "file": "grip-vertical.svg",
+      "lucide": "grip-vertical",
+      "purpose": "drag handles, column reorder"
+    },
+    {
+      "file": "history.svg",
+      "lucide": "history",
+      "purpose": "History workspace tab; reflog; Activity toolbar and menu"
+    },
+    {
+      "file": "image.svg",
+      "lucide": "image",
+      "purpose": "image diff header"
+    },
+    {
+      "file": "info.svg",
+      "lucide": "info",
+      "purpose": "Licenses and information"
+    },
+    {
+      "file": "inspect.svg",
+      "lucide": "file-search",
+      "purpose": "search-in-diff / deep graph tools"
+    },
+    {
+      "file": "key.svg",
+      "lucide": "key",
+      "purpose": "Credentials"
+    },
+    {
+      "file": "link.svg",
+      "lucide": "link",
+      "purpose": "Link account and repository binding"
+    },
+    {
+      "file": "list-filter-plus.svg",
+      "lucide": "list-filter-plus",
+      "purpose": "sidebar filter"
+    },
+    {
+      "file": "list-view.svg",
+      "lucide": "list",
+      "purpose": "file list view mode"
+    },
+    {
+      "file": "locate.svg",
+      "lucide": "locate",
+      "purpose": "HEAD"
+    },
+    {
+      "file": "log-in.svg",
+      "lucide": "log-in",
+      "purpose": "authentication prompts"
+    },
+    {
+      "file": "manage.svg",
+      "lucide": "folder-git-2",
+      "purpose": "repository management"
+    },
+    {
+      "file": "map.svg",
+      "lucide": "map",
+      "purpose": "Minimap"
+    },
+    {
+      "file": "message-square-text.svg",
+      "lucide": "message-square-text",
+      "purpose": "Review"
+    },
+    {
+      "file": "minus.svg",
+      "lucide": "minus",
+      "purpose": "unstage line"
+    },
+    {
+      "file": "more.svg",
+      "lucide": "ellipsis",
+      "purpose": "row context menu; toolbar overflow"
+    },
+    {
+      "file": "palette.svg",
+      "lucide": "palette",
+      "purpose": "Appearance settings"
+    },
+    {
+      "file": "panel-left.svg",
+      "lucide": "panel-left",
+      "purpose": "sidebar rail toggle (focus.svg remains the graph-focus control)"
+    },
+    {
+      "file": "pencil.svg",
+      "lucide": "pencil",
+      "purpose": "amend / rename"
+    },
+    {
+      "file": "plus.svg",
+      "lucide": "plus",
+      "purpose": "new tab; stage line; new branch"
+    },
+    {
+      "file": "pull.svg",
+      "lucide": "download",
+      "purpose": "toolbar pull"
+    },
+    {
+      "file": "push.svg",
+      "lucide": "upload",
+      "purpose": "toolbar push"
+    },
+    {
+      "file": "puzzle.svg",
+      "lucide": "puzzle",
+      "purpose": "Extensions"
+    },
+    {
+      "file": "recovery.svg",
+      "lucide": "life-buoy",
+      "purpose": "recovery ledger / reflog recovery"
+    },
+    {
+      "file": "redo.svg",
+      "lucide": "redo-2",
+      "purpose": "Redo"
+    },
+    {
+      "file": "refresh.svg",
+      "lucide": "refresh-cw",
+      "purpose": "toolbar refresh"
+    },
+    {
+      "file": "rotate-ccw.svg",
+      "lucide": "rotate-ccw",
+      "purpose": "restore / re-run"
+    },
+    {
+      "file": "rotate-cw.svg",
+      "lucide": "rotate-cw",
+      "purpose": "operation retry (distinct from rotate-ccw restore)"
+    },
+    {
+      "file": "save.svg",
+      "lucide": "save",
+      "purpose": "save patch / result editor"
+    },
+    {
+      "file": "search.svg",
+      "lucide": "search",
+      "purpose": "Search fields"
+    },
+    {
+      "file": "settings.svg",
+      "lucide": "settings",
+      "purpose": "settings dialog"
+    },
+    {
+      "file": "shield-check.svg",
+      "lucide": "shield-check",
+      "purpose": "host-key trust prompt"
+    },
+    {
+      "file": "shortcuts.svg",
+      "lucide": "keyboard",
+      "purpose": "shortcut reference"
+    },
+    {
+      "file": "side-by-side.svg",
+      "lucide": "columns-2",
+      "purpose": "side-by-side diff toggle"
+    },
+    {
+      "file": "signature.svg",
+      "lucide": "signature",
+      "purpose": "commit signing state in editor (badge-check fallback)"
+    },
+    {
+      "file": "skip-forward.svg",
+      "lucide": "skip-forward",
+      "purpose": "rebase skip step"
+    },
+    {
+      "file": "sliders-horizontal.svg",
+      "lucide": "sliders-horizontal",
+      "purpose": "Options"
+    },
+    {
+      "file": "spellcheck.svg",
+      "lucide": "spell-check",
+      "purpose": "commit editor spellcheck"
+    },
+    {
+      "file": "square-plus.svg",
+      "lucide": "square-plus",
+      "purpose": "Expand context"
+    },
+    {
+      "file": "squash.svg",
+      "lucide": "git-merge",
+      "purpose": "commit editor squash; merge surfaces"
+    },
+    {
+      "file": "stage-all.svg",
+      "lucide": "file-input",
+      "purpose": "stage all"
+    },
+    {
+      "file": "stash.svg",
+      "lucide": "archive",
+      "purpose": "stash toolbar / stash rows"
+    },
+    {
+      "file": "tag.svg",
+      "lucide": "tag",
+      "purpose": "toolbar tag / tag rows"
+    },
+    {
+      "file": "template.svg",
+      "lucide": "layout-template",
+      "purpose": "commit template picker"
+    },
+    {
+      "file": "trash.svg",
+      "lucide": "trash-2",
+      "purpose": "discard / delete (destructive)"
+    },
+    {
+      "file": "tree-view.svg",
+      "lucide": "list-tree",
+      "purpose": "file tree view mode"
+    },
+    {
+      "file": "triangle-alert.svg",
+      "lucide": "triangle-alert",
+      "purpose": "warning banners / dirty states"
+    },
+    {
+      "file": "type.svg",
+      "lucide": "type",
+      "purpose": "Text size"
+    },
+    {
+      "file": "undo.svg",
+      "lucide": "undo-2",
+      "purpose": "Undo a conflict resolution; discard a change"
+    },
+    {
+      "file": "unified-diff.svg",
+      "lucide": "rows-2",
+      "purpose": "unified diff toggle"
+    },
+    {
+      "file": "unstage-all.svg",
+      "lucide": "file-output",
+      "purpose": "unstage all"
+    },
+    {
+      "file": "wand-sparkles.svg",
+      "lucide": "wand-sparkles",
+      "purpose": "Auto-resolve"
+    },
+    {
+      "file": "whitespace.svg",
+      "lucide": "pilcrow",
+      "purpose": "whitespace visibility mode"
+    },
+    {
+      "file": "wrap.svg",
+      "lucide": "wrap-text",
+      "purpose": "diff wrap mode"
+    }
+  ]
+}
