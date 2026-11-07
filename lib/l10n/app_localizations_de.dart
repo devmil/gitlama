@@ -5540,6 +5540,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aboutApp => 'Über GitLama';
 
   @override
+  String get aboutSourceCode => 'Quellcode auf GitHub';
+
+  @override
+  String get aboutSourceCodeOpenFailed =>
+      'Die Quellcode-Seite konnte nicht geöffnet werden.';
+
+  @override
   String aboutVersion(String version, String build) {
     return 'Version $version (Build $build)';
   }

@@ -2,6 +2,7 @@
 
 ## Unreleased Stable
 
+- GitLama is open source: About now links to its source code on GitHub, and so does the website.
 - GitLama no longer offers Undo, Redo or Recovery history. They worked for only some actions, so you had to remember which ones could be taken back. The review before an action still says what it changes, and now says plainly what it deletes. Ctrl+Z and Cmd+Z now only undo typing. To keep a way back, save a named snapshot before you try something. Restoring a snapshot now keeps your current changes as a stash. Hosts receive a new GitLama helper.
 - GitLama now remembers how you like diffs shown. Wrapping long lines, side-by-side or unified layout, whitespace, context lines, plus and minus markers and the minimap stay as you set them, in every diff and after a restart. Set them from the buttons above a diff or on the new Diffs page in Settings.
 - Save any commit as a ZIP file: right-click it in History, or use the archive button next to its hash in the commit details. The ZIP holds every file and folder of that commit in one folder, including submodules and Git LFS files. It also works for repositories on another computer. Hosts receive a new GitLama helper.

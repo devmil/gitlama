@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import '../models/app_update.dart';
 
-/// Owns the public project pages: the release index, the downloads page and
-/// the issue tracker.
+/// Owns the public project pages: the release index, the downloads page,
+/// the issue tracker and the source repository.
 abstract interface class ReleaseIndexRepository {
   /// Whether this platform reports updates from the public index.
   bool get isAvailable;
@@ -15,6 +15,9 @@ abstract interface class ReleaseIndexRepository {
 
   /// Opens the public issue tracker, where users report problems.
   Future<void> openIssues();
+
+  /// Opens the public source repository.
+  Future<void> openSource();
 }
 
 /// The index is signed metadata of at most this size; the publisher enforces

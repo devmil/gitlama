@@ -65,6 +65,9 @@ final class _Index implements ReleaseIndexRepository {
 
   @override
   Future<void> openIssues() async {}
+
+  @override
+  Future<void> openSource() async {}
 }
 
 const _installed = InstalledRelease(version: '0.1.0-beta.14', build: 15);

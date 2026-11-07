@@ -194,4 +194,7 @@ final class _NoReleaseIndex implements ReleaseIndexRepository {
 
   @override
   Future<void> openIssues() async {}
+
+  @override
+  Future<void> openSource() async {}
 }

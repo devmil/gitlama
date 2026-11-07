@@ -9341,6 +9341,18 @@ abstract class AppLocalizations {
   /// **'About GitLama'**
   String get aboutApp;
 
+  /// Link in About that opens GitLama's public source repository in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code on GitHub'**
+  String get aboutSourceCode;
+
+  /// Status line failure when the browser could not open the source repository.
+  ///
+  /// In en, this message translates to:
+  /// **'The source code page could not be opened.'**
+  String get aboutSourceCodeOpenFailed;
+
   /// The installed version in About.
   ///
   /// In en, this message translates to:
