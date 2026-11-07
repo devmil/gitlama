@@ -905,8 +905,9 @@ pub(crate) fn finish_active_conflict(common_git_dir: &Path) -> bool {
     }
 }
 
-/// Reapplying after pull keeps the new HEAD on abort and retains the recovery stash.
-pub(crate) fn begin_pull_reapply(
+/// Reapplying set-aside changes (after a protected pull or a revert) keeps the new HEAD on
+/// abort and retains the recovery stash.
+pub(crate) fn begin_reapply(
     common_git_dir: &Path,
     stash_oid: &str,
     head: &str,
@@ -1194,13 +1195,13 @@ mod tests {
         let fixture = crate::test_support::GitFixture::new();
         let common = fixture.0.join(".git");
         let first = "a".repeat(40);
-        assert!(begin_pull_reapply(
+        assert!(begin_reapply(
             &common,
             &first,
             &"b".repeat(40),
             Some("main".into())
         ));
-        assert!(!begin_pull_reapply(
+        assert!(!begin_reapply(
             &common,
             &"c".repeat(40),
             &"d".repeat(40),
@@ -1209,7 +1210,7 @@ mod tests {
         assert_eq!(active_conflict(&common).unwrap().stash_oid, first);
         let path = common.join(ACTIVE_CONFLICT_PATH);
         fs::write(&path, b"interrupted marker").unwrap();
-        assert!(!begin_pull_reapply(
+        assert!(!begin_reapply(
             &common,
             &first,
             &"b".repeat(40),

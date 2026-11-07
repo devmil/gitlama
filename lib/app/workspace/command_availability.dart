@@ -155,7 +155,15 @@ final class CommandMenuState {
                     true),
       AppCommandId.interactiveRebase ||
       AppCommandId.restackBranches => !clean || !attached || activeOperation,
-      AppCommandId.revertSelected || AppCommandId.cherryPickSelected =>
+      // A revert keeps or sets aside local changes; only conflicts block it.
+      AppCommandId.revertSelected =>
+        selected.isEmpty ||
+            conflicts ||
+            status?.workingTree == WorkingTreeState.conflicted ||
+            !attached ||
+            activeOperation ||
+            selected.any(_merge),
+      AppCommandId.cherryPickSelected =>
         selected.isEmpty ||
             !clean ||
             !attached ||

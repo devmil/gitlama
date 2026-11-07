@@ -162,7 +162,7 @@ void main() {
   });
 
   group('history operation input', () {
-    testWidgets('a revert blocked by changes says so in one banner', (
+    testWidgets('a revert blocked by conflicts says so in one banner', (
       tester,
     ) async {
       final host = _Host();
@@ -173,7 +173,7 @@ void main() {
           selectedTargets: ['a', 'b'],
           branches: [],
           publishedHistory: false,
-          dirtyWorktree: true,
+          conflictedWorktree: true,
         ),
       );
       expect(
@@ -185,7 +185,7 @@ void main() {
       expect(find.byType(MeridianBanner), findsOneWidget);
       expect(
         find.text(
-          'Commit or stash your changes first: reverting needs a clean working tree.',
+          "Resolve the conflicted files first: a revert can't start while files are conflicted.",
         ),
         findsOneWidget,
       );
@@ -207,7 +207,7 @@ void main() {
           selectedTargets: ['a'],
           branches: [],
           publishedHistory: false,
-          dirtyWorktree: true,
+          conflictedWorktree: true,
           activeOperation: true,
         ),
       );
@@ -280,6 +280,9 @@ void main() {
     HistoryMutationPreview preview({
       HistoryMutationKind kind = HistoryMutationKind.merge,
       bool alreadyContained = false,
+      HistoryLocalChanges localChanges = HistoryLocalChanges.none,
+      List<List<int>> overlappingPaths = const [],
+      bool stagedChanges = false,
     }) => HistoryMutationPreview(
       token: BigInt.one,
       kind: kind,
@@ -290,6 +293,9 @@ void main() {
       currentHead: _sha,
       publishedHistory: false,
       alreadyContained: alreadyContained,
+      localChanges: localChanges,
+      overlappingPaths: overlappingPaths,
+      stagedChanges: stagedChanges,
     );
 
     testWidgets('lists the branches and the conflict check as facts', (
@@ -353,6 +359,75 @@ void main() {
           .widget<MeridianPropertyList>(find.byType(MeridianPropertyList))
           .properties;
       expect([for (final fact in facts) fact.label], ['Current branch']);
+    });
+
+    testWidgets('a revert over unrelated changes says they stay in place', (
+      tester,
+    ) async {
+      final host = _Host();
+      await host.open(
+        tester,
+        HistoryMutationPreviewDialog(
+          preview: preview(
+            kind: HistoryMutationKind.revert,
+            localChanges: HistoryLocalChanges.inPlace,
+          ),
+          prediction: null,
+        ),
+      );
+      final facts = tester
+          .widget<MeridianPropertyList>(find.byType(MeridianPropertyList))
+          .properties;
+      expect(
+        [for (final fact in facts) '${fact.label}: ${fact.value}'],
+        ['Current branch: main', 'Local changes: Stay where they are'],
+      );
+      expect(find.byKey(const ValueKey('revert-set-aside')), findsNothing);
+      expect(_button(tester, 'Commit revert').onPressed, isNotNull);
+    });
+
+    testWidgets('a revert that sets changes aside lists them and asks first', (
+      tester,
+    ) async {
+      final host = _Host();
+      await host.open(
+        tester,
+        HistoryMutationPreviewDialog(
+          preview: preview(
+            kind: HistoryMutationKind.revert,
+            localChanges: HistoryLocalChanges.setAside,
+            overlappingPaths: [
+              for (var index = 0; index < 8; index++)
+                _bytes('src/f$index.dart'),
+            ],
+            stagedChanges: true,
+          ),
+          prediction: null,
+        ),
+      );
+      expect(find.byKey(const ValueKey('revert-set-aside')), findsOneWidget);
+      expect(
+        find.text('8 local changes touch files this revert changes:'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('src/f5.dart'), findsOneWidget);
+      expect(find.textContaining('src/f6.dart'), findsNothing);
+      expect(find.textContaining('and 2 more'), findsOneWidget);
+      expect(
+        find.text(
+          "Some of your local changes are staged, and Git doesn't revert over staged changes.",
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Git command details'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('git stash push'), findsOneWidget);
+      expect(find.textContaining('git stash apply --index'), findsOneWidget);
+      await tester.tap(
+        find.widgetWithText(MeridianButton, 'Set aside and revert'),
+      );
+      await tester.pumpAndSettle();
+      expect(host.result, isTrue);
     });
   });
 

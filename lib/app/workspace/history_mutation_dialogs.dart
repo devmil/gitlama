@@ -9,6 +9,7 @@ import '../app_theme.dart';
 import 'labels.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import '../../widgets/command_preview.dart';
+import '../../widgets/native_menu.dart';
 import '../../models/git_names.dart';
 import '../../services/workflows/history_rewrite_workflows.dart'
     show BranchIntegration;
@@ -22,7 +23,7 @@ class HistoryMutationInputDialog extends StatefulWidget {
     required this.publishedHistory,
     this.initialSourceName,
     this.initialTarget,
-    this.dirtyWorktree = false,
+    this.conflictedWorktree = false,
     this.activeOperation = false,
   });
 
@@ -32,7 +33,7 @@ class HistoryMutationInputDialog extends StatefulWidget {
   final bool publishedHistory;
   final String? initialSourceName;
   final String? initialTarget;
-  final bool dirtyWorktree;
+  final bool conflictedWorktree;
   final bool activeOperation;
 
   @override
@@ -71,7 +72,7 @@ class _HistoryMutationInputDialogState
     final valid =
         targets.isNotEmpty &&
         (!needsAcknowledgement || _acknowledgePublished) &&
-        (!revert || (!widget.dirtyWorktree && !widget.activeOperation));
+        (!revert || (!widget.conflictedWorktree && !widget.activeOperation));
     void submit() => Navigator.pop(
       context,
       HistoryMutationRequest(
@@ -84,8 +85,8 @@ class _HistoryMutationInputDialogState
     );
     final blocked = revert && widget.activeOperation
         ? context.l10n.historyMutationFailureActive
-        : revert && widget.dirtyWorktree
-        ? context.l10n.historyRevertCleanRequired
+        : revert && widget.conflictedWorktree
+        ? context.l10n.historyRevertResolveConflicts
         : null;
     return MeridianDialog(
       width: MeridianLayout.dialogFormWidth,
@@ -198,6 +199,7 @@ class HistoryMutationPreviewDialog extends StatelessWidget {
     final source = preview.sourceName;
     final prediction = this.prediction;
     final merge = preview.kind == HistoryMutationKind.merge;
+    final setAside = preview.localChanges == HistoryLocalChanges.setAside;
     final caveats = [
       if (prediction != null && prediction.failure == null)
         prediction.complete
@@ -243,6 +245,14 @@ class HistoryMutationPreviewDialog extends StatelessWidget {
                 value: branch,
                 monospace: true,
               ),
+              if (preview.localChanges != HistoryLocalChanges.none)
+                MeridianProperty(
+                  label: context.l10n.historyPreviewLocalChanges,
+                  value: setAside
+                      ? context.l10n.historyRevertLocalSetAside
+                      : context.l10n.historyRevertLocalInPlace,
+                  selectable: false,
+                ),
               if (prediction != null)
                 MeridianProperty(
                   label: context.l10n.historyPreviewConflicts,
@@ -262,6 +272,14 @@ class HistoryMutationPreviewDialog extends StatelessWidget {
               tone: MeridianBannerTone.info,
               message: context.l10n.historyMutationAlreadyContained,
             ),
+          if (preview.localChanges == HistoryLocalChanges.inPlace)
+            Text(
+              context.l10n.historyRevertLocalInPlaceDetail,
+              style: context.text.caption.copyWith(
+                color: context.colors.inkMuted,
+              ),
+            ),
+          if (setAside) _SetAsideSummary(preview: preview),
           if (caveats.isNotEmpty)
             Text(
               caveats.join(' '),
@@ -269,7 +287,14 @@ class HistoryMutationPreviewDialog extends StatelessWidget {
                 color: context.colors.inkMuted,
               ),
             ),
-          GitCommandDetails(commands: ['git ${preview.arguments.join(' ')}']),
+          GitCommandDetails(
+            commands: [
+              if (setAside)
+                'git stash push --include-untracked -m "GitLama before revert …"',
+              'git ${preview.arguments.join(' ')}',
+              if (setAside) 'git stash apply --index <stash>',
+            ],
+          ),
         ],
       ),
       actions: [
@@ -280,6 +305,8 @@ class HistoryMutationPreviewDialog extends StatelessWidget {
         ),
         MeridianButton(
           label: switch (preview.kind) {
+            HistoryMutationKind.revert when setAside =>
+              context.l10n.historyRevertSetAsideAction,
             HistoryMutationKind.revert =>
               preview.noCommit
                   ? context.l10n.historyRevertApplyOnly
@@ -289,6 +316,52 @@ class HistoryMutationPreviewDialog extends StatelessWidget {
           variant: MeridianButtonVariant.primary,
           onPressed: () => Navigator.pop(context, true),
         ),
+      ],
+    );
+  }
+}
+
+/// Why a revert sets the local changes aside, which of them collide with it,
+/// and what GitLama does with them.
+class _SetAsideSummary extends StatelessWidget {
+  const _SetAsideSummary({required this.preview});
+
+  static const _listed = 6;
+
+  final HistoryMutationPreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final paths = preview.overlappingPaths;
+    final muted = context.text.caption.copyWith(color: context.colors.inkMuted);
+    return Column(
+      key: const ValueKey('revert-set-aside'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: MeridianSpace.space3,
+      children: [
+        MeridianBanner(
+          tone: MeridianBannerTone.info,
+          message: context.l10n.historyRevertSetAsideExplain,
+        ),
+        if (paths.isNotEmpty) ...[
+          Text(
+            context.l10n.historyRevertSetAsideFiles(paths.length),
+            style: muted,
+          ),
+          SelectableText(
+            contextMenuBuilder: nativeTextContextMenuBuilder,
+            [
+              for (final path in paths.take(_listed))
+                utf8.decode(path, allowMalformed: true),
+              if (paths.length > _listed)
+                context.l10n.historyRevertSetAsideMore(paths.length - _listed),
+            ].join('\n'),
+            style: context.text.codeSm,
+          ),
+        ],
+        if (preview.stagedChanges)
+          Text(context.l10n.historyRevertSetAsideStaged, style: muted),
       ],
     );
   }

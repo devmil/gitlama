@@ -289,14 +289,14 @@ void main() {
       ]);
       expect(interaction.lastPrediction?.target, _topic);
       final draft = interaction.lastMutationDraft!;
-      // Local and remote-tracking branches, with published history and a
-      // dirty worktree from the snapshot.
+      // Local and remote-tracking branches, with published history from the
+      // snapshot. Its worktree is dirty but not conflicted.
       expect(
         draft.branches.map((branch) => String.fromCharCodes(branch.name)),
         ['main', 'topic', 'origin/main'],
       );
       expect(draft.publishedHistory, isTrue);
-      expect(draft.dirtyWorktree, isTrue);
+      expect(draft.conflictedWorktree, isFalse);
       expect(interaction.outcomes.single, isA<HistoryMutationFinished>());
     });
 

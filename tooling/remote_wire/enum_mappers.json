@@ -425,6 +425,12 @@
       "toNative": true
     },
     {
+      "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeHistoryLocalChanges",
+      "model": "lib/models/history_mutation.dart:HistoryLocalChanges",
+      "toModel": true,
+      "toNative": false
+    },
+    {
       "native": "lib/rust/third_party/gitlama_contract/history_operation.dart:NativeHistoryMergeMode",
       "model": "lib/models/history_mutation.dart:HistoryMergeMode",
       "toModel": false,

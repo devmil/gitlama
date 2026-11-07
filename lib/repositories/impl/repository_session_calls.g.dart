@@ -6575,6 +6575,7 @@ NativeHistoryMutationFailureKind decodeNativeHistoryMutationFailureKind(
   'failed' => NativeHistoryMutationFailureKind.failed,
   'read' => NativeHistoryMutationFailureKind.read,
   'mergeCommit' => NativeHistoryMutationFailureKind.mergeCommit,
+  'localChangesOverlap' => NativeHistoryMutationFailureKind.localChangesOverlap,
   _ => throw const WireFormatException('NativeHistoryMutationFailureKind'),
 };
 
@@ -9476,6 +9477,9 @@ Map<String, Object?> encodeNativeHistoryMutationPreview(
   'publishedHistory': value.publishedHistory,
   'alreadyContained': value.alreadyContained,
   'noCommit': value.noCommit,
+  'localChanges': encodeNativeHistoryLocalChanges(value.localChanges),
+  'overlappingPaths': [for (final e in value.overlappingPaths) wireBytes(e)],
+  'stagedChanges': value.stagedChanges,
 };
 
 NativeHistoryMutationPreview decodeNativeHistoryMutationPreview(Object? value) {
@@ -9490,6 +9494,9 @@ NativeHistoryMutationPreview decodeNativeHistoryMutationPreview(Object? value) {
     'publishedHistory',
     'alreadyContained',
     'noCommit',
+    'localChanges',
+    'overlappingPaths',
+    'stagedChanges',
   ]);
   return NativeHistoryMutationPreview(
     token: readWireBig(object['token']),
@@ -9502,6 +9509,12 @@ NativeHistoryMutationPreview decodeNativeHistoryMutationPreview(Object? value) {
     publishedHistory: readWireBool(object['publishedHistory']),
     alreadyContained: readWireBool(object['alreadyContained']),
     noCommit: readWireBool(object['noCommit']),
+    localChanges: decodeNativeHistoryLocalChanges(object['localChanges']),
+    overlappingPaths: readWireList(
+      object['overlappingPaths'],
+      (v) => readWireBytes(v),
+    ),
+    stagedChanges: readWireBool(object['stagedChanges']),
   );
 }
 
@@ -9514,6 +9527,17 @@ NativeHistoryMutationKind decodeNativeHistoryMutationKind(Object? value) =>
       'cherryPick' => NativeHistoryMutationKind.cherryPick,
       'revert' => NativeHistoryMutationKind.revert,
       _ => throw const WireFormatException('NativeHistoryMutationKind'),
+    };
+
+Object encodeNativeHistoryLocalChanges(NativeHistoryLocalChanges value) =>
+    value.name;
+
+NativeHistoryLocalChanges decodeNativeHistoryLocalChanges(Object? value) =>
+    switch (readWireString(value)) {
+      'none' => NativeHistoryLocalChanges.none,
+      'inPlace' => NativeHistoryLocalChanges.inPlace,
+      'setAside' => NativeHistoryLocalChanges.setAside,
+      _ => throw const WireFormatException('NativeHistoryLocalChanges'),
     };
 
 Map<String, Object?> encodeNativeHistoryMutationRequest(
@@ -9572,16 +9596,23 @@ Map<String, Object?> encodeNativeHistoryMutationExecutionResult(
   'sequencer': (value.sequencer == null
       ? null
       : encodeNativeHistoryMutationKind(value.sequencer!)),
+  'setAside': (value.setAside == null
+      ? null
+      : encodeNativeHistorySetAside(value.setAside!)),
 };
 
 NativeHistoryMutationExecutionResult decodeNativeHistoryMutationExecutionResult(
   Object? value,
 ) {
-  final object = readWireObject(
-    value,
-    'NativeHistoryMutationExecutionResult',
-    const ['state', 'failure', 'activityIds', 'conflictingPaths', 'sequencer'],
-  );
+  final object =
+      readWireObject(value, 'NativeHistoryMutationExecutionResult', const [
+        'state',
+        'failure',
+        'activityIds',
+        'conflictingPaths',
+        'sequencer',
+        'setAside',
+      ]);
   return NativeHistoryMutationExecutionResult(
     state: decodeNativeHistoryMutationExecutionState(object['state']),
     failure: wireOptional(
@@ -9596,6 +9627,10 @@ NativeHistoryMutationExecutionResult decodeNativeHistoryMutationExecutionResult(
     sequencer: wireOptional(
       object['sequencer'],
       (v) => decodeNativeHistoryMutationKind(v),
+    ),
+    setAside: wireOptional(
+      object['setAside'],
+      (v) => decodeNativeHistorySetAside(v),
     ),
   );
 }
@@ -9618,6 +9653,29 @@ NativeHistoryMutationExecutionState decodeNativeHistoryMutationExecutionState(
   'outcomeUncertain' => NativeHistoryMutationExecutionState.outcomeUncertain,
   _ => throw const WireFormatException('NativeHistoryMutationExecutionState'),
 };
+
+Map<String, Object?> encodeNativeHistorySetAside(NativeHistorySetAside value) =>
+    {
+      'stashObjectId': value.stashObjectId,
+      'restored': value.restored,
+      'conflicted': value.conflicted,
+      'pending': value.pending,
+    };
+
+NativeHistorySetAside decodeNativeHistorySetAside(Object? value) {
+  final object = readWireObject(value, 'NativeHistorySetAside', const [
+    'stashObjectId',
+    'restored',
+    'conflicted',
+    'pending',
+  ]);
+  return NativeHistorySetAside(
+    stashObjectId: readWireString(object['stashObjectId']),
+    restored: readWireBool(object['restored']),
+    conflicted: readWireBool(object['conflicted']),
+    pending: readWireBool(object['pending']),
+  );
+}
 
 Map<String, Object?> encodeNativeRebasePreviewResult(
   NativeRebasePreviewResult value,

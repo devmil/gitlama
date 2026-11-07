@@ -263,6 +263,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   dco_decode_box_autoadd_native_history_selection_options(dynamic raw);
 
   @protected
+  NativeHistorySetAside dco_decode_box_autoadd_native_history_set_aside(
+    dynamic raw,
+  );
+
+  @protected
   NativeHostKeyChallenge dco_decode_box_autoadd_native_host_key_challenge(
     dynamic raw,
   );
@@ -1398,6 +1403,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NativeHeadKind dco_decode_native_head_kind(dynamic raw);
 
   @protected
+  NativeHistoryLocalChanges dco_decode_native_history_local_changes(
+    dynamic raw,
+  );
+
+  @protected
   NativeHistoryMergeMode dco_decode_native_history_merge_mode(dynamic raw);
 
   @protected
@@ -1476,6 +1486,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NativeHistorySelectionOptions dco_decode_native_history_selection_options(
     dynamic raw,
   );
+
+  @protected
+  NativeHistorySetAside dco_decode_native_history_set_aside(dynamic raw);
 
   @protected
   NativeHostKeyChallenge dco_decode_native_host_key_challenge(dynamic raw);
@@ -2685,6 +2698,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  NativeHistorySetAside? dco_decode_opt_box_autoadd_native_history_set_aside(
+    dynamic raw,
+  );
+
+  @protected
   NativeHostKeyChallenge? dco_decode_opt_box_autoadd_native_host_key_challenge(
     dynamic raw,
   );
@@ -3248,6 +3266,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   NativeHistorySelectionOptions
   sse_decode_box_autoadd_native_history_selection_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NativeHistorySetAside sse_decode_box_autoadd_native_history_set_aside(
     SseDeserializer deserializer,
   );
 
@@ -4665,6 +4688,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NativeHeadKind sse_decode_native_head_kind(SseDeserializer deserializer);
 
   @protected
+  NativeHistoryLocalChanges sse_decode_native_history_local_changes(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NativeHistoryMergeMode sse_decode_native_history_merge_mode(
     SseDeserializer deserializer,
   );
@@ -4761,6 +4789,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NativeHistorySelectionOptions sse_decode_native_history_selection_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NativeHistorySetAside sse_decode_native_history_set_aside(
     SseDeserializer deserializer,
   );
 
@@ -6284,6 +6317,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  NativeHistorySetAside? sse_decode_opt_box_autoadd_native_history_set_aside(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NativeHostKeyChallenge? sse_decode_opt_box_autoadd_native_host_key_challenge(
     SseDeserializer deserializer,
   );
@@ -6957,6 +6995,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_native_history_selection_options(
     NativeHistorySelectionOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_native_history_set_aside(
+    NativeHistorySetAside self,
     SseSerializer serializer,
   );
 
@@ -8677,6 +8721,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_native_history_local_changes(
+    NativeHistoryLocalChanges self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_native_history_merge_mode(
     NativeHistoryMergeMode self,
     SseSerializer serializer,
@@ -8793,6 +8843,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_native_history_selection_options(
     NativeHistorySelectionOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_native_history_set_aside(
+    NativeHistorySetAside self,
     SseSerializer serializer,
   );
 
@@ -10632,6 +10688,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_native_history_page(
     NativeHistoryPage? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_native_history_set_aside(
+    NativeHistorySetAside? self,
     SseSerializer serializer,
   );
 

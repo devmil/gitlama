@@ -9985,6 +9985,8 @@ const _: fn() = || {
         let _: Vec<Vec<u8>> = NativeHistoryMutationExecutionResult.conflicting_paths;
         let _: Option<gitlama_contract::history_operation::NativeHistoryMutationKind> =
             NativeHistoryMutationExecutionResult.sequencer;
+        let _: Option<gitlama_contract::history_operation::NativeHistorySetAside> =
+            NativeHistoryMutationExecutionResult.set_aside;
     }
     {
         let NativeHistoryMutationFailure =
@@ -10006,6 +10008,10 @@ const _: fn() = || {
         let _: bool = NativeHistoryMutationPreview.published_history;
         let _: bool = NativeHistoryMutationPreview.already_contained;
         let _: bool = NativeHistoryMutationPreview.no_commit;
+        let _: gitlama_contract::history_operation::NativeHistoryLocalChanges =
+            NativeHistoryMutationPreview.local_changes;
+        let _: Vec<Vec<u8>> = NativeHistoryMutationPreview.overlapping_paths;
+        let _: bool = NativeHistoryMutationPreview.staged_changes;
     }
     {
         let NativeHistoryMutationPreviewResult =
@@ -10117,6 +10123,14 @@ const _: fn() = || {
         let _: bool = NativeHistorySelectionOptions.focus;
         let _: u64 = NativeHistorySelectionOptions.offset;
         let _: u32 = NativeHistorySelectionOptions.maximum_rows;
+    }
+    {
+        let NativeHistorySetAside =
+            None::<gitlama_contract::history_operation::NativeHistorySetAside>.unwrap();
+        let _: String = NativeHistorySetAside.stash_object_id;
+        let _: bool = NativeHistorySetAside.restored;
+        let _: bool = NativeHistorySetAside.conflicted;
+        let _: bool = NativeHistorySetAside.pending;
     }
     {
         let NativeHostKeyChallenge = None::<gitlama_contract::dto::NativeHostKeyChallenge>.unwrap();
@@ -15447,6 +15461,19 @@ impl SseDecode for gitlama_contract::dto::NativeHeadKind {
     }
 }
 
+impl SseDecode for gitlama_contract::history_operation::NativeHistoryLocalChanges {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => gitlama_contract::history_operation::NativeHistoryLocalChanges::None,
+            1 => gitlama_contract::history_operation::NativeHistoryLocalChanges::InPlace,
+            2 => gitlama_contract::history_operation::NativeHistoryLocalChanges::SetAside,
+            _ => unreachable!("Invalid variant for NativeHistoryLocalChanges: {}", inner),
+        };
+    }
+}
+
 impl SseDecode for gitlama_contract::history_operation::NativeHistoryMergeMode {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -15530,12 +15557,17 @@ impl SseDecode for gitlama_contract::history_operation::NativeHistoryMutationExe
         let mut var_sequencer = <Option<
             gitlama_contract::history_operation::NativeHistoryMutationKind,
         >>::sse_decode(deserializer);
+        let mut var_setAside =
+            <Option<gitlama_contract::history_operation::NativeHistorySetAside>>::sse_decode(
+                deserializer,
+            );
         return gitlama_contract::history_operation::NativeHistoryMutationExecutionResult {
             state: var_state,
             failure: var_failure,
             activity_ids: var_activityIds,
             conflicting_paths: var_conflictingPaths,
             sequencer: var_sequencer,
+            set_aside: var_setAside,
         };
     }
 }
@@ -15586,6 +15618,7 @@ impl SseDecode for gitlama_contract::history_operation::NativeHistoryMutationFai
 7 => gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Failed,
 8 => gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Read,
 9 => gitlama_contract::history_operation::NativeHistoryMutationFailureKind::MergeCommit,
+10 => gitlama_contract::history_operation::NativeHistoryMutationFailureKind::LocalChangesOverlap,
             _ => unreachable!("Invalid variant for NativeHistoryMutationFailureKind: {}", inner),
         };
     }
@@ -15620,6 +15653,12 @@ impl SseDecode for gitlama_contract::history_operation::NativeHistoryMutationPre
         let mut var_publishedHistory = <bool>::sse_decode(deserializer);
         let mut var_alreadyContained = <bool>::sse_decode(deserializer);
         let mut var_noCommit = <bool>::sse_decode(deserializer);
+        let mut var_localChanges =
+            <gitlama_contract::history_operation::NativeHistoryLocalChanges>::sse_decode(
+                deserializer,
+            );
+        let mut var_overlappingPaths = <Vec<Vec<u8>>>::sse_decode(deserializer);
+        let mut var_stagedChanges = <bool>::sse_decode(deserializer);
         return gitlama_contract::history_operation::NativeHistoryMutationPreview {
             token: var_token,
             kind: var_kind,
@@ -15631,6 +15670,9 @@ impl SseDecode for gitlama_contract::history_operation::NativeHistoryMutationPre
             published_history: var_publishedHistory,
             already_contained: var_alreadyContained,
             no_commit: var_noCommit,
+            local_changes: var_localChanges,
+            overlapping_paths: var_overlappingPaths,
+            staged_changes: var_stagedChanges,
         };
     }
 }
@@ -15898,6 +15940,22 @@ impl SseDecode for gitlama_contract::dto::NativeHistorySelectionOptions {
             focus: var_focus,
             offset: var_offset,
             maximum_rows: var_maximumRows,
+        };
+    }
+}
+
+impl SseDecode for gitlama_contract::history_operation::NativeHistorySetAside {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_stashObjectId = <String>::sse_decode(deserializer);
+        let mut var_restored = <bool>::sse_decode(deserializer);
+        let mut var_conflicted = <bool>::sse_decode(deserializer);
+        let mut var_pending = <bool>::sse_decode(deserializer);
+        return gitlama_contract::history_operation::NativeHistorySetAside {
+            stash_object_id: var_stashObjectId,
+            restored: var_restored,
+            conflicted: var_conflicted,
+            pending: var_pending,
         };
     }
 }
@@ -21398,6 +21456,21 @@ impl SseDecode for Option<gitlama_contract::dto::NativeHistoryPage> {
             return Some(<gitlama_contract::dto::NativeHistoryPage>::sse_decode(
                 deserializer,
             ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<gitlama_contract::history_operation::NativeHistorySetAside> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(
+                <gitlama_contract::history_operation::NativeHistorySetAside>::sse_decode(
+                    deserializer,
+                ),
+            );
         } else {
             return None;
         }
@@ -27033,6 +27106,38 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<gitlama_contract::dto::NativeH
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<gitlama_contract::history_operation::NativeHistoryLocalChanges>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            gitlama_contract::history_operation::NativeHistoryLocalChanges::None => 0.into_dart(),
+            gitlama_contract::history_operation::NativeHistoryLocalChanges::InPlace => {
+                1.into_dart()
+            }
+            gitlama_contract::history_operation::NativeHistoryLocalChanges::SetAside => {
+                2.into_dart()
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<gitlama_contract::history_operation::NativeHistoryLocalChanges>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<gitlama_contract::history_operation::NativeHistoryLocalChanges>,
+    > for gitlama_contract::history_operation::NativeHistoryLocalChanges
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<gitlama_contract::history_operation::NativeHistoryLocalChanges> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
     for FrbWrapper<gitlama_contract::history_operation::NativeHistoryMergeMode>
 {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -27155,6 +27260,7 @@ impl flutter_rust_bridge::IntoDart
             self.0.activity_ids.into_into_dart().into_dart(),
             self.0.conflicting_paths.into_into_dart().into_dart(),
             self.0.sequencer.into_into_dart().into_dart(),
+            self.0.set_aside.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -27246,6 +27352,7 @@ gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Canceled 
 gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Failed => 7.into_dart(),
 gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Read => 8.into_dart(),
 gitlama_contract::history_operation::NativeHistoryMutationFailureKind::MergeCommit => 9.into_dart(),
+gitlama_contract::history_operation::NativeHistoryMutationFailureKind::LocalChangesOverlap => 10.into_dart(),
                     _ => unreachable!(),
                 }
     }
@@ -27311,6 +27418,9 @@ impl flutter_rust_bridge::IntoDart
             self.0.published_history.into_into_dart().into_dart(),
             self.0.already_contained.into_into_dart().into_dart(),
             self.0.no_commit.into_into_dart().into_dart(),
+            self.0.local_changes.into_into_dart().into_dart(),
+            self.0.overlapping_paths.into_into_dart().into_dart(),
+            self.0.staged_changes.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -27630,6 +27740,35 @@ impl
     > for gitlama_contract::dto::NativeHistorySelectionOptions
 {
     fn into_into_dart(self) -> FrbWrapper<gitlama_contract::dto::NativeHistorySelectionOptions> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<gitlama_contract::history_operation::NativeHistorySetAside>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.stash_object_id.into_into_dart().into_dart(),
+            self.0.restored.into_into_dart().into_dart(),
+            self.0.conflicted.into_into_dart().into_dart(),
+            self.0.pending.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<gitlama_contract::history_operation::NativeHistorySetAside>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<gitlama_contract::history_operation::NativeHistorySetAside>,
+    > for gitlama_contract::history_operation::NativeHistorySetAside
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<gitlama_contract::history_operation::NativeHistorySetAside> {
         self.into()
     }
 }
@@ -38105,6 +38244,23 @@ impl SseEncode for gitlama_contract::dto::NativeHeadKind {
     }
 }
 
+impl SseEncode for gitlama_contract::history_operation::NativeHistoryLocalChanges {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                gitlama_contract::history_operation::NativeHistoryLocalChanges::None => 0,
+                gitlama_contract::history_operation::NativeHistoryLocalChanges::InPlace => 1,
+                gitlama_contract::history_operation::NativeHistoryLocalChanges::SetAside => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for gitlama_contract::history_operation::NativeHistoryMergeMode {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -38177,6 +38333,10 @@ impl SseEncode for gitlama_contract::history_operation::NativeHistoryMutationExe
             self.sequencer,
             serializer,
         );
+        <Option<gitlama_contract::history_operation::NativeHistorySetAside>>::sse_encode(
+            self.set_aside,
+            serializer,
+        );
     }
 }
 
@@ -38217,6 +38377,7 @@ gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Canceled 
 gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Failed => { 7 }
 gitlama_contract::history_operation::NativeHistoryMutationFailureKind::Read => { 8 }
 gitlama_contract::history_operation::NativeHistoryMutationFailureKind::MergeCommit => { 9 }
+gitlama_contract::history_operation::NativeHistoryMutationFailureKind::LocalChangesOverlap => { 10 }
  _ => { unimplemented!(""); }}, serializer);
     }
 }
@@ -38253,6 +38414,12 @@ impl SseEncode for gitlama_contract::history_operation::NativeHistoryMutationPre
         <bool>::sse_encode(self.published_history, serializer);
         <bool>::sse_encode(self.already_contained, serializer);
         <bool>::sse_encode(self.no_commit, serializer);
+        <gitlama_contract::history_operation::NativeHistoryLocalChanges>::sse_encode(
+            self.local_changes,
+            serializer,
+        );
+        <Vec<Vec<u8>>>::sse_encode(self.overlapping_paths, serializer);
+        <bool>::sse_encode(self.staged_changes, serializer);
     }
 }
 
@@ -38438,6 +38605,16 @@ impl SseEncode for gitlama_contract::dto::NativeHistorySelectionOptions {
         <bool>::sse_encode(self.focus, serializer);
         <u64>::sse_encode(self.offset, serializer);
         <u32>::sse_encode(self.maximum_rows, serializer);
+    }
+}
+
+impl SseEncode for gitlama_contract::history_operation::NativeHistorySetAside {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.stash_object_id, serializer);
+        <bool>::sse_encode(self.restored, serializer);
+        <bool>::sse_encode(self.conflicted, serializer);
+        <bool>::sse_encode(self.pending, serializer);
     }
 }
 
@@ -43054,6 +43231,18 @@ impl SseEncode for Option<gitlama_contract::dto::NativeHistoryPage> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <gitlama_contract::dto::NativeHistoryPage>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<gitlama_contract::history_operation::NativeHistorySetAside> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <gitlama_contract::history_operation::NativeHistorySetAside>::sse_encode(
+                value, serializer,
+            );
         }
     }
 }

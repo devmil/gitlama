@@ -1974,6 +1974,12 @@ final class NativeRepositorySessionRepository
       publishedHistory: preview.publishedHistory,
       alreadyContained: preview.alreadyContained,
       noCommit: preview.noCommit,
+      localChanges: preview.localChanges.toModel(),
+      overlappingPaths: [
+        for (final path in preview.overlappingPaths)
+          path.toList(growable: false),
+      ],
+      stagedChanges: preview.stagedChanges,
     );
   }
 
@@ -1996,6 +2002,15 @@ final class NativeRepositorySessionRepository
           path.toList(growable: false),
       ],
       sequencer: result.sequencer?.toModel(),
+      setAside: switch (result.setAside) {
+        final saved? => HistorySetAside(
+          stashObjectId: saved.stashObjectId,
+          restored: saved.restored,
+          conflicted: saved.conflicted,
+          pending: saved.pending,
+        ),
+        null => null,
+      },
     );
   }
 

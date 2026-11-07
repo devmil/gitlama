@@ -45,6 +45,7 @@ pub mod remote_session_policy;
 pub mod repository_init;
 pub(crate) mod ssh_trust;
 pub mod stash;
+pub(crate) mod stash_handoff;
 pub mod storage;
 #[cfg(test)]
 pub(crate) mod test_support;

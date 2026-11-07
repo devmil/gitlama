@@ -146,5 +146,6 @@ pub(crate) fn history_mutation_execution_failure(
         activity_ids: Vec::new(),
         conflicting_paths: Vec::new(),
         sequencer: None,
+        set_aside: None,
     }
 }

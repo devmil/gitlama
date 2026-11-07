@@ -6964,7 +6964,76 @@
   "@historyRevertApplySingleRequired": {
     "description": "Why applying a revert without committing is unavailable for several commits."
   },
-  "historyRevertCleanRequired": "Commit or stash your changes first: reverting needs a clean working tree.",
+  "historyRevertResolveConflicts": "Resolve the conflicted files first: a revert can't start while files are conflicted.",
+  "@historyRevertResolveConflicts": {
+    "description": "Warning in the revert dialog while the worktree has unresolved conflicts."
+  },
+  "historyMutationFailureLocalChanges": "An apply-only revert can't set your local changes aside. Revert with a commit instead, or commit or stash the changes it collides with first.",
+  "@historyMutationFailureLocalChanges": {
+    "description": "Failure when an apply-only revert would need to set colliding or staged local changes aside."
+  },
+  "historyPreviewLocalChanges": "Local changes",
+  "@historyPreviewLocalChanges": {
+    "description": "Property label in the revert review for what happens to the local changes."
+  },
+  "historyRevertLocalInPlace": "Stay where they are",
+  "@historyRevertLocalInPlace": {
+    "description": "Revert review value: Git reverts with the local changes left untouched."
+  },
+  "historyRevertLocalSetAside": "Set aside and reapplied",
+  "@historyRevertLocalSetAside": {
+    "description": "Revert review value: the local changes are stashed and reapplied around the revert."
+  },
+  "historyRevertLocalInPlaceDetail": "None of your local changes is staged or touches a file this revert changes, so Git reverts around them.",
+  "@historyRevertLocalInPlaceDetail": {
+    "description": "Revert review explanation when local changes stay in place."
+  },
+  "historyRevertSetAsideFiles": "{count, plural, =1{1 local change touches a file this revert changes:} other{{count} local changes touch files this revert changes:}}",
+  "@historyRevertSetAsideFiles": {
+    "description": "Revert review heading above the local paths that collide with the revert.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyRevertSetAsideMore": "and {count} more",
+  "@historyRevertSetAsideMore": {
+    "description": "Revert review: how many colliding paths are not listed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyRevertSetAsideStaged": "Some of your local changes are staged, and Git doesn't revert over staged changes.",
+  "@historyRevertSetAsideStaged": {
+    "description": "Revert review: staged changes require setting the local changes aside."
+  },
+  "historyRevertSetAsideExplain": "GitLama saves your local changes in a stash, reverts, then reapplies them with their staging. If they conflict with the revert, you resolve them in Changes. A recovery copy remains in Stashes.",
+  "@historyRevertSetAsideExplain": {
+    "description": "Revert review: how local changes are set aside and reapplied."
+  },
+  "historyRevertSetAsideAction": "Set aside and revert",
+  "@historyRevertSetAsideAction": {
+    "description": "Confirm button of a revert that sets local changes aside."
+  },
+  "historyRevertSetAsideRestored": "Reverted. Your local changes and staging were restored. A recovery copy remains in Stashes.",
+  "@historyRevertSetAsideRestored": {
+    "description": "Result after a revert that set local changes aside and restored them."
+  },
+  "historyRevertSetAsideConflict": "Reverted, but reapplying your local changes caused conflicts. Resolve them in Changes. The recovery stash is kept.",
+  "@historyRevertSetAsideConflict": {
+    "description": "Result after a revert whose set-aside local changes conflict when reapplied."
+  },
+  "historyRevertSetAsidePending": "The revert stopped at conflicts. Your local changes are set aside and come back when you continue or abort the revert.",
+  "@historyRevertSetAsidePending": {
+    "description": "Result when a revert with set-aside local changes stops at conflicts."
+  },
+  "historyRevertSetAsideSaved": "Your local changes could not be fully restored; they remain saved in Stashes. Review Changes before applying the recovery stash.",
+  "@historyRevertSetAsideSaved": {
+    "description": "Result when set-aside local changes could not be restored automatically."
+  },
   "historyRevertApplied": "Revert applied. Review the staged changes before committing.",
   "historyRevertMergeUnsupported": "This selection contains a merge commit. Reverting a merge requires choosing a mainline parent, which is not supported here yet.",
   "menuRepository": "Repository",
@@ -6987,9 +7056,6 @@
   },
   "@historyRevertApplyOnly": {
     "description": "Revert workflow text."
-  },
-  "@historyRevertCleanRequired": {
-    "description": "Revert is blocked by uncommitted changes."
   },
   "@historyRevertApplied": {
     "description": "Revert workflow text."

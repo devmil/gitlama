@@ -402,7 +402,27 @@ String historyMutationFailureLabel(
   HistoryMutationFailureCode.failed => context.l10n.historyMutationFailed,
   HistoryMutationFailureCode.mergeCommit =>
     context.l10n.historyRevertMergeUnsupported,
+  HistoryMutationFailureCode.localChangesOverlap =>
+    context.l10n.historyMutationFailureLocalChanges,
 };
+
+/// What became of the local changes a revert set aside, or null when it set
+/// none aside or the plain result already says everything.
+String? historySetAsideLabel(
+  BuildContext context,
+  HistoryMutationExecutionResult result,
+) {
+  final saved = result.setAside;
+  if (saved == null) return null;
+  if (saved.pending) return context.l10n.historyRevertSetAsidePending;
+  if (saved.conflicted) return context.l10n.historyRevertSetAsideConflict;
+  if (saved.restored) {
+    return result.state == HistoryMutationExecutionState.completed
+        ? context.l10n.historyRevertSetAsideRestored
+        : null;
+  }
+  return context.l10n.historyRevertSetAsideSaved;
+}
 
 String stashResultLabel(BuildContext context, StashExecutionResult result) =>
     switch (result.state) {
@@ -931,11 +951,19 @@ WorkflowMessage historyRewriteOutcomeMessage(
     error: true,
   ),
   HistoryMutationFinished(:final preview, :final result) => (
-    text:
+    text: switch (historySetAsideLabel(context, result)) {
+      final setAside?
+          when result.state == HistoryMutationExecutionState.completed ||
+              result.setAside!.pending =>
+        setAside,
+      final setAside? =>
+        '${historyMutationResultLabel(context, result)} $setAside',
+      null =>
         preview.noCommit &&
-            result.state == HistoryMutationExecutionState.completed
-        ? context.l10n.historyRevertApplied
-        : historyMutationResultLabel(context, result),
+                result.state == HistoryMutationExecutionState.completed
+            ? context.l10n.historyRevertApplied
+            : historyMutationResultLabel(context, result),
+    },
     error:
         result.state == HistoryMutationExecutionState.failed ||
         result.state == HistoryMutationExecutionState.stale,

@@ -6,7 +6,7 @@
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 enum NativeConflictPredictionKind { merge, rebase }
 
@@ -75,6 +75,20 @@ class NativeConflictPredictionStartResult {
           failure == other.failure;
 }
 
+/// What happens to local changes during a revert.
+enum NativeHistoryLocalChanges {
+  /// The worktree is clean.
+  none,
+
+  /// Git reverts with the local changes left where they are: none is staged and none
+  /// touches a path the reverted commits change.
+  inPlace,
+
+  /// The local changes are saved in a stash, the revert runs on a clean worktree and the
+  /// changes are reapplied with their staging; conflicts go to the conflict resolver.
+  setAside,
+}
+
 enum NativeHistoryMergeMode {
   fastForwardIfPossible,
   fastForwardOnly,
@@ -88,12 +102,16 @@ class NativeHistoryMutationExecutionResult {
   final List<Uint8List> conflictingPaths;
   final NativeHistoryMutationKind? sequencer;
 
+  /// Present when the revert set local changes aside.
+  final NativeHistorySetAside? setAside;
+
   const NativeHistoryMutationExecutionResult({
     required this.state,
     this.failure,
     required this.activityIds,
     required this.conflictingPaths,
     this.sequencer,
+    this.setAside,
   });
 
   @override
@@ -102,7 +120,8 @@ class NativeHistoryMutationExecutionResult {
       failure.hashCode ^
       activityIds.hashCode ^
       conflictingPaths.hashCode ^
-      sequencer.hashCode;
+      sequencer.hashCode ^
+      setAside.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -113,7 +132,8 @@ class NativeHistoryMutationExecutionResult {
           failure == other.failure &&
           activityIds == other.activityIds &&
           conflictingPaths == other.conflictingPaths &&
-          sequencer == other.sequencer;
+          sequencer == other.sequencer &&
+          setAside == other.setAside;
 }
 
 enum NativeHistoryMutationExecutionState {
@@ -156,6 +176,9 @@ enum NativeHistoryMutationFailureKind {
   failed,
   read,
   mergeCommit,
+
+  /// Local changes collide with an apply-only revert, which never sets them aside.
+  localChangesOverlap,
 }
 
 enum NativeHistoryMutationKind { merge, cherryPick, revert }
@@ -171,6 +194,13 @@ class NativeHistoryMutationPreview {
   final bool publishedHistory;
   final bool alreadyContained;
   final bool noCommit;
+  final NativeHistoryLocalChanges localChanges;
+
+  /// Local paths that collide with the reverted commits, raw bytes in status order.
+  final List<Uint8List> overlappingPaths;
+
+  /// Some local change is staged, which Git's sequencer refuses to revert over.
+  final bool stagedChanges;
 
   const NativeHistoryMutationPreview({
     required this.token,
@@ -183,6 +213,9 @@ class NativeHistoryMutationPreview {
     required this.publishedHistory,
     required this.alreadyContained,
     required this.noCommit,
+    required this.localChanges,
+    required this.overlappingPaths,
+    required this.stagedChanges,
   });
 
   @override
@@ -196,7 +229,10 @@ class NativeHistoryMutationPreview {
       currentHead.hashCode ^
       publishedHistory.hashCode ^
       alreadyContained.hashCode ^
-      noCommit.hashCode;
+      noCommit.hashCode ^
+      localChanges.hashCode ^
+      overlappingPaths.hashCode ^
+      stagedChanges.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -212,7 +248,10 @@ class NativeHistoryMutationPreview {
           currentHead == other.currentHead &&
           publishedHistory == other.publishedHistory &&
           alreadyContained == other.alreadyContained &&
-          noCommit == other.noCommit;
+          noCommit == other.noCommit &&
+          localChanges == other.localChanges &&
+          overlappingPaths == other.overlappingPaths &&
+          stagedChanges == other.stagedChanges;
 }
 
 class NativeHistoryMutationPreviewResult {
@@ -270,4 +309,44 @@ class NativeHistoryMutationRequest {
           mergeMode == other.mergeMode &&
           acknowledgePublishedHistory == other.acknowledgePublishedHistory &&
           noCommit == other.noCommit;
+}
+
+/// Local changes a revert set aside and how restoring them went. The stash is kept as a
+/// recovery copy in every case.
+class NativeHistorySetAside {
+  final String stashObjectId;
+
+  /// The changes and their staging were restored.
+  final bool restored;
+
+  /// Restoring them stopped with conflicts the conflict resolver shows.
+  final bool conflicted;
+
+  /// The revert stopped at conflicts first; the changes are reapplied once it is
+  /// continued or aborted.
+  final bool pending;
+
+  const NativeHistorySetAside({
+    required this.stashObjectId,
+    required this.restored,
+    required this.conflicted,
+    required this.pending,
+  });
+
+  @override
+  int get hashCode =>
+      stashObjectId.hashCode ^
+      restored.hashCode ^
+      conflicted.hashCode ^
+      pending.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NativeHistorySetAside &&
+          runtimeType == other.runtimeType &&
+          stashObjectId == other.stashObjectId &&
+          restored == other.restored &&
+          conflicted == other.conflicted &&
+          pending == other.pending;
 }
