@@ -2,10 +2,8 @@ import 'package:devmil_logging/devmil_logging.dart';
 import 'diagnostic_policy.dart';
 import 'package:logging/logging.dart';
 
-/// Process logging with console-only output and privacy filtering.
-///
-/// The base starter persists no logs. Add the reviewed bounded-file module only
-/// when a product needs exportable diagnostics.
+/// Process logging with bounded private history and user-controlled export.
+/// Console output requires an explicit diagnostic define in a debug build.
 final class LoggingUtils {
   LoggingUtils._();
 

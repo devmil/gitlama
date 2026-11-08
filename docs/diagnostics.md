@@ -16,6 +16,17 @@ and arbitrary external exception text are excluded. New events use static
 content are excluded even in detailed mode. Development console output requires
 an explicit `DEVMIL_DIAGNOSTIC_CONSOLE=true` Dart define and a debug build.
 
+Transfer diagnostics are emitted by the Dart session command owner for local and
+remote fetch, pull and push attempts, including background fetch. The
+`transfer_preview_*`, `transfer_execute_*`, `background_fetch_preview_*` and
+`background_fetch_execute_*` event families record starts, results and thrown
+failures. Detailed capture adds `*_timing` events with `elapsed_ms`. Numeric
+`kind`, `state` and `failure` fields use the corresponding enums in
+`lib/models/transfer.dart`; failure `-1` means no failure on a result or an
+unclassified exception on a failed event. These events omit command arguments,
+remote/branch names, paths, Git output, credentials and raw exceptions. Git
+output remains in the repository's separate Activity view.
+
 Applications with a Rust layer install its shared availability hook through their
 existing FRB transport. Native history is capped at 256 events and 64 KiB;
 only one notification is outstanding until Dart drains it. No raw native error

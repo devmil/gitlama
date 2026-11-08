@@ -50,6 +50,8 @@
 
 ## Unreleased Beta
 
+- Record safe diagnostic events for fetch, pull and push, including background fetch, with start, result and failure events and detailed timing.
+
 ## [0.1.0-beta.65] - 2026-11-07
 
 - GitLama is now open source under the MIT License. Its source code, releases and issue tracker are on GitHub.

@@ -1,3 +1,6 @@
+import 'package:devmil_logging/devmil_logging.dart';
+import 'package:logging/logging.dart';
+
 import '../../models/clone_attempt.dart';
 import '../../models/repository_state.dart';
 import '../../models/transfer.dart';
@@ -6,6 +9,8 @@ import '../preview_registry.dart';
 import 'session_scope.dart';
 
 /// Fetch, pull and push of the active repository, and the background fetch.
+final _log = Logger('Transfers');
+
 final class TransferCommands {
   TransferCommands(this._repository, this._scope, PreviewRegistry previews)
     : _previews = previews.sessions();
@@ -16,7 +21,11 @@ final class TransferCommands {
 
   Future<TransferPreview> preview(TransferRequest request) async {
     final identity = _scope.requireCurrent();
-    final preview = await _repository.previewTransfer(identity, request);
+    final preview = await _trace(
+      'transfer_preview',
+      request.kind,
+      () => _repository.previewTransfer(identity, request),
+    );
     _previews[preview.token] = identity;
     return preview;
   }
@@ -28,10 +37,14 @@ final class TransferCommands {
     _scope.ensureActive();
     final identity = _previews[preview.token];
     if (identity == null) throw unknownPreviewFailure;
-    Future<TransferExecutionResult> run() => _repository.executeTransfer(
-      identity,
-      preview.token,
-      credentials: credentials,
+    Future<TransferExecutionResult> run() => _trace(
+      'transfer_execute',
+      preview.kind,
+      () => _repository.executeTransfer(
+        identity,
+        preview.token,
+        credentials: credentials,
+      ),
     );
     final result = preview.kind == TransferKind.pull
         ? await _scope.followingHead(
@@ -90,16 +103,71 @@ final class TransferCommands {
   /// is left for the next run.
   Future<void> backgroundFetch(RepositorySessionIdentity session) async {
     try {
-      final preview = await _repository.previewTransfer(
-        session,
-        const TransferRequest(kind: TransferKind.fetch),
+      final preview = await _trace(
+        'background_fetch_preview',
+        TransferKind.fetch,
+        () => _repository.previewTransfer(
+          session,
+          const TransferRequest(kind: TransferKind.fetch),
+        ),
       );
-      await _repository.executeBackgroundFetch(session, preview.token);
+      await _trace(
+        'background_fetch_execute',
+        TransferKind.fetch,
+        () => _repository.executeBackgroundFetch(session, preview.token),
+      );
     } on TransferException {
       // Nothing to fetch from, or the repository is busy; the next run tries
       // again.
     } on RepositorySessionException {
       // The tab closed while its fetch was prepared.
+    }
+  }
+
+  // Only closed product enums and elapsed time cross the diagnostic boundary.
+  // Never pass previews, requests, credentials or external exceptions to it.
+  Future<T> _trace<T>(
+    String phase,
+    TransferKind kind,
+    Future<T> Function() run,
+  ) async {
+    final watch = Stopwatch()..start();
+    final fields = {'kind': kind.index};
+    _log.info(DiagnosticEvent('${phase}_started', fields: fields));
+    try {
+      final result = await run();
+      _log.info(
+        DiagnosticEvent(
+          '${phase}_finished',
+          fields: {
+            ...fields,
+            if (result is TransferExecutionResult) ...{
+              'state': result.state.index,
+              'failure': result.failure?.index ?? -1,
+            },
+          },
+        ),
+      );
+      return result;
+    } catch (error) {
+      _log.warning(
+        DiagnosticEvent(
+          '${phase}_failed',
+          fields: {
+            ...fields,
+            'failure': error is TransferException ? error.code.index : -1,
+          },
+        ),
+      );
+      rethrow;
+    } finally {
+      _log.fine(
+        DiagnosticEvent(
+          '${phase}_timing',
+          detailed: true,
+          fields: {...fields, 'elapsed_ms': watch.elapsedMilliseconds},
+        ),
+      );
     }
   }
 }
