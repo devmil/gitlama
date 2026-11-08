@@ -93,8 +93,10 @@ RUN retry() { for attempt in 1 2 3 4 5; do "$@" && return 0; sleep 15; done; ret
 RUN for attempt in 1 2 3 4 5; do gem install --no-document fpm -v 1.16.0 && break; sleep 15; done \
     && fpm --version
 
-RUN curl $CURL_RETRY -fsSL -L \
-        https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage \
+# Asset 324406736 is appimagetool 1.9.1 x86_64. Use the asset API because the
+# browser download endpoint can return persistent 504s even while the asset is available.
+RUN curl $CURL_RETRY -fsSL -H "Accept: application/octet-stream" \
+        https://api.github.com/repos/AppImage/appimagetool/releases/assets/324406736 \
         -o /usr/local/bin/appimagetool \
     && echo "${APPIMAGETOOL_SHA256}  /usr/local/bin/appimagetool" | sha256sum -c - \
     && chmod 0755 /usr/local/bin/appimagetool
