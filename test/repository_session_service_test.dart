@@ -1,3 +1,5 @@
+import 'package:devmil_logging/devmil_logging.dart';
+import 'package:gitlama/logging/logging_utils.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -2233,6 +2235,66 @@ void main() {
     expect(repository.refreshCount, 0);
     await service.dispose();
   });
+
+  test(
+    'transfer diagnostics retain outcomes and gate timing without private data',
+    () async {
+      await LoggingUtils.initialize();
+      final history = DiagnosticHistory.instance;
+      final repository = _ControlledRepository();
+      final service = RepositorySessionService(repository);
+      try {
+        final tab = await service.open('/private-path-sentinel');
+        for (final detailed in [false, true]) {
+          history.clear();
+          if (detailed) {
+            history.enableDetailed();
+          } else {
+            history.disableDetailed();
+          }
+          for (final kind in [
+            TransferKind.fetch,
+            TransferKind.pull,
+            TransferKind.push,
+          ]) {
+            final preview = await service.previewTransfer(
+              TransferRequest(
+                kind: kind,
+                remote: 'private-remote-sentinel',
+                branch: 'private-branch-sentinel',
+              ),
+            );
+            await service.executeTransfer(
+              preview,
+              credentials: const TransferCredentials(token: 'secret-sentinel'),
+            );
+          }
+          repository.transferResult = TransferExecutionResult(
+            state: TransferExecutionState.failed,
+            failure: TransferFailureCode.authentication,
+            ahead: BigInt.zero,
+            behind: BigInt.zero,
+          );
+          await service.transfers.backgroundFetch(tab.identity);
+          final text = history.snapshot(
+            application: 'gitlama',
+            version: 'test',
+          );
+          expect(text, contains('transfer_preview_started'));
+          expect(text, contains('transfer_execute_finished'));
+          expect(text, contains('background_fetch_execute_finished'));
+          expect(text, contains('failure=6'));
+          expect(text.contains('transfer_execute_timing'), detailed);
+          expect(text, isNot(contains('sentinel')));
+        }
+      } finally {
+        await service.dispose();
+        history.disableDetailed();
+        history.clear();
+        await LoggingUtils.dispose();
+      }
+    },
+  );
 
   test('transfer retry stays bound to the preview session', () async {
     final repository = _ControlledRepository();
