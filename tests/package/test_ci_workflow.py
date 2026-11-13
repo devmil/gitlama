@@ -60,7 +60,7 @@ class CiWorkflowTest(unittest.TestCase):
         full = self._commands(["verify.py"])
         for command in self._commands(["verify.py", "--platform"]):
             self.assertIn(command, full)
-        self.assertIn(("flutter", "analyze"), full)
+        self.assertIn(("flutter", "analyze", "--no-fatal-infos"), full)
 
     def _commands(self, argv: list[str]) -> list[tuple[str, ...]]:
         with tempfile.TemporaryDirectory() as directory:
