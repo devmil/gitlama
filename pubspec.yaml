@@ -10,7 +10,7 @@ dependencies:
   devmil_logging:
     git:
       url: https://github.com/devmil/devmil-logging.git
-      ref: aca7c46d78ed29e283bd01b6d3f43adb481cf297
+      ref: ddd8873c5f161574ad08757f0a9380fbcf2f5229
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -32,12 +32,12 @@ dependencies:
   meridian_ui:
     git:
       url: https://github.com/devmil/meridian_ui.git
-      ref: 71e2febcb23886cbdf05d2dd5874ad6ff820ffcd
+      ref: 7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079
   # Meridian's native menu companion, from the same commit as meridian_ui.
   meridian_native_menus:
     git:
       url: https://github.com/devmil/meridian_ui.git
-      ref: 71e2febcb23886cbdf05d2dd5874ad6ff820ffcd
+      ref: 7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079
       path: packages/meridian_native_menus
 
 dev_dependencies:

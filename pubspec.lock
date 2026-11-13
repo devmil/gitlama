@@ -125,8 +125,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: aca7c46d78ed29e283bd01b6d3f43adb481cf297
-      resolved-ref: aca7c46d78ed29e283bd01b6d3f43adb481cf297
+      ref: ddd8873c5f161574ad08757f0a9380fbcf2f5229
+      resolved-ref: ddd8873c5f161574ad08757f0a9380fbcf2f5229
       url: "https://github.com/devmil/devmil-logging.git"
     source: git
     version: "0.1.0"
@@ -441,8 +441,8 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/meridian_native_menus"
-      ref: "71e2febcb23886cbdf05d2dd5874ad6ff820ffcd"
-      resolved-ref: "71e2febcb23886cbdf05d2dd5874ad6ff820ffcd"
+      ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
+      resolved-ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
       url: "https://github.com/devmil/meridian_ui.git"
     source: git
     version: "1.0.1"
@@ -450,11 +450,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "71e2febcb23886cbdf05d2dd5874ad6ff820ffcd"
-      resolved-ref: "71e2febcb23886cbdf05d2dd5874ad6ff820ffcd"
+      ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
+      resolved-ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
       url: "https://github.com/devmil/meridian_ui.git"
     source: git
-    version: "1.17.1"
+    version: "1.17.2"
   meta:
     dependency: transitive
     description:
