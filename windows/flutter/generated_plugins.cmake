@@ -7,11 +7,11 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_multi_window
   file_selector_windows
   irondash_engine_context
-  meridian_native_menus
   screen_retriever_windows
-  share_plus
   super_native_extensions
+  meridian_native_menus
   url_launcher_windows
+  share_plus
   window_manager
 )
 

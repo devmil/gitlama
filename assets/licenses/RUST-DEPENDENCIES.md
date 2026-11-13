@@ -7037,7 +7037,7 @@ SOFTWARE.
 ## devmil-logging 0.1.0
 
 Declared license: `MIT`  
-Source: `git+https://github.com/devmil/devmil-logging?rev=aca7c46d78ed29e283bd01b6d3f43adb481cf297#aca7c46d78ed29e283bd01b6d3f43adb481cf297`
+Source: `git+https://github.com/devmil/devmil-logging?rev=ddd8873c5f161574ad08757f0a9380fbcf2f5229#ddd8873c5f161574ad08757f0a9380fbcf2f5229`
 
 ### LICENSE
 

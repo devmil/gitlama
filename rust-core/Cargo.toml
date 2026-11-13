@@ -52,7 +52,7 @@ windows = { version = "=0.62.2", default-features = false, features = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-devmil-logging = { git = "https://github.com/devmil/devmil-logging", rev = "aca7c46d78ed29e283bd01b6d3f43adb481cf297" }
+devmil-logging = { git = "https://github.com/devmil/devmil-logging", rev = "ddd8873c5f161574ad08757f0a9380fbcf2f5229" }
 flutter_rust_bridge = { version = "=2.13.0-beta.5" }
 gitlama_contract = { workspace = true }
 # The desktop library decodes images with the application's codecs.
