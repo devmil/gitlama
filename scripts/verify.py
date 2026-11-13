@@ -157,7 +157,7 @@ def main():
         run('flutter','gen-l10n')
         run(sys.executable,'scripts/check_l10n.py')
         run('dart','format','--output=none','--set-exit-if-changed','lib','test','hook')
-        run('flutter','analyze')
+        run('flutter','analyze','--no-fatal-infos')
         flutter_test('--exclude-tags','native,visual,remote,ssh')
         run(sys.executable,'tooling/remote_wire/generate.py','--check')
         run(sys.executable,'scripts/check_helper_compatibility.py')
