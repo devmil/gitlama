@@ -441,8 +441,8 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/meridian_native_menus"
-      ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
-      resolved-ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
+      ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
+      resolved-ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
       url: "https://github.com/devmil/meridian_ui.git"
     source: git
     version: "1.0.1"
@@ -450,11 +450,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
-      resolved-ref: "7ab7f1ccb9b0c41c1b282b5248ed64d4d5d45079"
+      ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
+      resolved-ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
       url: "https://github.com/devmil/meridian_ui.git"
     source: git
-    version: "1.17.2"
+    version: "1.18.0"
   meta:
     dependency: transitive
     description:

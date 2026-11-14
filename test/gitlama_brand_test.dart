@@ -73,6 +73,20 @@ void main() {
           ),
         );
         expect(sourceOpened, 1);
+        // Licenses open the Meridian license dialog over About.
+        await tester.tap(find.byKey(const ValueKey('brand-about-licenses')));
+        await tester.pumpAndSettle();
+        expect(find.byType(MeridianLicenseDialog), findsOneWidget);
+        expect(
+          find.text(locale == 'en' ? 'Licenses' : 'Lizenzen'),
+          findsWidgets,
+        );
+        await tester.tap(
+          find.byTooltip(locale == 'en' ? 'Close' : 'Schließen').last,
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(MeridianLicenseDialog), findsNothing);
+        expect(about, findsOneWidget);
         await tester.tap(
           find.byTooltip(locale == 'en' ? 'Close' : 'Schließen').last,
         );
