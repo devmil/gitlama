@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:gitlama/app/app_launcher.dart';
@@ -30,7 +30,7 @@ void main() {
     // The mark sits exactly at the centre, where the macOS cover drew it.
     expect(
       tester.getCenter(find.byType(Image)),
-      tester.getCenter(find.byType(Scaffold)),
+      tester.getCenter(find.byType(MeridianScaffold)),
     );
 
     final settings = fakeSettingsService();
@@ -146,7 +146,7 @@ void main() {
         bootstrap: () async => runtime,
         readyBuilder: (_) => Builder(
           builder: (context) => Text(
-            '${Theme.of(context).brightness.name}:'
+            '${MeridianTheme.of(context).brightness.name}:'
             '${MeridianTheme.of(context).density.name}:'
             '${MediaQuery.disableAnimationsOf(context)}',
           ),

@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
@@ -57,11 +60,11 @@ void main() {
       BlameRow? before;
       String? selected;
       await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+        MeridianApp(
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           theme: buildAppTheme(Brightness.light),
-          home: Scaffold(
+          home: MeridianScaffold(
             body: BlameCodeView(
               page: BlamePage(
                 requestId: BigInt.one,
@@ -81,11 +84,11 @@ void main() {
       );
 
       expect(
-        find.widgetWithText(SelectableText, '  final value = 42;'),
+        find.widgetWithText(MeridianSelectableText, '  final value = 42;'),
         findsOneWidget,
       );
       expect(
-        find.widgetWithText(SelectableText, '  print(value);'),
+        find.widgetWithText(MeridianSelectableText, '  print(value);'),
         findsOneWidget,
       );
       expect(find.text('Ada'), findsOneWidget);

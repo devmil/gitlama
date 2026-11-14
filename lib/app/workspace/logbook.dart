@@ -1,7 +1,7 @@
 import '../../widgets/status_notification.dart';
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';
@@ -291,7 +291,7 @@ class _OperationsPanelState extends State<OperationCenterPanel> {
                               entry,
                             ),
                       metadata: metadata,
-                      time: TimeOfDay.fromDateTime(started).format(context),
+                      time: context.clock(started),
                       first: index == 0,
                       last: index == displayRows.length - 1,
                       selected: isSelected,
@@ -344,7 +344,7 @@ class _OperationsPanelState extends State<OperationCenterPanel> {
         children: [
           Text(failure.message, style: context.text.body),
           const SizedBox(height: MeridianSpace.space3),
-          SelectableText(
+          MeridianSelectableText(
             contextMenuBuilder: nativeTextContextMenuBuilder,
             StatusNotificationScope.supportReport(context, failure.details),
             style: context.text.codeSm,
@@ -424,7 +424,7 @@ class _OperationsPanelState extends State<OperationCenterPanel> {
                   maxHeight: GitLamaLayout.logbookOutputMaxHeight,
                 ),
                 child: SingleChildScrollView(
-                  child: SelectableText(
+                  child: MeridianSelectableText(
                     contextMenuBuilder: nativeTextContextMenuBuilder,
                     '\$ ${record.executable} ${record.arguments.join(' ')}\n\n${activityOutput(record)}',
                     style: context.text.codeSm.copyWith(

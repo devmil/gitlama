@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -100,13 +101,13 @@ Future<(AppUpdateService, SettingsService)> _pump(
   // The fakes hold no resources. Their futures belong to the test's fake
   // clock, so a teardown outside it could never finish disposing them.
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(Brightness.light),
       locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
+      home: MeridianScaffold(
         body: SettingsDialog(
           settings: settings,
           repositories: fakeRepositorySessionService(),

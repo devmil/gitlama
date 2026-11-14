@@ -3,7 +3,8 @@ import '../../widgets/status_notification.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';
@@ -759,7 +760,7 @@ class CommitEditorState extends State<CommitEditor>
                     ),
                   ),
                   child: SingleChildScrollView(
-                    child: SelectableText(
+                    child: MeridianSelectableText(
                       contextMenuBuilder: nativeTextContextMenuBuilder,
                       output,
                       style: context.text.codeSm.copyWith(color: colors.ink),
@@ -809,7 +810,7 @@ class CommitEditorState extends State<CommitEditor>
       children: [
         Row(
           children: [
-            Tooltip(
+            MeridianTooltip(
               message: amendReason ?? '',
               child: MeridianCheckbox(
                 key: const ValueKey('commit-amend'),
@@ -962,7 +963,7 @@ class CommitEditorState extends State<CommitEditor>
                 _SubjectCounter(length: length),
                 if (subjectError != null) ...[
                   const SizedBox(width: MeridianSpace.space2),
-                  Tooltip(
+                  MeridianTooltip(
                     message: subjectError,
                     child: Semantics(
                       label: subjectError,

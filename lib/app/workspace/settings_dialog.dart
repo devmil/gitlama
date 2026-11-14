@@ -2,7 +2,7 @@ import 'dart:async';
 import '../../widgets/diagnostic_settings.dart';
 import 'dart:math' as math;
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart';
 import '../../l10n/l10n.dart';
 import '../../models/app_command.dart';

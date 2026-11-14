@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/meridian_finders.dart';
@@ -77,11 +78,11 @@ void main() {
           final operations = OperationCenterService.empty();
           await repositories.open('/repository');
           await tester.pumpWidget(
-            MaterialApp(
+            MeridianApp(
               builder: (context, child) =>
                   StatusNotificationScope(child: child!),
               theme: buildAppTheme(brightness, density: density),
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: gitLamaLocalizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               home: WorkspaceShell(
                 runtime: testRuntime(
@@ -148,7 +149,7 @@ void main() {
           if (const bool.fromEnvironment('CAPTURE_UI_REVIEW') &&
               density == MeridianDensity.regular) {
             await expectLater(
-              find.byType(Scaffold).first,
+              find.byType(MeridianScaffold).first,
               matchesGoldenFile(
                 '../build/evidence/meridian/M09-sidebar-${brightness.name}.png',
               ),
@@ -229,10 +230,10 @@ void main() {
     );
     final operations = OperationCenterService.empty();
     await repositories.open('/repository');
-    Widget shell() => MaterialApp(
+    Widget shell() => MeridianApp(
       builder: (context, child) => StatusNotificationScope(child: child!),
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: WorkspaceShell(
         runtime: testRuntime(

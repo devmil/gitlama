@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/app/gitlama_layout.dart';
@@ -30,9 +31,9 @@ class _Host {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Center(
@@ -470,7 +471,7 @@ void main() {
       );
       expect(find.text('30 commits, oldest first'), findsOneWidget);
       expect(
-        tester.getSize(find.byType(ReorderableListView)).height,
+        tester.getSize(find.byType(ReorderableList)).height,
         lessThanOrEqualTo(GitLamaLayout.rebaseInstructionListMaxHeight),
       );
       expect(tester.takeException(), isNull);

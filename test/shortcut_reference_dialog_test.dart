@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -22,11 +23,13 @@ void main() {
       AppCommandId.showHistory: AppShortcut.parse('Ctrl+Alt+J'),
     };
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: ShortcutReferenceDialog(shortcuts: shortcuts)),
+        home: MeridianScaffold(
+          body: ShortcutReferenceDialog(shortcuts: shortcuts),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -48,11 +51,13 @@ void main() {
         macOS: platform == TargetPlatform.macOS,
       );
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: ShortcutReferenceDialog(shortcuts: shortcuts)),
+          home: MeridianScaffold(
+            body: ShortcutReferenceDialog(shortcuts: shortcuts),
+          ),
         ),
       );
       await tester.enterText(

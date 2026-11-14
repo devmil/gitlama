@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:ui' show FrameTiming;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -24,11 +26,11 @@ void main() {
     addTearDown(controller.dispose);
     Set<String> selected = {};
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+      MeridianApp(
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: StatefulBuilder(
             builder: (context, setState) => DiffView(
               itemCount: 100000,
@@ -76,7 +78,7 @@ void main() {
     final selectionSamples = <int>[];
     for (var sample = 0; sample < 30; sample += 1) {
       final stopwatch = Stopwatch()..start();
-      await tester.tap(find.byType(InkWell).hitTestable().first);
+      await tester.tap(find.byType(MeridianInteraction).hitTestable().first);
       await binding.endOfFrame.timeout(const Duration(seconds: 1));
       stopwatch.stop();
       selectionSamples.add(stopwatch.elapsedMicroseconds);

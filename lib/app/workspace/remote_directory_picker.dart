@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../../l10n/l10n.dart';
@@ -400,7 +400,7 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
       ),
       _ => ('circle-x', context.colors.danger, l10n.remotePathMissing),
     };
-    return Tooltip(
+    return MeridianTooltip(
       message: label,
       child: Semantics(
         label: label,

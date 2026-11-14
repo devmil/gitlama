@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
@@ -153,10 +155,10 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(360, 600));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           locale: Locale(locale),
           theme: buildAppTheme(Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
@@ -164,7 +166,7 @@ void main() {
             ).copyWith(textScaler: TextScaler.linear(1.3)),
             child: child!,
           ),
-          home: Scaffold(
+          home: MeridianScaffold(
             body: Column(
               children: [
                 ConflictFileDetails(

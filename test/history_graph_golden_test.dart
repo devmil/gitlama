@@ -4,7 +4,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -55,20 +55,23 @@ void main() {
             addTearDown(tester.view.resetPhysicalSize);
             addTearDown(tester.view.resetDevicePixelRatio);
             await tester.pumpWidget(
-              MaterialApp(
+              MeridianApp(
                 theme: buildAppTheme(brightness, density: density),
                 home: MediaQuery(
                   data: MediaQueryData(textScaler: TextScaler.linear(scale)),
                   child: MeridianSurfaceScope(
                     focused: const bool.fromEnvironment('CAPTURE_UI_REVIEW'),
-                    child: const Scaffold(body: _GraphCapture()),
+                    child: const MeridianScaffold(body: _GraphCapture()),
                   ),
                 ),
               ),
             );
             await tester.pump();
             expect(tester.takeException(), isNull);
-            await expectLater(find.byType(Scaffold), matchesGoldenFile(golden));
+            await expectLater(
+              find.byType(MeridianScaffold),
+              matchesGoldenFile(golden),
+            );
           },
           skip:
               (capture &&

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
@@ -72,11 +72,11 @@ class _CommitSummaryCardState extends State<CommitSummaryCard> {
     final committed = DateTime.fromMillisecondsSinceEpoch(
       detail.committerTime * 1000,
     ).toLocal();
-    final dates = MaterialLocalizations.of(context);
+    final dates = MeridianLocalizations.of(context);
     final authorDate =
-        '${dates.formatMediumDate(authored)} · ${dates.formatTimeOfDay(TimeOfDay.fromDateTime(authored))}';
+        '${dates.formatMediumDate(authored)} · ${context.clock(authored)}';
     final commitDate =
-        '${dates.formatMediumDate(committed)} · ${dates.formatTimeOfDay(TimeOfDay.fromDateTime(committed))}';
+        '${dates.formatMediumDate(committed)} · ${context.clock(committed)}';
     final tokens = context.meridian;
     return ColoredBox(
       color: tokens.colors.pane,
@@ -143,7 +143,7 @@ class _CommitSummaryCardState extends State<CommitSummaryCard> {
                       ),
                     ),
                     for (final parent in detail.parents)
-                      Tooltip(
+                      MeridianTooltip(
                         message: parent,
                         child: MeridianInteraction(
                           onTap: () => onSelectParent(parent),
@@ -209,7 +209,7 @@ class _CommitSummaryCardState extends State<CommitSummaryCard> {
                 ),
                 if (body.isNotEmpty) ...[
                   const SizedBox(height: MeridianSpace.space5),
-                  SelectableText(
+                  MeridianSelectableText(
                     contextMenuBuilder: nativeTextContextMenuBuilder,
                     body,
                     style: context.text.body.copyWith(
@@ -221,7 +221,7 @@ class _CommitSummaryCardState extends State<CommitSummaryCard> {
                 Row(
                   children: [
                     Expanded(
-                      child: SelectableText(
+                      child: MeridianSelectableText(
                         contextMenuBuilder: nativeTextContextMenuBuilder,
                         detail.commit,
                         style: context.text.codeSm.copyWith(

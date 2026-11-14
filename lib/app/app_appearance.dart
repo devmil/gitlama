@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../models/settings.dart';
@@ -17,15 +17,16 @@ final class AppAppearance {
     _ => MeridianDensity.regular,
   };
 
-  ThemeMode get themeMode => switch (settings.theme) {
-    'light' => ThemeMode.light,
-    'dark' => ThemeMode.dark,
-    _ => ThemeMode.system,
+  MeridianThemeMode get themeMode => switch (settings.theme) {
+    'light' => MeridianThemeMode.light,
+    'dark' => MeridianThemeMode.dark,
+    _ => MeridianThemeMode.system,
   };
 
-  ThemeData get theme => buildAppTheme(Brightness.light, density: density);
+  MeridianTheme get theme => buildAppTheme(Brightness.light, density: density);
 
-  ThemeData get darkTheme => buildAppTheme(Brightness.dark, density: density);
+  MeridianTheme get darkTheme =>
+      buildAppTheme(Brightness.dark, density: density);
 
   /// [child] with the motion the settings choose: reduced, full, or what the
   /// system asks for.

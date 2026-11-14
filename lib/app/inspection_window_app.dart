@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -127,14 +127,15 @@ class _InspectionWindowAppState extends State<InspectionWindowApp> {
   @override
   Widget build(BuildContext context) {
     final appearance = AppAppearance(_appearance);
-    return MaterialApp(
+    return MeridianApp(
       debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) => context.l10n.appTitle,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: appearance.theme,
       darkTheme: appearance.darkTheme,
       themeMode: appearance.themeMode,
+      scrollBehavior: gitLamaScrollBehavior,
       builder: (context, child) => appearance.applyMotion(
         context,
         NativeMenus.scope(
@@ -332,7 +333,7 @@ class _InspectorWindowHomeState extends State<_InspectorWindowHome> {
   Widget build(BuildContext context) {
     final session = widget.runtime.session;
     final macOS = defaultTargetPlatform == TargetPlatform.macOS;
-    return Scaffold(
+    return MeridianScaffold(
       backgroundColor: context.colors.ground,
       body: SafeArea(
         child: Column(

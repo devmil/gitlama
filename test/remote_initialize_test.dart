@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/app/workspace/initialize_dialog.dart';
@@ -67,12 +68,12 @@ Future<RemoteHostProfile> _host(_Window window, {bool writes = true}) async {
 }
 
 Widget _launcher(Future<Object?> Function(BuildContext context) open) =>
-    MaterialApp(
+    MeridianApp(
       builder: (context, child) => StatusNotificationScope(child: child!),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(Brightness.light),
-      home: Scaffold(
+      home: MeridianScaffold(
         body: Builder(
           builder: (context) => Center(
             child: MeridianButton(

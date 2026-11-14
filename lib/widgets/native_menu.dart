@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:meridian_native_menus/meridian_native_menus.dart' as native;
 import 'package:meridian_ui/meridian_ui.dart';
@@ -374,13 +374,12 @@ class _NativeMenuButtonState<T> extends State<NativeMenuButton<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final label =
-        widget.tooltip ?? MaterialLocalizations.of(context).showMenuTooltip;
+    final label = widget.tooltip ?? MeridianLocalizations.of(context).showMenu;
     return Shortcuts(
       shortcuts: const {
         SingleActivator(LogicalKeyboardKey.arrowDown): ActivateIntent(),
       },
-      child: Tooltip(
+      child: MeridianTooltip(
         message: label,
         child: Semantics(
           excludeSemantics: true,
@@ -460,5 +459,5 @@ class GitLamaContextMenuWidget extends StatelessWidget {
 /// their presentation to the same OS menu used by other context menus.
 Widget nativeTextContextMenuBuilder(
   BuildContext context,
-  EditableTextState editable,
-) => native.nativeTextContextMenuBuilder(context, editable);
+  MeridianTextMenuRequest request,
+) => native.nativeTextContextMenuBuilder(context, request);

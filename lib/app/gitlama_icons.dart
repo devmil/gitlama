@@ -1,5 +1,5 @@
 /// GitLama's semantic icon names (`fetch`, `push`, `close`) for Lucide
-/// icons in meridian_ui. Passed to `buildMeridianTheme(icons:)`, so
+/// icons in meridian_ui. Passed to `MeridianTheme.resolve(icons:)`, so
 /// `MeridianIcon('fetch')` draws Meridian's `arrow-down-to-line`. Every
 /// other name is a Meridian icon name.
 const gitlamaIconAliases = <String, String>{

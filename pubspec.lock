@@ -441,8 +441,8 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/meridian_native_menus"
-      ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
-      resolved-ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
+      ref: a4c207548990749fb0cbc8e3b56002d465b3f66a
+      resolved-ref: a4c207548990749fb0cbc8e3b56002d465b3f66a
       url: "https://github.com/devmil/meridian_ui.git"
     source: git
     version: "1.0.1"
@@ -450,11 +450,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
-      resolved-ref: "77ad5a983dd153fe3b3fc15076f0775be0fe4bde"
+      ref: a4c207548990749fb0cbc8e3b56002d465b3f66a
+      resolved-ref: a4c207548990749fb0cbc8e3b56002d465b3f66a
       url: "https://github.com/devmil/meridian_ui.git"
     source: git
-    version: "1.18.0"
+    version: "2.0.0"
   meta:
     dependency: transitive
     description:
@@ -973,5 +973,5 @@ packages:
     source: hosted
     version: "3.1.4"
 sdks:
-  dart: ">=3.13.0-0 <4.0.0"
-  flutter: ">=3.44.0"
+  dart: ">=3.13.0 <4.0.0"
+  flutter: ">=3.50.0"

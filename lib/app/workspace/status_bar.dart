@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'brand_about.dart';
 import 'settings_dialog.dart' show showAppLicenses;
 import '../../models/app_update.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart';
 import '../../l10n/l10n.dart';
 import '../../models/advanced_rebase.dart';
@@ -58,7 +58,7 @@ class StatusBar extends StatelessWidget {
     final brand = Semantics(
       button: true,
       label: context.l10n.aboutApp,
-      child: Tooltip(
+      child: MeridianTooltip(
         message: context.l10n.brandTooltip,
         excludeFromSemantics: true,
         child: MeridianInteraction(

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -138,7 +138,7 @@ class _GitLamaTimelineRowState extends State<GitLamaTimelineRow> {
               ? colors.accentSoft
               : interaction.hovered
               ? colors.paneHover
-              : Colors.transparent,
+              : meridianTransparent,
           child: Stack(
             children: [
               rail,

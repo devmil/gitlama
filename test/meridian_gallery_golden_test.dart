@@ -3,7 +3,8 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -64,7 +65,7 @@ void main() {
               await tester.pump(const Duration(milliseconds: 100));
               expect(tester.takeException(), isNull);
               await expectLater(
-                find.byType(Scaffold),
+                find.byType(MeridianScaffold),
                 matchesGoldenFile(golden),
               );
             },
@@ -86,7 +87,10 @@ void main() {
       await tester.pumpWidget(gallery(brightness: brightness));
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull);
-      await expectLater(find.byType(Scaffold), matchesGoldenFile(golden));
+      await expectLater(
+        find.byType(MeridianScaffold),
+        matchesGoldenFile(golden),
+      );
     }, skip: visualCaptureSkip(golden));
   }
 }

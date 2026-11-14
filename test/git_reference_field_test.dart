@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -35,9 +37,9 @@ void main() {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: Center(
             child: SizedBox(
               width: 400,
@@ -53,7 +55,7 @@ void main() {
         ),
       ),
     );
-    await tester.enterText(find.byType(TextField), 'fea');
+    await tester.enterText(find.byType(EditableText), 'fea');
     await tester.pumpAndSettle();
     expect(find.text('feature'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
@@ -62,20 +64,20 @@ void main() {
     expect(controller.text, 'feature');
     // Picking a path fragment with Enter keeps typing in the field.
     expect(
-      tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+      editableIn(tester, find.byType(EditableText)).focusNode.hasFocus,
       isTrue,
     );
     expect(find.byType(MeridianSuggestionRow), findsNothing);
-    await tester.enterText(find.byType(TextField), 'feature/a');
+    await tester.enterText(find.byType(EditableText), 'feature/a');
     await tester.pumpAndSettle();
     expect(find.text('feature/alpha'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(find.text('feature/alpha'), findsNothing);
-    await tester.enterText(find.byType(TextField), 'unknown');
+    await tester.enterText(find.byType(EditableText), 'unknown');
     await tester.pumpAndSettle();
     expect(find.byType(MeridianSuggestionRow), findsNothing);
-    await tester.enterText(find.byType(TextField), 'topic with spaces');
+    await tester.enterText(find.byType(EditableText), 'topic with spaces');
     expect(controller.text, 'topic-with-spaces');
     expect(tester.takeException(), isNull);
   });
@@ -86,11 +88,11 @@ void main() {
       addTearDown(controller.dispose);
       const commit = '1234567890123456789012345678901234567890';
       await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+        MeridianApp(
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           theme: buildAppTheme(Brightness.light),
-          home: Scaffold(
+          home: MeridianScaffold(
             body: Center(
               child: SizedBox(
                 width: 440,
@@ -121,7 +123,10 @@ void main() {
       await tester.tap(find.byTooltip('Select reference'));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(TextField, 'Search by name, commit ID, or subject'),
+        find.widgetWithText(
+          MeridianEditableText,
+          'Search by name, commit ID, or subject',
+        ),
         'login',
       );
       await tester.pumpAndSettle();
@@ -132,7 +137,7 @@ void main() {
       await tester.tap(find.text('Fix the login timeout'));
       await tester.pumpAndSettle();
       expect(controller.text, commit);
-      await tester.enterText(find.byType(TextField), 'HEAD~3');
+      await tester.enterText(find.byType(EditableText), 'HEAD~3');
       expect(controller.text, 'HEAD~3');
       expect(tester.takeException(), isNull);
     },

@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'native_menu.dart';
 import 'author_avatar.dart';
@@ -443,7 +443,7 @@ class _HistoryRow extends StatelessWidget {
       children: [
         chip,
         const SizedBox(width: MeridianSpace.space1),
-        Tooltip(
+        MeridianTooltip(
           message: [
             '#${pull.number} ${pull.title}',
             if (pull.merged) context.l10n.hostingPullRequestMerged,
@@ -661,7 +661,7 @@ class _HistoryRow extends StatelessWidget {
                                         context,
                                         reference,
                                         onAccent,
-                                        Tooltip(
+                                        MeridianTooltip(
                                           message: reference.tracking == null
                                               ? reference.raw
                                               : '${reference.raw}\n${reference.tracking}',
@@ -676,7 +676,7 @@ class _HistoryRow extends StatelessWidget {
                                 ],
                               ),
                               if (displayRefs.length > visibleLimit) ...[
-                                Tooltip(
+                                MeridianTooltip(
                                   message: displayRefs
                                       .skip(visibleLimit)
                                       .map((reference) => reference.raw)
@@ -717,7 +717,7 @@ class _HistoryRow extends StatelessWidget {
                                 flex: 14,
                                 child: SizedBox(
                                   width: metadataAuthorWidth,
-                                  child: Tooltip(
+                                  child: MeridianTooltip(
                                     message: author,
                                     child: Row(
                                       children: [
@@ -769,7 +769,7 @@ class _HistoryRow extends StatelessWidget {
                                 flex: 10,
                                 child: SizedBox(
                                   width: metadataHashWidth,
-                                  child: Tooltip(
+                                  child: MeridianTooltip(
                                     message: row.objectId,
                                     child: _HashCell(
                                       hash: shortHash,
@@ -787,7 +787,7 @@ class _HistoryRow extends StatelessWidget {
                                 flex: 11,
                                 child: SizedBox(
                                   width: metadataDateWidth,
-                                  child: Tooltip(
+                                  child: MeridianTooltip(
                                     message: authored?.toIso8601String() ?? '',
                                     child: MeridianInteraction(
                                       onTap:
@@ -1007,7 +1007,7 @@ List<String> historyDateColumnSamples(BuildContext context, String format) {
       // 22 to 28 pair every month with every weekday.
       for (var month = 1; month <= 12; month++)
         for (var day = 22; day <= 28; day++)
-          MaterialLocalizations.of(
+          MeridianLocalizations.of(
             context,
           ).formatMediumDate(DateTime(2000, month, day)),
       if (format != 'local') ...[
@@ -1023,7 +1023,7 @@ List<String> historyDateColumnSamples(BuildContext context, String format) {
 String _formatHistoryDate(BuildContext context, DateTime value, String format) {
   if (format == 'iso') return value.toIso8601String().substring(0, 10);
   if (format == 'local') {
-    return MaterialLocalizations.of(context).formatMediumDate(value);
+    return MeridianLocalizations.of(context).formatMediumDate(value);
   }
   final difference = DateTime.now().difference(value);
   if (difference.isNegative || difference.inMinutes < 1) {
@@ -1038,7 +1038,7 @@ String _formatHistoryDate(BuildContext context, DateTime value, String format) {
   if (difference.inDays < 30) {
     return context.l10n.historyDateDays(difference.inDays);
   }
-  return MaterialLocalizations.of(context).formatMediumDate(value);
+  return MeridianLocalizations.of(context).formatMediumDate(value);
 }
 
 class _HistoryGraphPainter extends CustomPainter {

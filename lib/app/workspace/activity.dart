@@ -1,6 +1,6 @@
 import '../../widgets/status_notification.dart';
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';
@@ -193,11 +193,11 @@ class ActivitySlotState extends State<ActivitySlot> {
                 verb: record.executable,
                 target: record.arguments.join(' '),
                 metadata: activityStateLabel(context, record.status),
-                time: TimeOfDay.fromDateTime(
+                time: context.clock(
                   DateTime.fromMillisecondsSinceEpoch(
                     record.startedAtUnixMs.toInt(),
                   ),
-                ).format(context),
+                ),
                 first: index == 0,
                 last: index == records.length - 1,
                 selected: isSelected,
@@ -217,7 +217,7 @@ class ActivitySlotState extends State<ActivitySlot> {
                               maxHeight: GitLamaLayout.activityOutputMaxHeight,
                             ),
                             child: SingleChildScrollView(
-                              child: SelectableText(
+                              child: MeridianSelectableText(
                                 contextMenuBuilder:
                                     nativeTextContextMenuBuilder,
                                 activityOutput(record),

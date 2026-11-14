@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/app/file_actions/file_actions.dart';
@@ -50,9 +52,9 @@ List<String> _render(List<NativeMenuItem<FileActionCommand>> items) => [
 Future<BuildContext> _context(WidgetTester tester) async {
   late BuildContext captured;
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) {

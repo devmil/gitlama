@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import '../../l10n/l10n.dart';
 import '../../models/app_command.dart';
 import '../../models/app_shortcut.dart';

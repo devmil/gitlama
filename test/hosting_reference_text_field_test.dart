@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
@@ -19,8 +21,8 @@ void main() {
     await tester.pumpWidget(fixture.app(stale: true));
     final initialSize = tester.getSize(find.byType(HostingReferenceTextField));
 
-    await tester.tap(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), 'Fix 😀 #');
+    await tester.tap(find.byType(EditableText));
+    await tester.enterText(find.byType(EditableText), 'Fix 😀 #');
     await tester.pump();
     await tester.pump();
 
@@ -46,8 +48,8 @@ void main() {
     final fixture = await _Fixture.create();
     await tester.pumpWidget(fixture.app(references: const []));
     final initialSize = tester.getSize(find.byType(HostingReferenceTextField));
-    await tester.tap(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), '#');
+    await tester.tap(find.byType(EditableText));
+    await tester.enterText(find.byType(EditableText), '#');
     await tester.pump();
     await tester.pump();
 
@@ -61,8 +63,8 @@ void main() {
   ) async {
     final fixture = await _Fixture.create();
     await tester.pumpWidget(fixture.app());
-    await tester.tap(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), 'Ä 😀 #1');
+    await tester.tap(find.byType(EditableText));
+    await tester.enterText(find.byType(EditableText), 'Ä 😀 #1');
     await tester.pump();
     await tester.pump();
     final caret = fixture.controller.selection;
@@ -113,10 +115,14 @@ final class _Fixture {
   Widget app({
     bool stale = false,
     List<HostingRemoteReference> references = _references,
-  }) => MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+  }) => MeridianApp(
+    theme: MeridianTheme.resolve(
+      brand: MeridianBrands.gitlama,
+      brightness: Brightness.light,
+    ),
+    localizationsDelegates: gitLamaLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
+    home: MeridianScaffold(
       body: Center(
         child: SizedBox(
           width: 420,

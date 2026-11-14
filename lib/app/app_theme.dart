@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import 'gitlama_icons.dart';
@@ -22,10 +22,17 @@ extension GitLamaContext on BuildContext {
   /// needs. Added, modified and conflicted use Meridian's `success`,
   /// `warning` and `attention`.
   GitLamaGitColors get git =>
-      Theme.of(this).extension<GitLamaGitColors>() ??
-      (Theme.of(this).brightness == Brightness.dark
+      MeridianTheme.of(this).extension<GitLamaGitColors>() ??
+      (MeridianTheme.of(this).isDark
           ? GitLamaGitColors.dark
           : GitLamaGitColors.light);
+
+  /// [time]'s time of day in the locale's clock, 24-hour when the platform
+  /// asks for it.
+  String clock(DateTime time) => MeridianLocalizations.of(this).formatTime(
+    time,
+    alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(this),
+  );
 }
 
 /// The selection fill of the enclosing island, from Meridian's row colours:
@@ -90,14 +97,14 @@ const gitlamaDensities = [
 ];
 
 /// The app theme: Meridian with the GitLama brand, its git colours and
-/// icon names, the soft selection (selected rows stay `accent-soft` with
-/// the normal inks; the island halo shows focus) and always-visible desktop
-/// scrollbars.
-ThemeData buildAppTheme(
+/// icon names and the soft selection (selected rows stay `accent-soft` with
+/// the normal inks; the island halo shows focus). Desktop scrollbars stay
+/// visible through [gitLamaScrollBehavior].
+MeridianTheme buildAppTheme(
   Brightness brightness, {
   MeridianDensity density = MeridianDensity.regular,
 }) {
-  final theme = buildMeridianTheme(
+  return MeridianTheme.resolve(
     brand: MeridianBrands.gitlama,
     brightness: brightness,
     density: density,
@@ -109,9 +116,7 @@ ThemeData buildAppTheme(
           : GitLamaGitColors.light,
     ],
   );
-  return theme.copyWith(
-    scrollbarTheme: theme.scrollbarTheme.copyWith(
-      thumbVisibility: const WidgetStatePropertyAll(true),
-    ),
-  );
 }
+
+/// GitLama's scrolling: Meridian's, with desktop scrollbars always visible.
+const gitLamaScrollBehavior = MeridianScrollBehavior(alwaysShowThumb: true);

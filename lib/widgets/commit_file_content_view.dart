@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import '../l10n/l10n.dart';
@@ -133,7 +133,7 @@ class _CommitFileContentViewState extends State<CommitFileContentView> {
             ),
             const SizedBox(width: GitLamaLayout.diffSignWidth),
             Expanded(
-              child: SelectableText(
+              child: MeridianSelectableText(
                 contextMenuBuilder: nativeTextContextMenuBuilder,
                 lines[index],
                 style: style,

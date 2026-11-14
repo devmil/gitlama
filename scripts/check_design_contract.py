@@ -359,7 +359,7 @@ for dart_source in (root / "lib").rglob("*.dart"):
             f"{dart_source.relative_to(root)}"
         )
 for contract, source in (
-    ("buildMeridianTheme(", theme_source),
+    ("MeridianTheme.resolve(", theme_source),
     ("brand: MeridianBrands.gitlama", theme_source),
     ("titleVisibility = .hidden", macos_window),
     ("titlebarAppearsTransparent = true", macos_window),
@@ -397,9 +397,12 @@ if "commit hook failure stays inline and requires typed bypass" not in home_scre
 # Native action menus are a product requirement, including library fallbacks.
 for dart_source in (root / "lib").rglob("*.dart"):
     source = dart_source.read_text(encoding="utf-8")
-    fields = len(re.findall(r"\b(?:TextField|TextFormField|SelectableText)\(", source))
+    fields = len(re.findall(
+        r"\b(?:TextField|TextFormField|SelectableText|MeridianSelectableText)\(",
+        source,
+    ))
     native_fields = len(re.findall(
-        r"\b(?:TextField|TextFormField|SelectableText)\(\s*"
+        r"\b(?:TextField|TextFormField|SelectableText|MeridianSelectableText)\(\s*"
         r"contextMenuBuilder:\s*nativeTextContextMenuBuilder,", source
     ))
     if fields != native_fields:

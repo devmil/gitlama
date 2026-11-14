@@ -1,5 +1,6 @@
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import '../support/test_button.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -120,7 +121,7 @@ void main() {
       await tester.pumpWidget(
         motionHost(
           Builder(
-            builder: (context) => TextButton(
+            builder: (context) => TestButton(
               onPressed: () => showCommandPalette<void>(
                 context: context,
                 originRect: origin,
@@ -131,7 +132,7 @@ void main() {
                     key: const ValueKey('command-palette'),
                     width: GitLamaLayout.paletteWidth,
                     height: 200,
-                    child: TextButton(
+                    child: TestButton(
                       onPressed: () {
                         ran = true;
                         Navigator.pop(context);
@@ -174,7 +175,7 @@ void main() {
       await tester.pumpWidget(
         motionHost(
           Builder(
-            builder: (context) => TextButton(
+            builder: (context) => TestButton(
               onPressed: () => showCommandPalette<void>(
                 context: context,
                 originRect: origin,
@@ -218,7 +219,7 @@ void main() {
         motionHost(
           reduced: true,
           Builder(
-            builder: (context) => TextButton(
+            builder: (context) => TestButton(
               onPressed: () => showCommandPalette<void>(
                 context: context,
                 originRect: origin,
@@ -257,7 +258,7 @@ void main() {
         motionHost(
           Builder(
             builder: (context) => Center(
-              child: TextButton(
+              child: TestButton(
                 onPressed: () => showCommandPalette<void>(
                   context: context,
                   originRect: origin,
@@ -269,7 +270,10 @@ void main() {
                       height:
                           MediaQuery.sizeOf(context).height *
                           GitLamaLayout.paletteMaxHeightFraction,
-                      child: TextField(controller: query, autofocus: true),
+                      child: MeridianTextField(
+                        controller: query,
+                        autofocus: true,
+                      ),
                     ),
                   ),
                 ),
@@ -287,7 +291,7 @@ void main() {
       expect(start.top, closeTo(origin.top, 1));
       expect(start.width, closeTo(origin.width, 1));
       expect(start.height, closeTo(origin.height, 1));
-      await tester.enterText(find.byType(TextField), 'status');
+      await tester.enterText(find.byType(EditableText), 'status');
       expect(query.text, 'status');
       await pumpFrames(tester, const Duration(milliseconds: 320));
       final end = tester.getRect(surface);

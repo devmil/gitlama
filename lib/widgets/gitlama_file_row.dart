@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../app/app_theme.dart';
 import '../l10n/l10n.dart';

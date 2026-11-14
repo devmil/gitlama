@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:gitlama/app/workspace/shell_chrome.dart';
@@ -586,7 +586,7 @@ void main() {
       final theme = MeridianTheme.of(tester.element(find.byType(SizedBox)));
       expect(theme.selection, MeridianSelectionStyle.soft);
       expect(
-        buildAppTheme(Brightness.dark).extension<MeridianTheme>()!.selection,
+        buildAppTheme(Brightness.dark).selection,
         MeridianSelectionStyle.soft,
       );
     });

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/physics.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
@@ -935,7 +935,7 @@ class _DetailsContent extends StatelessWidget {
   }
 
   /// [chip] with what it shows as its tooltip and accessible name.
-  static Widget _labelled(String label, Widget chip) => Tooltip(
+  static Widget _labelled(String label, Widget chip) => MeridianTooltip(
     message: label,
     child: Semantics(label: label, child: chip),
   );
@@ -980,7 +980,7 @@ class _PathWell extends StatelessWidget {
           Expanded(
             child: Semantics(
               label: l10n.repositoryDetailsPath,
-              child: SelectableText(
+              child: MeridianSelectableText(
                 contextMenuBuilder: nativeTextContextMenuBuilder,
                 key: const ValueKey('repository-details-path'),
                 path.displayText,

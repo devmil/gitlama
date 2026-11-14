@@ -1,7 +1,7 @@
 import 'package:devmil_logging/devmil_logging.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';

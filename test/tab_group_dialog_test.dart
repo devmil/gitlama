@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -27,9 +28,9 @@ Future<TabGroupEdit? Function()> _open(
   addTearDown(tester.view.resetDevicePixelRatio);
   TabGroupEdit? result;
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       theme: buildAppTheme(brightness),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: MeridianGround(
         child: Builder(

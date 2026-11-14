@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
@@ -14,11 +15,11 @@ void main() {
     addTearDown(branch.dispose);
     String? remote = 'origin';
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
+        home: MeridianScaffold(
           body: SizedBox(
             width: 400,
             child: Column(
@@ -61,7 +62,7 @@ void main() {
     expect(remote, 'backup');
 
     await tester.enterText(
-      find.descendant(of: fields.last, matching: find.byType(TextField)),
+      find.descendant(of: fields.last, matching: find.byType(EditableText)),
       'feature',
     );
     expect(branch.text, 'feature');

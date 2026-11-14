@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -18,7 +18,7 @@ void main() {
       (MeridianIconSize.toolbar, 18.0),
     ]) {
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light),
           home: Center(child: MeridianIcon('check', size: size)),
         ),
@@ -55,7 +55,7 @@ void main() {
 
   testWidgets('an alias draws its Meridian Lucide asset', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
         home: const Center(child: MeridianIcon('fetch')),
       ),

@@ -2,7 +2,7 @@
 // tests: production cannot reach it, and its golden tests render it.
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import 'package:gitlama/l10n/l10n.dart';
 import 'package:gitlama/widgets/author_avatar.dart';
@@ -102,7 +102,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
         text: const [],
       ),
     ];
-    return Scaffold(
+    return MeridianScaffold(
       backgroundColor: colors.ground,
       body: SingleChildScrollView(
         child: Center(
@@ -1107,10 +1107,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                             verb: l10n.operationFetch,
                             target: l10n.operationRepositoryApplication,
                             metadata: l10n.operationStateSucceeded,
-                            time: const TimeOfDay(
-                              hour: 10,
-                              minute: 42,
-                            ).format(context),
+                            time: context.clock(DateTime(2026, 1, 1, 10, 42)),
                             first: true,
                             onActivate: () {},
                           ),
@@ -1119,10 +1116,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                             verb: l10n.operationPush,
                             target: l10n.operationRepositoryApplication,
                             metadata: l10n.operationStateFailed,
-                            time: const TimeOfDay(
-                              hour: 10,
-                              minute: 43,
-                            ).format(context),
+                            time: context.clock(DateTime(2026, 1, 1, 10, 43)),
                             last: true,
                             onActivate: () {},
                             expanded: Text(

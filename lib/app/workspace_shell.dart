@@ -6,9 +6,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart';
 
 import '../l10n/l10n.dart';
@@ -608,7 +608,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       bindings: shortcutBindings,
       child: Focus(
         autofocus: true,
-        child: Scaffold(
+        child: MeridianScaffold(
           backgroundColor: tokens.colors.ground,
           body: SafeArea(
             child: Stack(

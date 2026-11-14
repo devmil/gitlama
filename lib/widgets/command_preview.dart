@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import '../app/gitlama_layout.dart';
 
@@ -70,7 +70,7 @@ class GitCommandDetails extends StatelessWidget {
                 horizontal: MeridianSpace.space5,
                 vertical: MeridianSpace.space4,
               ),
-              child: SelectableText(
+              child: MeridianSelectableText(
                 contextMenuBuilder: nativeTextContextMenuBuilder,
                 commands.join('\n'),
                 style: context.text.codeSm.copyWith(color: colors.ink),

@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'support/test_button.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/workspace/transfer_failure_dialog.dart';
 import 'package:gitlama/app/workspace/transfer_failure_guide.dart';
@@ -198,14 +201,18 @@ void main() {
   ) async {
     late Future<TransferRemedy?> result;
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+      MeridianApp(
+        theme: MeridianTheme.resolve(
+          brand: MeridianBrands.gitlama,
+          brightness: Brightness.light,
+        ),
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => StatusNotificationScope(child: child!),
         home: Builder(
-          builder: (context) => Scaffold(
+          builder: (context) => MeridianScaffold(
             body: Center(
-              child: TextButton(
+              child: TestButton(
                 onPressed: () => result = showTransferFailureDialog(
                   context,
                   guide: transferFailureGuide(l10n, report),

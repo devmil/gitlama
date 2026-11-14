@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -48,7 +48,7 @@ class GitLamaRefChip extends StatelessWidget {
             GitLamaRefKind.head => onAccent ? colors.onAccent : colors.ink,
             GitLamaRefKind.local => colors.accentSoft,
             GitLamaRefKind.tag => context.git.tagBg,
-            _ => Colors.transparent,
+            _ => meridianTransparent,
           };
     final ink = selectedOverride
         ? colors.accent
@@ -153,7 +153,7 @@ class GitLamaRefChip extends StatelessWidget {
           ],
           if (checks != HostingCheckState.unknown) ...[
             const SizedBox(width: MeridianSpace.space1),
-            Tooltip(
+            MeridianTooltip(
               key: const ValueKey('history-branch-checks'),
               message: hostingCheckLabel(context, checks),
               child: HostingPullRequestStatus(
@@ -176,7 +176,7 @@ class GitLamaRefChip extends StatelessWidget {
     if (kind == GitLamaRefKind.tag) {
       chip = ClipPath(clipper: _TagNotch(), child: chip);
     }
-    return Tooltip(
+    return MeridianTooltip(
       message: upstream == null ? name : '$name\n$upstream',
       child: chip,
     );

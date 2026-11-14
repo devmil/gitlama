@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import '../../l10n/l10n.dart';
 import '../../widgets/native_menu.dart';
@@ -85,7 +85,7 @@ class BrandAboutContent extends StatelessWidget {
           if (installed case final release?) ...[
             const SizedBox(height: MeridianSpace.space4),
             Center(
-              child: SelectableText(
+              child: MeridianSelectableText(
                 contextMenuBuilder: nativeTextContextMenuBuilder,
                 l10n.aboutVersion(release.version, '${release.build}'),
                 key: const ValueKey('brand-about-version'),

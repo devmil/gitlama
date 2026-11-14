@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/workspace/changes_section.dart';
 import 'package:gitlama/models/repository_state.dart';

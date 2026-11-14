@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -10,9 +11,9 @@ Widget motionHost(
   Widget child, {
   bool reduced = false,
   Brightness brightness = Brightness.light,
-}) => MaterialApp(
+}) => MeridianApp(
   theme: buildAppTheme(brightness),
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   builder: (context, app) => MediaQuery(
     data: MediaQuery.of(context).copyWith(disableAnimations: reduced),

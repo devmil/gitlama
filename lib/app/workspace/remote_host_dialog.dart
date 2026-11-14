@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../../l10n/l10n.dart';
@@ -412,7 +412,7 @@ class _RemoteHostDialogState extends State<RemoteHostDialog> {
               ),
             ),
             const SizedBox(height: MeridianSpace.space2),
-            SelectableText(
+            MeridianSelectableText(
               contextMenuBuilder: nativeTextContextMenuBuilder,
               remoteHelperLocation(
                 buildId ?? l10n.remoteHelperBuildPlaceholder,
@@ -747,7 +747,7 @@ class _RemoteHelperInstallDialogState extends State<RemoteHelperInstallDialog> {
           const SizedBox(height: MeridianSpace.space4),
           Text(l10n.remoteHelperLocationLabel, style: caption),
           const SizedBox(height: MeridianSpace.space2),
-          SelectableText(
+          MeridianSelectableText(
             contextMenuBuilder: nativeTextContextMenuBuilder,
             artifact.installPath,
             key: const ValueKey('remote-install-location'),
@@ -761,7 +761,7 @@ class _RemoteHelperInstallDialogState extends State<RemoteHelperInstallDialog> {
             style: caption,
           ),
           const SizedBox(height: MeridianSpace.space2),
-          SelectableText(
+          MeridianSelectableText(
             contextMenuBuilder: nativeTextContextMenuBuilder,
             l10n.remoteInstallHelperDigest(artifact.sha256),
             style: code,

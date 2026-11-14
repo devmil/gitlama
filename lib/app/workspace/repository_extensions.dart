@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import '../../widgets/status_notification.dart';
 import '../../l10n/l10n.dart';
 import '../byte_size.dart';

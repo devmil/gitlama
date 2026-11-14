@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/meridian_finders.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -34,9 +35,9 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light, density: density),
-          home: Scaffold(
+          home: MeridianScaffold(
             body: HistoryGraphView(
               itemCount: 1,
               rowExtent: density.rowExtent,
@@ -60,9 +61,9 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light),
-          home: Scaffold(
+          home: MeridianScaffold(
             body: MeridianSurfaceScope(
               focused: focused,
               child: HistoryGraphView(
@@ -95,9 +96,9 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light),
-          home: Scaffold(
+          home: MeridianScaffold(
             body: Center(
               child: GitLamaRefChip(name: 'main', kind: kind),
             ),
@@ -117,7 +118,7 @@ void main() {
         GitLamaRefKind.head => gitlamaColors(Brightness.light).ink,
         GitLamaRefKind.local => gitlamaColors(Brightness.light).accentSoft,
         GitLamaRefKind.tag => GitLamaGitColors.light.tagBg,
-        _ => Colors.transparent,
+        _ => meridianTransparent,
       };
       expect(fill, expected);
       expect(
@@ -138,9 +139,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             checkedOutRef: 'refs/heads/feature',
@@ -178,9 +179,9 @@ void main() {
   testWidgets('a ref chip hugs its name and keeps both ends of a long one', (
     tester,
   ) async {
-    Widget chips(List<String> names) => MaterialApp(
+    Widget chips(List<String> names) => MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      home: Scaffold(
+      home: MeridianScaffold(
         body: Row(
           children: [
             for (final name in names)
@@ -222,11 +223,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
         home: MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
-          child: Scaffold(
+          child: MeridianScaffold(
             body: HistoryGraphView(
               itemCount: 1,
               rowAt: (_) => HistoryGraphRow(
@@ -270,9 +271,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: SizedBox(
             height: 84,
             child: HistoryGraphView(
@@ -324,11 +325,11 @@ void main() {
       webUrl: 'https://github.example/team/project/pull/5604',
     );
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => HistoryGraphRow(
@@ -375,11 +376,11 @@ void main() {
   testWidgets('a pull request chip shows the CI result and conflicts the '
       'provider reported', (tester) async {
     Future<void> pump(HistoryReferencePullRequest pull) => tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => HistoryGraphRow(
@@ -411,11 +412,11 @@ void main() {
     );
     expect(find.byKey(checks), findsOneWidget);
     expect(find.byKey(conflicts), findsOneWidget);
-    final tooltip = tester.widget<Tooltip>(
+    final tooltip = tester.widget<MeridianTooltip>(
       find
           .ancestor(
             of: find.byType(GitLamaPullRequestChip),
-            matching: find.byType(Tooltip),
+            matching: find.byType(MeridianTooltip),
           )
           .first,
     );
@@ -434,11 +435,11 @@ void main() {
     expect(find.byKey(conflicts), findsNothing);
     expect(
       tester
-          .widget<Tooltip>(
+          .widget<MeridianTooltip>(
             find
                 .ancestor(
                   of: find.byType(GitLamaPullRequestChip),
-                  matching: find.byType(Tooltip),
+                  matching: find.byType(MeridianTooltip),
                 )
                 .first,
           )
@@ -454,11 +455,11 @@ void main() {
           'branch CI stays inside its chip paired=$paired selected=$selected $brightness',
           (tester) async {
             await tester.pumpWidget(
-              MaterialApp(
+              MeridianApp(
                 theme: buildAppTheme(brightness),
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                localizationsDelegates: gitLamaLocalizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,
-                home: Scaffold(
+                home: MeridianScaffold(
                   body: HistoryGraphView(
                     itemCount: 1,
                     rowAt: (_) => HistoryGraphRow(
@@ -492,7 +493,10 @@ void main() {
             );
             final badge = find.byKey(const ValueKey('history-branch-checks'));
             expect(badge, findsOneWidget);
-            expect(tester.widget<Tooltip>(badge).message, 'Checks passed');
+            expect(
+              tester.widget<MeridianTooltip>(badge).message,
+              'Checks passed',
+            );
             expect(find.byType(GitLamaPullRequestChip), findsNothing);
             final branch = find.byWidgetPredicate(
               (widget) =>
@@ -526,11 +530,11 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(brightness),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const Scaffold(
+          home: const MeridianScaffold(
             body: Center(
               child: GitLamaRefChip(
                 name: 'main',

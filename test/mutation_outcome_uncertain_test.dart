@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/workspace/labels.dart';
 import 'package:gitlama/app/workspace/status_bar.dart';
@@ -104,7 +106,7 @@ void main() {
     await tester.pumpWidget(
       Localizations(
         locale: const Locale('en'),
-        delegates: AppLocalizations.localizationsDelegates,
+        delegates: gitLamaLocalizationsDelegates,
         child: Builder(
           builder: (built) {
             context = built;
@@ -220,8 +222,12 @@ void main() {
   ) async {
     late BuildContext context;
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+      MeridianApp(
+        theme: MeridianTheme.resolve(
+          brand: MeridianBrands.gitlama,
+          brightness: Brightness.light,
+        ),
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (value) {

@@ -1,9 +1,10 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -21,13 +22,13 @@ Widget _host(
   double width = 420,
   double height = 200,
   Locale? locale,
-}) => MaterialApp(
+}) => MeridianApp(
   locale: locale,
   theme: buildAppTheme(Brightness.light),
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   builder: (context, app) => StatusNotificationScope(child: app!),
-  home: Scaffold(
+  home: MeridianScaffold(
     body: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -479,11 +480,11 @@ void main() {
     final scroll = ScrollController();
     addTearDown(scroll.dispose);
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
+        home: MeridianScaffold(
           body: StatefulBuilder(
             builder: (context, update) => DiffView(
               itemCount: 100,
@@ -556,9 +557,9 @@ void main() {
         );
       }
 
-      Widget app(DiffViewLayout layout) => MaterialApp(
+      Widget app(DiffViewLayout layout) => MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: StatefulBuilder(
           builder: (context, setState) => SizedBox(
@@ -622,9 +623,9 @@ void main() {
       intraLine: const [DiffSpan(6, 11)],
     );
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SizedBox(
           width: 420,
@@ -693,9 +694,9 @@ void main() {
       kind: DiffRowKind.context,
       text: [0x63, 0x61, 0x66, 0xe9],
     );
-    Widget app(DiffTextEncoding encoding) => MaterialApp(
+    Widget app(DiffTextEncoding encoding) => MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SizedBox(
         width: 420,

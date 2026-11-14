@@ -1,7 +1,7 @@
 import 'command_availability.dart';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/physics.dart';
 import '../../l10n/l10n.dart';
 import '../../models/app_command.dart';

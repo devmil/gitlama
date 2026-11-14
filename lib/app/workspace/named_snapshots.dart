@@ -1,9 +1,9 @@
 import '../../widgets/status_notification.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../models/remote_workspace.dart';
@@ -430,7 +430,7 @@ class _NamedSnapshotsPanelState extends State<NamedSnapshotsPanel> {
                           selected: entry.id == _selectedId,
                           onTap: () => setState(() => _selectedId = entry.id),
                           title: entry.name,
-                          subtitle: MaterialLocalizations.of(context)
+                          subtitle: MeridianLocalizations.of(context)
                               .formatMediumDate(
                                 DateTime.fromMillisecondsSinceEpoch(
                                   entry.createdAtUnixMs.toInt(),
@@ -454,19 +454,19 @@ class _NamedSnapshotsPanelState extends State<NamedSnapshotsPanel> {
                             mainAxisSize: MainAxisSize.min,
                             spacing: MeridianSpace.space2,
                             children: [
-                              Tooltip(
+                              MeridianTooltip(
                                 message: context.l10n.changesStaged,
                                 child: MeridianCount(
                                   label: '${entry.stagedCount}',
                                 ),
                               ),
-                              Tooltip(
+                              MeridianTooltip(
                                 message: context.l10n.changesUnstaged,
                                 child: MeridianCount(
                                   label: '${entry.unstagedCount}',
                                 ),
                               ),
-                              Tooltip(
+                              MeridianTooltip(
                                 message: context.l10n.namedSnapshotFactNewFiles,
                                 child: MeridianCount(
                                   label: '${entry.untrackedCount}',
