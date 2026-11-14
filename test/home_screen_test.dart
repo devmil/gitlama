@@ -8018,8 +8018,31 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byType(LicensePage), findsOneWidget);
+    // The registry reads the bundled license assets asynchronously.
+    for (
+      var i = 0;
+      i < 50 &&
+          find
+              .descendant(
+                of: find.byType(MeridianLicenseDialog),
+                matching: find.byType(MeridianNavRow),
+              )
+              .evaluate()
+              .isEmpty;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+    expect(find.byType(MeridianLicenseDialog), findsOneWidget);
+    expect(find.byType(LicensePage), findsNothing);
     expect(find.text('GitLama'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('meridian-license-GitLama notices')),
+      findsOneWidget,
+    );
     await runtime.shutdown();
   });
 

@@ -171,6 +171,9 @@ abstract final class GitLamaLayout {
   static const double reviewDrawerWidth = 360;
   static const double welcomeMarkSize = 64;
 
+  /// The app mark at the top of the license dialog's package list.
+  static const double licenseMarkSize = 40;
+
   /// The app mark at the top of About.
   static const double aboutMarkSize = 96;
   static const double launchMarkSize = 128; // matches the macOS launch cover

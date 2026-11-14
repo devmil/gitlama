@@ -2,6 +2,7 @@ import '../../widgets/status_notification.dart';
 import 'dart:convert';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'brand_about.dart';
+import 'settings_dialog.dart' show showAppLicenses;
 import '../../models/app_update.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -65,6 +66,7 @@ class StatusBar extends StatelessWidget {
             context,
             installed: installed,
             onOpenSource: onOpenSource,
+            onOpenLicenses: () => showAppLicenses(context),
           ),
           builder: (context, state) => SizedBox.square(
             dimension: MeridianSize.control,

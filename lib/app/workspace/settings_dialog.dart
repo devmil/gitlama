@@ -76,13 +76,16 @@ Future<void> showSettingsDialog(
   if (!context.mounted) return;
   switch (destination) {
     case SettingsDestination.licenses:
-      showAppLicenses(context);
+      await showAppLicenses(context);
     case null:
       break;
   }
 }
 
-void showAppLicenses(BuildContext context) => showLicensePage(
+/// GitLama's licenses: its own, the bundled dependency inventories and
+/// the Flutter engine's notices, all registered by
+/// `registerGitLamaLicenses`.
+Future<void> showAppLicenses(BuildContext context) => showMeridianLicenses(
   context: context,
   applicationName: context.l10n.appTitle,
   applicationVersion: const String.fromEnvironment(
@@ -91,9 +94,9 @@ void showAppLicenses(BuildContext context) => showLicensePage(
   ),
   applicationIcon: Image.asset(
     'assets/brand/tile-64.png',
-    width: GitLamaLayout.welcomeMarkSize,
-    height: GitLamaLayout.welcomeMarkSize,
-    semanticLabel: context.l10n.appTitle,
+    width: GitLamaLayout.licenseMarkSize,
+    height: GitLamaLayout.licenseMarkSize,
+    excludeFromSemantics: true,
   ),
 );
 

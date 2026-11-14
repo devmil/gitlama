@@ -13,6 +13,7 @@ Future<void> showBrandAbout(
   BuildContext context, {
   InstalledRelease? installed,
   VoidCallback? onOpenSource,
+  VoidCallback? onOpenLicenses,
 }) => showMeridianDialog<void>(
   context: context,
   builder: (context) => MeridianDialog(
@@ -23,17 +24,26 @@ Future<void> showBrandAbout(
     content: BrandAboutContent(
       installed: installed,
       onOpenSource: onOpenSource,
+      onOpenLicenses: onOpenLicenses,
     ),
   ),
 );
 
 class BrandAboutContent extends StatelessWidget {
-  const BrandAboutContent({this.installed, this.onOpenSource, super.key});
+  const BrandAboutContent({
+    this.installed,
+    this.onOpenSource,
+    this.onOpenLicenses,
+    super.key,
+  });
 
   final InstalledRelease? installed;
 
   /// Opens the public source repository; null hides the link.
   final VoidCallback? onOpenSource;
+
+  /// Opens the license dialog; null hides the button.
+  final VoidCallback? onOpenLicenses;
 
   @override
   Widget build(BuildContext context) {
@@ -84,17 +94,32 @@ class BrandAboutContent extends StatelessWidget {
               ),
             ),
           ],
-          if (onOpenSource case final open?) ...[
+          if (onOpenSource != null || onOpenLicenses != null) ...[
             const SizedBox(height: MeridianSpace.space5),
-            Center(
-              child: MeridianButton(
-                key: const ValueKey('brand-about-source'),
-                label: l10n.aboutSourceCode,
-                icon: MeridianIcons.externalLink,
-                variant: MeridianButtonVariant.quiet,
-                size: MeridianControlSize.small,
-                onPressed: open,
-              ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: MeridianSpace.space3,
+              runSpacing: MeridianSpace.space3,
+              children: [
+                if (onOpenSource case final open?)
+                  MeridianButton(
+                    key: const ValueKey('brand-about-source'),
+                    label: l10n.aboutSourceCode,
+                    icon: MeridianIcons.externalLink,
+                    variant: MeridianButtonVariant.quiet,
+                    size: MeridianControlSize.small,
+                    onPressed: open,
+                  ),
+                if (onOpenLicenses case final open?)
+                  MeridianButton(
+                    key: const ValueKey('brand-about-licenses'),
+                    label: l10n.licensesTitle,
+                    icon: MeridianIcons.fileText,
+                    variant: MeridianButtonVariant.quiet,
+                    size: MeridianControlSize.small,
+                    onPressed: open,
+                  ),
+              ],
             ),
           ],
           const SizedBox(height: MeridianSpace.space9),
