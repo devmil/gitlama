@@ -6,7 +6,7 @@ GitLama builds on the shared `meridian_ui` package. The sections below this one 
 
 | Concern | GitLama code |
 |---|---|
-| Theme | `buildAppTheme` in `lib/app/app_theme.dart` calls `buildMeridianTheme(brand: MeridianBrands.gitlama)` and adds `GitLamaGitColors` |
+| Theme | `buildAppTheme` in `lib/app/app_theme.dart` returns `MeridianTheme.resolve(brand: MeridianBrands.gitlama, …)` with `GitLamaGitColors` as a `MeridianThemeExtension`; `MeridianApp` installs it (no `MaterialApp` or `ThemeData`) |
 | Tokens | `context.meridian` (`MeridianTheme`), `context.colors`, `context.text`, `context.git`; `MeridianSpace`, `MeridianSize`, `MeridianLayout`, `MeridianDurations`; GitLama-only values in `GitLamaLayout`, `GitLamaOpacity`, `GitLamaMotion` (`lib/app/gitlama_layout.dart`) |
 | Git colours | `GitLamaGitColors`, generated from `tokens/gitlama-tokens.json` into `lib/app/gitlama_tokens.g.dart`. `added` is Meridian's `success`, `modified` its `warning`, `conflict` its `attention`, `lane-N` its `series-N` |
 | Icons | Meridian's Lucide 1.37.0 set; GitLama's semantic names (`fetch`, `push`, `close`) are aliases in `lib/app/gitlama_icons.dart` |
