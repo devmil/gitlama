@@ -52,6 +52,8 @@
 
 ## Unreleased Beta
 
+## [0.1.0-beta.66] - 2026-11-15
+
 - Record safe diagnostic events for fetch, pull and push, including background fetch, with start, result and failure events and detailed timing.
 
 ## [0.1.0-beta.65] - 2026-11-07
