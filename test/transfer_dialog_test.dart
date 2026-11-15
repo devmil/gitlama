@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -10,10 +12,10 @@ import 'package:gitlama/models/activity.dart';
 import 'package:gitlama/models/repository_state.dart';
 import 'package:gitlama/models/transfer.dart';
 
-Widget _app(Widget home, {Locale locale = const Locale('en')}) => MaterialApp(
+Widget _app(Widget home, {Locale locale = const Locale('en')}) => MeridianApp(
   theme: buildAppTheme(Brightness.light),
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: home,
 );

@@ -2,9 +2,11 @@ import 'package:gitlama/services/cli_forwarding_service.dart';
 import 'package:gitlama/models/cli_forwarding.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_runtime.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -56,7 +58,7 @@ Widget _app(
   Widget home, {
   Locale locale = const Locale('en'),
   double textScale = 1,
-}) => MaterialApp(
+}) => MeridianApp(
   builder: (context, child) => MediaQuery(
     data: MediaQuery.of(
       context,
@@ -64,7 +66,7 @@ Widget _app(
     child: StatusNotificationScope(child: child!),
   ),
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   theme: buildAppTheme(Brightness.light),
   home: home,
@@ -78,7 +80,7 @@ Widget _launcher(
 }) => _app(
   locale: locale,
   textScale: textScale,
-  Scaffold(
+  MeridianScaffold(
     body: Builder(
       builder: (context) => Center(
         child: MeridianButton(
@@ -1050,7 +1052,7 @@ void main() {
       );
       await tester.pumpWidget(
         _app(
-          Scaffold(
+          MeridianScaffold(
             body: SettingsDialog(
               settings: window.settings,
               repositories: window.repositories,
@@ -1329,7 +1331,7 @@ void main() {
       await _settle(tester);
       expect(_currentFolder(tester), '/home/me/projects');
       expect(
-        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+        editableIn(tester, find.byType(EditableText)).controller.text,
         '/home/me/projects/',
       );
       await tester.tap(find.byKey(const ValueKey('remote-directory-open')));
@@ -1731,15 +1733,13 @@ void main() {
       await _settle(tester);
       // No host has the alias: the user decides whether to save it.
       expect(find.textContaining('which is not a saved host yet'), findsOne);
-      String field(String key) => tester
-          .widget<EditableText>(
-            find.descendant(
-              of: find.byKey(ValueKey(key)),
-              matching: find.byType(EditableText),
-            ),
-          )
-          .controller
-          .text;
+      String field(String key) => editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(ValueKey(key)),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text;
       expect(field('remote-host-alias'), 'me@devbox');
       expect(field('remote-host-label'), 'me@devbox');
       await tester.tap(find.byKey(const ValueKey('remote-host-save')));
@@ -2376,7 +2376,7 @@ void main() {
       );
       await tester.pumpWidget(
         _app(
-          Scaffold(
+          MeridianScaffold(
             body: Center(
               child: RemoteOperationsIndicator(service: remote.service),
             ),
@@ -2437,7 +2437,7 @@ void main() {
         _app(
           locale: const Locale('de'),
           textScale: 1.3,
-          Scaffold(
+          MeridianScaffold(
             body: SettingsDialog(
               settings: window.settings,
               repositories: window.repositories,

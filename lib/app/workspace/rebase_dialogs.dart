@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';
@@ -357,9 +357,8 @@ class _RebaseEditorDialogState extends State<RebaseEditorDialog> {
                 constraints: const BoxConstraints(
                   maxHeight: GitLamaLayout.rebaseInstructionListMaxHeight,
                 ),
-                child: ReorderableListView.builder(
+                child: ReorderableList(
                   shrinkWrap: true,
-                  buildDefaultDragHandles: false,
                   proxyDecorator: (child, index, animation) =>
                       MeridianLift(lifted: true, child: child),
                   itemCount: _instructions.length,
@@ -457,7 +456,7 @@ class _RebaseEditorDialogState extends State<RebaseEditorDialog> {
                                         children: [
                                           ReorderableDragStartListener(
                                             index: index,
-                                            child: Tooltip(
+                                            child: MeridianTooltip(
                                               message: context
                                                   .l10n
                                                   .rebaseDragToReorder,
@@ -620,7 +619,7 @@ class _RebaseEditorDialogState extends State<RebaseEditorDialog> {
                                                 ),
                                               ),
                                             ),
-                                            child: Tooltip(
+                                            child: MeridianTooltip(
                                               message: context
                                                   .l10n
                                                   .rebaseDragToSquash,

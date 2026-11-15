@@ -15,7 +15,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show ImageByteFormat;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -31,9 +31,7 @@ const _repository = String.fromEnvironment('GITLAMA_TRANSFER_REPOSITORY');
 const _reportPath = String.fromEnvironment('GITLAMA_TRANSFER_REPORT');
 
 /// A directory for window captures, for local visual review only.
-const _captureDirectory = String.fromEnvironment(
-  'GITLAMA_PROFILE_CAPTURES',
-);
+const _captureDirectory = String.fromEnvironment('GITLAMA_PROFILE_CAPTURES');
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();

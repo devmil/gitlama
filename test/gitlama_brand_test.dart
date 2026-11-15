@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -15,13 +16,13 @@ void main() {
       ) async {
         var sourceOpened = 0;
         await tester.pumpWidget(
-          MaterialApp(
+          MeridianApp(
             theme: buildAppTheme(brightness),
             locale: Locale(locale),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: gitLamaLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              bottomNavigationBar: StatusBar(
+            home: MeridianScaffold(
+              bottomBar: StatusBar(
                 active: null,
                 installed: const InstalledRelease(
                   version: '0.1.0-beta.30',
@@ -73,6 +74,20 @@ void main() {
           ),
         );
         expect(sourceOpened, 1);
+        // Licenses open the Meridian license dialog over About.
+        await tester.tap(find.byKey(const ValueKey('brand-about-licenses')));
+        await tester.pumpAndSettle();
+        expect(find.byType(MeridianLicenseDialog), findsOneWidget);
+        expect(
+          find.text(locale == 'en' ? 'Licenses' : 'Lizenzen'),
+          findsWidgets,
+        );
+        await tester.tap(
+          find.byTooltip(locale == 'en' ? 'Close' : 'Schließen').last,
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(MeridianLicenseDialog), findsNothing);
+        expect(about, findsOneWidget);
         await tester.tap(
           find.byTooltip(locale == 'en' ? 'Close' : 'Schließen').last,
         );

@@ -1,5 +1,7 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'support/test_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/workspace/changes_section.dart';
 import 'package:gitlama/app/workspace/ignore_dialog.dart';
@@ -125,7 +127,7 @@ void main() {
       motionHost(
         Builder(
           builder: (context) => Center(
-            child: TextButton(
+            child: TestButton(
               onPressed: () => showIgnoreDialog(
                 context,
                 suggestion: '/build/out.log',
@@ -147,12 +149,10 @@ void main() {
     expect(find.text('Add to .gitignore'), findsOneWidget);
     final field = find.byKey(const Key('ignore-entry'));
     expect(
-      tester
-          .widget<EditableText>(
-            find.descendant(of: field, matching: find.byType(EditableText)),
-          )
-          .controller
-          .text,
+      editableIn(
+        tester,
+        find.descendant(of: field, matching: find.byType(EditableText)),
+      ).controller.text,
       '/build/out.log',
     );
 

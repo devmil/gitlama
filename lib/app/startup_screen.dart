@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../l10n/l10n.dart';
@@ -23,7 +23,7 @@ class StartupScreen extends StatelessWidget {
     if (!failed) {
       // The mark sits exactly at the centre, where the macOS launch cover
       // drew it, with the progress below it.
-      return Scaffold(
+      return MeridianScaffold(
         backgroundColor: colors.ground,
         body: LayoutBuilder(
           builder: (context, constraints) => Stack(
@@ -66,7 +66,7 @@ class StartupScreen extends StatelessWidget {
         ),
       );
     }
-    return Scaffold(
+    return MeridianScaffold(
       backgroundColor: colors.ground,
       body: SafeArea(
         child: Center(

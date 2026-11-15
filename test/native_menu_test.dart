@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -52,9 +53,9 @@ void main() {
   Future<BuildContext> host(WidgetTester tester, [Widget? child]) async {
     late BuildContext result;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: Builder(
             builder: (context) {
               result = context;
@@ -114,7 +115,6 @@ void main() {
       'enabled': false,
       'checked': false,
     });
-    expect(find.byType(PopupMenuItem<Object>), findsNothing);
   });
 
   nativeTest('macOS right-click uses the host menu', (tester) async {
@@ -354,16 +354,14 @@ void main() {
       _host((call) async => chosen = _idOf(call, 'Select all'));
       await host(
         tester,
-        TextField(
+        MeridianTextField(
           controller: controller,
           contextMenuBuilder: nativeTextContextMenuBuilder,
         ),
       );
-      await tester.tap(find.byType(TextField));
+      await tester.tap(find.byType(EditableText));
       await tester.pump();
-      final editable = tester.state<EditableTextState>(
-        find.byType(EditableText),
-      );
+      final editable = editableStateIn(tester, find.byType(EditableText));
       editable.showToolbar();
       await tester.pump();
       await tester.pump();
@@ -372,7 +370,7 @@ void main() {
         controller.selection,
         const TextSelection(baseOffset: 0, extentOffset: 11),
       );
-      expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
+      expect(find.byType(MeridianMenuSurface), findsNothing);
     },
   );
 

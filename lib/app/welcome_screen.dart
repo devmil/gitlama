@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../l10n/l10n.dart';
@@ -80,9 +80,9 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
+    return MeridianScaffold(
       backgroundColor: context.colors.ground,
-      bottomNavigationBar: SizedBox(
+      bottomBar: SizedBox(
         height: MeridianLayout.statusBarHeight,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: MeridianSpace.space3),

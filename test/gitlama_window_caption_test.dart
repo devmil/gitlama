@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -26,10 +28,11 @@ void main() {
         ),
       );
       Future<void> show(Brightness brightness) => tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(brightness),
           themeAnimationDuration: Duration.zero,
-          builder: (context, child) => GitLamaWindowCaptionFrame(child: child!),
+          builder: (context, child) =>
+              GitLamaWindowCaptionFrame(child: child ?? const SizedBox()),
           home: const SizedBox(),
         ),
       );
@@ -39,9 +42,7 @@ void main() {
         (call) => call.method == 'setBackgroundColor',
       );
       expect(backgrounds, hasLength(1));
-      final light = buildAppTheme(
-        Brightness.light,
-      ).scaffoldBackgroundColor.toARGB32();
+      final light = buildAppTheme(Brightness.light).colors.ground.toARGB32();
       expect(backgrounds.last.arguments, light);
       await show(Brightness.light);
       await tester.pump();
@@ -49,9 +50,7 @@ void main() {
       await show(Brightness.dark);
       await tester.pump();
       expect(backgrounds, hasLength(2));
-      final dark = buildAppTheme(
-        Brightness.dark,
-      ).scaffoldBackgroundColor.toARGB32();
+      final dark = buildAppTheme(Brightness.dark).colors.ground.toARGB32();
       expect(backgrounds.last.arguments, dark);
       expect(dark, isNot(light));
     },
@@ -91,9 +90,10 @@ void main() {
     });
   });
 
-  Widget app(Widget home) => MaterialApp(
-    builder: (context, child) => GitLamaWindowCaptionFrame(child: child!),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+  Widget app(Widget home) => MeridianApp(
+    builder: (context, child) =>
+        GitLamaWindowCaptionFrame(child: child ?? const SizedBox()),
+    localizationsDelegates: gitLamaLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     theme: buildAppTheme(Brightness.light),
     home: home,
@@ -112,7 +112,11 @@ void main() {
     });
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
     await tester.pumpWidget(
-      app(const GitLamaWindowCaptionBand(child: Scaffold(body: SizedBox()))),
+      app(
+        const GitLamaWindowCaptionBand(
+          child: MeridianScaffold(body: SizedBox()),
+        ),
+      ),
     );
     await tester.pump();
     expect(find.byKey(const ValueKey('window-caption-band')), findsOneWidget);
@@ -143,7 +147,7 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.pumpWidget(
       app(
-        const Scaffold(
+        const MeridianScaffold(
           body: Column(
             children: [
               GitLamaWindowDragArea(child: SizedBox(height: 40)),

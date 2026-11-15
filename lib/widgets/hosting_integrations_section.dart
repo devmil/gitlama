@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import 'author_avatar.dart';
@@ -962,7 +962,7 @@ final class HostingIntegrationsSectionState
                     Text(l10n.hostingAuthorizationWaiting),
                     if (oauth.userCode case final code?) ...[
                       const SizedBox(height: MeridianSpace.space4),
-                      SelectableText(
+                      MeridianSelectableText(
                         contextMenuBuilder: nativeTextContextMenuBuilder,
                         l10n.hostingAuthorizationCode(code),
                       ),
@@ -1151,7 +1151,7 @@ final class HostingIntegrationsSectionState
               padding: const EdgeInsets.symmetric(
                 vertical: MeridianSpace.space4,
               ),
-              child: SelectableText(
+              child: MeridianSelectableText(
                 contextMenuBuilder: nativeTextContextMenuBuilder,
                 _settingsFailure(failure)
                     ? l10n.hostingSettingsFailure
@@ -1430,7 +1430,7 @@ class HostingGuideSteps extends StatelessWidget {
                             horizontal: MeridianSpace.space5,
                             vertical: MeridianSpace.space4,
                           ),
-                          child: SelectableText(
+                          child: MeridianSelectableText(
                             contextMenuBuilder: nativeTextContextMenuBuilder,
                             code,
                             style: context.text.codeSm.copyWith(

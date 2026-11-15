@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -50,10 +53,10 @@ void main() {
     final operations = OperationCenterService.empty();
     await repositories.open('/repository');
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         builder: (context, child) => StatusNotificationScope(child: child!),
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: WorkspaceShell(
           runtime: testRuntime(
@@ -81,7 +84,8 @@ void main() {
 
   final field = find.byKey(const ValueKey('sidebar-filter'));
   Finder row(String key) => find.byKey(ValueKey('sidebar-ref-$key'));
-  EditableText editable(WidgetTester tester) => tester.widget<EditableText>(
+  EditableText editable(WidgetTester tester) => editableIn(
+    tester,
     find.descendant(of: field, matching: find.byType(EditableText)),
   );
 

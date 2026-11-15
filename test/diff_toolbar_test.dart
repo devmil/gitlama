@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/app/gitlama_layout.dart';
@@ -6,9 +7,9 @@ import 'package:gitlama/app/workspace/diff_toolbar.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
-Widget _toolbar(double width) => MaterialApp(
+Widget _toolbar(double width) => MeridianApp(
   theme: buildAppTheme(Brightness.light),
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: Align(
     alignment: Alignment.topLeft,

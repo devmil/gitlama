@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/meridian_finders.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -13,9 +14,7 @@ void main() {
     testWidgets(
       'Meridian diff geometry and picked colours ${brightness.name}',
       (tester) async {
-        final colors = buildAppTheme(
-          brightness,
-        ).extension<MeridianTheme>()!.colors;
+        final colors = buildAppTheme(brightness).colors;
         const rows = [
           DiffDisplayRow(
             stableId: 'hunk',
@@ -39,9 +38,9 @@ void main() {
           ),
         ];
         await tester.pumpWidget(
-          MaterialApp(
+          MeridianApp(
             theme: buildAppTheme(brightness),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: gitLamaLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: SizedBox(
               width: 640,
@@ -135,9 +134,9 @@ void main() {
     final controller = ScrollController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SizedBox(
           width: 640,

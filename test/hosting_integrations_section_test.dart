@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'support/test_button.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/workspace/shell_scopes.dart';
@@ -107,9 +110,9 @@ void main() {
           ],
         );
         await tester.pumpWidget(
-          MaterialApp(
+          MeridianApp(
             theme: buildAppTheme(Brightness.light),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: gitLamaLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: WorkspaceShell(
               runtime: testRuntime(
@@ -398,12 +401,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('hosting-binding-connection')), findsOneWidget);
     expect(
-      tester
-          .widget<TextField>(
-            find.byKey(const Key('hosting-provider-repository')),
-          )
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('hosting-provider-repository')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       'team/project',
     );
     expect(
@@ -701,10 +705,13 @@ void main() {
     await tester.tap(find.text('Add connection'));
     await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('hosting-connection-id')))
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('hosting-connection-id')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       isEmpty,
     );
     await tester.pumpWidget(const SizedBox.shrink());
@@ -743,15 +750,13 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
       expect(
-        tester
-            .widget<EditableText>(
-              find.descendant(
-                of: find.byKey(field),
-                matching: find.byType(EditableText),
-              ),
-            )
-            .focusNode
-            .hasPrimaryFocus,
+        editableIn(
+          tester,
+          find.descendant(
+            of: find.byKey(field),
+            matching: find.byType(EditableText),
+          ),
+        ).focusNode.hasPrimaryFocus,
         isTrue,
         reason: 'Tab should focus $field',
       );
@@ -792,10 +797,13 @@ void main() {
     );
     await tester.pump();
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('hosting-api-url')))
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('hosting-api-url')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       'https://forge.example.test/api/v1',
     );
 
@@ -841,10 +849,13 @@ void main() {
     );
     await tester.pump();
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('hosting-api-url')))
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('hosting-api-url')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       isEmpty,
     );
     await tester.enterText(
@@ -888,10 +899,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('GitHub Enterprise Server').last);
     await tester.pumpAndSettle();
-    String api() => tester
-        .widget<TextField>(find.byKey(const Key('hosting-api-url')))
-        .controller!
-        .text;
+    String api() => editableIn(
+      tester,
+      find.descendant(
+        of: find.byKey(const Key('hosting-api-url')),
+        matching: find.byType(EditableText),
+      ),
+    ).controller.text;
 
     await tester.enterText(
       find.byKey(const Key('hosting-web-url')),
@@ -965,10 +979,13 @@ void main() {
     await tester.tap(find.text('Add connection'));
     await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('hosting-connection-id')))
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('hosting-connection-id')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       isEmpty,
     );
     await tester.pumpWidget(const SizedBox.shrink());
@@ -1015,7 +1032,7 @@ void main() {
       await tester.pumpWidget(fixture.app());
       await tester.pump();
 
-      expect(find.byType(SelectableText), findsOneWidget);
+      expect(find.byType(MeridianSelectableText), findsOneWidget);
       expect(find.textContaining(failure.name), findsOneWidget);
       expect(find.text('No provider resources found.'), findsNothing);
 
@@ -1147,7 +1164,7 @@ final class _Fixture {
     bool showBinding = true,
     bool showResources = true,
     bool withSidebar = false,
-    ThemeData? theme,
+    MeridianTheme? theme,
     Locale? locale,
     double textScale = 1,
   }) {
@@ -1174,7 +1191,7 @@ final class _Fixture {
       onCheckout: (_) {},
       onResourcesChanged: (_, _, _) {},
     );
-    return MaterialApp(
+    return MeridianApp(
       theme: theme ?? buildAppTheme(Brightness.light),
       locale: locale,
       builder: (context, child) => MediaQuery(
@@ -1183,9 +1200,9 @@ final class _Fixture {
         ).copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
+      home: MeridianScaffold(
         body: withSidebar
             ? Row(
                 children: [
@@ -1198,7 +1215,7 @@ final class _Fixture {
                           'Git',
                           'Diff renderer',
                         ])
-                          TextButton(onPressed: () {}, child: Text(label)),
+                          TestButton(onPressed: () {}, child: Text(label)),
                       ],
                     ),
                   ),

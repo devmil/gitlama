@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../app/app_theme.dart';
@@ -38,7 +38,7 @@ class GitLamaSyncBadge extends StatelessWidget {
                     color: context.colors.inkMuted,
                   )
                 : const SizedBox.shrink())
-          : Tooltip(
+          : MeridianTooltip(
               message: context.l10n.syncAheadBehind(ahead, behind),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -165,7 +165,7 @@ class GitLamaStatusGlyph extends StatelessWidget {
         context.l10n.statusGlyphUntracked,
       ),
       _ => (
-        Colors.transparent,
+        meridianTransparent,
         colors.inkFaint,
         colors.line,
         context.l10n.statusGlyphIgnored,

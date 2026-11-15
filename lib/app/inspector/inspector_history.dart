@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../../l10n/l10n.dart';
@@ -77,7 +77,7 @@ class InspectorHistoryList extends StatelessWidget {
     final location = state.location!;
     final lines = location.lines;
     final entries = _entries(state);
-    final dates = MaterialLocalizations.of(context);
+    final dates = MeridianLocalizations.of(context);
     final density = context.meridian.density;
     final extent =
         density.rowExtent +
@@ -242,7 +242,7 @@ class InspectorHistoryDetail extends StatelessWidget {
     final author = entry == null
         ? ''
         : utf8.decode(entry.detail.author, allowMalformed: true);
-    final dates = MaterialLocalizations.of(context);
+    final dates = MeridianLocalizations.of(context);
     final time = entry == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(
@@ -303,7 +303,7 @@ class InspectorHistoryDetail extends StatelessWidget {
                     if (time != null)
                       Text(
                         '${dates.formatMediumDate(time)} · '
-                        '${dates.formatTimeOfDay(TimeOfDay.fromDateTime(time))}',
+                        '${context.clock(time)}',
                         style: context.text.label.copyWith(
                           color: tokens.colors.inkMuted,
                         ),

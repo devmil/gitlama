@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:ui' show FrameTiming;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -21,9 +22,9 @@ void main() {
     addTearDown(controller.dispose);
     String? selected;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             controller: controller,
             itemCount: 100000,
@@ -58,7 +59,7 @@ void main() {
 
     final selectionSamples = <int>[];
     for (var sample = 0; sample < 30; sample += 1) {
-      final target = find.byType(InkWell).hitTestable().first;
+      final target = find.byType(MeridianInteraction).hitTestable().first;
       final stopwatch = Stopwatch()..start();
       await tester.tap(target);
       await binding.endOfFrame.timeout(const Duration(seconds: 1));

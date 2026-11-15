@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/widgets/gitlama_file_row.dart';
@@ -91,12 +93,13 @@ void main() {
       await tester.tap(find.text('Re-anchor'));
       await tester.pumpAndSettle();
       expect(
-        tester
-            .widget<TextField>(
-              find.byKey(const Key('hosting-review-inline-body')),
-            )
-            .controller!
-            .text,
+        editableIn(
+          tester,
+          find.descendant(
+            of: find.byKey(const Key('hosting-review-inline-body')),
+            matching: find.byType(EditableText),
+          ),
+        ).controller.text,
         'old comment',
       );
       await tester.tap(find.text('Add to review'));
@@ -259,9 +262,9 @@ final class _Fixture {
     );
   }
 
-  Widget app() => MaterialApp(
+  Widget app() => MeridianApp(
     theme: buildAppTheme(Brightness.light),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: gitLamaLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: HostingReviewWorkspace(
       review: review,

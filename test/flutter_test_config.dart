@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_native_menus/meridian_native_menus.dart'
     show MeridianNativeMenus;
@@ -33,29 +34,28 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // ships for, so tests show them through the presenter below.
   MeridianNativeMenus.debugSupportedOverride = true;
   nativeMenuTestPresenter = (context, menu, position) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    final local = overlay.globalToLocal(position);
-    final selected = await showMenu<MenuAction>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromLTWH(local.dx, local.dy, 0, 0),
-        Offset.zero & overlay.size,
-      ),
-      items: [
+    MenuAction? selected;
+    await showMeridianContextMenu(
+      context,
+      globalPosition: position,
+      // This presenter draws the Meridian menu itself.
+      usePresenter: false,
+      entries: [
         for (final item in menu.children)
           if (item is MenuSeparator)
-            const PopupMenuDivider()
+            const MeridianMenuDivider()
           else if (item is MenuAction)
-            PopupMenuItem(
-              value: item,
-              enabled: !item.attributes.disabled,
-              child: Text(item.title ?? ''),
+            MeridianMenuItem(
+              label: item.title ?? '',
+              onSelected: item.attributes.disabled
+                  ? null
+                  : () => selected = item,
             ),
       ],
     );
-    if (context.mounted && selected != null) selected.callback();
-    return MenuResult(itemSelected: selected != null);
+    final chosen = selected;
+    if (context.mounted && chosen != null) chosen.callback();
+    return MenuResult(itemSelected: chosen != null);
   };
   await testMain();
 }

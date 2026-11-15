@@ -3,7 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -453,12 +454,14 @@ void main() {
   });
 
   group('DiffView syntax colours', () {
-    Widget host(DiffView view) => MaterialApp(
+    Widget host(DiffView view) => MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, app) => StatusNotificationScope(child: app!),
-      home: Scaffold(body: SizedBox(width: 600, height: 300, child: view)),
+      home: MeridianScaffold(
+        body: SizedBox(width: 600, height: 300, child: view),
+      ),
     );
 
     TextSpan? spanOf(WidgetTester tester, String id, {bool old = false}) {

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'support/test_button.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
@@ -17,17 +19,21 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+      MeridianApp(
+        theme: MeridianTheme.resolve(
+          brand: MeridianBrands.gitlama,
+          brightness: Brightness.light,
+        ),
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => StatusNotificationScope(child: child!),
         home: Builder(
-          builder: (context) => Scaffold(
+          builder: (context) => MeridianScaffold(
             body: Column(
               children: [
                 Expanded(
                   child: Center(
-                    child: TextButton(
+                    child: TestButton(
                       onPressed: () => StatusNotificationScope.show(
                         context,
                         'Index updated',
@@ -52,7 +58,6 @@ void main() {
     await tester.tap(find.text('Update'));
     await tester.pump();
     expect(find.text('Index updated'), findsOneWidget);
-    expect(find.byType(SnackBar), findsNothing);
     expect(tester.getRect(find.text('Update')), before);
     expect(tester.getRect(find.byType(StatusNotificationText)), statusBefore);
 
@@ -120,8 +125,12 @@ void main() {
         generation: 1,
       );
       await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+        MeridianApp(
+          theme: MeridianTheme.resolve(
+            brand: MeridianBrands.gitlama,
+            brightness: Brightness.light,
+          ),
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => StatusNotificationScope(
             operations: operations,
@@ -148,7 +157,7 @@ void main() {
             ),
             child: child!,
           ),
-          home: const Scaffold(
+          home: const MeridianScaffold(
             body: Column(
               children: [
                 Expanded(child: Center(child: Text('Ready'))),

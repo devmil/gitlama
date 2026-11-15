@@ -2,7 +2,7 @@ import '../../widgets/status_notification.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import '../../widgets/native_menu.dart';
@@ -642,7 +642,7 @@ class CommitDiffPaneState extends State<CommitDiffPane>
               readOnly: true,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(MeridianSpace.space5),
-                child: SelectableText(
+                child: MeridianSelectableText(
                   contextMenuBuilder: nativeTextContextMenuBuilder,
                   result.text ?? '',
                 ),

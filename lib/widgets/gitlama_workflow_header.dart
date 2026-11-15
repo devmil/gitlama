@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import 'gitlama_ref_chip.dart';

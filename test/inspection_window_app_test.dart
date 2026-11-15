@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -471,7 +471,7 @@ void main() {
       final context = tester.element(
         find.byKey(const ValueKey('inspector-window')),
       );
-      expect(Theme.of(context).brightness, Brightness.dark);
+      expect(MeridianTheme.of(context).brightness, Brightness.dark);
       expect(MeridianTheme.of(context).density, MeridianDensity.compact);
       expect(MediaQuery.disableAnimationsOf(context), isTrue);
       // Named once for the location, not on every build.

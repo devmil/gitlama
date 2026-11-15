@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import '../app/app_theme.dart';
 import '../l10n/l10n.dart';
@@ -174,7 +174,7 @@ class StatusNotificationText extends StatelessWidget {
     final colors = context.colors;
     return Semantics(
       liveRegion: message != null,
-      child: Tooltip(
+      child: MeridianTooltip(
         message: label,
         child: MeridianSwap(
           swapKey: label,

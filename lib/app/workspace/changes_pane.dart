@@ -2,7 +2,7 @@ import '../../models/operation_failure.dart';
 import '../../widgets/status_notification.dart';
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../l10n/l10n.dart';
 import '../../models/discard.dart';

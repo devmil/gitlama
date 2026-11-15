@@ -9,10 +9,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart'
     show PipelineOwner, RenderEditable, RenderStack;
-import 'package:flutter/services.dart';
 
 import 'native_menu.dart';
 import '../app/app_theme.dart';
@@ -1517,7 +1517,7 @@ final class ConflictResolverState extends State<ConflictResolver>
                   padding: const EdgeInsetsDirectional.only(
                     end: MeridianSpace.space2,
                   ),
-                  child: Tooltip(
+                  child: MeridianTooltip(
                     message: deletion,
                     child: MeridianIcon(
                       'trash-2',
@@ -1531,7 +1531,7 @@ final class ConflictResolverState extends State<ConflictResolver>
                   ),
                 ),
               if (remaining == null || remaining == 0)
-                Tooltip(
+                MeridianTooltip(
                   message: remaining == 0
                       ? context.l10n.conflictReviewFile
                       : file.kind == ConflictFileKind.binary
@@ -2317,7 +2317,7 @@ final class ConflictResolverState extends State<ConflictResolver>
               border: Border(
                 left: BorderSide(
                   color: region == null
-                      ? Colors.transparent
+                      ? meridianTransparent
                       : sideColor.withValues(
                           alpha:
                               GitLamaOpacity.conflictRailUnchosen +
@@ -2469,7 +2469,7 @@ final class ConflictResolverState extends State<ConflictResolver>
                 ? focused
                       ? colors.accent
                       : colors.line
-                : Colors.transparent,
+                : meridianTransparent,
             width: GitLamaLayout.conflictRail,
           ),
         ),
@@ -2703,7 +2703,7 @@ final class ConflictResolverState extends State<ConflictResolver>
                     padding: const EdgeInsets.all(MeridianSpace.space4),
                     child: ListenableBuilder(
                       listenable: _syntax ?? _noSyntax,
-                      builder: (context, _) => SelectableText.rich(
+                      builder: (context, _) => MeridianSelectableText.rich(
                         contextMenuBuilder: nativeTextContextMenuBuilder,
                         conflictSyntaxText(
                           context.meridian,

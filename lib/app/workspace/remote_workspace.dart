@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../../l10n/l10n.dart';
@@ -406,7 +406,7 @@ class RemoteHostBadge extends StatelessWidget {
     return Semantics(
       label: label,
       excludeSemantics: true,
-      child: Tooltip(
+      child: MeridianTooltip(
         message: label,
         child: Row(
           mainAxisSize: MainAxisSize.min,

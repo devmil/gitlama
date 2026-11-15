@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/test_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/workspace/commit_archive_dialog.dart';
 import 'package:gitlama/models/commit_archive.dart';
@@ -28,7 +29,7 @@ void main() {
       motionHost(
         Builder(
           builder: (context) => Center(
-            child: TextButton(
+            child: TestButton(
               onPressed: () async {
                 popped = await showMeridianDialog<Object>(
                   context: context,

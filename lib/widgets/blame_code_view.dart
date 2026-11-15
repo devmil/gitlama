@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import '../l10n/l10n.dart';
@@ -91,7 +91,7 @@ class _BlameCodeViewState extends State<BlameCodeView> {
               .clamp(0.0, 20000.0),
         ),
       );
-      return Scrollbar(
+      return MeridianScrollbarThumb(
         thumbVisibility: false,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -210,7 +210,7 @@ class _BlameCodeViewState extends State<BlameCodeView> {
                                 ),
                               ),
                             ),
-                            child: Tooltip(
+                            child: MeridianTooltip(
                               message: row == null
                                   ? context.l10n.historyInspectionLoading
                                   : commit == null || row.boundary
@@ -293,7 +293,7 @@ class _BlameCodeViewState extends State<BlameCodeView> {
                               start: GitLamaLayout.diffSignWidth,
                               end: MeridianSpace.space6,
                             ),
-                            child: SelectableText(
+                            child: MeridianSelectableText(
                               contextMenuBuilder: nativeTextContextMenuBuilder,
                               row == null
                                   ? '…'

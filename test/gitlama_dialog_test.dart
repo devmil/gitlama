@@ -1,6 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'support/test_button.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -42,20 +44,20 @@ void main() {
         debugDisableShadows = false;
         try {
           await tester.pumpWidget(
-            MaterialApp(
+            MeridianApp(
               debugShowCheckedModeBanner: false,
               theme: buildAppTheme(brightness),
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: gitLamaLocalizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: Scaffold(
+              home: MeridianScaffold(
                 body: Builder(
                   builder: (context) => Column(
                     children: [
-                      const ListTile(
-                        title: Text('Repository'),
-                        subtitle: Text('main · Working tree clean'),
+                      const MeridianListRow(
+                        title: 'Repository',
+                        subtitle: 'main · Working tree clean',
                       ),
-                      TextButton(
+                      TestButton(
                         onPressed: () => showMeridianDialog<void>(
                           context: context,
                           builder: (dialogContext) => MeridianDialog(
@@ -69,11 +71,11 @@ void main() {
                               ),
                             ),
                             actions: [
-                              TextButton(
+                              TestButton(
                                 onPressed: () => Navigator.pop(dialogContext),
                                 child: const Text('Cancel'),
                               ),
-                              FilledButton(
+                              TestButton(
                                 onPressed: () {},
                                 child: const Text('Check out'),
                               ),
@@ -122,7 +124,7 @@ void main() {
           );
           if (capture) {
             await expectLater(
-              find.byType(MaterialApp),
+              find.byType(MeridianApp),
               matchesGoldenFile(
                 '../build/evidence/dialogs/checkout-${brightness.name}.png',
               ),
@@ -157,7 +159,7 @@ void main() {
           expect(tester.takeException(), isNull);
           if (capture) {
             await expectLater(
-              find.byType(MaterialApp),
+              find.byType(MeridianApp),
               matchesGoldenFile(
                 '../build/evidence/dialogs/picker-${brightness.name}.png',
               ),
@@ -181,7 +183,7 @@ void main() {
       const MeridianDialogSurface(child: SizedBox(width: 300, height: 200)),
     ]) {
       await tester.pumpWidget(
-        MaterialApp(theme: buildAppTheme(Brightness.light), home: dialog),
+        MeridianApp(theme: buildAppTheme(Brightness.light), home: dialog),
       );
       final chrome = tester.widget<DecoratedBox>(
         find
@@ -207,13 +209,13 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
+        home: MeridianScaffold(
           body: Builder(
-            builder: (context) => TextButton(
+            builder: (context) => TestButton(
               onPressed: () => showMeridianConfirm(
                 context,
                 title: 'Discard changes?',

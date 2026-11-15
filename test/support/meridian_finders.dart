@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
@@ -35,3 +36,20 @@ final double gitlamaSmallButtonHeight = math.max(
 
 /// GitLama's corner radii (the standard Meridian scale).
 const MeridianRadiusScale gitlamaRadius = MeridianRadiusScale.standard;
+
+/// The [EditableText] at or inside [finder] (a `MeridianTextField`'s
+/// `fieldKey`, a `MeridianEditableText` or the [EditableText] itself).
+EditableText editableIn(WidgetTester tester, Finder finder) =>
+    tester.widget<EditableText>(_editable(finder));
+
+/// The state of the [EditableText] at or inside [finder].
+EditableTextState editableStateIn(WidgetTester tester, Finder finder) =>
+    tester.state<EditableTextState>(_editable(finder));
+
+Finder _editable(Finder finder) => find
+    .descendant(
+      of: finder,
+      matching: find.byType(EditableText),
+      matchRoot: true,
+    )
+    .first;

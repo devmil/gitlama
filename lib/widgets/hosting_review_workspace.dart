@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 
 import 'gitlama_workflow_header.dart';
@@ -455,7 +455,7 @@ class _HostingReviewWorkspaceState extends State<HostingReviewWorkspace> {
         padding: const EdgeInsets.all(MeridianSpace.space5),
         children: [
           if (_failure != null)
-            SelectableText(
+            MeridianSelectableText(
               contextMenuBuilder: nativeTextContextMenuBuilder,
               context.l10n.hostingReviewFailure(_failure!.name),
             ),
@@ -493,7 +493,7 @@ class _HostingReviewWorkspaceState extends State<HostingReviewWorkspace> {
                         ),
                     ],
                   ),
-                  SelectableText(
+                  MeridianSelectableText(
                     contextMenuBuilder: nativeTextContextMenuBuilder,
                     thread.body,
                   ),
@@ -767,7 +767,7 @@ final class _DiffReviewPane extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(MeridianSpace.space5),
       children: [
-        SelectableText(
+        MeridianSelectableText(
           contextMenuBuilder: nativeTextContextMenuBuilder,
           diff.patch,
           style: context.text.code,

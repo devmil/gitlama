@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import '../../l10n/l10n.dart';
 import '../../models/repository_state.dart';
 import '../../models/status_acceleration.dart';

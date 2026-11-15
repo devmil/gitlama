@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
@@ -918,7 +918,7 @@ class ChangesSectionState extends State<ChangesSection> {
                                           lifted: true,
                                           child: dragFeedback,
                                         ),
-                                        child: Tooltip(
+                                        child: MeridianTooltip(
                                           message: context
                                               .l10n
                                               .dragChangeToOtherList,

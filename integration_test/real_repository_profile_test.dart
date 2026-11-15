@@ -11,7 +11,7 @@ import 'dart:io';
 import 'dart:ui' show FrameTiming, ImageByteFormat;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -21,9 +21,7 @@ import 'package:gitlama/app/workspace/sidebar.dart';
 import 'package:gitlama/widgets/history_graph_view.dart';
 
 /// A directory for window captures, for local visual review only.
-const _captureDirectory = String.fromEnvironment(
-  'GITLAMA_PROFILE_CAPTURES',
-);
+const _captureDirectory = String.fromEnvironment('GITLAMA_PROFILE_CAPTURES');
 const _captureOnly = bool.fromEnvironment('GITLAMA_PROFILE_CAPTURE_ONLY');
 
 const _attachDelay = Duration(

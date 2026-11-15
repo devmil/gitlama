@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../app/app_theme.dart';
@@ -108,7 +108,7 @@ class _GitLamaCompassState extends State<GitLamaCompass> {
       dirty,
       conflicts,
     );
-    return Tooltip(
+    return MeridianTooltip(
       message: context.l10n.repositoryDetailsTitle,
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -415,7 +415,7 @@ class _CompassState extends StatelessWidget {
           ),
         ),
         if (dirty > 0) ...[
-          Tooltip(
+          MeridianTooltip(
             message: context.l10n.compassChangedFiles(dirty),
             child: _DirtyCount(dirty: dirty, popIn: dirtyPopIn),
           ),

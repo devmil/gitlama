@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/meridian_finders.dart';
@@ -17,11 +18,11 @@ Future<void> pumpMeridian(
   Brightness brightness = Brightness.light,
 }) async {
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       theme: buildAppTheme(brightness),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: Center(child: widget)),
+      home: MeridianScaffold(body: Center(child: widget)),
     ),
   );
   await tester.pump(MeridianDurations.hover);
@@ -164,9 +165,9 @@ void main() {
       for (final (variant, fill) in [
         (MeridianButtonVariant.primary, colors.accent),
         (MeridianButtonVariant.secondary, colors.pane),
-        (MeridianButtonVariant.quiet, Colors.transparent),
+        (MeridianButtonVariant.quiet, meridianTransparent),
         (MeridianButtonVariant.danger, colors.danger),
-        (MeridianButtonVariant.dangerQuiet, Colors.transparent),
+        (MeridianButtonVariant.dangerQuiet, meridianTransparent),
       ]) {
         await pumpMeridian(
           tester,
@@ -421,7 +422,7 @@ void main() {
             painted(
               variant == MeridianButtonVariant.primary
                   ? colors.accentSoft
-                  : Colors.transparent,
+                  : meridianTransparent,
             ),
           );
         }
@@ -470,7 +471,7 @@ void main() {
         (MeridianCountTone.neutral, colors.line),
         (MeridianCountTone.accent, colors.accent),
         (MeridianCountTone.attention, colors.attention),
-        (MeridianCountTone.quiet, Colors.transparent),
+        (MeridianCountTone.quiet, meridianTransparent),
       ]) {
         final count = find.byWidgetPredicate(
           (widget) => widget is MeridianCount && widget.tone == tone,
@@ -612,7 +613,7 @@ void main() {
         expect(tester.getSize(chrome()).height, MeridianSize.control);
         expect(decoration().color, colors.pane);
         expect((decoration().border! as Border).top.color, colors.controlEdge);
-        await tester.tap(find.byType(TextField));
+        await tester.tap(find.byType(EditableText));
         await tester.pumpAndSettle();
         expect(focus.hasFocus, isTrue);
         expect((decoration().border! as Border).top.color, colors.focus);
@@ -796,7 +797,7 @@ void main() {
           brightness: brightness,
         );
         expect(
-          tester.widget<TextField>(find.byType(TextField)).style?.fontSize,
+          editableIn(tester, find.byType(EditableText)).style.fontSize,
           gitlamaText.code.fontSize,
         );
         await pumpMeridian(
@@ -1004,15 +1005,15 @@ void main() {
         );
 
         await tester.pumpWidget(
-          MaterialApp(
+          MeridianApp(
             theme: buildAppTheme(brightness),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: gitLamaLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(disableAnimations: true),
               child: child!,
             ),
-            home: Scaffold(
+            home: MeridianScaffold(
               body: Center(
                 child: MeridianPanel(
                   title: 'Panel',

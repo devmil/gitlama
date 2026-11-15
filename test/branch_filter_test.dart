@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -283,12 +284,12 @@ void main() {
     required HistoryBranchFilter filter,
     required ValueChanged<HistoryBranchFilter> onChanged,
     Locale? locale,
-  }) => MaterialApp(
+  }) => MeridianApp(
     locale: locale,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: gitLamaLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     theme: buildAppTheme(Brightness.light),
-    home: Scaffold(
+    home: MeridianScaffold(
       body: Align(
         alignment: Alignment.topLeft,
         child: SizedBox(

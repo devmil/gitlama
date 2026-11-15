@@ -1,8 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/meridian_finders.dart';
 import 'package:gitlama/widgets/native_menu.dart';
@@ -41,10 +42,10 @@ void main() {
     for (final locale in AppLocalizations.supportedLocales) {
       late BuildContext context;
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light),
           locale: locale,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (built) {
@@ -73,7 +74,7 @@ void main() {
         DateTime(2026, 10, 2),
         DateTime(2088, 8, 8),
       ];
-      final localizations = MaterialLocalizations.of(context);
+      final localizations = MeridianLocalizations.of(context);
       // Test fonts give every glyph one width, so also check that each
       // weekday and month pairing is measured; samples use two-digit days.
       String shape(String text) => text.replaceAll(RegExp('[0-9]+'), '0');
@@ -112,7 +113,7 @@ void main() {
       contentStart: 40,
       contentAvailable: 648,
     );
-    Widget graph(List<String> ids) => MaterialApp(
+    Widget graph(List<String> ids) => MeridianApp(
       theme: buildAppTheme(Brightness.light),
       home: SizedBox(
         height: 300,
@@ -147,7 +148,7 @@ void main() {
   ) async {
     final controller = ScrollController(keepScrollOffset: false);
     addTearDown(controller.dispose);
-    Widget build(int? selectedIndex) => MaterialApp(
+    Widget build(int? selectedIndex) => MeridianApp(
       theme: buildAppTheme(Brightness.light),
       home: SizedBox(
         height: 400,
@@ -191,9 +192,9 @@ void main() {
   ) async {
     const ids = ['a', 'b', 'c'];
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: ids.length,
             selectedObjectId: 'a',
@@ -281,9 +282,9 @@ void main() {
   ) async {
     String? copied;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             alignedUpstreams: alignedHistoryUpstreams(
@@ -385,9 +386,9 @@ void main() {
     String? selected;
 
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             controller: controller,
             itemCount: 100000,
@@ -425,9 +426,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 2,
             rowAt: (index) => row(index, lane: index),
@@ -453,9 +454,9 @@ void main() {
 
   testWidgets('ancestry lighting changes at the commit node', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: SizedBox(
             height: 48,
             child: HistoryGraphView(
@@ -525,9 +526,9 @@ void main() {
   testWidgets('row text outside the lit ancestry dims with its lanes', (
     tester,
   ) async {
-    Widget build({required bool lighting}) => MaterialApp(
+    Widget build({required bool lighting}) => MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      home: Scaffold(
+      home: MeridianScaffold(
         body: SizedBox(
           height: 48,
           child: HistoryGraphView(
@@ -577,9 +578,9 @@ void main() {
 
   testWidgets('working-tree marker masks its outgoing edge', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: SizedBox(
             height: 24,
             child: HistoryGraphView(
@@ -635,9 +636,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     String? selected;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.dark),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => HistoryGraphRow(
@@ -682,9 +683,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => HistoryGraphRow(
@@ -727,9 +728,9 @@ void main() {
     const author = 'A very long author whose complete value stays available';
     const reference = 'refs/heads/feature/full-reference-value';
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => HistoryGraphRow(
@@ -775,9 +776,9 @@ void main() {
     String? replaced;
     String? toggled;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => row(1, lane: 0),
@@ -801,9 +802,9 @@ void main() {
     String? copied;
     const reference = 'refs/heads/main';
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 1,
             rowAt: (_) => HistoryGraphRow(
@@ -851,9 +852,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: HistoryGraphView(
             itemCount: 2,
             rowAt: (index) => row(index, lane: index),

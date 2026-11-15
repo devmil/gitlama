@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/l10n.dart';
@@ -127,7 +127,7 @@ class _StashInputDialogState extends State<StashInputDialog> {
         spacing: MeridianSpace.space6,
         children: [
           if (widget.selector != null)
-            SelectableText(
+            MeridianSelectableText(
               contextMenuBuilder: nativeTextContextMenuBuilder,
               context.l10n.stashSelected(widget.selector!),
             ),

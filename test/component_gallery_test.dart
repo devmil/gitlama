@@ -1,7 +1,8 @@
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -16,9 +17,9 @@ Widget gallery({
   MeridianDensity density = MeridianDensity.regular,
   double textScale = 1,
   bool disableAnimations = false,
-}) => MaterialApp(
+}) => MeridianApp(
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   theme: buildAppTheme(brightness, density: density),
   builder: (context, child) => MediaQuery(
@@ -42,9 +43,9 @@ void main() {
     var activations = 0;
     MeridianInteractionState? interaction;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        home: Scaffold(
+        home: MeridianScaffold(
           body: Center(
             child: MeridianInteraction(
               onTap: () => activations += 1,
@@ -62,10 +63,6 @@ void main() {
       ),
     );
 
-    expect(
-      Theme.of(tester.element(find.byType(Scaffold))).splashFactory,
-      same(NoSplash.splashFactory),
-    );
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer();
     await tester.pump();
@@ -190,7 +187,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(
-      tester.getSize(find.byType(TextField).first).height,
+      tester.getSize(find.byType(EditableText).first).height,
       lessThanOrEqualTo(36),
     );
   });

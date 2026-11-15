@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -45,9 +48,9 @@ Future<RefMutationRequest?> _delete(
 }) async {
   RefMutationRequest? result;
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => Center(
@@ -101,9 +104,9 @@ Future<RefMutationRequest?> _editRemote(
   // A fresh tree drops a dialog an earlier call left open.
   await tester.pumpWidget(const SizedBox());
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => Center(
@@ -158,9 +161,9 @@ Future<RefMutationRequest?> _renameRemote(
   );
   await tester.pumpWidget(const SizedBox());
   await tester.pumpWidget(
-    MaterialApp(
+    MeridianApp(
       theme: buildAppTheme(Brightness.light),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => Center(
@@ -242,9 +245,9 @@ void main() {
 
   testWidgets('lines its options up with the name field', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Center(
           child: RefMutationInputDialog(
@@ -272,7 +275,7 @@ void main() {
   ) async {
     const current = 'git@github.com:devmil/repo.git';
     expect(await _editRemote(tester, displayUrl: current), isNull);
-    expect(tester.widget<EditableText>(_urlField).controller.text, current);
+    expect(editableIn(tester, _urlField).controller.text, current);
     final request = await _editRemote(
       tester,
       displayUrl: current,
@@ -320,7 +323,7 @@ void main() {
   ) async {
     const hidden = 'https://[REDACTED]@example.test/repo.git';
     expect(await _editRemote(tester, displayUrl: hidden), isNull);
-    expect(tester.widget<EditableText>(_urlField).controller.text, isEmpty);
+    expect(editableIn(tester, _urlField).controller.text, isEmpty);
     expect(
       find.text(
         'The current URL contains credentials and is not shown. '
@@ -347,11 +350,11 @@ void main() {
         checkout: false,
       );
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           theme: buildAppTheme(Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
+          home: MeridianScaffold(
             body: RefMutationInputDialog(
               kind: RefMutationKind.createBranch,
               initialName: null,
@@ -380,9 +383,9 @@ void main() {
     RefMutationRequest? result;
     var closed = false;
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Center(
@@ -447,9 +450,9 @@ void main() {
       ],
     );
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         theme: buildAppTheme(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Center(

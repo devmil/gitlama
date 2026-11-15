@@ -1,7 +1,7 @@
 import 'command_availability.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/native_menu.dart';
 import '../../l10n/app_localizations.dart';
@@ -1820,7 +1820,7 @@ class _SidebarRefRowState extends State<_SidebarRefRow> {
       onDoubleTap: widget.entry.primaryCommand == null
           ? null
           : () => _run(widget.entry.primaryCommand!),
-      child: Tooltip(
+      child: MeridianTooltip(
         message: refName,
         child: MeridianListRow(
           title: widget.entry.name,
@@ -1863,7 +1863,7 @@ class _SidebarRefRowState extends State<_SidebarRefRow> {
                       : null,
                 ),
                 const SizedBox(width: MeridianSpace.space3),
-                Tooltip(
+                MeridianTooltip(
                   message: widget.entry.currentDescription ?? '',
                   child: MeridianGlideTarget(
                     selected: widget.entry.current,
@@ -1897,7 +1897,7 @@ class _SidebarRefRowState extends State<_SidebarRefRow> {
                   widget.entry.hostingMergeability !=
                       HostingMergeability.conflicting
               ? null
-              : Tooltip(
+              : MeridianTooltip(
                   message: [
                     if (widget.entry.hostingCheck case final checks?)
                       switch (widget.entry.hostingCheckBranch) {
@@ -1926,7 +1926,7 @@ class _SidebarRefRowState extends State<_SidebarRefRow> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (filtered || holdsFiltered)
-                Tooltip(
+                MeridianTooltip(
                   message: context.l10n.historyBranchFilterShown,
                   child: SizedBox.square(
                     key: const ValueKey('sidebar-ref-filtered'),
@@ -1953,7 +1953,7 @@ class _SidebarRefRowState extends State<_SidebarRefRow> {
                   constraints: const BoxConstraints(
                     maxWidth: GitLamaLayout.trackingLabelMaxWidth,
                   ),
-                  child: Tooltip(
+                  child: MeridianTooltip(
                     message:
                         widget.entry.trackingDescription ??
                         widget.entry.subtitle,

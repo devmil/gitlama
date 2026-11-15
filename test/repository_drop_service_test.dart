@@ -2,7 +2,9 @@ import 'package:gitlama/widgets/status_notification.dart';
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 import 'package:gitlama/app/app_theme.dart';
 import 'package:gitlama/app/home_screen.dart';
 import 'package:gitlama/l10n/app_localizations.dart';
@@ -103,9 +105,9 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         builder: (context, child) => StatusNotificationScope(child: child!),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(Brightness.light),
         home: HomeScreen(runtime: runtime),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meridian_ui/meridian_ui.dart';
 
 import '../l10n/l10n.dart';
@@ -394,7 +394,7 @@ class GitLamaRepoTabsState extends State<GitLamaRepoTabs> {
           children: [
             // The row hangs from its repository's entry: the fork mark, in
             // the colour of the entry's group.
-            Tooltip(
+            MeridianTooltip(
               message: rowLabel,
               child: Semantics(
                 label: rowLabel,

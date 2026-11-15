@@ -3,7 +3,7 @@
 /// page gets the values it shows and how to change them.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import '../../l10n/l10n.dart';
 import '../../models/app_command.dart';
 import '../../models/diff.dart';

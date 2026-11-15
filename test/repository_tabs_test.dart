@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'support/meridian_finders.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meridian_ui/meridian_ui.dart';
@@ -423,7 +424,7 @@ void main() {
       expect(activated, [1]);
       final field = find.byType(EditableText);
       expect(field, findsOneWidget);
-      final editable = tester.widget<EditableText>(field);
+      final editable = editableIn(tester, field);
       expect(editable.controller.selection.extentOffset, 'Website'.length);
       await tester.enterText(field, 'Docs');
       await tester.testTextInput.receiveAction(TextInputAction.done);

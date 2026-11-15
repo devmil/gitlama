@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/meridian_finders.dart';
 import 'package:gitlama/app/app_theme.dart';
@@ -22,18 +23,15 @@ void main() {
     'application themes use Meridian ground, density and tooltip timing',
     () {
       expect(
-        buildAppTheme(Brightness.light).scaffoldBackgroundColor,
+        buildAppTheme(Brightness.light).colors.ground,
         gitlamaColors(Brightness.light).ground,
       );
       expect(
-        buildAppTheme(Brightness.dark).scaffoldBackgroundColor,
+        buildAppTheme(Brightness.dark).colors.ground,
         gitlamaColors(Brightness.dark).ground,
       );
       expect(gitlamaDensities.map((d) => d.rowExtent).toList(), [24, 28, 32]);
-      expect(
-        buildAppTheme(Brightness.light).tooltipTheme.waitDuration,
-        const Duration(milliseconds: 500),
-      );
+      expect(MeridianDurations.tooltipWait, const Duration(milliseconds: 500));
     },
   );
 }

@@ -7,7 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app/app_theme.dart';
 import '../l10n/l10n.dart';
@@ -2044,7 +2044,7 @@ class _LineCell extends StatelessWidget {
       width: GitLamaLayout.diffGutterWidth,
       height: GitLamaLayout.diffLineHeight,
       child: ColoredBox(
-        color: selected ? colors.accentSoft : Colors.transparent,
+        color: selected ? colors.accentSoft : meridianTransparent,
         child: Padding(
           padding: const EdgeInsetsDirectional.only(end: MeridianSpace.space4),
           child: Align(

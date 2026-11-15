@@ -1,7 +1,8 @@
 import '../widgets/status_notification.dart';
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:meridian_ui/meridian_ui.dart';
 
 import '../l10n/app_localizations.dart';
 import '../l10n/l10n.dart';
@@ -11,6 +12,7 @@ import '../models/settings.dart';
 import 'app_bootstrap.dart';
 import 'app_runtime.dart';
 import 'app_appearance.dart';
+import 'app_theme.dart';
 import 'startup_screen.dart';
 import 'home_screen.dart';
 import 'native_launch_screen.dart';
@@ -99,14 +101,15 @@ class _AppLauncherState extends State<AppLauncher> {
   @override
   Widget build(BuildContext context) {
     final appearance = AppAppearance(_appearance);
-    return MaterialApp(
+    return MeridianApp(
       debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) => context.l10n.appTitle,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: appearance.theme,
       darkTheme: appearance.darkTheme,
       themeMode: appearance.themeMode,
+      scrollBehavior: gitLamaScrollBehavior,
       builder: (context, child) => appearance.applyMotion(
         context,
         NativeMenus.scope(

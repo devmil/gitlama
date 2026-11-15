@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import '../../l10n/l10n.dart';
 import '../../models/history_mutation.dart';
 import '../../models/inspector.dart' show shortObjectId;
@@ -349,7 +349,7 @@ class _SetAsideSummary extends StatelessWidget {
             context.l10n.historyRevertSetAsideFiles(paths.length),
             style: muted,
           ),
-          SelectableText(
+          MeridianSelectableText(
             contextMenuBuilder: nativeTextContextMenuBuilder,
             [
               for (final path in paths.take(_listed))

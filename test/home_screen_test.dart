@@ -11,9 +11,10 @@ import 'dart:io';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
+import 'package:gitlama/l10n/l10n.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitlama/widgets/native_menu.dart';
 import 'package:gitlama/widgets/git_reference_field.dart';
@@ -103,11 +104,11 @@ Finder findMeridianField(String label) => find.descendant(
   of: find.byWidgetPredicate(
     (widget) => widget is MeridianTextField && widget.label == label,
   ),
-  matching: find.byType(TextField),
+  matching: find.byType(EditableText),
 );
 
 Finder findTextFieldValue(String value) => find.byWidgetPredicate(
-  (widget) => widget is TextField && widget.controller?.text == value,
+  (widget) => widget is EditableText && widget.controller.text == value,
 );
 
 Finder findComposerCommitButton() => find.descendant(
@@ -416,9 +417,9 @@ void main() {
             runtime.repositorySessions.workspace.activeTab!.session!.identity,
           );
           await tester.pumpWidget(
-            MaterialApp(
+            MeridianApp(
               locale: locale,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: gitLamaLocalizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               theme: buildAppTheme(brightness),
               builder: (context, child) => MediaQuery(
@@ -497,7 +498,10 @@ void main() {
               await tester.tap(find.byTooltip(l10n.referencePickerTitle).last);
               await tester.pumpAndSettle();
               await tester.enterText(
-                find.widgetWithText(TextField, l10n.referencePickerSearch),
+                find.widgetWithText(
+                  MeridianEditableText,
+                  l10n.referencePickerSearch,
+                ),
                 'Commit subject',
               );
               await tester.pumpAndSettle();
@@ -791,11 +795,11 @@ void main() {
       addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       final runtime = await _runtime(_WelcomeRepository(), _Picker(null));
       await tester.pumpWidget(
-        MaterialApp(
+        MeridianApp(
           builder: (context, child) => GitLamaWindowCaptionFrame(
             child: StatusNotificationScope(child: child!),
           ),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: gitLamaLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           theme: buildAppTheme(Brightness.light),
           home: HomeScreen(runtime: runtime),
@@ -877,11 +881,11 @@ void main() {
     final runtime = await _runtime(_WelcomeRepository(), _Picker(null));
     await runtime.repositorySessions.open('/repository');
     await tester.pumpWidget(
-      MaterialApp(
+      MeridianApp(
         builder: (context, child) => GitLamaWindowCaptionFrame(
           child: StatusNotificationScope(child: child!),
         ),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: gitLamaLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(Brightness.light),
         home: HomeScreen(runtime: runtime),
@@ -1035,7 +1039,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       await expectLater(
-        find.byType(Scaffold).first,
+        find.byType(MeridianScaffold).first,
         matchesGoldenFile('../build/evidence/ui-review/welcome.png'),
       );
     }
@@ -1139,7 +1143,7 @@ void main() {
     await tester.tap(find.text('Clone…'));
     await tester.pumpAndSettle();
     expect(find.text('Repository URL or path'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'relative/source');
+    await tester.enterText(find.byType(EditableText), 'relative/source');
     await tester.pump();
     await tester.tap(find.text('Choose destination'));
     await tester.pumpAndSettle();
@@ -1165,7 +1169,7 @@ void main() {
     await tester.tap(find.text('Clone…'));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byType(TextField),
+      find.byType(EditableText),
       'ssh://git@example.test/repository',
     );
     await tester.pump();
@@ -1281,7 +1285,7 @@ void main() {
       of: find.byKey(const ValueKey('history-query')),
       matching: find.byType(EditableText),
     );
-    String queryText() => tester.widget<EditableText>(query).controller.text;
+    String queryText() => editableIn(tester, query).controller.text;
     await tester.enterText(query, 'needle');
     await tester.pumpAndSettle();
     expect(queryText(), 'needle');
@@ -1359,7 +1363,7 @@ void main() {
       expect(tester.takeException(), isNull);
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(Scaffold).first,
+          find.byType(MeridianScaffold).first,
           matchesGoldenFile(
             '../build/evidence/meridian/M08-shell-${brightness.name}.png',
           ),
@@ -1699,7 +1703,7 @@ void main() {
         expect(tester.takeException(), isNull);
         if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
           await expectLater(
-            find.byType(Scaffold).first,
+            find.byType(MeridianScaffold).first,
             matchesGoldenFile(
               '../build/evidence/website/workspace-${brightness.name}.png',
             ),
@@ -2007,7 +2011,7 @@ void main() {
       final stageSelectedButton = _sectionAction('Stage selected');
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, 'Stage selected');
+      await tester.enterText(find.byType(EditableText).last, 'Stage selected');
       await tester.pump();
       await tester.tap(find.widgetWithText(MeridianListRow, 'Stage selected'));
       await tester.pump();
@@ -2033,7 +2037,10 @@ void main() {
       await tester.tap(stagedRow);
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, 'Unstage selected');
+      await tester.enterText(
+        find.byType(EditableText).last,
+        'Unstage selected',
+      );
       await tester.pump();
       await tester.tap(
         find.widgetWithText(MeridianListRow, 'Unstage selected'),
@@ -2045,7 +2052,10 @@ void main() {
       await tester.tap(unstagedRow);
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, 'Discard selected');
+      await tester.enterText(
+        find.byType(EditableText).last,
+        'Discard selected',
+      );
       await tester.pump();
       await tester.tap(
         find.widgetWithText(MeridianListRow, 'Discard selected'),
@@ -3067,7 +3077,7 @@ void main() {
       await tester.tap(stagedRows.first);
       final subject = find.descendant(
         of: find.byKey(const ValueKey('commit-subject-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
       await tester.enterText(subject, 'Draft');
       final modifier = platform == TargetPlatform.macOS
@@ -3083,7 +3093,7 @@ void main() {
             .where((row) => row.selected),
         hasLength(1),
       );
-      expect(tester.widget<TextField>(subject).controller!.text, 'Draft');
+      expect(editableIn(tester, subject).controller.text, 'Draft');
       await runtime.shutdown();
       debugDefaultTargetPlatformOverride = null;
     });
@@ -3151,7 +3161,7 @@ void main() {
       }
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, 'Stage selected');
+      await tester.enterText(find.byType(EditableText).last, 'Stage selected');
       await tester.pump();
       expect(
         tester
@@ -3269,15 +3279,15 @@ void main() {
     await tester.enterText(diffSearch, 'needle');
     await tester.tap(find.text('tracked.txt').first);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(diffSearch).focusNode!.hasFocus, isFalse);
+    expect(editableIn(tester, diffSearch).focusNode.hasFocus, isFalse);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pumpAndSettle();
-    final field = tester.widget<TextField>(diffSearch);
-    expect(field.focusNode!.hasFocus, isTrue);
+    final field = editableIn(tester, diffSearch);
+    expect(field.focusNode.hasFocus, isTrue);
     expect(
-      field.controller!.selection,
+      field.controller.selection,
       const TextSelection(baseOffset: 0, extentOffset: 6),
     );
     expect(
@@ -3608,7 +3618,7 @@ void main() {
         const Size(MeridianLayout.findFieldWidth, MeridianSize.controlSm),
       );
       expect(
-        tester.widget<TextField>(search).style?.fontSize,
+        editableIn(tester, search).style.fontSize,
         gitlamaText.caption.fontSize,
       );
       final toolbarRect = tester.getRect(
@@ -3709,7 +3719,7 @@ void main() {
       );
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(Scaffold).first,
+          find.byType(MeridianScaffold).first,
           matchesGoldenFile('../build/evidence/ui-review/working-diff.png'),
         );
       }
@@ -3738,7 +3748,7 @@ void main() {
       // The counter disappears with the query.
       expect(find.text('1 of 2'), findsNothing);
       expect(find.text('No matches'), findsNothing);
-      expect(tester.widget<TextField>(search).controller?.text, isEmpty);
+      expect(editableIn(tester, search).controller.text, isEmpty);
       await runtime.shutdown();
     },
   );
@@ -4123,17 +4133,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester
-          .widget<TextField>(find.byKey(const ValueKey('history-query')))
-          .style
-          ?.fontSize,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey('history-query')),
+          matching: find.byType(EditableText),
+        ),
+      ).style.fontSize,
       gitlamaText.caption.fontSize,
     );
     expect(
-      tester
-          .widget<TextField>(find.byKey(const ValueKey('commit-diff-search')))
-          .style
-          ?.fontSize,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey('commit-diff-search')),
+          matching: find.byType(EditableText),
+        ),
+      ).style.fontSize,
       gitlamaText.caption.fontSize!,
     );
     expect(
@@ -4222,7 +4238,7 @@ void main() {
 
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(Scaffold).first,
+        find.byType(MeridianScaffold).first,
         matchesGoldenFile('../build/evidence/ui-review/history-diff.png'),
       );
     }
@@ -4272,8 +4288,13 @@ void main() {
 
     // Find reaches History's search until a diff holds the focus; then it
     // searches that diff.
-    bool focused(String key) =>
-        tester.widget<TextField>(find.byKey(ValueKey(key))).focusNode!.hasFocus;
+    bool focused(String key) => editableIn(
+      tester,
+      find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byType(EditableText),
+      ),
+    ).focusNode.hasFocus;
     Future<void> pressFind() async {
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
@@ -4337,7 +4358,7 @@ void main() {
       MeridianSize.controlSm,
     );
 
-    final search = find.widgetWithText(TextField, 'Find in diff');
+    final search = find.widgetWithText(MeridianEditableText, 'Find in diff');
     await tester.enterText(search, 'needle');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
@@ -4357,7 +4378,7 @@ void main() {
       ),
       findsNothing,
     );
-    expect(tester.widget<TextField>(search).controller?.text, isEmpty);
+    expect(editableIn(tester, search).controller.text, isEmpty);
     await runtime.shutdown();
   });
 
@@ -4440,16 +4461,15 @@ void main() {
       await tester.pumpAndSettle();
       final subject = find.descendant(
         of: find.byKey(const ValueKey('commit-subject-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
       final description = find.descendant(
         of: find.byKey(const ValueKey('commit-description-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
-      String subjectText() =>
-          tester.widget<TextField>(subject).controller!.text;
+      String subjectText() => editableIn(tester, subject).controller.text;
       String descriptionText() =>
-          tester.widget<TextField>(description).controller!.text;
+          editableIn(tester, description).controller.text;
       if (scenario == 'existing description') {
         await tester.enterText(description, 'keep existing body');
       }
@@ -4551,12 +4571,12 @@ void main() {
     repository.commitToolsBarriers.addAll([oldLoad, newLoad]);
     final runtime = await _runtime(repository, _Picker(null));
     await runtime.repositorySessions.open('/repository');
-    Widget editor(String head) => MaterialApp(
+    Widget editor(String head) => MeridianApp(
       builder: (context, child) => StatusNotificationScope(child: child!),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: gitLamaLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(Brightness.light),
-      home: Scaffold(
+      home: MeridianScaffold(
         body: CommitEditor(
           repositories: runtime.repositorySessions,
           hosting: null,
@@ -4682,26 +4702,44 @@ void main() {
 
       final subjectFinder = find.descendant(
         of: find.byKey(const ValueKey('commit-subject-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
       final descriptionFinder = find.descendant(
         of: find.byKey(const ValueKey('commit-description-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
-      final subjectField = tester.widget<TextField>(subjectFinder);
-      final descriptionField = tester.widget<TextField>(descriptionFinder);
-      expect(subjectField.style?.fontSize, gitlamaText.bodyStrong.fontSize);
-      expect(descriptionField.style?.fontSize, gitlamaText.body.fontSize);
+      final subjectField = editableIn(tester, subjectFinder);
+      final descriptionField = editableIn(tester, descriptionFinder);
+      expect(subjectField.style.fontSize, gitlamaText.bodyStrong.fontSize);
+      expect(descriptionField.style.fontSize, gitlamaText.body.fontSize);
       expect(
         tester
             .getSize(find.byKey(const ValueKey('commit-subject-field')))
             .height,
         greaterThanOrEqualTo(MeridianSize.control),
       );
-      expect(subjectField.decoration?.hintText, 'Commit subject');
-      expect(subjectField.decoration?.isCollapsed, isTrue);
-      expect(subjectField.decoration?.border, InputBorder.none);
-      expect(descriptionField.decoration?.hintText, 'Description');
+      expect(
+        tester
+            .widget<MeridianEditableText>(
+              find.ancestor(
+                of: subjectFinder,
+                matching: find.byType(MeridianEditableText),
+              ),
+            )
+            .placeholder,
+        'Commit subject',
+      );
+      expect(
+        tester
+            .widget<MeridianEditableText>(
+              find.ancestor(
+                of: descriptionFinder,
+                matching: find.byType(MeridianEditableText),
+              ),
+            )
+            .placeholder,
+        'Description',
+      );
       expect(descriptionField.expands, isFalse);
       expect(
         descriptionField.minLines,
@@ -4808,7 +4846,7 @@ void main() {
         findsOneWidget,
       );
       await tester.enterText(descriptionFinder, 'first line\nsecond line');
-      expect(descriptionField.controller?.text, 'first line\nsecond line');
+      expect(descriptionField.controller.text, 'first line\nsecond line');
       await tester.tap(subjectFinder);
       await tester.enterText(subjectFinder, 'fix');
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
@@ -4819,7 +4857,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(subjectField.controller?.text, 'fix design');
+      expect(subjectField.controller.text, 'fix design');
       expect(repository.stagingRequests, isEmpty);
       await tester.tap(descriptionFinder);
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
@@ -4830,7 +4868,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(descriptionField.controller?.text, 'first line second line');
+      expect(descriptionField.controller.text, 'first line second line');
       expect(repository.stagingRequests, isEmpty);
 
       final commitButton = findComposerCommitButton();
@@ -4953,14 +4991,14 @@ void main() {
       expect(runtime.repositorySessions.activeCommitDraft.subject, isEmpty);
       expect(runtime.repositorySessions.activeCommitDraft.description, isEmpty);
       expect(
-        tester
-            .widget<TextField>(find.widgetWithText(TextField, 'Commit subject'))
-            .controller
-            ?.text,
+        editableIn(
+          tester,
+          find.widgetWithText(MeridianEditableText, 'Commit subject'),
+        ).controller.text,
         isEmpty,
       );
       await tester.enterText(
-        find.widgetWithText(TextField, 'Commit subject'),
+        find.widgetWithText(MeridianEditableText, 'Commit subject'),
         'keyboard commit',
       );
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
@@ -4972,7 +5010,7 @@ void main() {
       await tester.showKeyboard(subjectFinder);
       await tester.testTextInput.receiveAction(TextInputAction.next);
       await tester.pump();
-      expect(descriptionField.focusNode?.hasFocus, isTrue);
+      expect(descriptionField.focusNode.hasFocus, isTrue);
       await runtime.shutdown();
     },
   );
@@ -5038,7 +5076,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Commit subject'),
+      find.widgetWithText(MeridianEditableText, 'Commit subject'),
       'keep this draft',
     );
     await tester.pump();
@@ -5146,7 +5184,7 @@ void main() {
 
     // A commit that fails starts no push.
     await tester.enterText(
-      find.widgetWithText(TextField, 'Commit subject'),
+      find.widgetWithText(MeridianEditableText, 'Commit subject'),
       'publish this',
     );
     await tester.pump();
@@ -5292,7 +5330,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Apply patch');
+    await tester.enterText(find.byType(EditableText).last, 'Apply patch');
     await tester.pump();
     await tester.tap(find.widgetWithText(MeridianListRow, 'Apply patch'));
     await tester.pumpAndSettle();
@@ -5375,20 +5413,20 @@ void main() {
       await tester.pumpAndSettle();
       final subject = find.descendant(
         of: find.byKey(const ValueKey('commit-subject-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
       final description = find.descendant(
         of: find.byKey(const ValueKey('commit-description-field')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
       await tester.enterText(subject, 'fix');
       await tester.enterText(description, 'design');
       await tester.pumpAndSettle();
-      final editorText = tester.widget<TextField>(subject);
-      expect(editorText.style?.fontSize, gitlamaText.bodyStrong.fontSize);
+      final editorText = editableIn(tester, subject);
+      expect(editorText.style.fontSize, gitlamaText.bodyStrong.fontSize);
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(Scaffold).first,
+          find.byType(MeridianScaffold).first,
           matchesGoldenFile(
             '../build/evidence/ui-review/inline-patch-editor.png',
           ),
@@ -5449,7 +5487,7 @@ void main() {
       expect(commitMenuBounds.bottom, lessThanOrEqualTo(editorBounds.bottom));
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(Scaffold).first,
+          find.byType(MeridianScaffold).first,
           matchesGoldenFile(
             '../build/evidence/ui-review/inline-patch-editor-scaled.png',
           ),
@@ -5763,7 +5801,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Push tag…'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'v1.0.0'), findsOneWidget);
+    expect(find.widgetWithText(MeridianEditableText, 'v1.0.0'), findsOneWidget);
     await tester.tap(find.widgetWithText(MeridianButton, 'Push tag'));
     await tester.pumpAndSettle();
     expect(repository.transferRequest?.kind, TransferKind.pushTag);
@@ -6251,7 +6289,7 @@ void main() {
     expect(find.text('Conflicts · 1'), findsOneWidget);
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile('../build/evidence/ui-review/conflict-banner.png'),
       );
     }
@@ -6359,7 +6397,7 @@ void main() {
     expect(conflictActions.first.attributes.disabled, isTrue);
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile('../build/evidence/ui-review/conflict-resolver.png'),
       );
     }
@@ -6377,9 +6415,13 @@ void main() {
       tester.getRect(find.byKey(const Key('conflict-result-editor'))).left,
       greaterThan(tester.getRect(comparison).right),
     );
-    final inlineResult = tester
-        .widget<TextField>(find.byKey(const Key('conflict-result-editor')))
-        .controller!;
+    final inlineResult = editableIn(
+      tester,
+      find.descendant(
+        of: find.byKey(const Key('conflict-result-editor')),
+        matching: find.byType(EditableText),
+      ),
+    ).controller;
     await tester.tap(find.byKey(const ValueKey('conflict-take-0-current')));
     await tester.pump();
     expect(inlineResult.text, 'current\n');
@@ -6434,7 +6476,7 @@ void main() {
     );
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile(
           '../build/evidence/ui-review/conflict-inline-selected.png',
         ),
@@ -6474,10 +6516,14 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.binding.setSurfaceSize(const Size(1440, 960));
     await tester.pumpAndSettle();
-    final resultEditor = tester.widget<TextField>(
-      find.byKey(const Key('conflict-result-editor')),
+    final resultEditor = editableIn(
+      tester,
+      find.descendant(
+        of: find.byKey(const Key('conflict-result-editor')),
+        matching: find.byType(EditableText),
+      ),
     );
-    final resultController = resultEditor.controller!;
+    final resultController = resultEditor.controller;
     final edited = resultController.text.replaceRange(20, 20, 'X');
     resultController.value = TextEditingValue(
       text: edited,
@@ -6502,9 +6548,13 @@ void main() {
     expect(repository.conflictRegionChoice, isNull);
     expect(repository.conflictSavedResult, isNull);
     expect(find.text('Resolve file'), findsOneWidget);
-    final draftController = tester
-        .widget<TextField>(find.byKey(const Key('conflict-result-editor')))
-        .controller!;
+    final draftController = editableIn(
+      tester,
+      find.descendant(
+        of: find.byKey(const Key('conflict-result-editor')),
+        matching: find.byType(EditableText),
+      ),
+    ).controller;
     expect(draftController.text, 'current\nincoming\n');
     draftController.text =
         '${draftController.text}Edited after choosing both\n';
@@ -6521,10 +6571,13 @@ void main() {
       findsWidgets,
     );
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('conflict-merge-subject')))
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('conflict-merge-subject')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       'Merge topic',
     );
     await tester.tap(find.widgetWithText(MeridianButton, 'Continue'));
@@ -6626,7 +6679,7 @@ void main() {
     expect(tester.getSize(list).width, greaterThan(resized));
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile(
           '../build/evidence/ui-review/conflict-metadata-wide.png',
         ),
@@ -6644,7 +6697,7 @@ void main() {
     expect(tester.takeException(), isNull);
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile(
           '../build/evidence/ui-review/conflict-metadata-narrow-de.png',
         ),
@@ -6706,7 +6759,7 @@ void main() {
     expect(coloured(cell('incoming'), 'incoming'), isTrue);
 
     final editor = find.byKey(const Key('conflict-result-editor'));
-    final controller = tester.widget<TextField>(editor).controller!;
+    final controller = editableIn(tester, editor).controller;
     InlineSpan result() => controller.buildTextSpan(
       context: tester.element(editor),
       withComposing: false,
@@ -6741,14 +6794,14 @@ void main() {
     for (var frame = 0; frame < 30; frame += 1) {
       await tester.pump(const Duration(milliseconds: 16));
     }
-    final ancestor = tester.widget<SelectableText>(
+    final ancestor = tester.widget<MeridianSelectableText>(
       find.byWidgetPredicate(
         (widget) =>
-            widget is SelectableText &&
-            widget.textSpan?.toPlainText() == 'base\n',
+            widget is MeridianSelectableText &&
+            widget.span?.toPlainText() == 'base\n',
       ),
     );
-    expect(coloured(ancestor.textSpan!, 'base'), isTrue);
+    expect(coloured(ancestor.span!, 'base'), isTrue);
     await runtime.shutdown();
   });
 
@@ -6861,14 +6914,11 @@ void main() {
     expect(find.text('Current: main'), findsOneWidget);
     expect(find.text('Incoming: topic'), findsOneWidget);
     final result = find.byKey(const Key('conflict-result-editor'));
-    final span = tester
-        .widget<TextField>(result)
-        .controller!
-        .buildTextSpan(
-          context: tester.element(result),
-          style: const TextStyle(),
-          withComposing: false,
-        );
+    final span = editableIn(tester, result).controller.buildTextSpan(
+      context: tester.element(result),
+      style: const TextStyle(),
+      withComposing: false,
+    );
     expect(
       (span.children ?? const <InlineSpan>[]).where(
         (child) => child.style?.backgroundColor != null,
@@ -7081,8 +7131,10 @@ void main() {
         .widget<ListView>(find.byKey(const Key('conflict-comparison-lines')))
         .controller!;
     final editor = find.byKey(const Key('conflict-result-editor'));
-    final result = tester.widget<TextField>(editor).scrollController!;
-    final text = tester.widget<TextField>(editor).controller!;
+    final result = tester
+        .widget<MeridianEditableText>(editor)
+        .scrollController!;
+    final text = tester.widget<MeridianEditableText>(editor).controller;
     final editable = find.descendant(
       of: editor,
       matching: find.byType(EditableText),
@@ -7121,7 +7173,7 @@ void main() {
 
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile(
           '../build/evidence/ui-review/conflict-synchronized.png',
         ),
@@ -7609,7 +7661,7 @@ void main() {
       );
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(MaterialApp),
+          find.byType(MeridianApp),
           matchesGoldenFile('../build/evidence/ui-review/logbook.png'),
         );
       }
@@ -7617,7 +7669,7 @@ void main() {
       expect(
         find.byWidgetPredicate(
           (widget) =>
-              widget is SelectableText &&
+              widget is MeridianSelectableText &&
               widget.data?.contains('git fetch --prune origin') == true,
         ),
         findsOneWidget,
@@ -7840,7 +7892,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Copy activity');
+    await tester.enterText(find.byType(EditableText).last, 'Copy activity');
     await tester.pump();
     await tester.tap(find.widgetWithText(MeridianListRow, 'Copy activity'));
     await tester.pumpAndSettle();
@@ -7909,7 +7961,7 @@ void main() {
     expect(find.byTooltip('Logbook'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pump();
-    await tester.enterText(find.byType(TextField).last, 'Cancel');
+    await tester.enterText(find.byType(EditableText).last, 'Cancel');
     await tester.pump();
     await tester.tap(find.widgetWithText(MeridianListRow, 'Cancel'));
     await tester.pump();
@@ -7945,7 +7997,7 @@ void main() {
     expect(find.byTooltip('Logbook'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Try again');
+    await tester.enterText(find.byType(EditableText).last, 'Try again');
     await tester.pump();
     await tester.tap(find.widgetWithText(MeridianListRow, 'Try again'));
     await tester.pumpAndSettle();
@@ -7984,7 +8036,7 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pumpAndSettle();
     expect(find.text('Search commands'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'index');
+    await tester.enterText(find.byType(EditableText), 'index');
     await tester.pump();
     await tester.tap(find.text("Check Git's lock file (index.lock)…"));
     await tester.pumpAndSettle();
@@ -8012,14 +8064,36 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Licenses');
+    await tester.enterText(find.byType(EditableText), 'Licenses');
     await tester.pump();
     await tester.tap(find.widgetWithText(MeridianListRow, 'Licenses'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byType(LicensePage), findsOneWidget);
+    // The registry reads the bundled license assets asynchronously.
+    for (
+      var i = 0;
+      i < 50 &&
+          find
+              .descendant(
+                of: find.byType(MeridianLicenseDialog),
+                matching: find.byType(MeridianNavRow),
+              )
+              .evaluate()
+              .isEmpty;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+    expect(find.byType(MeridianLicenseDialog), findsOneWidget);
     expect(find.text('GitLama'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('meridian-license-GitLama notices')),
+      findsOneWidget,
+    );
     await runtime.shutdown();
   });
 
@@ -8038,7 +8112,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Initialize repository');
+    await tester.enterText(find.byType(EditableText), 'Initialize repository');
     await tester.pump();
     await tester.tap(find.text('Initialize repository').last);
     await tester.pumpAndSettle();
@@ -8063,7 +8137,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Close repository tab');
+    await tester.enterText(find.byType(EditableText), 'Close repository tab');
     await tester.pump();
     await tester.tap(find.text('Close repository tab').last);
     await tester.pumpAndSettle();
@@ -8086,7 +8160,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Next pane');
+    await tester.enterText(find.byType(EditableText), 'Next pane');
     await tester.pump();
     await tester.tap(find.text('Next pane').last);
     await tester.pumpAndSettle();
@@ -8132,7 +8206,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Find');
+    await tester.enterText(find.byType(EditableText), 'Find');
     await tester.pump();
     await tester.tap(find.text('Find').last);
     await tester.pumpAndSettle();
@@ -8141,10 +8215,13 @@ void main() {
       WorkspacePane.history,
     );
     expect(
-      tester
-          .widget<TextField>(find.byKey(const ValueKey('history-query')))
-          .focusNode
-          ?.hasFocus,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey('history-query')),
+          matching: find.byType(EditableText),
+        ),
+      ).focusNode.hasFocus,
       isTrue,
     );
 
@@ -8159,10 +8236,13 @@ void main() {
       WorkspacePane.history,
     );
     expect(
-      tester
-          .widget<TextField>(find.byKey(const ValueKey('history-query')))
-          .focusNode
-          ?.hasFocus,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey('history-query')),
+          matching: find.byType(EditableText),
+        ),
+      ).focusNode.hasFocus,
       isTrue,
     );
     await runtime.shutdown();
@@ -8271,7 +8351,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Edit branch'), findsOneWidget);
     expect(
-      tester.widget<TextField>(findMeridianField('Name')).controller?.text,
+      editableIn(tester, findMeridianField('Name')).controller.text,
       'main',
     );
     await tester.enterText(findMeridianField('Name'), 'trunk');
@@ -8340,12 +8420,13 @@ void main() {
     expect(find.text('Repository extensions'), findsOneWidget);
     expect(findMeridianField('Tracking pattern'), findsOneWidget);
     expect(
-      tester
-          .widget<TextField>(
-            find.byKey(const ValueKey('extension-lfs-pattern')),
-          )
-          .focusNode
-          ?.hasFocus,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey('extension-lfs-pattern')),
+          matching: find.byType(EditableText),
+        ),
+      ).focusNode.hasFocus,
       isTrue,
     );
     await tester.tap(find.byTooltip('Close'));
@@ -8356,10 +8437,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Tools and commands'), findsWidgets);
     expect(
-      tester
-          .widget<TextField>(find.byKey(const ValueKey('integration-id')))
-          .focusNode
-          ?.hasFocus,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const ValueKey('integration-id')),
+          matching: find.byType(EditableText),
+        ),
+      ).focusNode.hasFocus,
       isTrue,
     );
     await tester.tap(find.byTooltip('Close'));
@@ -8693,7 +8777,7 @@ void main() {
       expect(find.text('Interactive rebase'), findsOneWidget);
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(MaterialApp),
+          find.byType(MeridianApp),
           matchesGoldenFile('../build/evidence/ui-review/rebase-editor.png'),
         );
       }
@@ -8759,7 +8843,7 @@ void main() {
     for (final query in ['Undo', 'Redo', 'Recovery history']) {
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, query);
+      await tester.enterText(find.byType(EditableText).last, query);
       await tester.pump();
       expect(find.widgetWithText(MeridianListRow, query), findsNothing);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -8793,7 +8877,7 @@ void main() {
       await tester.pumpWidget(_app(runtime));
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, 'Snapshots');
+      await tester.enterText(find.byType(EditableText).last, 'Snapshots');
       await tester.pump();
       await tester.tap(find.text('Snapshots').last);
       await tester.pumpAndSettle();
@@ -8817,7 +8901,7 @@ void main() {
       expect(find.text('before refactor'), findsOneWidget);
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(MaterialApp),
+          find.byType(MeridianApp),
           matchesGoldenFile('../build/evidence/ui-review/snapshots.png'),
         );
       }
@@ -8878,7 +8962,7 @@ void main() {
     await tester.pumpWidget(_app(runtime));
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Add worktree');
+    await tester.enterText(find.byType(EditableText).last, 'Add worktree');
     await tester.pump();
     await tester.tap(find.text('Add worktree…').last);
     await tester.pumpAndSettle();
@@ -8893,7 +8977,7 @@ void main() {
     expect(find.text('Git LFS is not installed or unavailable.'), findsNothing);
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(Scaffold).first,
+        find.byType(MeridianScaffold).first,
         matchesGoldenFile('../build/evidence/ui-review/worktrees.png'),
       );
     }
@@ -8912,10 +8996,13 @@ void main() {
     expect(picker.canCreateDirectories, isTrue);
     expect(picker.directoryCalls, 1);
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('extension-worktree-path')))
-          .controller!
-          .text,
+      editableIn(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('extension-worktree-path')),
+          matching: find.byType(EditableText),
+        ),
+      ).controller.text,
       '/worktrees/tópico with spaces',
     );
     expect(tester.widget<MeridianButton>(create).onPressed, isNotNull);
@@ -8955,7 +9042,7 @@ void main() {
     await tester.enterText(path, '/worktrees/typed');
     await tester.tap(choose);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(path).controller!.text, '/worktrees/typed');
+    expect(editableIn(tester, path).controller.text, '/worktrees/typed');
     expect(tester.widget<MeridianButton>(create).onPressed, isNotNull);
     expect(repository.extensionRequest, isNull);
 
@@ -8966,7 +9053,7 @@ void main() {
     expect(tester.widget<MeridianButton>(create).onPressed, isNull);
     picker.pendingDirectory!.completeError(StateError('private picker detail'));
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(path).controller!.text, '/worktrees/typed');
+    expect(editableIn(tester, path).controller.text, '/worktrees/typed');
     expect(
       find.text('Could not open the folder picker. Try again or enter a path.'),
       findsOneWidget,
@@ -8978,10 +9065,7 @@ void main() {
     picker.path = '/worktrees/retried';
     await tester.tap(choose);
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<TextField>(path).controller!.text,
-      '/worktrees/retried',
-    );
+    expect(editableIn(tester, path).controller.text, '/worktrees/retried');
     expect(
       find.text('Could not open the folder picker. Try again or enter a path.'),
       findsNothing,
@@ -9012,10 +9096,7 @@ void main() {
       await tester.pumpAndSettle();
       picker.pendingDirectory!.complete('/worktrees/late');
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextField>(path).controller!.text,
-        '/worktrees/typed',
-      );
+      expect(editableIn(tester, path).controller.text, '/worktrees/typed');
       expect(repository.extensionRequest, isNull);
       await tester.tap(find.widgetWithText(MeridianButton, 'Cancel'));
       await tester.pumpAndSettle();
@@ -9203,7 +9284,7 @@ void main() {
           expect(otherRow.emphasized, isFalse);
           if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
             await expectLater(
-              find.byType(Scaffold).first,
+              find.byType(MeridianScaffold).first,
               matchesGoldenFile(
                 '../build/evidence/worktrees/current-${brightness.name}-${locale.languageCode}.png',
               ),
@@ -9496,7 +9577,7 @@ void main() {
     );
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(Scaffold).first,
+        find.byType(MeridianScaffold).first,
         matchesGoldenFile('../build/evidence/worktrees/deletion-error.png'),
       );
     }
@@ -9841,8 +9922,11 @@ void main() {
       expect(names, ['main', 'alpha', 'beta', 'main', 'HEAD', 'alpha']);
 
       bool? thumbVisible() => tester
-          .widget<Scrollbar>(
-            find.descendant(of: sidebar, matching: find.byType(Scrollbar)),
+          .widget<MeridianScrollbarThumb>(
+            find.descendant(
+              of: sidebar,
+              matching: find.byType(MeridianScrollbarThumb),
+            ),
           )
           .thumbVisibility;
       expect(thumbVisible(), isFalse);
@@ -10150,7 +10234,7 @@ void main() {
       expect(find.text('2.50.1'), findsOneWidget);
       expect(
         tester
-            .widget<SelectableText>(
+            .widget<MeridianSelectableText>(
               find.byKey(const ValueKey('repository-details-path')),
             )
             .data,
@@ -10285,7 +10369,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Status');
+    await tester.enterText(find.byType(EditableText).last, 'Status');
     await tester.pump();
     await tester.tap(
       find.byKey(const ValueKey('command-palette-custom-Status')),
@@ -10344,7 +10428,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Open in editor');
+    await tester.enterText(find.byType(EditableText), 'Open in editor');
     await tester.pump();
     await tester.tap(find.text('Open in editor').last);
     await tester.pumpAndSettle();
@@ -10472,7 +10556,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Repository tools');
+    await tester.enterText(find.byType(EditableText).last, 'Repository tools');
     await tester.pump();
     await tester.tap(find.text('Repository tools').last);
     await tester.pumpAndSettle();
@@ -10487,7 +10571,7 @@ void main() {
     expect(find.byKey(const ValueKey('history-query-toolbar')), findsOneWidget);
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(Scaffold).first,
+        find.byType(MeridianScaffold).first,
         matchesGoldenFile('../build/evidence/ui-review/power-tools-docked.png'),
       );
     }
@@ -10747,7 +10831,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Check out branch…'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'feature/ui/polish'), findsOneWidget);
+    expect(
+      find.widgetWithText(MeridianEditableText, 'feature/ui/polish'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     await runtime.shutdown();
@@ -10895,8 +10982,8 @@ void main() {
       await tester.tap(find.text('Create branch…'));
       await tester.pumpAndSettle();
       expect(findTextFieldValue(commit), findsOneWidget);
-      final nameField = tester.widget<TextField>(findMeridianField('Name'));
-      expect(nameField.controller!.text, isEmpty);
+      final nameField = editableIn(tester, findMeridianField('Name'));
+      expect(nameField.controller.text, isEmpty);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       await runtime.shutdown();
@@ -11003,7 +11090,7 @@ void main() {
 
     await tester.tap(clearSearch);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(search).controller?.text, isEmpty);
+    expect(editableIn(tester, search).controller.text, isEmpty);
     expect(find.text('1 of 1'), findsNothing);
     expect(find.text('No matches'), findsNothing);
     expect(clearSearch, findsNothing);
@@ -11014,10 +11101,10 @@ void main() {
     expect(find.text('1 of 1'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(search).controller?.text, isEmpty);
+    expect(editableIn(tester, search).controller.text, isEmpty);
     expect(find.text('1 of 1'), findsNothing);
     expect(find.text('No matches'), findsNothing);
-    expect(tester.widget<TextField>(search).focusNode?.hasFocus, isTrue);
+    expect(editableIn(tester, search).focusNode.hasFocus, isTrue);
     await runtime.shutdown();
   });
 
@@ -11278,7 +11365,7 @@ void main() {
     Future<void> runCommand(String label) async {
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, label);
+      await tester.enterText(find.byType(EditableText).last, label);
       await tester.pump();
       await tester.tap(find.widgetWithText(MeridianListRow, label));
       await tester.pumpAndSettle();
@@ -11313,7 +11400,7 @@ void main() {
     expect(find.byKey(const ValueKey('inspector-back')), findsOneWidget);
     if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
       await expectLater(
-        find.byType(MaterialApp),
+        find.byType(MeridianApp),
         matchesGoldenFile('../build/evidence/ui-review/path-history.png'),
       );
     }
@@ -12340,7 +12427,7 @@ void main() {
     ).firstWhere((item) => item.title == 'Edit branch…').callback();
     await tester.pumpAndSettle();
     expect(
-      tester.widget<TextField>(findMeridianField('Name')).controller?.text,
+      editableIn(tester, findMeridianField('Name')).controller.text,
       'topic',
     );
     await tester.tap(find.text('Cancel'));
@@ -12354,7 +12441,7 @@ void main() {
       shown.single,
     ).firstWhere((item) => item.title == 'Push tag…').callback();
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'v1.0'), findsOneWidget);
+    expect(find.widgetWithText(MeridianEditableText, 'v1.0'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(
@@ -12474,7 +12561,10 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, 'Toggle diff layout');
+    await tester.enterText(
+      find.byType(EditableText).last,
+      'Toggle diff layout',
+    );
     await tester.pump();
     await tester.tap(
       find.widgetWithText(MeridianListRow, 'Toggle diff layout'),
@@ -12485,7 +12575,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byType(TextField).last,
+      find.byType(EditableText).last,
       'Render diff with configured renderer',
     );
     await tester.pump();
@@ -12680,7 +12770,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         await expectLater(
-          find.byType(MaterialApp),
+          find.byType(MeridianApp),
           matchesGoldenFile('../build/evidence/ui-review/shell-toolbar.png'),
         );
       }
@@ -12749,7 +12839,7 @@ void main() {
       final settingsDialog = find.byType(MeridianDialogSurface);
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(MaterialApp),
+          find.byType(MeridianApp),
           matchesGoldenFile('../build/evidence/ui-review/settings.png'),
         );
       }
@@ -12919,7 +13009,10 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, 'Keyboard shortcuts');
+      await tester.enterText(
+        find.byType(EditableText).last,
+        'Keyboard shortcuts',
+      );
       await tester.pump();
       await tester.tap(find.text('Keyboard shortcuts').last);
       await tester.pumpAndSettle();
@@ -12935,7 +13028,7 @@ void main() {
       expect(find.textContaining('Add worktree'), findsWidgets);
       if (const bool.fromEnvironment('CAPTURE_UI_REVIEW')) {
         await expectLater(
-          find.byType(MaterialApp),
+          find.byType(MeridianApp),
           matchesGoldenFile(
             '../build/evidence/ui-review/shortcut-reference-${brightness.name}.png',
           ),
@@ -13066,7 +13159,7 @@ void main() {
       for (final key in ['commit-subject-field', 'commit-description-field']) {
         final field = find.descendant(
           of: find.byKey(ValueKey(key)),
-          matching: find.byType(TextField),
+          matching: find.byType(EditableText),
         );
         await tester.enterText(field, 'First');
         await tester.pump();
@@ -13083,10 +13176,7 @@ void main() {
           ),
         );
         await tester.pump();
-        expect(
-          tester.widget<TextField>(field).controller!.text,
-          'First second',
-        );
+        expect(editableIn(tester, field).controller.text, 'First second');
         expect(repository.stagingRequests, isEmpty);
       }
       await tester.tap(
@@ -13435,7 +13525,7 @@ void main() {
       Future<void> runCommand(String label) async {
         await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
         await tester.pumpAndSettle();
-        await tester.enterText(find.byType(TextField).last, label);
+        await tester.enterText(find.byType(EditableText).last, label);
         await tester.pump();
         await tester.tap(find.widgetWithText(MeridianListRow, label));
         await tester.pumpAndSettle();
@@ -13532,7 +13622,10 @@ Future<void> _openCreateWorktree(
   final l10n = AppLocalizations.of(tester.element(find.byType(HomeScreen)));
   await tester.tap(find.byKey(const ValueKey('toolbar-command-palette')));
   await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).last, l10n.commandAddWorktree);
+  await tester.enterText(
+    find.byType(EditableText).last,
+    l10n.commandAddWorktree,
+  );
   await tester.pump();
   await tester.tap(find.text(l10n.commandAddWorktree).last);
   await tester.pumpAndSettle();
@@ -13825,10 +13918,10 @@ Widget _app(
   AppRuntime runtime, {
   Locale locale = const Locale('en'),
   Brightness brightness = Brightness.light,
-}) => MaterialApp(
+}) => MeridianApp(
   builder: (context, child) => StatusNotificationScope(child: child!),
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: gitLamaLocalizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   theme: buildAppTheme(brightness),
   home: HomeScreen(runtime: runtime),
