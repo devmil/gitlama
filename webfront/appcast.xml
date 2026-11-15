@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.67</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>68</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.67</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Text fields no longer show a touch-style drop under the cursor when a dialog opens with a prefilled name. Right-clicking selectable text on desktop opens the copy menu again.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.67-68/GitLama-0.1.0-beta.67-68-macos-arm64.dmg" length="33308402" type="application/octet-stream" sparkle:edSignature="iNUHPMb2pEdYCtGcRN99phOqe4FI1ICibAoPfwFotnak7h0+wqqh6LOe0RycKZkII8j4bz5owI/oIZ5bvuEFDw==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.66</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>67</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;The default branch’s CI status now sits inside its branch chip in History, matching pull request chips.&lt;/li&gt;&lt;li&gt;Creating a branch from the toolbar or sidebar now starts at the current commit. Creating one from History uses the chosen commit. If that commit is unavailable, GitLama lets you refresh and choose again while keeping your input. Switching repositories cannot apply an open branch dialog to another repository. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.61-62/GitLama-0.1.0-beta.61-62-macos-arm64.dmg" length="33463140" type="application/octet-stream" sparkle:edSignature="D+vSo8LO2d/rXM3L6DjUXw6bM+PVT9L/eKZV4uciyAXc0Rg6qcW6luqkVbV+B5iFf3jj6mI12S0OZHYq/JC1Dw==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.60</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>61</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.60</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;Files GitLama shows as binary can now be shown as text anyway with Show as text, in the Changes and History diffs and in the History file preview. This helps with text files Git mistakes for binary; for real binary files the result is unreadable. Lines of such a file cannot be staged one by one. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;li&gt;SSH destinations now accept `user@host` in the Add host form, `--remote` and `ssh://` links, using existing SSH keys and agent authentication.&lt;/li&gt;&lt;li&gt;When a host already has the maximum number of repositories open, GitLama now explains the limit and asks you to close another repository tab on that host before trying again.&lt;/li&gt;&lt;li&gt;Opening a worktree on a host that already has the maximum number of repositories open now shows the same explanation in the worktree&amp;#x27;s tab.&lt;/li&gt;&lt;li&gt;You can now have up to 16 repositories open per host instead of 8. Hosts receive an updated GitLama helper the next time they connect.&lt;/li&gt;&lt;li&gt;Open a repository on a host from the terminal or another app with `gitlama --remote &amp;lt;host&amp;gt; &amp;lt;path&amp;gt;` or `gitlama ssh://&amp;lt;host&amp;gt;/&amp;lt;path&amp;gt;`, using an SSH alias, hostname or `user@host`. If no saved host matches yet, GitLama offers to add it first.&lt;/li&gt;&lt;li&gt;History now also shows whether CI passes on your repository&amp;#x27;s main branch, next to the main branch&amp;#x27;s chip.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.60-61/GitLama-0.1.0-beta.60-61-macos-arm64.dmg" length="33454430" type="application/octet-stream" sparkle:edSignature="ddspds0oOf8ZMnm8j+TTvwsEPYngLPp0ksCvVhIsQe5eR/i2jQJhWTtW0s/UywGVXfuqrngO5polzMDzuYKSAA==" />
     </item>
   </channel>
 </rss>
