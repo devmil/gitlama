@@ -2718,7 +2718,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 No top-level license file was present in the resolved source.
 
-## meridian_ui 2.0.0
+## meridian_ui 2.0.2
 
 ### LICENSE
 

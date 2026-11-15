@@ -32,12 +32,12 @@ dependencies:
   meridian_ui:
     git:
       url: https://github.com/devmil/meridian_ui.git
-      ref: 84cb8f03a9be0b633eb7b3c0957107416f78dce3
+      ref: d2627480239096d9977e4983499ec1332feaba08
   # Meridian's native menu companion, from the same commit as meridian_ui.
   meridian_native_menus:
     git:
       url: https://github.com/devmil/meridian_ui.git
-      ref: 84cb8f03a9be0b633eb7b3c0957107416f78dce3
+      ref: d2627480239096d9977e4983499ec1332feaba08
       path: packages/meridian_native_menus
 
 dev_dependencies:
