@@ -52,6 +52,8 @@
 
 ## Unreleased Beta
 
+## [0.1.0-beta.67] - 2026-11-15
+
 - Hide the touch selection handle on desktop text fields (Meridian 2.0.2). A field filled in and focused when it opens, such as the name in a dialog, showed a drop under the caret on macOS, Linux and Windows until clicked. Right-click menus on selectable text, such as copying from a read-only label, open again on desktop. The remote helper keeps its version.
 
 ## [0.1.0-beta.66] - 2026-11-15
