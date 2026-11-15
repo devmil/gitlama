@@ -50,6 +50,8 @@
 
 ## Unreleased Beta
 
+- Text fields no longer show a touch-style drop under the cursor when a dialog opens with a prefilled name. Right-clicking selectable text on desktop opens the copy menu again.
+
 ## [0.1.0-beta.66] - 2026-11-15
 
 - Record safe diagnostic events for fetch, pull and push, including background fetch, with start, result and failure events and detailed timing.
