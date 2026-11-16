@@ -92,8 +92,9 @@ command -v "$CONTAINER_ENGINE" >/dev/null 2>&1 || {
   exit 1
 }
 VOLUME_SUFFIX=""
+SDK_VOLUME_OPTIONS=ro
 case "$(basename "$CONTAINER_ENGINE")" in
-  *podman*) VOLUME_SUFFIX=":Z" ;;
+  *podman*) VOLUME_SUFFIX=":Z"; SDK_VOLUME_OPTIONS=ro,Z ;;
 esac
 
 mkdir -p "$STAGE/Flutter/GitLama"
@@ -181,7 +182,13 @@ if [[ "$MODE" == remote-helper ]]; then
   exit 0
 fi
 
+[[ -n "${GITLAMA_LINUX_SDK_DIR:-}" ]] || { echo "Select the verified release SDK before packaging" >&2; exit 1; }
+python3 "$ROOT/scripts/linux/sdk-package.py" verify --root "$GITLAMA_LINUX_SDK_DIR" --mode release >/dev/null
 "$CONTAINER_ENGINE" run --rm \
+  --volume "$GITLAMA_LINUX_SDK_DIR:/opt/gitlama-engine:$SDK_VOLUME_OPTIONS" \
+  --env GITLAMA_LINUX_SDK_DIR=/opt/gitlama-engine \
+  --env GITLAMA_FLUTTER_FRAMEWORK_SDK=/opt/flutter \
+  --env GITLAMA_LINUX_MODE=release \
   --platform linux/amd64 \
   --env APPIMAGE_EXTRACT_AND_RUN=1 \
   --env "GITLAMA_SOURCE_COMMIT=$SOURCE_COMMIT" \
@@ -199,6 +206,7 @@ fi
   "$IMAGE" \
   bash -lc '
     set -euo pipefail
+    export PATH="$PWD/scripts/linux/bin:$PATH"
     # Hooks filter GIT_CONFIG_* out of their environment. Resolve the full
     # locked native graph here while the scoped HTTPS rewrite is available,
     # then prohibit a second credential path from inside a hook.

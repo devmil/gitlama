@@ -340,13 +340,17 @@ jobs:
     if: ${{ needs.prepare.outputs.mode != 'recover' }}
     needs: [prepare, helper, helper-macos]
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    timeout-minutes: 300
     steps:
       - name: Free disk space for the package build
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare.outputs.revision }}
+      - uses: ./.github/actions/flutter
+      - uses: ./.github/actions/flutter-linux
+        with:
+          mode: release
       - name: Download the remote helper to bundle
         uses: actions/download-artifact@v4
         with:

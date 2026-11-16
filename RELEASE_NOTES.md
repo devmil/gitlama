@@ -50,6 +50,8 @@
 
 ## Unreleased Beta
 
+- Linux window resizing keeps the last painted Flutter frame and uses the active light or dark window background instead of black in temporarily exposed areas.
+
 ## [0.1.0-beta.67] - 2026-11-15
 
 - Text fields no longer show a touch-style drop under the cursor when a dialog opens with a prefilled name. Right-clicking selectable text on desktop opens the copy menu again.
