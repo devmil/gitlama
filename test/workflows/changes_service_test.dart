@@ -438,6 +438,75 @@ void main() {
     expect(repository.stagingRequests, hasLength(1));
   });
 
+  test('queued clicks combine into one whole-file request', () async {
+    await open([a, b, c]);
+    final gate = repository.stagingGate = Completer<void>();
+    final first = changes.stage(
+      interaction,
+      tab,
+      StagingSide.unstaged,
+      StagingScope.files,
+      [a],
+    );
+    final second = changes.stage(
+      interaction,
+      tab,
+      StagingSide.unstaged,
+      StagingScope.files,
+      [b],
+    );
+    final third = changes.stage(
+      interaction,
+      tab,
+      StagingSide.unstaged,
+      StagingScope.files,
+      [c],
+    );
+    expect(changes.pendingStages(tab), 1);
+    gate.complete();
+    await Future.wait([first, second, third]);
+    expect(repository.stagingRequests, hasLength(2));
+    expect(repository.stagingRequests.last.paths, [
+      utf8Bytes('b.txt'),
+      utf8Bytes('c.txt'),
+    ]);
+  });
+
+  test(
+    'large filtered folder selections respect the native path limit',
+    () async {
+      final shown = List.generate(257, (i) => _entry('folder/$i.txt'));
+      final hidden = _entry('folder/hidden.txt');
+      await open([...shown, hidden]);
+      await changes.stage(
+        interaction,
+        tab,
+        StagingSide.unstaged,
+        StagingScope.files,
+        shown,
+      );
+      expect(repository.stagingRequests.map((r) => r.paths.length), [256, 1]);
+      expect(
+        repository.stagingRequests.expand((r) => r.paths),
+        List.generate(257, (i) => utf8Bytes('folder/$i.txt')),
+      );
+    },
+  );
+
+  test('a failed batch stops the rest of a large selection', () async {
+    final entries = List.generate(257, (i) => _entry('folder/$i.txt'));
+    await open(entries);
+    repository.stagingState = StagingExecutionState.failed;
+    await changes.stage(
+      interaction,
+      tab,
+      StagingSide.unstaged,
+      StagingScope.files,
+      entries,
+    );
+    expect(repository.stagingRequests, hasLength(1));
+  });
+
   test('queue admission is bounded and resumes after cancellation', () async {
     final entries = List.generate(
       ChangesService.maximumPendingStages + 2,
@@ -454,12 +523,13 @@ void main() {
         [entries.first],
       ),
     ];
-    for (final entry in entries.skip(1)) {
+    for (var i = 1; i < entries.length; i++) {
+      final entry = entries[i];
       requests.add(
         changes.stage(
           interaction,
           tab,
-          StagingSide.unstaged,
+          i.isOdd ? StagingSide.staged : StagingSide.unstaged,
           StagingScope.files,
           [entry],
         ),
