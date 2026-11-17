@@ -31,3 +31,15 @@ These checks cover native corners and content placement. The GL child must not
 receive a curved clip or be redirected through an offscreen Cairo surface;
 verify the actual app with `perf` as well to detect full-window GL readback. Full app appearance,
 physical input and native WebView acceptance remain separate checks.
+
+On native Hyprland the compositor owns the frame: GTK decorations and content
+insets are disabled so displayed controls and input coordinates agree. The
+fixture checks an edge-to-edge GL child on that path. Repeat with
+`HYPRLAND_INSTANCE_SIGNATURE` unset for the ordinary GTK frame path, and with
+`GDK_BACKEND=x11` while retaining that marker to check the X11 guard. GitLama's
+fixture also covers plugin-created, already-realized inspector windows.
+
+The packaged desktop entry declares `X-Omarchy-ClientControls=true`. Standard
+minimize/maximize requests and duplicate-caption suppression require the
+corresponding Omarchy titlebar-plugin and minimize-helper integration updates;
+no app-side Hyprland window-management commands are added.

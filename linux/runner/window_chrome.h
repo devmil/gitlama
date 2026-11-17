@@ -10,8 +10,9 @@
 // must be called on the GTK thread.
 typedef struct _GitLamaWindowChrome GitLamaWindowChrome;
 
-// Creates a titlebar-free window with native rounded borders, shadows
-// and resize edges. Add the Flutter view with add_rounded_window_content before realization.
+// Creates a titlebar-free window. Native Hyprland owns the frame; other
+// backends retain GTK rounded borders, shadows and resize edges. Add the
+// Flutter view with add_rounded_window_content before realization.
 GtkWindow* gitlama_window_chrome_new_window(GtkApplication* application);
 
 GitLamaWindowChrome* gitlama_window_chrome_new(
@@ -21,8 +22,8 @@ GitLamaWindowChrome* gitlama_window_chrome_new(
 void gitlama_window_chrome_free(GitLamaWindowChrome* chrome);
 
 // Gives a window created by desktop_multi_window the main window's treatment:
-// its GTK header bar is hidden, the native border carries the rounded
-// corners, and a chrome owned by the window serves the Flutter caption of
+// its GTK header bar is hidden, the main-window framing policy applies,
+// and a chrome owned by the window serves the Flutter caption of
 // [view]'s engine until the window is destroyed.
 void gitlama_window_chrome_adopt_view(FlView* view);
 
