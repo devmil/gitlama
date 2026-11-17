@@ -508,6 +508,11 @@ def main() -> None:
         run("flutter", "build", platform_name, "--release", *native_build_options,
             f"--split-debug-info={ROOT / 'build/symbols/dart' / platform_name}")
     source = require_release_bundle(platform_name)
+    if platform_name == "linux":
+        run("bash", "scripts/linux/repair-loader-paths.sh", str(source))
+        run(sys.executable, "scripts/linux/verify-engine.py", str(source),
+            "--mode", "release", "--write-provenance")
+        run(sys.executable, "scripts/linux/verify-artifact.py", str(source))
     # Build-tree originals remain available for symbol collection. Do not
     # ship native DWARF in installers or change signed helper payload bytes.
     if platform_name == "linux":

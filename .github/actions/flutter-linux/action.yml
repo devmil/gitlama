@@ -1,0 +1,88 @@
+name: Setup cached custom Linux Flutter
+description: Build once per locked engine identity; verify the portable SDK before every use.
+inputs:
+  mode:
+    description: Debug/profile/release engine mode
+    required: true
+runs:
+  using: composite
+  steps:
+  - name: Validate locked inputs
+    id: identity
+    env:
+      SDK_MODE: ${{ inputs.mode }}
+    run: |
+      set -euo pipefail
+      python3 scripts/linux/prepare-toolchain.py --validate-only --mode "$SDK_MODE" > sdk-identity.json
+      echo "key=$(python3 -c 'import json; print(json.load(open("sdk-identity.json"))["identity"])')" >> "$GITHUB_OUTPUT"
+    shell: bash
+  - uses: actions/cache/restore@v4
+    id: cache
+    with:
+      path: |
+        build/linux-sdk
+        build/linux-sdk-symbols
+      key: linux-flutter-overlay-v1-${{ steps.identity.outputs.key }}
+  - name: Build and test exact engine in pinned builder
+    if: steps.cache.outputs.cache-hit != 'true'
+    env:
+      SDK_MODE: ${{ inputs.mode }}
+    run: |
+      set -euo pipefail
+      # Source, sysroots, objects and Docker layers need a cold-build budget.
+      # These removals apply only to this disposable GitHub-hosted runner.
+      test "$RUNNER_ENVIRONMENT" = github-hosted
+      sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      available=$(df --output=avail -B1 "$GITHUB_WORKSPACE" | tail -1)
+      test "$available" -ge 21474836480 || { echo 'Engine build requires 20 GiB free disk' >&2; exit 1; }
+      docker build --tag gitlama-flutter-builder --file tooling/linux/Containerfile .
+      mkdir -p .ci-linux-sdk build/linux-sdk
+      docker run --rm --cpus 2 --memory 6g --user "$(id -u):$(id -g)" \
+        --env HOME=/workspace/.ci-linux-sdk/home \
+        --env GITLAMA_LINUX_CACHE_DIR=/workspace/.ci-linux-sdk/source \
+        --env SDK_MODE="$SDK_MODE" \
+        --volume "$GITHUB_WORKSPACE:/workspace" --workdir /workspace \
+        gitlama-flutter-builder bash -euo pipefail -c '
+          mkdir -p "$HOME"
+          python3 scripts/linux/prepare-toolchain.py --mode "$SDK_MODE" --jobs 2 > build/linux-sdk/paths.json
+          python3 scripts/linux/capture-symbols.py --paths build/linux-sdk/paths.json --output build/linux-sdk-symbols
+          python3 scripts/linux/sdk-package.py pack --paths build/linux-sdk/paths.json --output build/linux-sdk/engine.tar.gz
+        '
+      rm build/linux-sdk/paths.json
+    shell: bash
+  - name: Verify portable consumer in fresh directory
+    env:
+      SDK_MODE: ${{ inputs.mode }}
+    run: |
+      set -euo pipefail
+      python3 scripts/linux/sdk-package.py install \
+        --archive build/linux-sdk/engine.tar.gz --checksum-file build/linux-sdk/engine.tar.gz.sha256 \
+        --destination "$RUNNER_TEMP/gitlama-linux-sdk-$SDK_MODE" --mode "$SDK_MODE" > sdk-consumer.json
+    shell: bash
+  - name: Persist verified SDK overlay
+    if: steps.cache.outputs.cache-hit != 'true'
+    uses: actions/cache/save@v4
+    with:
+      path: |-
+        build/linux-sdk
+        build/linux-sdk-symbols
+      key: linux-flutter-overlay-v1-${{ steps.identity.outputs.key }}
+  - name: Select verified custom Linux SDK
+    shell: bash
+    env:
+      SDK_MODE: ${{ inputs.mode }}
+    run: |
+      set -euo pipefail
+      framework=$(dirname "$(dirname "$(readlink -f "$(command -v flutter)")")")
+      echo "GITLAMA_FLUTTER_FRAMEWORK_SDK=$framework" >> "$GITHUB_ENV"
+      echo "GITLAMA_LINUX_SDK_DIR=$RUNNER_TEMP/gitlama-linux-sdk-$SDK_MODE" >> "$GITHUB_ENV"
+      echo "GITLAMA_LINUX_MODE=$SDK_MODE" >> "$GITHUB_ENV"
+      echo "$GITHUB_WORKSPACE/scripts/linux/bin" >> "$GITHUB_PATH"
+  - name: Remove owned compiler workspace
+    if: always()
+    shell: bash
+    run: |
+      set -euo pipefail
+      if [[ -f "$GITHUB_WORKSPACE/.ci-linux-sdk/source/.gitlama-sdk-owner" ]]; then
+        rm -rf -- "$GITHUB_WORKSPACE/.ci-linux-sdk"
+      fi

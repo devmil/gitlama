@@ -1,0 +1,639 @@
+diff --git a/engine/src/flutter/shell/platform/linux/BUILD.gn b/engine/src/flutter/shell/platform/linux/BUILD.gn
+--- a/engine/src/flutter/shell/platform/linux/BUILD.gn
++++ b/engine/src/flutter/shell/platform/linux/BUILD.gn
+@@ -82,6 +82,17 @@
+ }
+ 
+ source_set("flutter_linux_sources") {
++  # Retain original DWARF for the patched embedder, independently of the
++  # stripped runtime image and the engine's release symbol default.
++  if (symbol_level == 0) {
++    configs -= [ "//build/config/compiler:no_symbols" ]
++  } else if (symbol_level == 1) {
++    configs -= [ "//build/config/compiler:minimal_symbols" ]
++  }
++  if (symbol_level != 2) {
++    configs += [ "//build/config/compiler:symbols" ]
++  }
++
+   public = _public_headers + [
+              "fl_binary_messenger_private.h",
+              "fl_engine_private.h",
+@@ -97,6 +108,7 @@
+              "fl_plugin_registrar_private.h",
+              "fl_pointer_manager.h",
+              "fl_task_runner.h",
++             "fl_resize_vsync.h",
+              "fl_view_monitor.h",
+              "fl_view_private.h",
+              "fl_window_monitor.h",
+@@ -161,6 +173,8 @@
+     "fl_settings.cc",
+     "fl_settings_channel.cc",
+     "fl_settings_handler.cc",
++    "fl_resize_vsync.cc",
++    "fl_resize_vsync.h",
+     "fl_settings_portal.cc",
+     "fl_socket_accessible.cc",
+     "fl_standard_message_codec.cc",
+@@ -271,6 +285,7 @@
+     "fl_pointer_manager_test.cc",
+     "fl_scrolling_manager_test.cc",
+     "fl_settings_handler_test.cc",
++    "fl_resize_vsync_test.cc",
+     "fl_settings_portal_test.cc",
+     "fl_standard_message_codec_test.cc",
+     "fl_standard_method_codec_test.cc",
+diff --git a/engine/src/flutter/shell/platform/linux/fl_dart_project.cc b/engine/src/flutter/shell/platform/linux/fl_dart_project.cc
+--- a/engine/src/flutter/shell/platform/linux/fl_dart_project.cc
++++ b/engine/src/flutter/shell/platform/linux/fl_dart_project.cc
+@@ -17,6 +17,7 @@
+   FlUIThreadPolicy ui_thread_policy;
+   gboolean enable_impeller;
+   gboolean enable_flutter_gpu;
++  gboolean enable_resize_vsync;
+ };
+ 
+ G_DEFINE_TYPE(FlDartProject, fl_dart_project, G_TYPE_OBJECT)
+@@ -159,3 +160,15 @@
+   g_return_val_if_fail(FL_IS_DART_PROJECT(project), FALSE);
+   return project->enable_flutter_gpu;
+ }
++
++G_MODULE_EXPORT void fl_dart_project_set_enable_resize_vsync(
++    FlDartProject* project,
++    gboolean enabled) {
++  g_return_if_fail(FL_IS_DART_PROJECT(project));
++  project->enable_resize_vsync = enabled;
++}
++G_MODULE_EXPORT gboolean
++fl_dart_project_get_enable_resize_vsync(FlDartProject* project) {
++  g_return_val_if_fail(FL_IS_DART_PROJECT(project), FALSE);
++  return project->enable_resize_vsync;
++}
+diff --git a/engine/src/flutter/shell/platform/linux/fl_dart_project_test.cc b/engine/src/flutter/shell/platform/linux/fl_dart_project_test.cc
+--- a/engine/src/flutter/shell/platform/linux/fl_dart_project_test.cc
++++ b/engine/src/flutter/shell/platform/linux/fl_dart_project_test.cc
+@@ -90,3 +90,11 @@
+   fl_dart_project_set_enable_flutter_gpu(project, FALSE);
+   EXPECT_FALSE(fl_dart_project_get_enable_flutter_gpu(project));
+ }
++
++TEST_F(FlDartProjectTest, ResizeVsyncIsExplicitlyRequested) {
++  EXPECT_FALSE(fl_dart_project_get_enable_resize_vsync(project));
++  fl_dart_project_set_enable_resize_vsync(project, TRUE);
++  EXPECT_TRUE(fl_dart_project_get_enable_resize_vsync(project));
++  fl_dart_project_set_enable_resize_vsync(project, FALSE);
++  EXPECT_FALSE(fl_dart_project_get_enable_resize_vsync(project));
++}
+diff --git a/engine/src/flutter/shell/platform/linux/fl_engine.cc b/engine/src/flutter/shell/platform/linux/fl_engine.cc
+--- a/engine/src/flutter/shell/platform/linux/fl_engine.cc
++++ b/engine/src/flutter/shell/platform/linux/fl_engine.cc
+@@ -22,6 +22,7 @@
+ #include "flutter/shell/platform/linux/fl_pixel_buffer_texture_private.h"
+ #include "flutter/shell/platform/linux/fl_platform_handler.h"
+ #include "flutter/shell/platform/linux/fl_plugin_registrar_private.h"
++#include "flutter/shell/platform/linux/fl_resize_vsync.h"
+ #include "flutter/shell/platform/linux/fl_settings_handler.h"
+ #include "flutter/shell/platform/linux/fl_texture_gl_private.h"
+ #include "flutter/shell/platform/linux/fl_texture_registrar_private.h"
+@@ -82,6 +83,8 @@
+ 
+   // Schedules tasks to be run on the appropriate thread.
+   FlTaskRunner* task_runner;
++
++  FlResizeVsync* resize_vsync;
+ 
+   // Ahead of time data used to make engine run faster.
+   FlutterEngineAOTData aot_data;
+@@ -589,9 +592,27 @@
+   }
+ }
+ 
++static void deliver_vsync(gpointer data,
++                          intptr_t baton,
++                          uint64_t start,
++                          uint64_t target) {
++  FlEngine* self = FL_ENGINE(data);
++  if (self->engine != nullptr &&
++      self->embedder_api.OnVsync(self->engine, baton, start, target) !=
++          kSuccess) {
++    g_warning("Failed to deliver resize vsync");
++  }
++}
++static void request_vsync(void* data, intptr_t baton) {
++  FlEngine* self = FL_ENGINE(data);
++  fl_resize_vsync_request(self->resize_vsync, baton);
++}
++
+ static void fl_engine_dispose(GObject* object) {
+   FlEngine* self = FL_ENGINE(object);
+ 
++  if (self->resize_vsync != nullptr)
++    fl_resize_vsync_shutdown(self->resize_vsync);
+   if (self->engine != nullptr) {
+     if (self->embedder_api.Shutdown(self->engine) != kSuccess) {
+       g_warning("Failed to shutdown Flutter engine");
+@@ -609,6 +630,7 @@
+   fl_binary_messenger_shutdown(self->binary_messenger);
+   fl_texture_registrar_shutdown(self->texture_registrar);
+ 
++  g_clear_object(&self->resize_vsync);
+   g_clear_object(&self->project);
+   g_clear_object(&self->display_monitor);
+   g_clear_object(&self->opengl_manager);
+@@ -880,6 +902,15 @@
+   args.dart_entrypoint_argv =
+       reinterpret_cast<const char* const*>(dart_entrypoint_args);
+   args.engine_id = reinterpret_cast<int64_t>(self);
++  // Internal-engine-thread callbacks are safe here only because the UI runner
++  // is merged with this platform thread. Never call GTK from a separate UI
++  // runner.
++  if (fl_dart_project_get_enable_resize_vsync(self->project) &&
++      fl_dart_project_get_ui_thread_policy(self->project) !=
++          FL_UI_THREAD_POLICY_RUN_ON_SEPARATE_THREAD) {
++    self->resize_vsync = fl_resize_vsync_new(deliver_vsync, self);
++    args.vsync_callback = request_vsync;
++  }
+ 
+   FlutterCompositor compositor = {};
+   compositor.struct_size = sizeof(FlutterCompositor);
+@@ -1032,6 +1063,8 @@
+                            GAsyncReadyCallback callback,
+                            gpointer user_data) {
+   g_return_if_fail(FL_IS_ENGINE(self));
++  if (self->resize_vsync != nullptr)
++    fl_resize_vsync_remove_view(self->resize_vsync, view_id);
+ 
+   remove_renderable(self, view_id);
+ 
+@@ -1223,7 +1256,10 @@
+   if (self->embedder_api.SendWindowMetricsEvent(self->engine, &event) !=
+       kSuccess) {
+     g_warning("Failed to send window metrics");
+-  }
++    return;
++  }
++  if (self->resize_vsync != nullptr)
++    fl_resize_vsync_notify_metrics(self->resize_vsync, &event);
+ }
+ 
+ void fl_engine_send_mouse_pointer_event(FlEngine* self,
+@@ -1639,3 +1675,10 @@
+   g_return_val_if_fail(FL_IS_ENGINE(self), nullptr);
+   return self->mouse_cursor_handler;
+ }
++
++void fl_engine_set_frame_clock(FlEngine* self,
++                               GdkFrameClock* clock,
++                               double rate) {
++  if (self->resize_vsync != nullptr)
++    fl_resize_vsync_set_frame_clock(self->resize_vsync, clock, rate);
++}
+diff --git a/engine/src/flutter/shell/platform/linux/fl_engine_private.h b/engine/src/flutter/shell/platform/linux/fl_engine_private.h
+--- a/engine/src/flutter/shell/platform/linux/fl_engine_private.h
++++ b/engine/src/flutter/shell/platform/linux/fl_engine_private.h
+@@ -667,6 +667,10 @@
+  */
+ FlEngine* fl_engine_for_id(int64_t handle);
+ 
++void fl_engine_set_frame_clock(FlEngine* engine,
++                               GdkFrameClock* clock,
++                               double refresh_rate);
++
+ G_END_DECLS
+ 
+ #endif  // FLUTTER_SHELL_PLATFORM_LINUX_FL_ENGINE_PRIVATE_H_
+diff --git a/engine/src/flutter/shell/platform/linux/fl_engine_test.cc b/engine/src/flutter/shell/platform/linux/fl_engine_test.cc
+--- a/engine/src/flutter/shell/platform/linux/fl_engine_test.cc
++++ b/engine/src/flutter/shell/platform/linux/fl_engine_test.cc
+@@ -1208,3 +1208,50 @@
+ }
+ 
+ // NOLINTEND(clang-analyzer-core.StackAddressEscape)
++
++TEST_F(FlEngineTest, ResizeVsyncUsesPlatformUiOnly) {
++  fl_dart_project_set_enable_resize_vsync(project, TRUE);
++  fl_dart_project_set_ui_thread_policy(
++      project, FL_UI_THREAD_POLICY_RUN_ON_SEPARATE_THREAD);
++  auto original = fl_engine_get_embedder_api(engine)->Initialize;
++  bool called = false;
++  fl_engine_get_embedder_api(engine)->Initialize = MOCK_ENGINE_PROC(
++      Initialize, ([&called, original](auto version, auto config, auto args,
++                                       auto data, auto out) {
++        called = true;
++        EXPECT_EQ(args->vsync_callback, nullptr);
++        return original(version, config, args, data, out);
++      }));
++  StartEngine();
++  EXPECT_TRUE(called);
++}
++TEST_F(FlEngineTest, ResizeVsyncCallbackReturnsPendingBatonBeforeShutdown) {
++  fl_dart_project_set_enable_resize_vsync(project, TRUE);
++  auto* api = fl_engine_get_embedder_api(engine);
++  auto original = api->Initialize;
++  VsyncCallback callback = nullptr;
++  void* callback_data = nullptr;
++  api->Initialize = MOCK_ENGINE_PROC(
++      Initialize,
++      ([&callback, &callback_data, original](auto version, auto config,
++                                             auto args, auto data, auto out) {
++        callback = args->vsync_callback;
++        callback_data = data;
++        return original(version, config, args, data, out);
++      }));
++  int deliveries = 0;
++  api->OnVsync = MOCK_ENGINE_PROC(
++      OnVsync, ([&deliveries](auto engine, intptr_t baton, uint64_t start,
++                              uint64_t target) {
++        EXPECT_EQ(baton, 123);
++        EXPECT_GT(target, start);
++        deliveries++;
++        return kSuccess;
++      }));
++  StartEngine();
++  ASSERT_NE(callback, nullptr);
++  callback(callback_data, 123);
++  EXPECT_EQ(deliveries, 0);
++  g_clear_object(&engine);
++  EXPECT_EQ(deliveries, 1);
++}
+diff --git a/engine/src/flutter/shell/platform/linux/fl_resize_vsync.cc b/engine/src/flutter/shell/platform/linux/fl_resize_vsync.cc
+new file mode 100644
+--- /dev/null
++++ b/engine/src/flutter/shell/platform/linux/fl_resize_vsync.cc
+@@ -0,0 +1,156 @@
++// Copyright 2013 The Flutter Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "flutter/shell/platform/linux/fl_resize_vsync.h"
++#include <cmath>
++
++struct _FlResizeVsync {
++  GObject parent_instance;
++  GThread* owner;
++  GdkFrameClock* clock;
++  GHashTable* metrics;
++  FlResizeVsyncDelivery delivery;
++  gpointer data;
++  guint timer;
++  intptr_t baton;
++  gboolean pending;
++  gboolean resized;
++  gboolean stopped;
++  gint64 last_delivery;
++  gint64 fallback_interval;
++};
++G_DEFINE_TYPE(FlResizeVsync, fl_resize_vsync, G_TYPE_OBJECT)
++
++static gint64 interval(FlResizeVsync* self) {
++  gint64 value = self->fallback_interval;
++  if (self->clock != nullptr) {
++    gint64 predicted = 0;
++    gdk_frame_clock_get_refresh_info(self->clock, g_get_monotonic_time(),
++                                     &value, &predicted);
++  }
++  return value > 0 && value <= G_USEC_PER_SEC ? value : self->fallback_interval;
++}
++
++static void deliver(FlResizeVsync* self) {
++  if (!self->pending)
++    return;
++  if (self->timer != 0) {
++    g_source_remove(self->timer);
++    self->timer = 0;
++  }
++  intptr_t baton = self->baton;
++  self->pending = FALSE;
++  self->resized = FALSE;
++  self->last_delivery = g_get_monotonic_time();
++  uint64_t start = self->last_delivery * 1000;
++  self->delivery(self->data, baton, start, start + interval(self) * 1000);
++}
++
++static gboolean timer_cb(gpointer data) {
++  FlResizeVsync* self = FL_RESIZE_VSYNC(data);
++  self->timer = 0;
++  deliver(self);
++  return G_SOURCE_REMOVE;
++}
++
++static void fl_resize_vsync_dispose(GObject* object) {
++  FlResizeVsync* self = FL_RESIZE_VSYNC(object);
++  fl_resize_vsync_shutdown(self);
++  g_clear_object(&self->clock);
++  g_clear_pointer(&self->metrics, g_hash_table_unref);
++  G_OBJECT_CLASS(fl_resize_vsync_parent_class)->dispose(object);
++}
++static void fl_resize_vsync_class_init(FlResizeVsyncClass* klass) {
++  G_OBJECT_CLASS(klass)->dispose = fl_resize_vsync_dispose;
++}
++static void fl_resize_vsync_init(FlResizeVsync* self) {
++  self->owner = g_thread_self();
++  self->fallback_interval = 16667;
++  self->metrics =
++      g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, g_free);
++}
++FlResizeVsync* fl_resize_vsync_new(FlResizeVsyncDelivery delivery,
++                                   gpointer data) {
++  g_return_val_if_fail(delivery != nullptr, nullptr);
++  FlResizeVsync* self =
++      FL_RESIZE_VSYNC(g_object_new(fl_resize_vsync_get_type(), nullptr));
++  self->delivery = delivery;
++  self->data = data;
++  return self;
++}
++void fl_resize_vsync_request(FlResizeVsync* self, intptr_t baton) {
++  g_return_if_fail(FL_IS_RESIZE_VSYNC(self));
++  g_return_if_fail(self->owner == g_thread_self());
++  g_return_if_fail(!self->pending);
++  self->pending = TRUE;
++  self->baton = baton;
++  if (self->resized || self->stopped) {
++    deliver(self);
++    return;
++  }
++  gint64 now = g_get_monotonic_time();
++  gint64 period = interval(self);
++  gint64 phase = self->clock != nullptr
++                     ? gdk_frame_clock_get_frame_time(self->clock)
++                     : self->last_delivery;
++  gint64 due = phase <= 0    ? now + period
++               : phase > now ? phase
++                             : phase + ((now - phase) / period + 1) * period;
++  GSource* source = g_timeout_source_new(0);
++  g_source_set_callback(source, timer_cb, self, nullptr);
++  g_source_set_ready_time(source, due);
++  self->timer = g_source_attach(source, nullptr);
++  g_source_unref(source);
++}
++static gboolean equal_metrics(const FlutterWindowMetricsEvent* a,
++                              const FlutterWindowMetricsEvent* b) {
++  return a->width == b->width && a->height == b->height &&
++         a->pixel_ratio == b->pixel_ratio && a->display_id == b->display_id &&
++         a->has_constraints == b->has_constraints &&
++         a->min_width_constraint == b->min_width_constraint &&
++         a->min_height_constraint == b->min_height_constraint &&
++         a->max_width_constraint == b->max_width_constraint &&
++         a->max_height_constraint == b->max_height_constraint;
++}
++void fl_resize_vsync_notify_metrics(FlResizeVsync* self,
++                                    const FlutterWindowMetricsEvent* event) {
++  g_return_if_fail(FL_IS_RESIZE_VSYNC(self));
++  g_return_if_fail(self->owner == g_thread_self());
++  if (self->stopped)
++    return;
++  gint64 id = event->view_id;
++  const auto* previous = static_cast<FlutterWindowMetricsEvent*>(
++      g_hash_table_lookup(self->metrics, &id));
++  if (previous != nullptr && equal_metrics(previous, event))
++    return;
++  auto* key = g_new(gint64, 1);
++  *key = id;
++  auto* copy = g_new(FlutterWindowMetricsEvent, 1);
++  *copy = *event;
++  g_hash_table_replace(self->metrics, key, copy);
++  self->resized = TRUE;
++  deliver(self);
++}
++void fl_resize_vsync_remove_view(FlResizeVsync* self, FlutterViewId view_id) {
++  g_return_if_fail(FL_IS_RESIZE_VSYNC(self));
++  g_return_if_fail(self->owner == g_thread_self());
++  gint64 id = view_id;
++  g_hash_table_remove(self->metrics, &id);
++}
++void fl_resize_vsync_set_frame_clock(FlResizeVsync* self,
++                                     GdkFrameClock* clock,
++                                     double refresh_rate) {
++  g_return_if_fail(FL_IS_RESIZE_VSYNC(self));
++  g_return_if_fail(self->owner == g_thread_self());
++  g_set_object(&self->clock, clock);
++  self->fallback_interval =
++      std::isfinite(refresh_rate) && refresh_rate >= 1 && refresh_rate <= 1000
++          ? std::llround(G_USEC_PER_SEC / refresh_rate)
++          : 16667;
++}
++void fl_resize_vsync_shutdown(FlResizeVsync* self) {
++  g_return_if_fail(FL_IS_RESIZE_VSYNC(self));
++  g_return_if_fail(self->owner == g_thread_self());
++  self->stopped = TRUE;
++  deliver(self);
++}
+diff --git a/engine/src/flutter/shell/platform/linux/fl_resize_vsync.h b/engine/src/flutter/shell/platform/linux/fl_resize_vsync.h
+new file mode 100644
+--- /dev/null
++++ b/engine/src/flutter/shell/platform/linux/fl_resize_vsync.h
+@@ -0,0 +1,33 @@
++// Copyright 2013 The Flutter Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef FLUTTER_SHELL_PLATFORM_LINUX_FL_RESIZE_VSYNC_H_
++#define FLUTTER_SHELL_PLATFORM_LINUX_FL_RESIZE_VSYNC_H_
++#include <gtk/gtk.h>
++#include "flutter/shell/platform/embedder/embedder.h"
++G_BEGIN_DECLS
++G_DECLARE_FINAL_TYPE(FlResizeVsync, fl_resize_vsync, FL, RESIZE_VSYNC, GObject)
++typedef void (*FlResizeVsyncDelivery)(gpointer data,
++                                      intptr_t baton,
++                                      uint64_t start_nanos,
++                                      uint64_t target_nanos);
++// Owns vsync admission and its timer. All methods run on the engine platform
++// thread. data is borrowed and must outlive this object and its shutdown call.
++FlResizeVsync* fl_resize_vsync_new(FlResizeVsyncDelivery delivery,
++                                   gpointer data);
++void fl_resize_vsync_request(FlResizeVsync* self, intptr_t baton);
++// Send metrics to the engine before this call. Duplicate per-view metrics do
++// not consume another eager frame. Removed view IDs may be reused safely.
++void fl_resize_vsync_notify_metrics(FlResizeVsync* self,
++                                    const FlutterWindowMetricsEvent* metrics);
++void fl_resize_vsync_remove_view(FlResizeVsync* self, FlutterViewId view_id);
++// The current GTK clock supplies phase and refresh estimates; the monitor rate
++// is the fallback before a clock has timing history, including high-Hz outputs.
++void fl_resize_vsync_set_frame_clock(FlResizeVsync* self,
++                                     GdkFrameClock* clock,
++                                     double refresh_rate);
++// Returns any outstanding baton before FlutterEngineShutdown, removes timer
++// ownership, and is idempotent. Dispose also invokes shutdown.
++void fl_resize_vsync_shutdown(FlResizeVsync* self);
++G_END_DECLS
++#endif
+diff --git a/engine/src/flutter/shell/platform/linux/fl_resize_vsync_test.cc b/engine/src/flutter/shell/platform/linux/fl_resize_vsync_test.cc
+new file mode 100644
+--- /dev/null
++++ b/engine/src/flutter/shell/platform/linux/fl_resize_vsync_test.cc
+@@ -0,0 +1,131 @@
++// Copyright 2013 The Flutter Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "flutter/shell/platform/linux/fl_resize_vsync.h"
++#include "gtest/gtest.h"
++class FlResizeVsyncTest : public ::testing::Test {
++ protected:
++  void SetUp() override {
++    waiter = fl_resize_vsync_new(
++        [](gpointer data, intptr_t baton, uint64_t start, uint64_t target) {
++          auto* self = static_cast<FlResizeVsyncTest*>(data);
++          self->calls++;
++          self->baton = baton;
++          self->period = target - start;
++        },
++        this);
++    metrics.struct_size = sizeof(metrics);
++    metrics.width = 800;
++    metrics.height = 600;
++    metrics.pixel_ratio = 1;
++    metrics.view_id = 0;
++  }
++  void TearDown() override { g_clear_object(&waiter); }
++  void Drain() {
++    GMainLoop* loop = g_main_loop_new(nullptr, FALSE);
++    g_timeout_add(
++        30,
++        [](gpointer data) -> gboolean {
++          g_main_loop_quit(static_cast<GMainLoop*>(data));
++          return G_SOURCE_REMOVE;
++        },
++        loop);
++    g_main_loop_run(loop);
++    g_main_loop_unref(loop);
++  }
++  FlResizeVsync* waiter = nullptr;
++  FlutterWindowMetricsEvent metrics = {};
++  int calls = 0;
++  intptr_t baton = 0;
++  uint64_t period = 0;
++};
++TEST_F(FlResizeVsyncTest, MetricsBeforeRequest) {
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 123);
++  EXPECT_EQ(calls, 1);
++  EXPECT_EQ(baton, 123);
++}
++TEST_F(FlResizeVsyncTest, ResizeFlushesPendingExactlyOnce) {
++  fl_resize_vsync_request(waiter, 123);
++  EXPECT_EQ(calls, 0);
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  EXPECT_EQ(calls, 1);
++  Drain();
++  EXPECT_EQ(calls, 1);
++}
++TEST_F(FlResizeVsyncTest, OrdinaryFramesAreDeferred) {
++  fl_resize_vsync_request(waiter, 123);
++  g_main_context_iteration(nullptr, FALSE);
++  EXPECT_EQ(calls, 0);
++  Drain();
++  EXPECT_EQ(calls, 1);
++}
++TEST_F(FlResizeVsyncTest, DuplicateMetricsDoNotCreateEagerLoop) {
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 2);
++  EXPECT_EQ(calls, 1);
++  Drain();
++  EXPECT_EQ(calls, 2);
++}
++TEST_F(FlResizeVsyncTest, ViewOwnershipIsIndependent) {
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  metrics.view_id = 1;
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 2);
++  EXPECT_EQ(calls, 2);
++}
++TEST_F(FlResizeVsyncTest, RemovedViewIdCanBeReused) {
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  fl_resize_vsync_remove_view(waiter, 0);
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 2);
++  EXPECT_EQ(calls, 2);
++}
++TEST_F(FlResizeVsyncTest, ConstraintsChangeIsResize) {
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  metrics.has_constraints = true;
++  metrics.max_width_constraint = 900;
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 2);
++  EXPECT_EQ(calls, 2);
++}
++TEST_F(FlResizeVsyncTest, ScaleChangeIsResize) {
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  metrics.pixel_ratio = 2;
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 2);
++  EXPECT_EQ(calls, 2);
++}
++TEST_F(FlResizeVsyncTest, MonitorRefreshIsNotHardcodedTo60Hz) {
++  fl_resize_vsync_set_frame_clock(waiter, nullptr, 120);
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  EXPECT_EQ(period, 8333000u);
++}
++TEST_F(FlResizeVsyncTest, InvalidRefreshHasBoundedFallback) {
++  fl_resize_vsync_set_frame_clock(waiter, nullptr, 0);
++  fl_resize_vsync_notify_metrics(waiter, &metrics);
++  fl_resize_vsync_request(waiter, 1);
++  EXPECT_EQ(period, 16667000u);
++}
++TEST_F(FlResizeVsyncTest, ShutdownReturnsBatonAndCancelsTimer) {
++  fl_resize_vsync_request(waiter, 123);
++  fl_resize_vsync_shutdown(waiter);
++  EXPECT_EQ(calls, 1);
++  fl_resize_vsync_shutdown(waiter);
++  Drain();
++  EXPECT_EQ(calls, 1);
++}
++TEST_F(FlResizeVsyncTest, DisposeReturnsBatonWithoutTimerReferenceCycle) {
++  fl_resize_vsync_request(waiter, 123);
++  g_clear_object(&waiter);
++  EXPECT_EQ(calls, 1);
++  Drain();
++  EXPECT_EQ(calls, 1);
++}
+diff --git a/engine/src/flutter/shell/platform/linux/public/flutter_linux/fl_dart_project.h b/engine/src/flutter/shell/platform/linux/public/flutter_linux/fl_dart_project.h
+--- a/engine/src/flutter/shell/platform/linux/public/flutter_linux/fl_dart_project.h
++++ b/engine/src/flutter/shell/platform/linux/public/flutter_linux/fl_dart_project.h
+@@ -197,6 +197,21 @@
+  */
+ gboolean fl_dart_project_get_enable_flutter_gpu(FlDartProject* project);
+ 
++/**
++ * fl_dart_project_set_enable_resize_vsync:
++ * @project: project being configured before engine startup.
++ * @enabled: request GTK-clock-informed, resize-responsive frame pacing.
++ *
++ * Disabled by default. Supported with the default/platform-thread UI policy;
++ * separate-thread UI projects retain the standard engine vsync implementation.
++ * Configure GTK views on their platform thread and keep normal frame/metrics
++ * synchronization enabled. Does not change X11/Wayland backend selection.
++ */
++void fl_dart_project_set_enable_resize_vsync(FlDartProject* project,
++                                             gboolean enabled);
++/** Returns whether resize-responsive pacing was requested for this project. */
++gboolean fl_dart_project_get_enable_resize_vsync(FlDartProject* project);
++
+ G_END_DECLS
+ 
+ #endif  // FLUTTER_SHELL_PLATFORM_LINUX_PUBLIC_FLUTTER_LINUX_FL_DART_PROJECT_H_
+diff --git a/engine/src/flutter/shell/platform/linux/fl_view.cc b/engine/src/flutter/shell/platform/linux/fl_view.cc
+--- a/engine/src/flutter/shell/platform/linux/fl_view.cc
++++ b/engine/src/flutter/shell/platform/linux/fl_view.cc
+@@ -209,6 +209,15 @@
+     display_id = fl_display_monitor_get_display_id(
+         fl_engine_get_display_monitor(self->engine), monitor);
+   }
++  GdkMonitor* active_monitor =
++      window == nullptr ? nullptr
++                        : gdk_display_get_monitor_at_window(
++                              gtk_widget_get_display(GTK_WIDGET(self)), window);
++  fl_engine_set_frame_clock(
++      self->engine, gtk_widget_get_frame_clock(GTK_WIDGET(self)),
++      active_monitor == nullptr
++          ? 0
++          : gdk_monitor_get_refresh_rate(active_monitor) / 1000.0);
+   size_t width = allocation.width, height = allocation.height;
+   size_t min_width = width, min_height = height;
+   size_t max_width = width, max_height = height;
