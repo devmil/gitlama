@@ -7,3 +7,4 @@ Icon=de.devmil.gitlama
 Terminal=false
 Categories=Development;RevisionControl;
 StartupWMClass=de.devmil.gitlama
+X-Omarchy-ClientControls=true

@@ -52,6 +52,8 @@
 
 ## Unreleased Beta
 
+- On native Hyprland, let the compositor own the window frame so custom title-bar controls stay aligned with pointer input. Declare app-owned controls for Omarchy integration; duplicate-caption suppression and standard minimize/maximize handling require the matching Omarchy updates. Applies to the main window and separate inspector windows; remote helper compatibility is unchanged.
+
 - Linux window resizing keeps the last painted Flutter frame and uses the active light or dark window background instead of black in temporarily exposed areas.
 
 ## [0.1.0-beta.67] - 2026-11-15

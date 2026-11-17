@@ -2,14 +2,24 @@
 #define DEVMIL_ROUNDED_WINDOW_H_
 
 #include <gtk/gtk.h>
+#include <gdk/gdkwayland.h>
 #include <initializer_list>
 
 // Keep the accelerated child rectangular. A curved Cairo clip or libhandy's
 // offscreen surface forces GTK3 to read the entire GL texture back to the CPU.
 // The small native border instead carries the rounded corners and shadows.
+// Hyprland owns the frame on its native Wayland backend. GTK CSD shadow
+// extents otherwise offset rendered controls from the compositor input region.
+inline bool rounded_window_uses_compositor_frame(GtkWindow* window) {
+  const char* hyprland = g_getenv("HYPRLAND_INSTANCE_SIGNATURE");
+  return hyprland && *hyprland &&
+      GDK_IS_WAYLAND_DISPLAY(gtk_widget_get_display(GTK_WIDGET(window)));
+}
+
 inline bool rounded_window_is_floating(GtkWidget* window) {
   GtkStyleContext* style = gtk_widget_get_style_context(window);
-  if (!gdk_screen_is_composited(gtk_widget_get_screen(window)) ||
+  if (!gtk_window_get_decorated(GTK_WINDOW(window)) ||
+      !gdk_screen_is_composited(gtk_widget_get_screen(window)) ||
       !gtk_style_context_has_class(style, "csd") ||
       gtk_style_context_has_class(style, "solid-csd")) return false;
   for (const char* state : {"maximized", "fullscreen", "tiled", "tiled-top",
@@ -69,6 +79,10 @@ inline void style_rounded_window(GtkWindow* window) {
 
 inline GtkWindow* create_rounded_application_window(GtkApplication* application) {
   GtkWindow* window = GTK_WINDOW(gtk_application_window_new(application));
+  if (rounded_window_uses_compositor_frame(window)) {
+    gtk_window_set_decorated(window, FALSE);
+    return window;
+  }
   // An explicitly hidden titlebar enables native CSD without a second toolbar.
   gtk_window_set_titlebar(window, gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
   style_rounded_window(window);
@@ -96,12 +110,20 @@ inline void add_rounded_window_content(GtkWindow* window, GtkWidget* content) {
 // bar the same frame, with [content] as its child. The titlebar can no longer
 // be replaced, so hiding it keeps the client-side frame without a second
 // caption. A window without one uses server-side decorations and is left
-// unchanged; returns whether the window now has the rounded frame.
+// unchanged. On native Hyprland the compositor supplies the frame instead.
+// Returns whether the runner adopted the window.
 inline bool adopt_rounded_window(GtkWindow* window, GtkWidget* content) {
   GtkWidget* titlebar = gtk_window_get_titlebar(window);
+  if (titlebar != nullptr) {
+    gtk_widget_hide(titlebar);
+    gtk_widget_set_no_show_all(titlebar, TRUE);
+  }
+  if (rounded_window_uses_compositor_frame(window)) {
+    gtk_window_set_decorated(window, FALSE);
+    track_rounded_window_content(window, content);
+    return true;
+  }
   if (titlebar == nullptr) return false;
-  gtk_widget_hide(titlebar);
-  gtk_widget_set_no_show_all(titlebar, TRUE);
   style_rounded_window(window);
   track_rounded_window_content(window, content);
   return true;

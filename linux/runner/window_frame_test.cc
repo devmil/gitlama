@@ -38,6 +38,12 @@ static void check_pixels(GtkWidget* window, GtkWidget* content, bool rounded) {
   const int cw = gtk_widget_get_allocated_width(content);
   const int ch = gtk_widget_get_allocated_height(content);
   const int scale = gtk_widget_get_scale_factor(window);
+  if (!gtk_window_get_decorated(GTK_WINDOW(window))) {
+    g_assert_cmpint(x, ==, 0);
+    g_assert_cmpint(y, ==, 0);
+    g_assert_cmpint(cw, ==, width);
+    g_assert_cmpint(ch, ==, height);
+  }
   auto* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width * scale,
                                              height * scale);
   cairo_surface_set_device_scale(surface, scale, scale);
@@ -114,16 +120,23 @@ static void check_window(GtkWindow* window, GtkWidget* content) {
   settle();
   g_assert_no_error(gtk_gl_area_get_error(GTK_GL_AREA(content)));
   g_assert_cmpint(renders, >, 0);
-  g_assert(gtk_window_get_decorated(window));
+  const char* hyprland = g_getenv("HYPRLAND_INSTANCE_SIGNATURE");
+  const bool compositor_frame = hyprland && *hyprland &&
+      GDK_IS_WAYLAND_DISPLAY(gtk_widget_get_display(GTK_WIDGET(window)));
+  g_assert_cmpint(gtk_window_get_decorated(window), ==, !compositor_frame);
   g_assert(gtk_window_get_resizable(window));
-  g_assert(!gtk_widget_get_visible(gtk_window_get_titlebar(window)));
+  if (GtkWidget* titlebar = gtk_window_get_titlebar(window)) {
+    g_assert(!gtk_widget_get_visible(titlebar));
+  } else {
+    g_assert(compositor_frame);
+  }
   GtkStyleContext* context = gtk_widget_get_style_context(GTK_WIDGET(window));
   int radius = 0;
   gtk_style_context_get(context, gtk_style_context_get_state(context),
                         "border-radius", &radius, nullptr);
   const bool composited =
       gdk_screen_is_composited(gtk_widget_get_screen(GTK_WIDGET(window)));
-  const bool rounded = composited &&
+  const bool rounded = !compositor_frame && composited &&
                        !gtk_style_context_has_class(context, "solid-csd") &&
                        radius > 0;
   set_rounded_window_background(window, 0xFFFF0000);
