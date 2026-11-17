@@ -156,7 +156,7 @@ final class _StageIntent {
     this.rowIds,
     this.shownDetail,
     this.selectionRevision,
-  ) : paths = List.unmodifiable(
+  ) : paths = List.of(
         entries.map(
           (entry) => List<int>.unmodifiable(repositoryPathBytes(entry.path)),
         ),
@@ -171,7 +171,7 @@ final class _StageIntent {
   final DiffPage? accepted;
   final List<String> rowIds;
   final String? shownDetail;
-  final int selectionRevision;
+  int selectionRevision;
   final done = Completer<void>();
 }
 
@@ -564,13 +564,29 @@ final class ChangesService {
       interaction,
       side,
       scope,
-      List.unmodifiable(selected),
+      List.of(selected),
       accepted,
       List.unmodifiable(rowIds),
       shownDetail,
       state.selectionRevision,
     );
     state.stoppedPending = 0;
+    // Merge only the tail so opposite-side actions retain their order.
+    final tail = state.pending.lastOrNull;
+    if (scope == StagingScope.files &&
+        tail != null &&
+        tail.scope == scope &&
+        tail.side == side &&
+        tail.identity == identity &&
+        identical(tail.interaction, interaction) &&
+        tail.paths.length + intent.paths.length <= ContractLimits.stagePaths) {
+      tail.entries.addAll(intent.entries);
+      tail.paths.addAll(intent.paths);
+      tail.selectionRevision = intent.selectionRevision;
+      _notify(tabId);
+      await tail.done.future;
+      return;
+    }
     state.pending.add(intent);
     if (state.running == null) {
       // run() enters its busy scope synchronously, before another intent is admitted.
@@ -654,27 +670,45 @@ final class ChangesService {
         ),
       );
       started = true;
-      final result = await _repositories.workingCopy.stageFor(
-        intent.identity,
-        StagingRequest(
-          requestId: page?.requestId ?? BigInt.zero,
-          side: side,
-          scope: scope,
-          paths: paths,
-          rowIds: intent.rowIds,
-        ),
-        onPhase: (phase) {
-          if (_sessionOpen(tabId, intent.identity) && state.phase != phase) {
-            state.phase = phase;
-            _notify(tabId);
-          }
-        },
-      );
-      moved =
-          result.state == StagingExecutionState.completed ||
-          result.state == StagingExecutionState.reconciledWithWarning;
+      // Folder selections can exceed one bridge request. Keep their exact
+      // visible paths and stop on the first batch that cannot reconcile.
+      late StagingExecutionResult result;
+      for (
+        var offset = 0;
+        offset < (paths.isEmpty ? 1 : paths.length);
+        offset += ContractLimits.stagePaths
+      ) {
+        result = await _repositories.workingCopy.stageFor(
+          intent.identity,
+          StagingRequest(
+            requestId: page?.requestId ?? BigInt.zero,
+            side: side,
+            scope: scope,
+            paths: paths.sublist(
+              offset,
+              (offset + ContractLimits.stagePaths).clamp(0, paths.length),
+            ),
+            rowIds: intent.rowIds,
+          ),
+          onPhase: (phase) {
+            if (_sessionOpen(tabId, intent.identity) && state.phase != phase) {
+              state.phase = phase;
+              _notify(tabId);
+            }
+          },
+        );
+        moved =
+            moved ||
+            result.state == StagingExecutionState.completed ||
+            result.state == StagingExecutionState.reconciledWithWarning;
+        if (result.state != StagingExecutionState.completed ||
+            !_sessionOpen(tabId, intent.identity)) {
+          break;
+        }
+      }
       if (!_sessionOpen(tabId, intent.identity)) return false;
-      if (moved) {
+      if (result.state == StagingExecutionState.completed ||
+          result.state == StagingExecutionState.reconciledWithWarning) {
         // Completion must never replace a selection made after admission.
         if (state.selectionRevision == intent.selectionRevision) {
           _followMove(tabId, status, side, entries, next);
