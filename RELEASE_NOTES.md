@@ -50,6 +50,8 @@
 
 ## Unreleased Beta
 
+- Bundle consecutive queued staging clicks for the same side. Stage large filtered folder selections in bounded batches, keeping hidden files untouched.
+
 - Linux window resizing keeps the last painted Flutter frame and uses the active light or dark window background instead of black in temporarily exposed areas.
 
 ## [0.1.0-beta.67] - 2026-11-15
