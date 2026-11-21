@@ -135,6 +135,7 @@ jobs:
           ref: ${{ needs.prepare.outputs.revision }}
       - name: Build the remote helper on the Ubuntu 22.04 baseline
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITLAMA_COLLECT_DIAGNOSTICS: "1"
           GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
         run: ./scripts/qualify-linux-local.sh --remote-helper
@@ -359,6 +360,7 @@ jobs:
           path: dist/remote-helper
       - name: Build and qualify four formats on the Ubuntu 22.04 baseline
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITLAMA_COLLECT_DIAGNOSTICS: "1"
           GITLAMA_REMOTE_HELPER_DIR: ${{ github.workspace }}/dist/remote-helper
           GITLAMA_REQUIRE_REMOTE_HELPER: "1"

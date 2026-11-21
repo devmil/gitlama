@@ -253,6 +253,8 @@ jobs:
       - name: Build the remote helper in the release container
         if: ${{ matrix.platform == 'linux' }}
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/qualify-linux-local.sh --remote-helper
       - name: Archive debug bundle
         if: ${{ matrix.platform != 'windows' }}

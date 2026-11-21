@@ -2,6 +2,7 @@
 
 ## Unreleased Stable
 
+- CI and release builds authenticate the appimagetool download in the Linux release image with the workflow token, so the shared anonymous GitHub API limit (HTTP 403 on hosted runners) no longer fails the Linux job.
 - Build with Flutter 3.47.9 and the stock Linux SDK (Meridian 2.0.3). Flutter 3.50's Wayland renderer showed black frames and black edges while a window was resized, and the custom engine only patched that renderer. 3.47.9 keeps the eMudhra certificate fix from 3.47.8.
 - Revert over local changes instead of requiring a clean worktree. The preview compares the local changes with the paths the reverted commits change (devmil-git `probes::changed_paths` and `merge::local_changes::local_change_overlap`). Changes that are neither staged nor collide stay in place and Git reverts around them. Colliding or staged changes are listed in the review, and confirming "Set aside and revert" saves them in a marked stash (`GitLama before revert …`), reverts on the clean worktree and reapplies them with `stash apply --index`, falling back to a plain apply so conflicts reach the conflict resolver as a stash reapply. When the revert itself stops at conflicts, a per-worktree marker in `.git/gitlama/set-aside` keeps the changes aside until the revert is continued or aborted from the resolver, which then reapplies them; a continuation whose reapply conflicts now reports Conflict instead of Completed. The stash stays in Stashes as a recovery copy, as with protected pull, whose stash handling now shares the same `stash_handoff` module. A preview turns stale when the local changes collide differently at execution. Apply-only reverts keep local changes only in place and otherwise fail with the new `localChangesOverlap` code. Only unresolved conflicts still disable Revert. This raises the remote helper to version 23, so hosts receive a new helper.
 - Link GitLama's public source repository. About has a "Source code on GitHub" button that opens `https://github.com/devmil/gitlama` through the release-index repository (`openSource`, a fixed URL like the issue tracker), and the website links it from the header (hidden below 620 px) and from the footer of every page. The remote helper keeps version 22.
@@ -53,6 +54,7 @@
 
 ## Unreleased Beta
 
+- CI and release builds authenticate the appimagetool download in the Linux release image with the workflow token, so the shared anonymous GitHub API limit (HTTP 403 on hosted runners) no longer fails the Linux job.
 - Build with Flutter 3.47.9 and the stock Linux SDK (Meridian 2.0.3). Flutter 3.50's Wayland renderer showed black frames and black edges while a window was resized, and the custom engine only patched that renderer. 3.47.9 keeps the eMudhra certificate fix from 3.47.8.
 - Bundle consecutive queued staging clicks for the same side. Stage large filtered folder selections in bounded batches, keeping hidden files untouched.
 

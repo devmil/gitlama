@@ -114,9 +114,15 @@ fi
 
 # The image downloads Ubuntu packages, Flutter, Git and Rust. A flaky connection fails a single
 # attempt; cached layers make each retry resume where the last one stopped.
+# CI provides GITHUB_TOKEN so GitHub API downloads avoid the shared anonymous rate limit.
+BUILD_SECRETS=()
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  BUILD_SECRETS=(--secret id=github_token,env=GITHUB_TOKEN)
+fi
 for attempt in 1 2 3; do
   if "$CONTAINER_ENGINE" build \
     --platform linux/amd64 \
+    "${BUILD_SECRETS[@]}" \
     --build-arg "FLUTTER_VERSION=$FLUTTER_VERSION" \
     --build-arg "FLUTTER_SHA256=$FLUTTER_SHA256" \
     --file "$ROOT/tooling/linux-release/Dockerfile" \
