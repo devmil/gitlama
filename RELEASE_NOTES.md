@@ -51,6 +51,8 @@
 
 ## Unreleased Beta
 
+## [0.1.0-beta.68] - 2026-11-21
+
 - Resizing the window on Linux no longer shows black flashes or black edges.
 - Bundle consecutive queued staging clicks for the same side. Stage large filtered folder selections in bounded batches, keeping hidden files untouched.
 

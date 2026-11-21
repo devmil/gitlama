@@ -54,6 +54,8 @@
 
 ## Unreleased Beta
 
+## [0.1.0-beta.68] - 2026-11-21
+
 - CI and release builds authenticate the appimagetool download in the Linux release image with the workflow token, so the shared anonymous GitHub API limit (HTTP 403 on hosted runners) no longer fails the Linux job.
 - Build with Flutter 3.47.9 and the stock Linux SDK (Meridian 2.0.3). Flutter 3.50's Wayland renderer showed black frames and black edges while a window was resized, and the custom engine only patched that renderer. 3.47.9 keeps the eMudhra certificate fix from 3.47.8.
 - Bundle consecutive queued staging clicks for the same side. Stage large filtered folder selections in bounded batches, keeping hidden files untouched.
