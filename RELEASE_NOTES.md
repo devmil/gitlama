@@ -2,6 +2,7 @@
 
 ## Unreleased Stable
 
+- Resizing the window on Linux no longer shows black flashes or black edges.
 - You can now revert a commit while you have local changes. Changes that don't touch the reverted files simply stay where they are. If some do, or some are staged, GitLama lists them and asks first; it then sets them aside, reverts and puts them back with their staging. If they conflict with the revert, you resolve them in Changes, and a recovery copy stays in Stashes. Hosts receive a new GitLama helper.
 - GitLama is open source: About now links to its source code on GitHub, and so does the website.
 - GitLama no longer offers Undo, Redo or Recovery history. They worked for only some actions, so you had to remember which ones could be taken back. The review before an action still says what it changes, and now says plainly what it deletes. Ctrl+Z and Cmd+Z now only undo typing. To keep a way back, save a named snapshot before you try something. Restoring a snapshot now keeps your current changes as a stash. Hosts receive a new GitLama helper.
@@ -50,9 +51,8 @@
 
 ## Unreleased Beta
 
+- Resizing the window on Linux no longer shows black flashes or black edges.
 - Bundle consecutive queued staging clicks for the same side. Stage large filtered folder selections in bounded batches, keeping hidden files untouched.
-
-- Linux window resizing keeps the last painted Flutter frame and uses the active light or dark window background instead of black in temporarily exposed areas.
 
 ## [0.1.0-beta.67] - 2026-11-15
 
