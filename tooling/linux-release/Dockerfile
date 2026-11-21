@@ -95,7 +95,14 @@ RUN for attempt in 1 2 3 4 5; do gem install --no-document fpm -v 1.16.0 && brea
 
 # Asset 324406736 is appimagetool 1.9.1 x86_64. Use the asset API because the
 # browser download endpoint can return persistent 504s even while the asset is available.
-RUN curl $CURL_RETRY -fsSL -H "Accept: application/octet-stream" \
+# Anonymous API calls share a 60/hour limit per IP, which hosted runners exhaust (HTTP 403);
+# CI passes its token as the optional build secret github_token, never as a layer or argument.
+RUN --mount=type=secret,id=github_token \
+    set -- \
+    && if [ -s /run/secrets/github_token ]; then \
+         set -- -H "Authorization: Bearer $(cat /run/secrets/github_token)"; \
+       fi \
+    && curl $CURL_RETRY -fsSL "$@" -H "Accept: application/octet-stream" \
         https://api.github.com/repos/AppImage/appimagetool/releases/assets/324406736 \
         -o /usr/local/bin/appimagetool \
     && echo "${APPIMAGETOOL_SHA256}  /usr/local/bin/appimagetool" | sha256sum -c - \

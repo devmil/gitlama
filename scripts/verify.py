@@ -115,13 +115,6 @@ def use_fvm_flutter():
     The pin check below still runs, so a missing FVM falls back to the
     Flutter on PATH and fails there if it is the wrong version.
     """
-    if sys.platform.startswith('linux') and os.environ.get('GITLAMA_LINUX_SDK_DIR'):
-        os.environ['PATH'] = str(ROOT/'scripts/linux/bin') + os.pathsep + os.environ.get('PATH', '')
-        return
-    framework = os.environ.get('GITLAMA_FLUTTER_FRAMEWORK_SDK')
-    if framework:
-        os.environ['PATH'] = str(Path(framework)/'bin') + os.pathsep + os.environ.get('PATH', '')
-        return
     fvm = shutil.which('fvm')
     if fvm is None:
         return
@@ -174,7 +167,6 @@ def main():
             # The client stack against the helper the previous step built.
             flutter_test('--tags','remote')
         run(sys.executable,'-m','unittest','discover','-s','tests/package','-v')
-        run(sys.executable,'-m','unittest','discover','-s','tests/linux_sdk','-v')
         run(sys.executable,'scripts/check_architecture.py')
         run(sys.executable,'scripts/check_dependencies.py')
         run(sys.executable,'scripts/generate_meridian_theme.py','--check')

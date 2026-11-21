@@ -218,8 +218,6 @@ void gitlama_window_chrome_adopt_view(FlView* view) {
     return;
   }
   adopt_rounded_window(window, GTK_WIDGET(view));
-  const GdkRGBA transparent = {0, 0, 0, 0};
-  fl_view_set_background_color(view, &transparent);
   // The chrome holds a reference on the window, so it ends with "destroy"
   // rather than with the window's data.
   GitLamaWindowChrome* chrome = gitlama_window_chrome_new(

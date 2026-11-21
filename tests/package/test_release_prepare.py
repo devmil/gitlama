@@ -204,45 +204,10 @@ class ReleasePrepareTest(unittest.TestCase):
             mock.patch.object(verify.shutil, "which", return_value=which),
             mock.patch.object(verify.subprocess, "check_output", return_value=context),
             mock.patch.object(verify.subprocess, "run") as run,
-            mock.patch.dict(verify.os.environ, {
-                "PATH": "/existing",
-                "GITLAMA_LINUX_SDK_DIR": "",
-                "GITLAMA_FLUTTER_FRAMEWORK_SDK": "",
-            }),
+            mock.patch.dict(verify.os.environ, {"PATH": "/existing"}),
         ):
             verify.use_fvm_flutter()
             return verify.os.environ["PATH"], run
-
-    def test_selected_linux_engine_wrapper_precedes_fvm(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            with (
-                mock.patch.object(verify, "ROOT", root),
-                mock.patch.object(verify.sys, "platform", "linux"),
-                mock.patch.object(verify.shutil, "which") as which,
-                mock.patch.dict(verify.os.environ, {
-                    "PATH": "/existing",
-                    "GITLAMA_LINUX_SDK_DIR": "/verified/sdk",
-                }),
-            ):
-                verify.use_fvm_flutter()
-                self.assertEqual(verify.os.environ["PATH"].split(os.pathsep)[0],
-                                 str(root / "scripts/linux/bin"))
-                which.assert_not_called()
-
-    def test_explicit_framework_precedes_fvm_for_source_checks(self) -> None:
-        with (
-            mock.patch.object(verify.shutil, "which") as which,
-            mock.patch.dict(verify.os.environ, {
-                "PATH": "/existing",
-                "GITLAMA_LINUX_SDK_DIR": "",
-                "GITLAMA_FLUTTER_FRAMEWORK_SDK": "/pinned framework",
-            }),
-        ):
-            verify.use_fvm_flutter()
-            self.assertEqual(verify.os.environ["PATH"].split(os.pathsep)[0],
-                             str(Path("/pinned framework/bin")))
-            which.assert_not_called()
 
     def test_fvm_puts_installed_pinned_sdk_first_on_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

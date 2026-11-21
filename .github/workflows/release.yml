@@ -135,6 +135,7 @@ jobs:
           ref: ${{ needs.prepare.outputs.revision }}
       - name: Build the remote helper on the Ubuntu 22.04 baseline
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITLAMA_COLLECT_DIAGNOSTICS: "1"
           GITLAMA_SOURCE_COMMIT: ${{ needs.prepare.outputs.revision }}
         run: ./scripts/qualify-linux-local.sh --remote-helper
@@ -340,17 +341,13 @@ jobs:
     if: ${{ needs.prepare.outputs.mode != 'recover' }}
     needs: [prepare, helper, helper-macos]
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    timeout-minutes: 150
     steps:
       - name: Free disk space for the package build
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare.outputs.revision }}
-      - uses: ./.github/actions/flutter
-      - uses: ./.github/actions/flutter-linux
-        with:
-          mode: release
       - name: Download the remote helper to bundle
         uses: actions/download-artifact@v4
         with:
@@ -363,6 +360,7 @@ jobs:
           path: dist/remote-helper
       - name: Build and qualify four formats on the Ubuntu 22.04 baseline
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITLAMA_COLLECT_DIAGNOSTICS: "1"
           GITLAMA_REMOTE_HELPER_DIR: ${{ github.workspace }}/dist/remote-helper
           GITLAMA_REQUIRE_REMOTE_HELPER: "1"
