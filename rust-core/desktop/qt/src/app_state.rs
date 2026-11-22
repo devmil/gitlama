@@ -72,6 +72,26 @@ mod app_state {
             self.post(|driver| driver.app.start());
         }
 
+        /// Merges `patch` (camelCase appearance fields) into the appearance
+        /// settings as view state: saved after a short pause, so dragging a
+        /// splitter writes once.
+        #[qslot]
+        fn update_appearance(&self, patch: Value) {
+            self.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Value::Object(fields) = patch else { return };
+                let mut document = services.settings.current();
+                let Ok(Value::Object(mut current)) = serde_json::to_value(&document.appearance) else { return };
+                current.extend(fields);
+                let Ok(appearance) = serde_json::from_value(Value::Object(current)) else { return };
+                if document.appearance == appearance {
+                    return;
+                }
+                document.appearance = appearance;
+                drop(services.settings.update_view(document));
+            });
+        }
+
         /// Saves pending settings before the window closes.
         #[qslot]
         fn flush_settings(&self) {

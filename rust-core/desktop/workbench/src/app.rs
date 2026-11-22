@@ -37,6 +37,8 @@ pub struct Services {
     pub appearances: Rc<AppearanceService>,
     pub prompts: Rc<Prompts>,
     pub notices: Rc<Notices>,
+    pub navigator: Rc<crate::navigator::Navigator>,
+    pub sidebar: Rc<crate::sidebar::SidebarService>,
 }
 
 impl Services {
@@ -116,7 +118,16 @@ impl Services {
             });
         }
         workspace.restore_workspace().await.map_err(|_| "workspace")?;
+        let navigator = crate::navigator::Navigator::new(Rc::clone(&workspace), notifier.clone());
+        let sidebar = crate::sidebar::SidebarService::new(
+            Rc::clone(&workspace),
+            Rc::clone(&settings),
+            Rc::clone(&calls),
+            notifier.clone(),
+        );
         Ok(Self {
+            navigator,
+            sidebar,
             settings,
             calls,
             history,

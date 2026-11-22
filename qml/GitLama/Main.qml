@@ -11,6 +11,8 @@ Window {
     required property var app
     required property var hooks
     required property var workspace
+    required property var sidebar
+    required property var sidebarRows
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -52,8 +54,14 @@ Window {
 
     Component.onCompleted: {
         Store.app = app
+        Store.screenshotSizeChanged.connect(() => {
+            appWindow.width = Store.screenshotSize.width
+            appWindow.height = Store.screenshotSize.height
+        })
         Store.hooks = hooks
         Store.workspace = workspace
+        Store.sidebar = sidebar
+        Store.sidebarRows = sidebarRows
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()

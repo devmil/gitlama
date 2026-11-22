@@ -93,7 +93,15 @@ fn main() {
     WorkspaceState::attach_qobject(&workspace);
     workspace.borrow_mut().commands = Some(commands.clone());
 
+    let sidebar = Rc::new(RefCell::new(gitlama_qt::SidebarState::default()));
+    gitlama_qt::SidebarState::attach_qobject(&sidebar);
+    sidebar.borrow_mut().commands = Some(commands.clone());
+    let sidebar_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::SIDEBAR_ROLES)));
+    gitlama_qt::RowModel::attach_qobject(&sidebar_rows);
+
     let driver = Rc::new(Driver {
+        sidebar: Rc::clone(&sidebar),
+        sidebar_rows: Rc::clone(&sidebar_rows),
         app: Rc::clone(&app),
         runtime,
         commands,
@@ -128,6 +136,8 @@ fn main() {
         ("app", state.borrow().as_qvariant()),
         ("hooks", hooks.borrow().as_qvariant()),
         ("workspace", workspace.borrow().as_qvariant()),
+        ("sidebar", sidebar.borrow().as_qvariant()),
+        ("sidebarRows", sidebar_rows.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

@@ -37,6 +37,7 @@ Rectangle {
             height: shell.height - toolbar.height - tabs.height - statusBar.height
             WorkspaceBody {
                 anchors.fill: parent
+                onCommand: (id, options) => shell.command(id, options)
             }
         }
 

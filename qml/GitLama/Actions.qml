@@ -32,6 +32,7 @@ Item {
     function showSettings() {}
     function showAbout() {}
     function openFolder(path) {}
+    function deleteWorktree(index, name) {}
     function showRepositoryIconDialog(tab) {}
     function showTabGroupDialog(group, labels) {}
 

@@ -178,6 +178,8 @@ pub fn active(tab: Option<&Tab>, group_name: Option<&str>) -> Value {
         "hasSession": session.is_some(),
         "remote": tab.canonical_identity().is_some_and(|identity| identity.remote.is_some()),
         "pane": tab.navigation.pane.name(),
+        "branchFilter": tab.navigation.branch_filter.references(),
+        "selectedIdentity": tab.navigation.selected_identity,
         "branch": branch,
         "detached": branch.is_none() && head_object_id.is_some(),
         "headObjectId": head_object_id,

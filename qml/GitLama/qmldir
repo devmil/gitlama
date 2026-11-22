@@ -2,6 +2,8 @@ module GitLama
 singleton L10n 1.0 L10n.qml
 singleton Store 1.0 Store.qml
 singleton GitLamaLayout 1.0 GitLamaLayout.qml
+singleton BranchFilters 1.0 BranchFilters.qml
+singleton ReferenceMenu 1.0 ReferenceMenu.qml
 singleton GitColors 1.0 GitColors.qml
 CaptionBand 1.0 CaptionBand.qml
 HomeScreen 1.0 HomeScreen.qml
@@ -43,3 +45,8 @@ TabContextMenu 1.0 TabContextMenu.qml
 TabMark 1.0 TabMark.qml
 WorktreeOpenMenu 1.0 WorktreeOpenMenu.qml
 WorktreeRow 1.0 WorktreeRow.qml
+WorkspaceSidebar 1.0 WorkspaceSidebar.qml
+SidebarRefRow 1.0 SidebarRefRow.qml
+SidebarSectionRow 1.0 SidebarSectionRow.qml
+SidebarGroupLabel 1.0 SidebarGroupLabel.qml
+SidebarRail 1.0 SidebarRail.qml

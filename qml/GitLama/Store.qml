@@ -8,6 +8,10 @@ QtObject {
     property var app: null
     /// The WorkspaceState bridge: tabs, groups, entry actions, recents.
     property var workspace: null
+    /// The SidebarState bridge: header state and sidebar slots.
+    property var sidebar: null
+    /// The sidebar's rows (a RowModel).
+    property var sidebarRows: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).
@@ -34,10 +38,15 @@ QtObject {
     function screenshotStep(name, argument) {
         if (name === "dark" || name === "light")
             screenshotTheme = name
-        else if (name === "open" && workspace)
+        else if (name === "size") {
+            const parts = argument.split("x")
+            screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "open" && workspace)
             workspace.openPath(argument)
         screenshotStepRequested(name, argument)
     }
     /// Overrides the theme for a development screenshot.
     property string screenshotTheme: ""
+    /// Resizes the window for a development screenshot.
+    property size screenshotSize: Qt.size(0, 0)
 }

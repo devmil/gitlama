@@ -4,6 +4,8 @@
 use crate::app_state::AppState;
 use crate::projection;
 use crate::workspace_state::WorkspaceState;
+use crate::row_model::RowModel;
+use crate::sidebar_state::SidebarState;
 use crate::json::to_value;
 use crate::plumbing::{Commands, PumpWaker};
 use gitlama_workbench::app::{App, StartupPhase};
@@ -22,6 +24,8 @@ pub struct Driver {
     pub waker: Arc<PumpWaker>,
     pub state: Rc<RefCell<AppState>>,
     pub workspace: Rc<RefCell<WorkspaceState>>,
+    pub sidebar: Rc<RefCell<SidebarState>>,
+    pub sidebar_rows: Rc<RefCell<RowModel>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -165,10 +169,25 @@ impl Driver {
                 workspace.entry = entry;
                 workspace.entry_changed();
             }
+            drop(workspace);
+            self.project_sidebar(&services);
+            let mut workspace = self.workspace.borrow_mut();
             let created = workspace.created.take();
             if let Some(group) = created {
                 workspace.group_created(group as i64);
             }
+        }
+    }
+
+    fn project_sidebar(&self, services: &gitlama_workbench::app::Services) {
+        services.navigator.follow_workspace();
+        let selected = services.navigator.selected_reference(services.workspace.active_tab_id());
+        let projection = services.sidebar.project(selected.as_deref());
+        self.sidebar_rows.borrow_mut().publish(projection.rows);
+        let mut sidebar = self.sidebar.borrow_mut();
+        if sidebar.header != projection.header {
+            sidebar.header = projection.header;
+            sidebar.header_changed();
         }
     }
 }
