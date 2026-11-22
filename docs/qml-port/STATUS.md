@@ -57,7 +57,13 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   the native TextFormatter, panes following each other, resolved page with merge message and
   undo, footer navigation). Merge drafts and sessions live in Rust.
 
+- Operation center: the logbook panel (filters, timeline rows with marks, folded background
+  fetches, details with output, Retry/Cancel/Dismiss/Copy/Details, Dismiss all), toolbar badge and
+  Compass progress from the polled center, the activity island; Meridian floating panel.
+
 ## Next
+- Logbook: user failures recorded from workflow failures (with their support report); clone
+  retry and cancel once clone is ported; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode
   of its file list, the Continue pulse, file action menus.
 - Settings pages for features not yet ported: integrations, repository binding, remote hosts,

@@ -27,6 +27,7 @@ pub mod images;
 pub mod inspector;
 pub mod notices;
 pub mod notify;
+pub mod operations;
 pub mod preferences;
 pub mod prompts;
 pub mod rebases;

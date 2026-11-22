@@ -49,6 +49,7 @@ pub struct Services {
     pub history_mutations: Rc<crate::history_mutations::HistoryMutations>,
     pub rebases: Rc<crate::rebases::Rebases>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
+    pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
     pub rewrite: Rc<crate::rewrite::RewriteService>,
 }
@@ -220,7 +221,10 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let operations = crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
+        operations.start();
         Ok(Self {
+            operations,
             conflicts,
             rebases,
             history_mutations,
@@ -249,6 +253,7 @@ impl Services {
     async fn dispose(&self) {
         self.prompts.cancel_all();
         self.auto_fetch.dispose();
+        self.operations.dispose();
         self.workspace.retire();
         self.workspace.close().await;
         self.history.dispose();

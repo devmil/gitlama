@@ -36,6 +36,10 @@ QtObject {
     /// The ConflictsState bridge and the shown file's comparison rows.
     property var conflicts: null
     property var conflictRows: null
+    /// The OperationsState bridge (logbook, activity).
+    property var operations: null
+    /// The workspace shell, which owns the floating panels.
+    property var shell: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).

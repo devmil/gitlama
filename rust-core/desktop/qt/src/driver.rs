@@ -51,6 +51,7 @@ pub struct Driver {
     pub workflows: Rc<RefCell<crate::workflows_state::WorkflowsState>>,
     pub conflicts: Rc<RefCell<crate::conflicts_state::ConflictsState>>,
     pub conflict_rows: Rc<RefCell<RowModel>>,
+    pub operations: Rc<RefCell<crate::operations_state::OperationsState>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -114,6 +115,23 @@ impl Driver {
         }
         if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS) {
             self.project_changes();
+        }
+        if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
+            && let Some(services) = self.app.services()
+        {
+            let snapshot = services.operations.current();
+            let center = crate::operations_state::project(&snapshot, &services, |session, generation| {
+                services.workspace.with_tabs(|tabs, _, _| {
+                    tabs.iter()
+                        .find(|tab| tab.session.as_ref().is_some_and(|open| open.identity.native_id == session && open.identity.generation == generation))
+                        .map(|tab| tab.label.clone())
+                })
+            });
+            let mut operations = self.operations.borrow_mut();
+            if operations.center != center {
+                operations.center = center;
+                operations.center_changed();
+            }
         }
         if changed.intersects(Topics::CONFLICTS | Topics::WORKSPACE | Topics::SESSION)
             && let Some(services) = self.app.services()

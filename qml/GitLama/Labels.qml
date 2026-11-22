@@ -63,6 +63,20 @@ QtObject {
     /// A commit date in History's date column: `iso` (2026-11-22), `local`
     /// (the locale's medium date) or `relative` (now, 5 min, 3 h, 2 d, then
     /// the medium date). `seconds` since the epoch; 0 shows nothing.
+    /// A running operation's phase and completion (the Dart
+    /// operationProgressLabel); "" while Git reported neither. Git names
+    /// its phases in English whatever the locale.
+    function operationProgress(progress) {
+        if (!progress)
+            return ""
+        const phase = ({ "Counting objects": "operationPhaseCounting", "Compressing objects": "operationPhaseCompressing",
+                         "Receiving objects": "operationPhaseReceiving", "Resolving deltas": "operationPhaseResolving",
+                         "Updating files": "operationPhaseUpdatingFiles", "Filtering content": "operationPhaseFiltering",
+                         "Rebasing": "operationPhaseRebasing" })[progress.phase]
+        return phase === undefined ? L10n.tn("operationPercent", { percent: progress.percent })
+            : L10n.tn("operationPhaseProgress", { phase: L10n.t(phase), percent: progress.percent })
+    }
+
     /// The first eight characters of an object ID (the Dart shortObjectId).
     function shortObjectId(value) {
         return value.length <= 8 ? value : value.substring(0, 8)

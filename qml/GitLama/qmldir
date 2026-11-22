@@ -80,6 +80,9 @@ CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml
 SettingsChoice 1.0 SettingsChoice.qml
 HistoryMutationDialog 1.0 HistoryMutationDialog.qml
 ListWell 1.0 ListWell.qml
+TimelineRow 1.0 TimelineRow.qml
+LogbookPanel 1.0 LogbookPanel.qml
+ActivityIsland 1.0 ActivityIsland.qml
 WorkflowHeader 1.0 WorkflowHeader.qml
 ConflictFileDetails 1.0 ConflictFileDetails.qml
 ConflictComparison 1.0 ConflictComparison.qml

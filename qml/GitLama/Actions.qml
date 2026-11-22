@@ -180,6 +180,14 @@ Item {
         case "autoStashCheckout": Store.workflows.stash("autoStashCheckout", { targetBranch: options.initialName ?? "" }); return
         case "mergeBranch":
             Store.workflows.mutateHistory("merge", options.initialName ?? "", options.initialTarget ?? ""); return
+        case "showOperations": if (Store.shell) Store.shell.toggleOperations(); return
+        case "showActivity": if (Store.shell) Store.shell.activityVisible = !Store.shell.activityVisible; return
+        case "activityCopy":
+            if (Store.shell && Store.shell.activityVisible && Store.shell.activityIsland)
+                Store.shell.activityIsland.copySelected()
+            return
+        case "activityRetry": Store.operations.runLatest(true); return
+        case "activityCancel": Store.operations.runLatest(false); return
         case "rebaseContinue": Store.conflicts.sequence("continue"); return
         case "rebaseAbort": Store.conflicts.sequence("abort"); return
         case "conflictNext": case "conflictPrevious": case "conflictTakeCurrent": case "conflictTakeIncoming":

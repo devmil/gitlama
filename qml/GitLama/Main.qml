@@ -26,6 +26,7 @@ Window {
     required property var settings
     required property var conflicts
     required property var conflictRows
+    required property var operations
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -88,6 +89,7 @@ Window {
         Store.settings = settings
         Store.conflicts = conflicts
         Store.conflictRows = conflictRows
+        Store.operations = operations
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()

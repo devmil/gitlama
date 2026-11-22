@@ -39,6 +39,7 @@ MeridianMenu 1.0 MeridianMenu.qml
 MeridianMenuItem 1.0 MeridianMenuItem.qml
 MeridianMenuSeparator 1.0 MeridianMenuSeparator.qml
 MeridianPopover 1.0 MeridianPopover.qml
+MeridianPanel 1.0 MeridianPanel.qml
 MeridianNavRow 1.0 MeridianNavRow.qml
 MeridianKbd 1.0 MeridianKbd.qml
 MeridianShortcutField 1.0 MeridianShortcutField.qml

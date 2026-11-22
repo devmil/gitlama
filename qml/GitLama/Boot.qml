@@ -24,6 +24,7 @@ QtObject {
     required property var settings
     required property var conflicts
     required property var conflictRows
+    required property var operations
     property var window: null
 
     Component.onCompleted: {
@@ -40,7 +41,7 @@ QtObject {
                                                          changes: boot.changes, unstagedRows: boot.unstagedRows,
                                                          stagedRows: boot.stagedRows, workingDiff: boot.workingDiff,
                                                          commit: boot.commit, workflows: boot.workflows, settings: boot.settings,
-                                                         conflicts: boot.conflicts, conflictRows: boot.conflictRows })
+                                                         conflicts: boot.conflicts, conflictRows: boot.conflictRows, operations: boot.operations })
         if (window === null) {
             console.error("the main window could not be created")
             Qt.exit(3)
