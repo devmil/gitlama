@@ -118,6 +118,7 @@ pub fn project(services: &Services, filter: &str) -> Projection {
         "tabId": tab.id,
         "conflictFlow": changes.conflict_flow(tab.id),
         "busy": changes.busy(tab.id),
+        "blocked": services.busy.is_blocked(Some(tab.id)),
         "canQueue": changes.can_stage_files(tab.id),
         "phase": changes.staging_phase(tab.id).map(phase_name),
         "pending": changes.pending_stages(tab.id),

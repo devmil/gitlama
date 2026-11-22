@@ -99,6 +99,7 @@ Item {
         case "initializeRepository": Store.workspace.initializeRepository(false); return
         case "closeRepositoryTab": Store.workspace.closeTab(Store.workspace.activeTabId); return
         case "showSettings": showSettings(); return
+        case "showCommandPalette": commandPalette.show(); return
         case "fetch":
         case "remoteFetch":
             Store.workflows.transfer("fetch", { initialRemote: options.initialName ?? null }); return
@@ -143,8 +144,34 @@ Item {
         }
     }
 
-    /// What panes contribute to command availability.
-    property var availability: ({})
+    /// The state the command policy reads (the Flutter CommandMenuState):
+    /// busy, selections, the inspector and the diffs on screen.
+    readonly property var availability: {
+        const changes = Store.changes ? (Store.changes.state ?? ({})) : ({})
+        const history = Store.history ? (Store.history.state ?? ({})) : ({})
+        const inspector = Store.inspector ? (Store.inspector.state ?? ({})) : ({})
+        const active = Store.workspace ? Store.workspace.active : null
+        const pane = active ? active.pane : ""
+        const location = inspector.location ?? null
+        return {
+            busy: changes.blocked === true,
+            canQueueStaging: changes.canQueue === true,
+            selectedCommits: history.selectedIds ?? [],
+            mergeCommits: [],
+            disabledSelections: changes.disabled ?? ["stageToggle", "stageSelection", "unstageSelection", "discardChanges"],
+            hasHistoryPath: location !== null && !!location.path,
+            inspectorCanBack: inspector.canBack === true,
+            inspectorCanForward: inspector.canForward === true,
+            inspectorShown: location !== null,
+            canBrowseAllFiles: location !== null && location.kind === "commit" && location.scope !== "all",
+            hasDiff: (pane === "changes" && changes.detail && changes.detail.hasDiff === true)
+                || (pane === "history" && inspector.hasDiff === true),
+            hasActivity: false,
+            canRetryActivity: false,
+            canCancelActivity: false,
+            remote: null,
+        }
+    }
     function openRemoteRepository() {}
     function cloneRepository() {}
     function openRecent(recent) {
@@ -244,6 +271,10 @@ Item {
         ]
     }
 
+    CommandPalette {
+        id: commandPalette
+        onRun: id => actions.runCommand(id, ({}))
+    }
     RefMutationDialog {
         id: refDialog
         onAnswered: (id, request) => actions.answer(id, request)
