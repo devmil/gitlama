@@ -76,6 +76,9 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   for Open in editor/terminal/file manager; command details behind a disclosure as in Flutter.
   Inspector file menus: lenses of the shown or listed commit, open/reveal when the file exists in
   the working tree, external diff tool, restore this version with its size confirmation.
+- Patches: the patch dialog (create: destination, preview of scope/format/name/size, overwrite,
+  write, show in folder; apply: check, files, command, apply) from Create/Apply patch, the commit
+  menu, the Changes and inspector file menus; remote repositories save the host's patch locally.
 
 ## Next
 - Inspector: All files tree, search in contents/blame, image diffs, open in window.
@@ -91,7 +94,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
   diff wrap, minimap, find, encoding, image diff, show more context.
 - Changes: tree mode with folder menus, drag between lists, flight animation, file menu entries
-  Select changed lines (partial staging dialog) and Create patch (patch workflow).
+  Select changed lines (partial staging dialog, with its patch of chosen lines).
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
@@ -100,6 +103,10 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Shortcuts bound from the registry; command palette; operation center; settings dialog.
 
 ## Deferred / notes
+- Found while porting (pre-existing, Flutter too): devmil-git's `parse_unified_patch` rejects
+  `git format-patch` output because of its `-- ` signature trailer, so Apply refuses the email
+  patches GitLama itself writes (plain unified diffs apply). Fix belongs in devmil-git (helper
+  version raise).
 - Transfer failure guide: lock listing and removal (repository lock inspection) not yet.
 - Palette: custom integration commands, background run (Cmd+Enter), scope cycling (Tab).
 - Sidebar: MeridianGlide check indicator between current branches; hosting checks/pull

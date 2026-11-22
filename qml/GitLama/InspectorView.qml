@@ -50,7 +50,7 @@ Rectangle {
         const host = Store.inspector.fileHost()
         const canOpen = host.canOpenWorkingCopy === true
         const remoteReason = L10n.t("remoteCommandUnsupported")
-        const capabilities = ["showDiff", "showContents", "blame", "fileHistory", "folderHistory", "copyPath", "restoreFromCommit"]
+        const capabilities = ["showDiff", "showContents", "blame", "fileHistory", "folderHistory", "createPatch", "copyPath", "restoreFromCommit"]
         if (host.hasDiffTool === true)
             capabilities.push("externalDiff")
         if (canOpen)
@@ -83,6 +83,10 @@ Rectangle {
             case "showContents": Store.inspector.openFileLens(path, "contents", false, commit); return
             case "blame": Store.inspector.openFileLens(path, "blame", false, commit); return
             case "fileHistory": Store.inspector.openFileLens(path, "history", false, commit); return
+            case "createPatch":
+                Store.actions.showPatchDialog({ kind: "diff", base: target.base ?? "", commit: commit,
+                    paths: file.oldPath.length > 0 && file.oldPath !== path ? [file.oldPath, path] : [path] }, "create")
+                return
             case "externalDiff":
                 Store.inspector.externalDiff(target.base ?? "", commit, file.oldPath.length > 0 ? file.oldPath : path, path); return
             case "openExternally": Store.workflows.openTool("editor", path); return

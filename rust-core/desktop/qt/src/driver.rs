@@ -53,6 +53,7 @@ pub struct Driver {
     pub conflicts: Rc<RefCell<crate::conflicts_state::ConflictsState>>,
     pub conflict_rows: Rc<RefCell<RowModel>>,
     pub operations: Rc<RefCell<crate::operations_state::OperationsState>>,
+    pub patches: Rc<RefCell<crate::patch_state::PatchState>>,
 }
 
 #[qobject(ConvertToCamelCase)]

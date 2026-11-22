@@ -285,16 +285,24 @@ mod inspector_state {
         /// Restores `path` to its content in `commit` after a preview.
         #[qslot]
         fn restore_file(&self, path: String, commit: String) {
-            let Some(actions) = self.actions.clone() else { return };
-            rt::spawn_detached(async move { actions.restore(path, commit).await });
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let actions = Rc::clone(&services.inspector_actions);
+                rt::spawn_detached(async move { actions.restore(path, commit).await });
+            });
         }
 
         /// Opens a change in the configured diff tool.
         #[qslot]
         fn external_diff(&self, old_revision: String, new_revision: String, old_path: String, new_path: String) {
-            let Some(actions) = self.actions.clone() else { return };
+            let Some(commands) = &self.commands else { return };
             let old_revision = (!old_revision.is_empty()).then_some(old_revision);
-            rt::spawn_detached(async move { actions.external_diff(old_revision, new_revision, old_path, new_path).await });
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let actions = Rc::clone(&services.inspector_actions);
+                rt::spawn_detached(async move { actions.external_diff(old_revision, new_revision, old_path, new_path).await });
+            });
         }
 
         /// Shows lens `lens` of the working-tree `path` (a folder when

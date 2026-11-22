@@ -40,6 +40,7 @@ QtObject {
     property var inspectorBlame: null
     /// The OperationsState bridge (logbook, activity).
     property var operations: null
+    property var patches: null
     /// The workspace shell, which owns the floating panels.
     property var shell: null
     /// The History pane (development screenshots open its menus).

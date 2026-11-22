@@ -103,6 +103,24 @@ mod workflows_state {
             });
         }
 
+        /// Shows the local file `path` in the file manager.
+        #[qslot]
+        fn reveal_path(&self, path: String) {
+            use gitlama_contract::dto::{NativePathIdentity, NativePathPlatform};
+            use gitlama_workbench::integrations::Target;
+            self.with_services(move |services| {
+                let integrations = Rc::clone(&services.integrations);
+                let file = if cfg!(windows) {
+                    NativePathIdentity { platform: NativePathPlatform::Windows, units: path.encode_utf16().collect(), remote: None }
+                } else {
+                    NativePathIdentity { platform: NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+                };
+                rt::spawn_detached(async move {
+                    integrations.open(gitlama_contract::integrations::NativeIntegrationKind::FileManager, Some(Target::Absolute(file))).await
+                });
+            });
+        }
+
         /// Runs the configured tool `id` on the repository.
         #[qslot]
         fn run_integration(&self, id: String) {

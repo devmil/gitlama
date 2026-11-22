@@ -134,6 +134,19 @@ Item {
         licenseDialog.open()
     }
     function showAbout() {}
+    /// Opens the patch dialog in `mode` for what the active pane shows: the
+    /// Changes selection, else History's (or `commit`).
+    function showPatchWorkflow(mode, commit) {
+        const active = Store.workspace ? Store.workspace.active : null
+        if (active && active.pane === "changes")
+            patchDialog.show({ kind: "selection" }, mode)
+        else
+            patchDialog.show({ kind: "history", commit: commit ?? "" }, mode)
+    }
+    /// Opens the patch dialog for `source` ({kind, ...}; see PatchDialog).
+    function showPatchDialog(source, mode) { patchDialog.show(source, mode) }
+    PatchDialog { id: patchDialog }
+
     /// Opens the local folder `path` itself in the file manager.
     function openFolder(path) { Store.workflows.openFolder(path) }
     function deleteWorktree(index, name) {}
@@ -248,6 +261,8 @@ Item {
         case "inspectorBack": Store.inspector.back(); return
         case "inspectorForward": Store.inspector.forward(); return
         case "refreshRepository": Store.history.reload(); return
+        case "createPatch": showPatchWorkflow("create", options.initialTarget ?? ""); return
+        case "applyPatch": showPatchWorkflow("apply", ""); return
         case "openInEditor": Store.workflows.openTool("editor", ""); return
         case "openInTerminal": Store.workflows.openTool("terminal", ""); return
         case "openInFileManager": Store.workflows.openTool("fileManager", ""); return
@@ -639,6 +654,12 @@ Item {
                 stashConfirm.submitted()
             else if (name === "mutationSource")
                 historyMutationDialog.chooseSource(argument)
+            else if (name === "patchDestination")
+                Store.patches.chooseDestination(argument)
+            else if (name === "patchFile")
+                Store.patches.chooseFile(argument)
+            else if (name === "patchSubmit")
+                patchDialog.submit()
             else if (name === "submitIgnore")
                 ignoreDialog.submit()
             else if (name === "submitMutation")
