@@ -9,7 +9,13 @@ use image::{ImageBuffer, Rgba, imageops::FilterType};
 /// Decodes `bytes` and returns a PNG data URL at most `max_side` pixels on
 /// its longer side; None when the bytes are not a supported image.
 pub fn png_data_url(bytes: Vec<u8>, max_side: u32) -> Option<String> {
-    let result = gitlama_core::api::image_decode_pair(None, Some(bytes));
+    // Decodes outside a session share one cancellation slot: a second decode
+    // cancels the first, so they run one at a time.
+    static DECODING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let result = {
+        let _turn = DECODING.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        gitlama_core::api::image_decode_pair(None, Some(bytes))
+    };
     if result.failure.is_some() || result.decode_failure.is_some() {
         return None;
     }
