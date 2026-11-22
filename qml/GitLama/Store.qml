@@ -20,6 +20,14 @@ QtObject {
     property var inspector: null
     /// The inspector's diff rows (a DiffModel).
     property var inspectorDiff: null
+    /// The ChangesState bridge: the Changes pane's state and slots.
+    property var changes: null
+    /// The Changes file lists (RowModels) and the working diff (a DiffModel).
+    property var unstagedRows: null
+    property var stagedRows: null
+    property var workingDiff: null
+    /// The CommitState bridge: the commit editor's draft and commit.
+    property var commit: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).
@@ -53,6 +61,14 @@ QtObject {
             const objectId = historyRows.objectIdAt(Number(argument))
             if (objectId.length > 0)
                 history.select(objectId)
+        } else if (name === "unstaged" && changes && unstagedRows) {
+            const row = unstagedRows.get(Number(argument))
+            if (row) {
+                changes.select("unstaged", [row.key])
+                history.select(row.path)
+            }
+        } else if (name === "stageSelected" && changes) {
+            changes.stageSelection(argument)
         } else if (name === "file" && inspector) {
             inspector.selectFile(argument)
         } else if (name === "open" && workspace)

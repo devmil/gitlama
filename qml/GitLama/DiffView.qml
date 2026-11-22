@@ -27,6 +27,33 @@ Item {
 
     signal rowActivated(int index, string kind)
 
+    /// Lines can be selected (staging, discarding or copying lines).
+    property bool lineSelection: false
+    /// The selected rows' stable ids.
+    property var selectedRows: []
+    property int selectionAnchor: -1
+    signal rowsSelected(var rows)
+    signal lineMenuRequested(real x, real y)
+
+    function rowSelected(id) { return selectedRows.indexOf(id) >= 0 }
+    function selectLine(index, stableId, modifiers) {
+        if (!lineSelection)
+            return
+        let rows
+        if ((modifiers & Qt.ShiftModifier) && selectionAnchor >= 0) {
+            rows = model.lineIds(Math.min(selectionAnchor, index), Math.max(selectionAnchor, index))
+        } else if (modifiers & (Qt.ControlModifier | Qt.MetaModifier)) {
+            rows = selectedRows.slice()
+            const at = rows.indexOf(stableId)
+            if (at >= 0) rows.splice(at, 1); else rows.push(stableId)
+            selectionAnchor = index
+        } else {
+            rows = rowSelected(stableId) && selectedRows.length === 1 ? [] : [stableId]
+            selectionAnchor = index
+        }
+        rowsSelected(rows)
+    }
+
     function positionAt(index) {
         list.positionViewAtIndex(index, ListView.Beginning)
     }
@@ -116,6 +143,8 @@ Item {
             required property string hunkRange
             required property string hunkText
 
+            readonly property bool lineRow: kind === "context" || kind === "addition" || kind === "deletion"
+            readonly property bool chosen: view.lineSelection && lineRow && view.selectedRows.indexOf(stableId) >= 0
             readonly property bool added: kind === "addition"
             readonly property bool deleted: kind === "deletion"
             readonly property bool fallback: kind === "binary" || kind === "image" || kind === "submodule"
@@ -134,7 +163,15 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: line.fill
+                color: line.chosen ? Theme.blend(line.fill, Theme.colors.accent, GitLamaLayout.opacityDiffSelectedLine) : line.fill
+                // The frame around a run of selected lines.
+                Rectangle {
+                    visible: line.chosen
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.width: Metrics.hairline
+                    border.color: Theme.colors.accent
+                }
                 Rectangle {
                     visible: line.kind === "hunk"
                     width: parent.width; height: Metrics.hairline
@@ -316,8 +353,23 @@ Item {
             }
 
             TapHandler {
+                id: lineTap
                 enabled: !line.loading
-                onTapped: view.rowActivated(line.index, line.kind)
+                onTapped: {
+                    if (view.lineSelection && line.lineRow)
+                        view.selectLine(line.index, line.stableId, lineTap.point.modifiers)
+                    view.rowActivated(line.index, line.kind)
+                }
+            }
+            TapHandler {
+                enabled: view.lineSelection && line.lineRow
+                acceptedButtons: Qt.RightButton
+                onTapped: point => {
+                    if (!line.chosen)
+                        view.selectLine(line.index, line.stableId, 0)
+                    const at = line.mapToItem(view, point.position.x, point.position.y)
+                    view.lineMenuRequested(at.x, at.y)
+                }
             }
         }
     }

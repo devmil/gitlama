@@ -59,3 +59,7 @@ FileRow 1.0 FileRow.qml
 DiffView 1.0 DiffView.qml
 CommitSummaryCard 1.0 CommitSummaryCard.qml
 InspectorView 1.0 InspectorView.qml
+ChangesSection 1.0 ChangesSection.qml
+ChangesPane 1.0 ChangesPane.qml
+WorkingDiffPane 1.0 WorkingDiffPane.qml
+CommitEditor 1.0 CommitEditor.qml

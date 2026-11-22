@@ -1,0 +1,365 @@
+//! The Changes pane: its state, the unstaged and staged file lists (keyed
+//! `RowModel`s) and the slots that select, stage and discard. The working
+//! diff's rows are a `DiffModel`.
+
+use crate::inspector_state::parse_whitespace;
+use crate::plumbing::Commands;
+use gitlama_contract::diff::NativeDiffLayout;
+use gitlama_contract::dto::{NativeChangeKind, NativeStagingPhase, NativeStagingScope, NativeStagingSide, NativeStatusEntry, NativeStatusEntryKind};
+use gitlama_workbench::app::Services;
+use gitlama_workbench::changes::{change_key, display_identity, entries_on, is_staged, is_unstaged, side_name};
+use gitlama_workbench::inspector::DiffOptions;
+use gitlama_workbench::rt;
+use qtbridge::qobject;
+use serde_json::{Value, json};
+use std::cell::RefCell;
+use std::collections::HashSet;
+use std::rc::Rc;
+
+/// The roles of a Changes file list.
+pub const FILE_ROLES: &[&str] = &["key", "path", "status", "partial", "conflicted", "untracked", "selected", "pending"];
+
+/// The status letter of `entry` on `side` (the Dart changeStatusCode).
+pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'static str {
+    if entry.kind == NativeStatusEntryKind::Unmerged {
+        return "U";
+    }
+    if entry.kind == NativeStatusEntryKind::Untracked {
+        return "?";
+    }
+    if entry.kind == NativeStatusEntryKind::Ignored {
+        return "!";
+    }
+    if entry.kind == NativeStatusEntryKind::Rename {
+        return "R";
+    }
+    match if side == NativeStagingSide::Staged { entry.index } else { entry.worktree } {
+        NativeChangeKind::Added => "A",
+        NativeChangeKind::Deleted => "D",
+        NativeChangeKind::Renamed => "R",
+        NativeChangeKind::Copied => "C",
+        NativeChangeKind::UpdatedButUnmerged => "U",
+        NativeChangeKind::TypeChanged | NativeChangeKind::Modified => "M",
+        NativeChangeKind::Unmodified => "!",
+    }
+}
+
+/// Whether `entry` matches every whitespace-separated term of `query`.
+pub fn filter_matches(entry: &NativeStatusEntry, query: &str) -> bool {
+    let path = display_identity(entry).to_lowercase();
+    query.to_lowercase().split_whitespace().all(|term| path.contains(term))
+}
+
+pub fn parse_side(name: &str) -> NativeStagingSide {
+    if name == "staged" { NativeStagingSide::Staged } else { NativeStagingSide::Unstaged }
+}
+
+fn phase_name(phase: NativeStagingPhase) -> &'static str {
+    match phase {
+        NativeStagingPhase::Idle | NativeStagingPhase::Waiting => "waiting",
+        NativeStagingPhase::Preparing => "preparing",
+        NativeStagingPhase::Updating => "updating",
+        NativeStagingPhase::Refreshing => "refreshing",
+    }
+}
+
+/// The Changes pane of the active tab: its state and both file lists.
+pub struct Projection {
+    pub state: Value,
+    pub unstaged: Vec<Value>,
+    pub staged: Vec<Value>,
+}
+
+pub fn project(services: &Services, filter: &str) -> Projection {
+    let changes = &services.changes;
+    let detail = &services.working_detail;
+    let active = services.workspace.active_tab();
+    let Some(tab) = active.as_ref() else {
+        return Projection { state: json!({"hasStatus": false}), unstaged: Vec::new(), staged: Vec::new() };
+    };
+    let status = tab.session.as_ref().and_then(|session| session.snapshot.status.clone());
+    let Some(status) = status else {
+        return Projection { state: json!({"hasStatus": false, "tabId": tab.id}), unstaged: Vec::new(), staged: Vec::new() };
+    };
+    let selection = changes.selection_of(tab.id);
+    let filtering = !filter.trim().is_empty();
+    let rows = |side: NativeStagingSide| -> (Vec<Value>, usize) {
+        let all = entries_on(&status, side);
+        let total = all.len();
+        let pending = changes.pending_keys(tab.id, side);
+        let selected = selection.of(side);
+        let shown = all
+            .iter()
+            .filter(|entry| !filtering || filter_matches(entry, filter))
+            .map(|entry| {
+                let key = change_key(entry);
+                json!({
+                    "key": key,
+                    "path": display_identity(entry),
+                    "status": status_code(entry, side),
+                    "partial": is_staged(entry) && is_unstaged(entry),
+                    "conflicted": entry.kind == NativeStatusEntryKind::Unmerged,
+                    "untracked": entry.kind == NativeStatusEntryKind::Untracked,
+                    "selected": selected.contains(&key),
+                    "pending": pending.contains(&key),
+                })
+            })
+            .collect();
+        (shown, total)
+    };
+    let (unstaged, unstaged_total) = rows(NativeStagingSide::Unstaged);
+    let (staged, staged_total) = rows(NativeStagingSide::Staged);
+    let key = detail.key();
+    let entry = detail.entry();
+    let options = detail.options();
+    let document = detail.document();
+    let state = json!({
+        "hasStatus": true,
+        "tabId": tab.id,
+        "conflictFlow": changes.conflict_flow(tab.id),
+        "busy": changes.busy(tab.id),
+        "canQueue": changes.can_stage_files(tab.id),
+        "phase": changes.staging_phase(tab.id).map(phase_name),
+        "pending": changes.pending_stages(tab.id),
+        "stopped": changes.stopped_stages(tab.id),
+        "focused": side_name(selection.focused),
+        "filtering": filtering,
+        "unstagedTotal": unstaged_total,
+        "stagedTotal": staged_total,
+        "unstagedShown": unstaged.len(),
+        "stagedShown": staged.len(),
+        "selectedUnstaged": selection.unstaged.len(),
+        "selectedStaged": selection.staged.len(),
+        "disabled": changes.disabled_selection_commands(tab.id),
+        "headObjectId": status.head_object_id,
+        "detail": {
+            "identity": key.as_ref().map(|key| key.identity.clone()),
+            "side": key.as_ref().map(|key| side_name(key.side)),
+            "status": entry.as_ref().zip(key.as_ref()).map(|(entry, key)| status_code(entry, key.side)),
+            "untracked": entry.as_ref().is_some_and(|entry| entry.kind == NativeStatusEntryKind::Untracked),
+            "loading": detail.loading(),
+            "waiting": detail.waiting(),
+            "failure": detail.failure().map(|code| code.name()),
+            "hasDiff": document.is_some(),
+            "rows": document.as_ref().map_or(0, |document| document.total()),
+            "selectedRows": detail.selected_rows().into_iter().collect::<Vec<_>>(),
+            "forceText": detail.force_text(),
+            "options": {
+                "contextLines": options.context_lines,
+                "layout": match options.layout { NativeDiffLayout::Unified => "unified", NativeDiffLayout::SideBySide => "sideBySide" },
+            },
+        },
+    });
+    Projection { state, unstaged, staged }
+}
+
+#[qobject(ConvertToCamelCase)]
+mod changes_state {
+    use super::*;
+
+    #[derive(Default)]
+    pub struct ChangesState {
+        pub commands: Option<Commands>,
+        pub(crate) state: Value,
+        /// The file filter, shared by both lists.
+        pub filter: Rc<RefCell<String>>,
+    }
+
+    impl ChangesState {
+        qproperty!("state", Member = state, Notify = state_changed);
+
+        #[qsignal]
+        pub fn state_changed(&mut self);
+        /// A move started or ended, for the lists' animations.
+        #[qsignal]
+        pub fn effect(&mut self, kind: String, payload: String);
+
+        /// Filters both lists by path terms; hidden files leave the selection.
+        #[qslot]
+        fn set_filter(&self, text: String) {
+            let filter = Rc::clone(&self.filter);
+            self.with_services(move |services| {
+                *filter.borrow_mut() = text.clone();
+                let Some(tab) = services.workspace.active_tab() else { return };
+                let Some(status) = tab.session.and_then(|session| session.snapshot.status.clone()) else { return };
+                let shown: HashSet<String> =
+                    status.entries.iter().filter(|entry| filter_matches(entry, &text)).map(change_key).collect();
+                services.changes.retain(tab.id, &shown);
+            });
+        }
+
+        /// Selects `keys` in the list `side`, which takes the focus.
+        #[qslot]
+        fn select(&self, side: String, keys: Vec<String>) {
+            self.with_tab(move |services, tab| {
+                services.changes.select(tab, parse_side(&side), keys.into_iter().collect());
+            });
+        }
+
+        #[qslot]
+        fn focus(&self, side: String) {
+            self.with_tab(move |services, tab| services.changes.focus(tab, parse_side(&side)));
+        }
+
+        /// Stages (or unstages, from the staged list) the files `keys`.
+        #[qslot]
+        fn stage_files(&self, side: String, keys: Vec<String>) {
+            self.with_tab(move |services, tab| {
+                let side = parse_side(&side);
+                let keys: HashSet<String> = keys.into_iter().collect();
+                let Some(status) = services.workspace.tab(tab).and_then(|tab| tab.session).and_then(|session| session.snapshot.status.clone()) else {
+                    return;
+                };
+                let entries: Vec<NativeStatusEntry> =
+                    entries_on(&status, side).into_iter().filter(|entry| keys.contains(&change_key(entry))).collect();
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(async move {
+                    changes.stage(tab, side, NativeStagingScope::Files, entries, None, Vec::new(), None).await
+                });
+            });
+        }
+
+        /// Stages every file of `side` (the shown ones while filtering).
+        #[qslot]
+        fn stage_all(&self, side: String) {
+            let filter = self.filter.borrow().clone();
+            self.with_tab(move |services, tab| {
+                let side = parse_side(&side);
+                let Some(status) = services.workspace.tab(tab).and_then(|tab| tab.session).and_then(|session| session.snapshot.status.clone()) else {
+                    return;
+                };
+                let all = entries_on(&status, side);
+                let changes = Rc::clone(&services.changes);
+                if filter.trim().is_empty() {
+                    rt::spawn_detached(async move {
+                        changes.stage(tab, side, NativeStagingScope::All, all, None, Vec::new(), None).await
+                    });
+                } else {
+                    let shown = all.into_iter().filter(|entry| filter_matches(entry, &filter)).collect();
+                    rt::spawn_detached(async move {
+                        changes.stage(tab, side, NativeStagingScope::Files, shown, None, Vec::new(), None).await
+                    });
+                }
+            });
+        }
+
+        /// Stages the selection of `side` (its chosen lines, or its files).
+        #[qslot]
+        fn stage_selection(&self, side: String) {
+            self.with_tab(move |services, tab| services.changes.stage_selection(tab, parse_side(&side)));
+        }
+
+        /// Space: stages or unstages what the focused list selects.
+        #[qslot]
+        fn toggle_focused(&self) {
+            self.with_tab(|services, tab| services.changes.toggle_focused(tab));
+        }
+
+        /// Discards (or cleans) the unstaged files `keys` after a review.
+        #[qslot]
+        fn discard_files(&self, keys: Vec<String>) {
+            self.with_tab(move |services, tab| {
+                let keys: HashSet<String> = keys.into_iter().collect();
+                let Some(status) = services.workspace.tab(tab).and_then(|tab| tab.session).and_then(|session| session.snapshot.status.clone()) else {
+                    return;
+                };
+                let entries: Vec<NativeStatusEntry> = entries_on(&status, NativeStagingSide::Unstaged)
+                    .into_iter()
+                    .filter(|entry| keys.contains(&change_key(entry)))
+                    .collect();
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(async move { changes.discard(tab, entries, None, Vec::new()).await });
+            });
+        }
+
+        /// Discards the selected diff lines, or the selected unstaged files.
+        #[qslot]
+        fn discard_selection(&self) {
+            self.with_tab(|services, tab| services.changes.discard_selection(tab));
+        }
+
+        /// Stages (or unstages) the diff's selected lines.
+        #[qslot]
+        fn stage_rows(&self) {
+            self.with_tab(|services, tab| {
+                let detail = &services.working_detail;
+                let (Some(key), Some(entry), Some(document)) = (detail.key(), detail.entry(), detail.document()) else {
+                    return;
+                };
+                let rows: Vec<String> = detail.selected_rows().into_iter().collect();
+                if rows.is_empty() {
+                    return;
+                }
+                let changes = Rc::clone(&services.changes);
+                let request = document.request_id();
+                rt::spawn_detached(async move {
+                    changes
+                        .stage(tab, key.side, NativeStagingScope::Rows, vec![entry], Some(request), rows, Some(key.identity))
+                        .await
+                });
+            });
+        }
+
+        /// Discards the diff's selected lines after a review.
+        #[qslot]
+        fn discard_rows(&self) {
+            self.with_tab(|services, tab| {
+                let detail = &services.working_detail;
+                let (Some(entry), Some(document)) = (detail.entry(), detail.document()) else { return };
+                let rows: Vec<String> = detail.selected_rows().into_iter().collect();
+                if rows.is_empty() {
+                    return;
+                }
+                let changes = Rc::clone(&services.changes);
+                let request = document.request_id();
+                rt::spawn_detached(async move { changes.discard(tab, vec![entry], Some(request), rows).await });
+            });
+        }
+
+        /// Chooses the diff's selected lines.
+        #[qslot]
+        fn set_selected_rows(&self, rows: Vec<String>) {
+            self.with_services(move |services| services.working_detail.set_selected_rows(rows.into_iter().collect()));
+        }
+
+        #[qslot]
+        fn dismiss_stopped(&self) {
+            self.with_tab(|services, tab| services.changes.dismiss_stopped_stages(tab));
+        }
+
+        /// Loads the diff with these options (`forceText` shows a binary file as text).
+        #[qslot]
+        fn set_diff_options(&self, context_lines: i32, whitespace: String, layout: String, force_text: bool) {
+            self.with_services(move |services| {
+                services.working_detail.set_options(
+                    DiffOptions {
+                        context_lines: context_lines.clamp(0, 100) as u32,
+                        whitespace: parse_whitespace(&whitespace),
+                        layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+                    },
+                    force_text,
+                )
+            });
+        }
+
+        fn with_tab(&self, action: impl FnOnce(&Services, u64) + 'static) {
+            self.with_services(move |services| {
+                if let Some(tab) = services.workspace.active_tab_id() {
+                    action(services, tab);
+                }
+            });
+        }
+
+        fn with_services(&self, action: impl FnOnce(&Services) + 'static) {
+            if let Some(commands) = &self.commands {
+                commands.post(move |driver| {
+                    if let Some(services) = driver.app.services() {
+                        action(&services);
+                    }
+                });
+            }
+        }
+    }
+}
+
+pub use changes_state::ChangesState;

@@ -121,9 +121,13 @@ mod row_model {
         key: String,
         keys: Vec<String>,
         rows: Vec<Map<String, Value>>,
+        /// The row count as a property QML bindings follow.
+        row_total: i32,
     }
 
     impl RowModel {
+        qproperty!("size", Member = row_total, Notify = count_changed);
+
         #[qsignal]
         fn count_changed(&mut self);
 
@@ -278,6 +282,7 @@ mod row_model {
                 }
             }
             if self.rows.len() != old_count {
+                self.row_total = i32::try_from(self.rows.len()).unwrap_or(i32::MAX);
                 self.count_changed();
             }
         }

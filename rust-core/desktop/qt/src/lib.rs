@@ -3,6 +3,8 @@
 //! window's QObjects and the item models.
 
 mod app_state;
+mod changes_state;
+mod commit_state;
 mod diff_model;
 mod driver;
 mod history_model;
@@ -23,6 +25,8 @@ pub use history_model::HistoryModel;
 pub use history_state::HistoryState;
 pub use diff_model::DiffModel;
 pub use inspector_state::InspectorState;
+pub use changes_state::{ChangesState, FILE_ROLES};
+pub use commit_state::CommitState;
 pub use sidebar_state::{SIDEBAR_ROLES, SidebarState};
 pub use workspace_state::WorkspaceState;
 

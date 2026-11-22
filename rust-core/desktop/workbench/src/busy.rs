@@ -1,0 +1,106 @@
+//! Which repository tabs are busy with a workflow (the Dart
+//! RepositoryBusyService). Blocking operations hold the tab's other
+//! commands; non-blocking ones (staging) only mark it busy.
+
+use crate::notify::{Notifier, Topics};
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::future::Future;
+use std::rc::Rc;
+
+/// What a busy tab is doing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BusyActivity {
+    CommitCheckout,
+    Stash(&'static str),
+    HistoryMutation,
+    Rebase { current_branch: Vec<u8>, onto: Vec<u8> },
+    Restack { root_branch: Vec<u8> },
+    ConflictPrediction,
+    Changes,
+}
+
+pub struct BusyOperation {
+    id: u64,
+    pub activity: BusyActivity,
+    pub blocking: bool,
+    pub cancel: Option<Rc<dyn Fn()>>,
+    pub canceling: Cell<bool>,
+}
+
+pub struct BusyService {
+    notifier: Notifier,
+    operations: RefCell<HashMap<u64, Vec<Rc<BusyOperation>>>>,
+    next: Cell<u64>,
+}
+
+impl BusyService {
+    pub fn new(notifier: Notifier) -> Rc<Self> {
+        Rc::new(Self { notifier, operations: RefCell::new(HashMap::new()), next: Cell::new(1) })
+    }
+
+    /// The latest blocking operation of `tab`.
+    pub fn blocking_of(&self, tab: Option<u64>) -> Option<Rc<BusyOperation>> {
+        self.operations
+            .borrow()
+            .get(&tab?)
+            .and_then(|operations| operations.iter().rev().find(|operation| operation.blocking).cloned())
+    }
+
+    pub fn is_blocked(&self, tab: Option<u64>) -> bool {
+        self.blocking_of(tab).is_some()
+    }
+
+    pub fn is_busy(&self, tab: Option<u64>) -> bool {
+        tab.is_some_and(|tab| self.operations.borrow().get(&tab).is_some_and(|operations| !operations.is_empty()))
+    }
+
+    /// Asks the blocking operation of `tab` to stop.
+    pub fn cancel(&self, tab: u64) {
+        if let Some(operation) = self.blocking_of(Some(tab))
+            && let Some(cancel) = operation.cancel.clone()
+            && !operation.canceling.replace(true)
+        {
+            self.notifier.notify(Topics::OPERATIONS);
+            cancel();
+        }
+    }
+
+    /// Runs `operation` while `tab` is busy with `activity`.
+    pub async fn run<T>(
+        &self,
+        tab: Option<u64>,
+        activity: BusyActivity,
+        blocking: bool,
+        cancel: Option<Rc<dyn Fn()>>,
+        operation: impl Future<Output = T>,
+    ) -> T {
+        let Some(tab) = tab else { return operation.await };
+        let id = self.next.get();
+        self.next.set(id + 1);
+        self.operations.borrow_mut().entry(tab).or_default().push(Rc::new(BusyOperation {
+            id,
+            activity,
+            blocking,
+            cancel,
+            canceling: Cell::new(false),
+        }));
+        self.notifier.notify(Topics::OPERATIONS);
+        struct Done<'a>(&'a BusyService, u64, u64);
+        impl Drop for Done<'_> {
+            fn drop(&mut self) {
+                let mut operations = self.0.operations.borrow_mut();
+                if let Some(list) = operations.get_mut(&self.1) {
+                    list.retain(|operation| operation.id != self.2);
+                    if list.is_empty() {
+                        operations.remove(&self.1);
+                    }
+                }
+                drop(operations);
+                self.0.notifier.notify(Topics::OPERATIONS);
+            }
+        }
+        let _done = Done(self, tab, id);
+        operation.await
+    }
+}

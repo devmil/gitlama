@@ -159,6 +159,40 @@ impl DiffDocument {
         });
     }
 
+    /// Loads the pages at `offsets` and waits for them (an in-place reload
+    /// fetches what the old diff showed before it is swapped in).
+    pub async fn preload(self: &Rc<Self>, offsets: Vec<u64>) {
+        for offset in offsets {
+            if self.pages.borrow().contains_key(&offset) {
+                continue;
+            }
+            let identity = self.identity;
+            let request = match self.origin {
+                NativeDiffSyntaxOrigin::Committed => self.calls.repository_session_diff_page(
+                    identity.native_id,
+                    identity.generation,
+                    self.request_id,
+                    offset,
+                    DIFF_PAGE_ROWS as u32,
+                ),
+                NativeDiffSyntaxOrigin::Working => self.calls.repository_session_working_diff_page(
+                    identity.native_id,
+                    identity.generation,
+                    self.request_id,
+                    offset,
+                    DIFF_PAGE_ROWS as u32,
+                ),
+            };
+            if let Ok(result) = request.await
+                && let Some(page) = result.page
+                && result.failure.is_none()
+                && page.request_id == self.request_id
+            {
+                self.pages.borrow_mut().insert(page.offset, Rc::new(page));
+            }
+        }
+    }
+
     fn changed(&self) {
         self.revision.set(self.revision.get() + 1);
         self.notifier.notify(self.topic);

@@ -18,7 +18,10 @@ Item {
     property bool showDirectory: true
 
     signal clicked()
+    signal doubleClicked()
     signal contextMenuRequested(real x, real y)
+    /// The keyboard modifiers of the last click.
+    property int modifiers: 0
 
     readonly property int slash: path.lastIndexOf("/")
     readonly property string directory: !showDirectory || slash < 0 ? "" : path.substring(0, slash + 1)
@@ -94,10 +97,13 @@ Item {
 
     HoverHandler { id: hover }
     TapHandler {
+        id: tap
         onTapped: {
+            row.modifiers = tap.point.modifiers
             row.forceActiveFocus()
             row.clicked()
         }
+        onDoubleTapped: row.doubleClicked()
     }
     TapHandler {
         acceptedButtons: Qt.RightButton

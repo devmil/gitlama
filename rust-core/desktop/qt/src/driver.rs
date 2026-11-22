@@ -10,6 +10,8 @@ use crate::history_model::{HistoryModel, HistorySource};
 use crate::history_state::HistoryState;
 use crate::diff_model::DiffModel;
 use crate::inspector_state::InspectorState;
+use crate::changes_state::ChangesState;
+use crate::commit_state::CommitState;
 use gitlama_workbench::history_rows::ReferenceContext;
 use crate::json::to_value;
 use crate::plumbing::{Commands, PumpWaker};
@@ -39,6 +41,11 @@ pub struct Driver {
     pub history_published: RefCell<Option<(u64, u64, u64, Option<String>, usize)>>,
     pub inspector: Rc<RefCell<InspectorState>>,
     pub inspector_diff: Rc<RefCell<DiffModel>>,
+    pub changes: Rc<RefCell<ChangesState>>,
+    pub unstaged_rows: Rc<RefCell<RowModel>>,
+    pub staged_rows: Rc<RefCell<RowModel>>,
+    pub working_diff: Rc<RefCell<DiffModel>>,
+    pub commit: Rc<RefCell<CommitState>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -99,6 +106,9 @@ impl Driver {
         }
         if changed.intersects(Topics::INSPECTOR) {
             self.project_inspector();
+        }
+        if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS) {
+            self.project_changes();
         }
         if changed.intersects(Topics::SETTINGS) {
             let appearance = self
@@ -276,5 +286,45 @@ impl Driver {
         }
         let diff = services.inspector.current().diff;
         self.inspector_diff.borrow_mut().publish(diff);
+    }
+
+    fn project_changes(&self) {
+        let Some(services) = self.app.services() else { return };
+        services.changes.sync();
+        services.working_detail.follow();
+        let filter = self.changes.borrow().filter.borrow().clone();
+        let projection = crate::changes_state::project(&services, &filter);
+        self.unstaged_rows.borrow_mut().publish(projection.unstaged);
+        self.staged_rows.borrow_mut().publish(projection.staged);
+        self.working_diff.borrow_mut().publish(services.working_detail.document());
+        // The editor shows the active worktree's draft when the tab changes.
+        let tab = services.workspace.active_tab();
+        let tab_id = tab.as_ref().map_or(-1, |tab| tab.id as i64);
+        if self.commit.borrow().draft["tabId"].as_i64() != Some(tab_id) {
+            let draft = services.commit.draft(tab.as_ref().and_then(|tab| tab.canonical_identity()));
+            let mut commit = self.commit.borrow_mut();
+            commit.draft = serde_json::json!({"tabId": tab_id, "subject": draft.subject, "description": draft.description});
+            commit.draft_changed();
+        }
+        let effects = services.changes.take_effects();
+        let mut changes = self.changes.borrow_mut();
+        if changes.state != projection.state {
+            changes.state = projection.state;
+            changes.state_changed();
+        }
+        for effect in effects {
+            use gitlama_workbench::changes::{ChangesEffect, side_name};
+            let (kind, payload) = match effect {
+                ChangesEffect::MoveStarted { tab, side, keys, single } => {
+                    ("moveStarted", serde_json::json!({"tab": tab, "side": side_name(side), "keys": keys, "single": single}))
+                }
+                ChangesEffect::MoveEnded { tab, moved } => ("moveEnded", serde_json::json!({"tab": tab, "moved": moved})),
+                ChangesEffect::ActionFailed { tab, side } => ("actionFailed", serde_json::json!({"tab": tab, "side": side_name(side)})),
+                ChangesEffect::DiffSelectionRequested { tab, discard } => {
+                    ("diffSelectionRequested", serde_json::json!({"tab": tab, "discard": discard}))
+                }
+            };
+            changes.effect(kind.to_owned(), payload.to_string());
+        }
     }
 }

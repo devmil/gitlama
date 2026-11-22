@@ -82,9 +82,17 @@ Item {
             body.draggedDetailHeight >= 0 ? body.draggedDetailHeight
                 : body.detailHeight >= 0 ? body.detailHeight : (height - Theme.space.s3) / 2))
 
+        // Changes: the files island beside the diff.
+        ChangesPane {
+            visible: !workspace.history && body.active !== null && body.active.hasStatus === true
+            anchors.fill: parent
+            onCommand: (id, options) => body.command(id, options)
+        }
+
         // History keeps the full width above; details and the diff below.
         MeridianIsland {
             id: primary
+            visible: workspace.history || body.active === null || !body.active.hasStatus
             width: parent.width
             height: workspace.history ? parent.height - workspace.detailHeight - Theme.space.s3 : parent.height
             HistoryPane {
@@ -92,11 +100,12 @@ Item {
                 visible: workspace.history
                 onCommand: (id, options) => body.command(id, options)
             }
-            MeridianText {
-                visible: !workspace.history
-                anchors.centerIn: parent
-                color: Theme.colors.inkMuted
-                text: body.active ? body.active.pane : ""
+            MeridianEmptyState {
+                visible: !workspace.history && (body.active === null || !body.active.hasStatus)
+                anchors.fill: parent
+                compact: true
+                progress: true
+                title: L10n.t("workspaceLoadingRepository")
             }
         }
         MeridianResizeHandle {

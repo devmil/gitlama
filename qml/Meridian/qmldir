@@ -14,6 +14,7 @@ MeridianGround 1.0 MeridianGround.qml
 MeridianIsland 1.0 MeridianIsland.qml
 MeridianButton 1.0 MeridianButton.qml
 MeridianIconButton 1.0 MeridianIconButton.qml
+MeridianTextArea 1.0 MeridianTextArea.qml
 MeridianTextField 1.0 MeridianTextField.qml
 MeridianSwitch 1.0 MeridianSwitch.qml
 MeridianSegmented 1.0 MeridianSegmented.qml

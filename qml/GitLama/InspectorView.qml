@@ -9,10 +9,10 @@ import Meridian
 Rectangle {
     id: inspector
 
-    readonly property var state: Store.inspector ? (Store.inspector.state ?? ({})) : ({})
-    readonly property var location: state.location ?? null
-    readonly property var summary: state.summary ?? null
-    readonly property var files: state.files ?? []
+    readonly property var paneState: Store.inspector ? (Store.inspector.paneState ?? ({})) : ({})
+    readonly property var location: paneState.location ?? null
+    readonly property var summary: paneState.summary ?? null
+    readonly property var files: paneState.files ?? []
     property bool filesHidden: false
     /// The width of the files column (the Dart commitFileListWidth).
     property real filesWidth: 280
@@ -76,14 +76,14 @@ Rectangle {
                     objectName: "inspector-back"
                     text: L10n.t("historyNavigateBack")
                     iconName: "back"
-                    enabled: inspector.state.canBack === true
+                    enabled: inspector.paneState.canBack === true
                     onClicked: Store.inspector.back()
                 }
                 MeridianIconButton {
                     objectName: "inspector-forward"
                     text: L10n.t("historyNavigateForward")
                     iconName: "forward"
-                    enabled: inspector.state.canForward === true
+                    enabled: inspector.paneState.canForward === true
                     onClicked: Store.inspector.forward()
                 }
             }
@@ -130,7 +130,7 @@ Rectangle {
                 controlSize: MeridianButton.Small
                 value: inspector.location ? inspector.location.lens : "diff"
                 segments: {
-                    const availability = inspector.state.lensAvailability ?? []
+                    const availability = inspector.paneState.lensAvailability ?? []
                     const reasonOf = lens => {
                         const entry = availability.find(item => item.lens === lens)
                         return entry ? entry.reason : null
@@ -156,20 +156,20 @@ Rectangle {
             width: parent.width
 
             MeridianEmptyState {
-                visible: inspector.state.phase === "loading"
+                visible: inspector.paneState.phase === "loading"
                 anchors.fill: parent
                 compact: true
                 progress: true
                 title: inspector.location ? L10n.tn("inspectorLoading", { commit: inspector.location.commit.substring(0, 10) }) : ""
             }
             MeridianBanner {
-                visible: inspector.state.phase === "failed"
+                visible: inspector.paneState.phase === "failed"
                 anchors.top: parent.top
                 anchors.margins: Theme.space.s5
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width - 2 * Theme.space.s5
                 tone: MeridianBanner.Error
-                message: inspector.failureText(inspector.state.failure)
+                message: inspector.failureText(inspector.paneState.failure)
                 MeridianButton {
                     objectName: "inspector-retry"
                     text: L10n.t("retry")
@@ -180,7 +180,7 @@ Rectangle {
 
             Item {
                 id: ready
-                visible: inspector.state.phase === "ready"
+                visible: inspector.paneState.phase === "ready"
                 anchors.fill: parent
 
                 CommitSummaryCard {
@@ -249,8 +249,8 @@ Rectangle {
                                 text: L10n.t("historyAllChanges")
                                 iconName: "file-diff"
                                 selected: inspector.location !== null && inspector.location.path === null
-                                enabled: inspector.state.allChangesTooLarge !== true
-                                meta: inspector.state.allChangesTooLarge === true ? L10n.t("historyAllChangesTooLarge") : ""
+                                enabled: inspector.paneState.allChangesTooLarge !== true
+                                meta: inspector.paneState.allChangesTooLarge === true ? L10n.t("historyAllChangesTooLarge") : ""
                                 onClicked: Store.inspector.selectFile("")
                             }
                             delegate: FileRow {
@@ -304,18 +304,18 @@ Rectangle {
                         }
                         MeridianProgressBar {
                             id: progress
-                            visible: inspector.state.contentLoading === true && inspector.location.lens !== "contents"
+                            visible: inspector.paneState.contentLoading === true && inspector.location.lens !== "contents"
                             anchors.top: showFiles.visible ? showFiles.bottom : parent.top
                             width: parent.width
                         }
                         MeridianBanner {
-                            visible: inspector.state.contentFailure !== null && inspector.state.contentFailure !== undefined
+                            visible: inspector.paneState.contentFailure !== null && inspector.paneState.contentFailure !== undefined
                             anchors.top: parent.top
                             anchors.margins: Theme.space.s5
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width - 2 * Theme.space.s5
                             tone: MeridianBanner.Error
-                            message: inspector.failureText(inspector.state.contentFailure)
+                            message: inspector.failureText(inspector.paneState.contentFailure)
                             MeridianButton {
                                 text: L10n.t("retry")
                                 controlSize: MeridianButton.Small
@@ -323,13 +323,13 @@ Rectangle {
                             }
                         }
                         DiffView {
-                            visible: inspector.state.hasDiff === true && inspector.location.lens === "diff"
-                                && !inspector.state.contentFailure
+                            visible: inspector.paneState.hasDiff === true && inspector.location.lens === "diff"
+                                && !inspector.paneState.contentFailure
                             anchors.top: progress.visible ? progress.bottom : showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
                             width: parent.width
                             model: Store.inspectorDiff
-                            layout: inspector.state.options ? inspector.state.options.layout : "unified"
+                            layout: inspector.paneState.options ? inspector.paneState.options.layout : "unified"
                         }
                         MeridianEmptyState {
                             visible: inspector.location !== null && inspector.location.lens !== "diff"

@@ -40,6 +40,10 @@ pub struct Services {
     pub navigator: Rc<crate::navigator::Navigator>,
     pub sidebar: Rc<crate::sidebar::SidebarService>,
     pub inspector: Rc<crate::inspector::InspectorService>,
+    pub busy: Rc<crate::busy::BusyService>,
+    pub changes: Rc<crate::changes::ChangesService>,
+    pub working_detail: Rc<crate::working_detail::WorkingDetail>,
+    pub commit: Rc<crate::commit::CommitService>,
 }
 
 impl Services {
@@ -128,7 +132,35 @@ impl Services {
         );
         let inspector = crate::inspector::InspectorService::new(Rc::clone(&calls), notifier.clone());
         inspector.follow(&history);
+        let busy = crate::busy::BusyService::new(notifier.clone());
+        let changes = crate::changes::ChangesService::new(
+            Rc::clone(&workspace),
+            Rc::clone(&calls),
+            Rc::clone(&busy),
+            Rc::clone(&navigator),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
+        let working_detail = crate::working_detail::WorkingDetail::new(
+            Rc::clone(&calls),
+            notifier.clone(),
+            Rc::clone(&workspace),
+            Rc::clone(&changes),
+        );
+        let commit = crate::commit::CommitService::new(
+            Rc::clone(&calls),
+            Rc::clone(&settings),
+            Rc::clone(&workspace),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
         Ok(Self {
+            commit,
+            working_detail,
+            busy,
+            changes,
             inspector,
             navigator,
             sidebar,

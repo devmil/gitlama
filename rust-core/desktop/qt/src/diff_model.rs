@@ -405,6 +405,19 @@ mod diff_model {
             }
         }
 
+        /// The stable ids of the line rows from `first` to `last` (a Shift range).
+        #[qslot]
+        fn line_ids(&self, first: i32, last: i32) -> Vec<String> {
+            let mut ids = Vec::new();
+            for row in first.max(0)..=last.min(self.total - 1) {
+                let view = self.view(row);
+                if matches!(view.kind, "context" | "addition" | "deletion") && !view.loading {
+                    ids.push(view.stable_id.clone());
+                }
+            }
+            ids
+        }
+
         /// The row of file section that contains row `index`.
         #[qslot]
         fn file_row_before(&self, index: i32) -> i32 {

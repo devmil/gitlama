@@ -24,6 +24,16 @@ Item {
         case "initializeRepository":
             initializeDialog.ask(id, payload.initiallyBare === true)
             return
+        case "confirmDiscard":
+            discardConfirm.ask(id, payload)
+            return
+        case "confirmPublishedAmend":
+            amendConfirm.promptId = id
+            amendConfirm.open()
+            return
+        case "confirmSkipHooks":
+            skipHooksDialog.ask(id)
+            return
         default:
             answer(id, null)
         }
@@ -93,6 +103,78 @@ Item {
         }
     }
 
+    // Discard and Clean review what they remove permanently.
+    MeridianConfirm {
+        id: discardConfirm
+        property int promptId: -1
+        property bool clean: false
+        function ask(id, review) {
+            promptId = id
+            clean = (review.trackedFiles ?? 0) === 0
+            const mixed = (review.trackedFiles ?? 0) > 0 && (review.untrackedFiles ?? 0) > 0
+            title = clean ? L10n.t("cleanConfirmTitle") : L10n.t("discardConfirmTitle")
+            description = mixed
+                ? L10n.tn("discardMixedConfirmMessage", { tracked: review.trackedFiles, untracked: review.untrackedFiles })
+                : L10n.tn("discardConfirmMessage", { count: (review.trackedFiles ?? 0) + (review.untrackedFiles ?? 0) })
+            open()
+        }
+        confirmLabel: clean ? L10n.t("cleanConfirmAction") : L10n.t("discardConfirmAction")
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
+
+    // Amending a commit others may have.
+    MeridianConfirm {
+        id: amendConfirm
+        property int promptId: -1
+        title: L10n.t("commitConfirmAmend")
+        description: L10n.t("commitPublishedWarning")
+        confirmLabel: L10n.t("commitConfirmAmend")
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
+
+    // Skipping hooks asks for SKIP to be typed.
+    MeridianDialog {
+        id: skipHooksDialog
+        property int promptId: -1
+        function ask(id) {
+            promptId = id
+            skipField.text = ""
+            open()
+            skipField.forceActiveFocus()
+        }
+        readonly property bool confirmed: skipField.text.trim().toUpperCase() === "SKIP"
+        title: L10n.t("commitSkipHooksConfirmTitle")
+        description: L10n.t("commitSkipHooksConfirmBody")
+        submitDisabled: !confirmed
+        onSubmitted: { if (confirmed) { close(); actions.answer(promptId, true); promptId = -1 } }
+        onRejected: { actions.answer(promptId, false); promptId = -1 }
+        MeridianTextField {
+            id: skipField
+            width: parent ? parent.width : 0
+            Accessible.name: L10n.t("commitSkipHooksConfirmInput")
+            placeholderText: L10n.t("commitSkipHooksConfirmInput")
+        }
+        actions: [
+            MeridianButton {
+                text: L10n.t("cancel")
+                variant: MeridianButton.Quiet
+                onClicked: skipHooksDialog.reject()
+            },
+            MeridianButton {
+                text: L10n.t("commitSkipHooks")
+                variant: MeridianButton.Danger
+                enabled: skipHooksDialog.confirmed
+                onClicked: skipHooksDialog.submitted()
+            }
+        ]
+    }
+
     InitializeRepositoryDialog {
         id: initializeDialog
         onChosen: (id, choice) => actions.answer(id, choice)
@@ -105,7 +187,16 @@ Item {
         }
         function onNotice(key, args, error) {
             const values = args.length > 0 ? JSON.parse(args) : []
-            Notifications.show(Array.isArray(values) ? L10n.t(key, values) : L10n.tn(key, values), error)
+            if (values !== null && !Array.isArray(values)) {
+                // An argument {l10n: key} is itself a localized text.
+                for (const name in values) {
+                    const value = values[name]
+                    if (value !== null && typeof value === "object" && value.l10n !== undefined)
+                        values[name] = L10n.t(value.l10n)
+                }
+            }
+            Notifications.show(values === null ? L10n.t(key)
+                : Array.isArray(values) ? L10n.t(key, values) : L10n.tn(key, values), error)
         }
     }
 }

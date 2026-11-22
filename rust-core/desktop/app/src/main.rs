@@ -116,7 +116,26 @@ fn main() {
     let inspector_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
     gitlama_qt::DiffModel::attach_qobject(&inspector_diff);
 
+    let changes = Rc::new(RefCell::new(gitlama_qt::ChangesState::default()));
+    gitlama_qt::ChangesState::attach_qobject(&changes);
+    changes.borrow_mut().commands = Some(commands.clone());
+    let unstaged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::FILE_ROLES)));
+    gitlama_qt::RowModel::attach_qobject(&unstaged_rows);
+    let staged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::FILE_ROLES)));
+    gitlama_qt::RowModel::attach_qobject(&staged_rows);
+    let working_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
+    gitlama_qt::DiffModel::attach_qobject(&working_diff);
+
+    let commit = Rc::new(RefCell::new(gitlama_qt::CommitState::default()));
+    gitlama_qt::CommitState::attach_qobject(&commit);
+    commit.borrow_mut().commands = Some(commands.clone());
+
     let driver = Rc::new(Driver {
+        commit: Rc::clone(&commit),
+        changes: Rc::clone(&changes),
+        unstaged_rows: Rc::clone(&unstaged_rows),
+        staged_rows: Rc::clone(&staged_rows),
+        working_diff: Rc::clone(&working_diff),
         inspector: Rc::clone(&inspector),
         inspector_diff: Rc::clone(&inspector_diff),
         history: Rc::clone(&history),
@@ -168,6 +187,11 @@ fn main() {
         ("historyRows", history_rows.borrow().as_qvariant()),
         ("inspector", inspector.borrow().as_qvariant()),
         ("inspectorDiff", inspector_diff.borrow().as_qvariant()),
+        ("changes", changes.borrow().as_qvariant()),
+        ("unstagedRows", unstaged_rows.borrow().as_qvariant()),
+        ("stagedRows", staged_rows.borrow().as_qvariant()),
+        ("workingDiff", working_diff.borrow().as_qvariant()),
+        ("commit", commit.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

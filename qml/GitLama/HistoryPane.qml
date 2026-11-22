@@ -10,7 +10,7 @@ import Meridian
 Item {
     id: pane
 
-    readonly property var state: Store.history ? (Store.history.state ?? ({})) : ({})
+    readonly property var paneState: Store.history ? (Store.history.state ?? ({})) : ({})
     readonly property var active: Store.workspace ? Store.workspace.active : null
     readonly property string selectedObjectId: active && active.selectedIdentity ? active.selectedIdentity : ""
     readonly property string dateFormat: Store.appearance.dateFormat ?? "iso"
@@ -79,12 +79,12 @@ Item {
 
     // A revealed commit scrolls into view.
     property real _revealSequence: -1
-    onStateChanged: {
-        const sequence = state.revealSequence ?? 0
+    onPaneStateChanged: {
+        const sequence = paneState.revealSequence ?? 0
         if (sequence !== _revealSequence) {
             _revealSequence = sequence
-            if (state.revealIndex !== null && state.revealIndex !== undefined)
-                Qt.callLater(() => list.positionViewAtIndex(state.revealIndex, ListView.Contain))
+            if (paneState.revealIndex !== null && paneState.revealIndex !== undefined)
+                Qt.callLater(() => list.positionViewAtIndex(paneState.revealIndex, ListView.Contain))
         }
     }
 
@@ -117,7 +117,7 @@ Item {
                 placeholderText: L10n.t("historySearchHint")
                 Accessible.name: L10n.t("historySearchHint")
                 onAccepted: {
-                    if (pane.state.searchText === text.trim() && (pane.state.searchMatches ?? 0) > 0)
+                    if (pane.paneState.searchText === text.trim() && (pane.paneState.searchMatches ?? 0) > 0)
                         Store.history.navigateSearch(false)
                     else
                         Store.history.applyQuery(text, true, true, true, false)
@@ -146,14 +146,14 @@ Item {
 
         MeridianEmptyState {
             anchors.fill: parent
-            visible: pane.state.phase === "failed"
+            visible: pane.paneState.phase === "failed"
             compact: true
             iconName: "circle-alert"
             title: L10n.t("workspaceUnavailableRepository")
         }
         MeridianEmptyState {
             anchors.fill: parent
-            visible: pane.state.phase !== "failed" && pane.state.phase !== "loading" && pane.state.empty === true
+            visible: pane.paneState.phase !== "failed" && pane.paneState.phase !== "loading" && pane.paneState.empty === true
             compact: true
             iconName: "history"
             title: L10n.t("workspaceEmptyHistory")
@@ -164,7 +164,7 @@ Item {
             objectName: "history-graph"
             anchors.fill: parent
             anchors.margins: pane.listPadding
-            visible: pane.state.phase !== "failed" && pane.state.empty !== true
+            visible: pane.paneState.phase !== "failed" && pane.paneState.empty !== true
             clip: true
             focus: true
             activeFocusOnTab: true
@@ -207,8 +207,8 @@ Item {
                 authorWidth: pane.authorWidth
                 hashWidth: pane.hashWidth
                 dateWidth: pane.dateWidth
-                lightingActive: pane.state.lightingActive === true
-                queryActive: pane.state.queryActive === true
+                lightingActive: pane.paneState.lightingActive === true
+                queryActive: pane.paneState.queryActive === true
                 dateFormat: pane.dateFormat
                 selectedHere: objectId === pane.selectedObjectId
                 onActivated: (objectId, toggle) => pane.select(objectId, toggle)
@@ -219,19 +219,19 @@ Item {
             footer: Item {
                 width: list.width
                 height: Theme.size.row
-                visible: pane.state.phase === "complete"
+                visible: pane.paneState.phase === "complete"
                 MeridianText {
                     anchors.centerIn: parent
                     role: MeridianText.Caption
                     color: Theme.colors.inkMuted
-                    text: L10n.tn("historyEndOfHistory", { count: (pane.state.total ?? 0) - (pane.state.worktreeRows ?? 0) })
+                    text: L10n.tn("historyEndOfHistory", { count: (pane.paneState.total ?? 0) - (pane.paneState.worktreeRows ?? 0) })
                 }
             }
         }
         HoverHandler { id: listHover }
 
         MeridianSpinner {
-            visible: pane.state.phase === "preview" || pane.state.phase === "loading"
+            visible: pane.paneState.phase === "preview" || pane.paneState.phase === "loading"
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.margins: Theme.space.s4

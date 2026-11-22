@@ -17,6 +17,11 @@ Window {
     required property var historyRows
     required property var inspector
     required property var inspectorDiff
+    required property var changes
+    required property var unstagedRows
+    required property var stagedRows
+    required property var workingDiff
+    required property var commit
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -70,6 +75,11 @@ Window {
         Store.historyRows = historyRows
         Store.inspector = inspector
         Store.inspectorDiff = inspectorDiff
+        Store.changes = changes
+        Store.unstagedRows = unstagedRows
+        Store.stagedRows = stagedRows
+        Store.workingDiff = workingDiff
+        Store.commit = commit
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()
