@@ -153,6 +153,41 @@ Rectangle {
                     onActivated: Store.workspace.initializeRepository(true)
                 }
             }
+            // A running clone: its progress and Cancel.
+            Item { visible: Store.clone.running === true; Layout.preferredHeight: Theme.space.s4 }
+            MeridianProgressBar {
+                visible: Store.clone.running === true
+                Layout.fillWidth: true
+                value: Store.clone.progress ?? -1
+            }
+            MeridianButton {
+                visible: Store.clone.running === true
+                text: L10n.t("cancelClone")
+                variant: MeridianButton.Quiet
+                onClicked: Store.workspace.cancelClone()
+            }
+            // Why the last clone failed, and what to try.
+            Item { visible: !!screen.entry.cloneFailure; Layout.preferredHeight: Theme.space.s4 }
+            MeridianBanner {
+                visible: !!screen.entry.cloneFailure
+                Layout.fillWidth: true
+                tone: MeridianBanner.Error
+                message: Labels.cloneFailureMessage(screen.entry.cloneFailure ?? "")
+            }
+            MeridianButton {
+                visible: screen.entry.cloneFailure === "authentication"
+                text: L10n.t("retryAuthentication")
+                variant: MeridianButton.Quiet
+                enabled: !screen.busy
+                onClicked: Store.workspace.retryCloneWithCredentials()
+            }
+            MeridianButton {
+                visible: screen.entry.cloneFailure === "hostKey"
+                text: L10n.t("inspectHostKey")
+                variant: MeridianButton.Quiet
+                enabled: !screen.busy
+                onClicked: Store.workspace.inspectCloneHostKey()
+            }
             Item {
                 visible: screen.entry.failure !== undefined && screen.entry.failure !== null
                 Layout.preferredHeight: Theme.space.s4

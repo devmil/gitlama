@@ -91,6 +91,9 @@ Item {
         case "reviewRestack":
             restackPreview.ask(id, payload)
             return
+        case "chooseCloneSource":
+            cloneSourceDialog.ask(id)
+            return
         case "confirmSequencer": {
             const abort = payload.action === "abort"
             sequencerConfirm.promptId = id
@@ -147,6 +150,7 @@ Item {
         case "initializeRepository": Store.workspace.initializeRepository(false); return
         case "closeRepositoryTab": Store.workspace.closeTab(Store.workspace.activeTabId); return
         case "showSettings": showSettings(); return
+        case "cloneRepository": cloneRepository(); return
         case "showLicenses": showLicenses(); return
         case "showCommandPalette": commandPalette.show(); return
         case "fetch":
@@ -260,7 +264,7 @@ Item {
         }
     }
     function openRemoteRepository() {}
-    function cloneRepository() {}
+    function cloneRepository() { Store.workspace.cloneRepository() }
     function openRecent(recent) {
         if (recent.remote)
             return
@@ -281,6 +285,8 @@ Item {
             promptId = -1
         }
         onRejected: {
+            if (promptId < 0)
+                return
             actions.answer(promptId, null)
             promptId = -1
         }
@@ -397,6 +403,52 @@ Item {
     RestackPreviewDialog {
         id: restackPreview
         onAnswered: (id, acknowledge) => actions.answer(id, acknowledge)
+    }
+    MeridianDialog {
+        id: cloneSourceDialog
+        property int promptId: -1
+        function ask(id) {
+            promptId = id
+            cloneSource.text = ""
+            open()
+            cloneSource.forceActiveFocus()
+        }
+        function choose() {
+            if (cloneSource.text.trim().length === 0)
+                return
+            close()
+            actions.answer(promptId, cloneSource.text.trim())
+            promptId = -1
+        }
+        widthClass: MeridianDialog.Form
+        title: L10n.t("cloneRepository")
+        description: L10n.t("cloneSourceDescription")
+        submitDisabled: cloneSource.text.trim().length === 0
+        onSubmitted: choose()
+        onRejected: { actions.answer(promptId, null); promptId = -1 }
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s2
+            MeridianText { width: parent.width; role: MeridianText.Label; text: L10n.t("cloneSourceLabel") }
+            MeridianTextField {
+                id: cloneSource
+                objectName: "clone-source"
+                width: parent.width
+                monospace: true
+                placeholderText: L10n.t("cloneSourceHint")
+                Accessible.name: L10n.t("cloneSourceLabel")
+                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText | Qt.ImhUrlCharactersOnly
+            }
+        }
+        actions: [
+            MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: cloneSourceDialog.reject() },
+            MeridianButton {
+                text: L10n.t("chooseCloneDestination")
+                variant: MeridianButton.Primary
+                enabled: cloneSource.text.trim().length > 0
+                onClicked: cloneSourceDialog.choose()
+            }
+        ]
     }
     MeridianConfirm {
         id: sequencerConfirm
@@ -526,7 +578,18 @@ Item {
                 Store.conflicts.save()
             else if (name === "conflictSelect")
                 Store.conflicts.select(Number(argument), false)
-            else if (name === "settings")
+            else if (name === "cloneSource") {
+                cloneSource.text = argument
+                cloneSourceDialog.choose()
+            } else if (name === "chooseFolder") {
+                // Answers the open folder dialog without the platform picker.
+                const pending = folderDialog.promptId
+                if (pending >= 0) {
+                    folderDialog.promptId = -1
+                    folderDialog.close()
+                    actions.answer(pending, argument)
+                }
+            } else if (name === "settings")
                 actions.showSettings(argument)
             else if (name === "licenses")
                 actions.showLicenses()

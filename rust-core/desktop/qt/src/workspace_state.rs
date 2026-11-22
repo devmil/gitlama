@@ -92,6 +92,38 @@ mod workspace_state {
 
         /// Creates a repository; `bare` starts the dialog with Bare chosen.
         #[qslot]
+        fn clone_repository(&self) {
+            self.with_services(|services| {
+                let entry = std::rc::Rc::clone(&services.entry);
+                rt::spawn_detached(async move { entry.clone_repository().await });
+            });
+        }
+
+        #[qslot]
+        fn retry_clone_with_credentials(&self) {
+            self.with_services(|services| {
+                let entry = std::rc::Rc::clone(&services.entry);
+                rt::spawn_detached(async move { entry.retry_clone_with_credentials().await });
+            });
+        }
+
+        #[qslot]
+        fn inspect_clone_host_key(&self) {
+            self.with_services(|services| {
+                let entry = std::rc::Rc::clone(&services.entry);
+                rt::spawn_detached(async move { entry.inspect_clone_host_key().await });
+            });
+        }
+
+        #[qslot]
+        fn cancel_clone(&self) {
+            self.with_services(|services| {
+                let entry = std::rc::Rc::clone(&services.entry);
+                rt::spawn_detached(async move { entry.cancel_clone().await });
+            });
+        }
+
+        #[qslot]
         fn initialize_repository(&self, bare: bool) {
             self.with_services(move |services| {
                 let entry = std::rc::Rc::clone(&services.entry);

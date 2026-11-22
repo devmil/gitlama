@@ -61,6 +61,9 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   fetches, details with output, Retry/Cancel/Dismiss/Copy/Details, Dismiss all), toolbar badge and
   Compass progress from the polled center, the activity island; Meridian floating panel.
 
+- Clone: source dialog, destination, progress with Cancel, failure banner with credential and
+  host-key retries (a new folder for a partial destination), the new tab adopted.
+
 ## Next
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry and cancel once clone is ported; row entrance/exit stagger.

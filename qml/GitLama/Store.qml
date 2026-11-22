@@ -58,7 +58,7 @@ QtObject {
     /// Whether this window offers remote workspaces.
     readonly property bool remoteEnabled: platform && platform.remoteEnabled === true
     /// The running clone: {running, progress, ...}.
-    readonly property var clone: workspace && workspace.clone ? workspace.clone : ({})
+    readonly property var clone: workspace && workspace.entry && workspace.entry.clone ? workspace.entry.clone : ({})
     readonly property bool hasTabs: workspace !== null && workspace.tabs.length > 0
 
     /// Development screenshots: a named step (dark, light, ...) the window runs.

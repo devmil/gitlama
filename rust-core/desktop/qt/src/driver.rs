@@ -269,7 +269,13 @@ impl Driver {
                     Value::Array(groups.iter().map(projection::group).collect()),
                 )
             });
-            let entry = projection::entry(services.entry.current());
+            let mut entry = projection::entry(services.entry.current());
+            entry["clone"] = services.entry.clones.current().map_or(Value::Null, |clone| {
+                serde_json::json!({
+                    "running": clone.state == gitlama_contract::clone::NativeCloneState::Running,
+                    "progress": gitlama_workbench::clone::progress(&clone),
+                })
+            });
             let active_projection = services.workspace.with_tabs(|tabs, active, groups| {
                 let tab = active.and_then(|id| tabs.iter().find(|tab| tab.id == id));
                 let group = tab

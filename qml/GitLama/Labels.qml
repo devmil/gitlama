@@ -63,6 +63,26 @@ QtObject {
     /// A commit date in History's date column: `iso` (2026-11-22), `local`
     /// (the locale's medium date) or `relative` (now, 5 min, 3 h, 2 d, then
     /// the medium date). `seconds` since the epoch; 0 shows nothing.
+    /// What went wrong with a clone, in the user's words.
+    function cloneFailureMessage(failure) {
+        switch (failure) {
+        case "invalidSource": return L10n.t("cloneInvalidSource")
+        case "embeddedCredential": return L10n.t("cloneEmbeddedCredential")
+        case "invalidDestination": return L10n.t("cloneInvalidDestination")
+        case "destinationOccupied": return L10n.t("cloneDestinationOccupied")
+        case "authentication": return L10n.t("cloneAuthenticationRequired")
+        case "credentialBrokerUnavailable": return L10n.t("cloneCredentialBrokerUnavailable")
+        case "hostKey": return L10n.t("cloneHostKeyUntrusted")
+        case "hostKeyProbeFailed": return L10n.t("hostKeyProbeFailed")
+        case "hostKeyChallengeExpired": return L10n.t("hostKeyChallengeExpired")
+        case "hostKeyWriteFailed": return L10n.t("hostKeyWriteFailed")
+        case "missingGit": return L10n.t("gitUnavailable")
+        case "timedOut": return L10n.t("cloneTimedOut")
+        case "canceled": return L10n.t("cloneCanceled")
+        default: return L10n.t("cloneFailed")
+        }
+    }
+
     /// A running operation's phase and completion (the Dart
     /// operationProgressLabel); "" while Git reported neither. Git names
     /// its phases in English whatever the locale.

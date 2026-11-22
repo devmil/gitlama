@@ -24,6 +24,7 @@ pub struct EntryState {
 
 pub struct EntryWorkflows {
     workspace: Rc<WorkspaceService>,
+    pub clones: Rc<crate::clone::CloneService>,
     prompts: Rc<Prompts>,
     notifier: Notifier,
     state: Cell<EntryState>,
@@ -32,6 +33,7 @@ pub struct EntryWorkflows {
 impl EntryWorkflows {
     pub fn new(workspace: Rc<WorkspaceService>, prompts: Rc<Prompts>, notifier: Notifier) -> Rc<Self> {
         Rc::new(Self {
+            clones: crate::clone::CloneService::new(notifier.clone()),
             workspace,
             prompts,
             notifier,
@@ -116,6 +118,102 @@ impl EntryWorkflows {
         let workspace = Rc::clone(&self.workspace);
         self.run(async move { workspace.open_recent(identity).await.map(Some) })
             .await;
+    }
+
+    /// Runs a clone step, keeping its failure for the welcome screen, and
+    /// opens the tab of a finished clone.
+    async fn cloning<F>(&self, operation: F)
+    where
+        F: Future<Output = crate::clone::CloneResult<Option<(Option<crate::session::OpenedSession>, bool)>>>,
+    {
+        if self.state.get().busy {
+            return;
+        }
+        self.set(|state| {
+            state.busy = true;
+            state.clone_failure = None;
+        });
+        match operation.await {
+            Ok(Some((Some(opened), current))) => {
+                if let Err(error) = self.workspace.adopt_opened(opened, current).await
+                    && current
+                {
+                    self.set(|state| state.failure = Some(error.code()));
+                }
+            }
+            Ok(_) => {}
+            Err(failure) => self.set(|state| state.clone_failure = Some(failure)),
+        }
+        self.set(|state| state.busy = false);
+    }
+
+    /// Asks for a source and a destination and clones it.
+    pub async fn clone_repository(self: &Rc<Self>) {
+        let Some(source) = self.prompts.ask("chooseCloneSource", json!({})).await else { return };
+        let Some(source) = source.as_str().map(str::trim).filter(|source| !source.is_empty()).map(str::to_owned) else { return };
+        let this = Rc::clone(self);
+        self.cloning(async move {
+            let Some(destination) = this.choose_directory(true).await else { return Ok(None) };
+            let generation = this.workspace.next_generation();
+            this.clones.start(source, destination, generation).await.map(Some)
+        })
+        .await;
+    }
+
+    /// A new destination when the failed attempt left a partial one.
+    async fn retry_destination(&self) -> Result<Option<String>, ()> {
+        match self.clones.current() {
+            Some(current) if current.partial_destination => self.choose_directory(true).await.map(Some).ok_or(()),
+            _ => Ok(None),
+        }
+    }
+
+    /// Retries the failed clone with credentials the user enters.
+    pub async fn retry_clone_with_credentials(self: &Rc<Self>) {
+        let Some(answer) = self.prompts.ask("gitCredentials", json!({"target": "", "allowToken": false})).await else { return };
+        let username = answer["username"].as_str().filter(|name| !name.is_empty()).map(str::to_owned);
+        let secret = answer["secret"].as_str().map(str::to_owned);
+        let this = Rc::clone(self);
+        self.cloning(async move {
+            let Ok(destination) = this.retry_destination().await else { return Ok(None) };
+            this.clones.retry_with_credentials(username, secret, None, destination).await.map(Some)
+        })
+        .await;
+    }
+
+    /// Shows the clone's host key and records the user's decision.
+    pub async fn inspect_clone_host_key(self: &Rc<Self>) {
+        let this = Rc::clone(self);
+        self.cloning(async move {
+            let challenge = this.clones.probe_host_key().await?;
+            let accept = this
+                .prompts
+                .ask(
+                    "trustHostKey",
+                    json!({
+                        "host": challenge.host,
+                        "port": challenge.port,
+                        "algorithm": challenge.algorithm,
+                        "fingerprint": challenge.fingerprint,
+                    }),
+                )
+                .await
+                == Some(serde_json::Value::Bool(true));
+            let destination = if accept {
+                match this.retry_destination().await {
+                    Ok(destination) => destination,
+                    Err(()) => return Ok(None),
+                }
+            } else {
+                None
+            };
+            this.clones.resolve_host_key(&challenge, accept, destination).await
+        })
+        .await;
+    }
+
+    pub async fn cancel_clone(&self) {
+        let _ = self.clones.cancel().await;
     }
 
     /// Creates a repository on this computer: asks Bare or not, then a folder.
