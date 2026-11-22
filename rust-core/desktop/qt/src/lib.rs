@@ -5,6 +5,7 @@
 mod app_state;
 mod changes_state;
 mod commit_state;
+mod settings_state;
 mod diff_model;
 mod driver;
 mod history_model;
@@ -28,6 +29,7 @@ pub use diff_model::DiffModel;
 pub use inspector_state::InspectorState;
 pub use changes_state::{ChangesState, FILE_ROLES};
 pub use commit_state::CommitState;
+pub use settings_state::SettingsState;
 pub use workflows_state::WorkflowsState;
 pub use sidebar_state::{SIDEBAR_ROLES, SidebarState};
 pub use workspace_state::WorkspaceState;

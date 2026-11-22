@@ -134,7 +134,12 @@ fn main() {
     gitlama_qt::WorkflowsState::attach_qobject(&workflows);
     workflows.borrow_mut().commands = Some(commands.clone());
 
+    let settings = Rc::new(RefCell::new(gitlama_qt::SettingsState::default()));
+    gitlama_qt::SettingsState::attach_qobject(&settings);
+    settings.borrow_mut().commands = Some(commands.clone());
+
     let driver = Rc::new(Driver {
+        settings: Rc::clone(&settings),
         commit: Rc::clone(&commit),
         changes: Rc::clone(&changes),
         unstaged_rows: Rc::clone(&unstaged_rows),
@@ -197,6 +202,7 @@ fn main() {
         ("workingDiff", working_diff.borrow().as_qvariant()),
         ("commit", commit.borrow().as_qvariant()),
         ("workflows", workflows.borrow().as_qvariant()),
+        ("settings", settings.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

@@ -49,6 +49,27 @@
   "@licensesTitle": {
     "description": "Command and page title for application and dependency licenses."
   },
+  "licensesFilter": "Filter packages",
+  "@licensesFilter": {
+    "description": "The field that narrows the package list of the licenses dialog."
+  },
+  "licensesCount": "{count, plural, =1{1 license} other{{count} licenses}}",
+  "@licensesCount": {
+    "description": "How many licenses a package in the licenses dialog has.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "licensesNoMatches": "No packages match",
+  "@licensesNoMatches": {
+    "description": "The licenses dialog's package list when the filter matches nothing."
+  },
+  "licensesBack": "All packages",
+  "@licensesBack": {
+    "description": "The button that goes back from one package's licenses to the list."
+  },
   "settingsTitle": "Settings",
   "@settingsTitle": {
     "description": "Application settings command and dialog title."

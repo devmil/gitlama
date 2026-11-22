@@ -444,6 +444,43 @@ impl TransferService {
         result.map_err(SessionError::from)
     }
 
+    /// Fetches `identity`'s remote without prompting or reporting. A fetch
+    /// that cannot run (nothing to fetch from, busy, closed) waits for the
+    /// next run.
+    pub async fn background_fetch(&self, identity: SessionIdentity) {
+        let request = NativeTransferRequest {
+            kind: NativeTransferKind::Fetch,
+            remote: None,
+            branch: None,
+            pull_strategy: NativePullStrategy::FastForwardOnly,
+            allow_dirty: false,
+            stash_before_pull: false,
+            force_with_lease: false,
+            set_upstream: false,
+            refetch: false,
+            prune: false,
+        };
+        let fields = [("kind", (NativeTransferKind::Fetch as u64).into())];
+        diagnostics::info("Transfers", "background_fetch_preview_started", &fields);
+        let preview = match self.calls.repository_session_transfer_preview(identity.native_id, identity.generation, request).await {
+            Ok(result) => match result.preview {
+                Some(preview) if result.failure.is_none() => preview,
+                _ => return,
+            },
+            Err(_) => return,
+        };
+        diagnostics::info("Transfers", "background_fetch_execute_started", &fields);
+        let result = self
+            .calls
+            .repository_session_transfer_execute_background(identity.native_id, identity.generation, preview.token)
+            .await;
+        diagnostics::info(
+            "Transfers",
+            "background_fetch_execute_finished",
+            &[("state", result.as_ref().map_or(u64::MAX, |result| result.state as u64).into())],
+        );
+    }
+
     /// Cancels the running transfer `token` of `identity`.
     pub async fn cancel(&self, identity: SessionIdentity, token: u64) -> bool {
         self.calls

@@ -41,8 +41,15 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   (create/apply/pop/drop/rename/stash-and-switch) and commit checkout with stash choices.
 - Meridian list row slots (`leading`, `titleTrailing`, `trailing`, `semanticValue`).
 
+- Settings: appearance, Git (automatic fetching with the background scheduler, per-repository
+  override and reset), diff view (stored preferences drive every diff), shortcuts (Meridian
+  shortcut recorder), accessibility, diagnostics (detailed capture, clear, preview, save) and
+  licenses (Meridian license dialog with Qt runtime notices).
+
 ## Next
-- Settings dialog; operation center/logbook/activity; busy overlay (MeridianBusyOverlay QML);
+- Settings pages for features not yet ported: integrations, repository binding, remote hosts,
+  custom commands, diff renderer, updates; diagnostics Share on macOS/Windows.
+- Operation center/logbook/activity; busy overlay (MeridianBusyOverlay QML);
   merge/cherry-pick/revert/integrate/rebase/interactive rebase/restack; clone; repository
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;

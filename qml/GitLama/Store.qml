@@ -30,6 +30,9 @@ QtObject {
     property var commit: null
     /// The WorkflowsState bridge: starts repository workflows.
     property var workflows: null
+    /// The SettingsState bridge: the settings dialog's Git page, refused
+    /// writes and licenses.
+    property var settings: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).

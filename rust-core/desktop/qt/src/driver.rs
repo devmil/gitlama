@@ -12,6 +12,7 @@ use crate::diff_model::DiffModel;
 use crate::inspector_state::InspectorState;
 use crate::changes_state::ChangesState;
 use crate::commit_state::CommitState;
+use crate::settings_state::SettingsState;
 use gitlama_workbench::history_rows::ReferenceContext;
 use crate::json::to_value;
 use crate::plumbing::{Commands, PumpWaker};
@@ -46,6 +47,7 @@ pub struct Driver {
     pub staged_rows: Rc<RefCell<RowModel>>,
     pub working_diff: Rc<RefCell<DiffModel>>,
     pub commit: Rc<RefCell<CommitState>>,
+    pub settings: Rc<RefCell<SettingsState>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -110,6 +112,27 @@ impl Driver {
         if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS) {
             self.project_changes();
         }
+        if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION) {
+            if let Some(services) = self.app.services() {
+                services.auto_fetch.sync();
+                let options = services
+                    .settings
+                    .with(|document| gitlama_workbench::inspector::DiffOptions::of(&document.appearance));
+                if services.working_detail.options() != options {
+                    services.working_detail.set_options(options, services.working_detail.force_text());
+                }
+                if services.inspector.diff_options() != options {
+                    let inspector = Rc::clone(&services.inspector);
+                    gitlama_workbench::rt::spawn_detached(async move { inspector.update_diff_options(options).await });
+                }
+                let page = crate::settings_state::project(&services);
+                let mut settings = self.settings.borrow_mut();
+                if settings.page != page {
+                    settings.page = page;
+                    settings.page_changed();
+                }
+            }
+        }
         if changed.intersects(Topics::SETTINGS) {
             let appearance = self
                 .app
@@ -135,7 +158,21 @@ impl Driver {
     }
 }
 
+/// Shows the outcome of a settings write: `key` is why it was refused, ""
+/// when it succeeded.
+pub fn show_settings_result(state: &Rc<RefCell<SettingsState>>, key: &str) {
+    let mut settings = state.borrow_mut();
+    if settings.failure != key {
+        settings.failure = key.to_owned();
+        settings.failure_changed();
+    }
+}
+
 impl Driver {
+    pub(crate) fn settings_result(&self, key: &str) {
+        show_settings_result(&self.settings, key);
+    }
+
     fn emit_events(&self) {
         for prompt in self.app.prompts.take_fresh() {
             self.state.borrow_mut().prompt(

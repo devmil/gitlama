@@ -17,11 +17,12 @@ T.Dialog {
     property string applicationVersion
     property url applicationIcon
     property string closeLabel: "Close"
-    property string backLabel: "Back"
-    property string filterPlaceholder: "Filter"
-    property string noMatchesLabel: "No matching packages"
-    /// `%1 licenses`; `%1` is the count.
-    property string countLabel: "%1 licenses"
+    property string backLabel: "All packages"
+    property string filterPlaceholder: "Filter packages"
+    property string noMatchesLabel: "No packages match"
+    /// How many licenses a package has ("1 license", "3 licenses"); give
+    /// a localized function.
+    property var countText: count => count === 1 ? "1 license" : count + " licenses"
     property string selected: packages.length > 0 ? packages[0].name : ""
     property string query: ""
     property bool showingPackage: false
@@ -213,7 +214,7 @@ T.Dialog {
                 MeridianText {
                     role: MeridianText.Caption
                     color: Theme.colors.inkMuted
-                    text: control.countLabel.arg(control.selectedPackage ? control.selectedPackage.licenses.length : 0)
+                    text: control.countText(control.selectedPackage ? control.selectedPackage.licenses.length : 0)
                 }
                 Item { width: 1; height: Theme.space.s6 }
                 Repeater {

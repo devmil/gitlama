@@ -45,6 +45,7 @@ pub struct Services {
     pub working_detail: Rc<crate::working_detail::WorkingDetail>,
     pub commit: Rc<crate::commit::CommitService>,
     pub transfers: Rc<crate::transfers::TransferService>,
+    pub auto_fetch: Rc<crate::auto_fetch::AutoFetchScheduler>,
     pub refs: Rc<crate::refs::RefService>,
     pub rewrite: Rc<crate::rewrite::RewriteService>,
 }
@@ -166,6 +167,8 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let auto_fetch =
+            crate::auto_fetch::AutoFetchScheduler::new(Rc::clone(&settings), Rc::clone(&workspace), Rc::clone(&transfers));
         let refs = crate::refs::RefService::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -184,6 +187,7 @@ impl Services {
         Ok(Self {
             rewrite,
             refs,
+            auto_fetch,
             transfers,
             commit,
             working_detail,
@@ -205,6 +209,7 @@ impl Services {
 
     async fn dispose(&self) {
         self.prompts.cancel_all();
+        self.auto_fetch.dispose();
         self.workspace.retire();
         self.workspace.close().await;
         self.history.dispose();

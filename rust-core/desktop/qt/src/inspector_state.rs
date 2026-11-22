@@ -3,7 +3,7 @@
 
 use crate::plumbing::Commands;
 use gitlama_contract::diff::NativeDiffLayout;
-use gitlama_contract::dto::{NativeDiffWhitespace, NativeFileChangeKind};
+use gitlama_contract::dto::NativeFileChangeKind;
 use gitlama_workbench::inspector::{DiffOptions, InspectorService, Lens, Location, Phase, Scope, Target, change_path};
 use gitlama_workbench::rt;
 use qtbridge::qobject;
@@ -31,23 +31,8 @@ fn text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
-fn whitespace_name(value: NativeDiffWhitespace) -> &'static str {
-    match value {
-        NativeDiffWhitespace::Preserve => "preserve",
-        NativeDiffWhitespace::IgnoreAll => "ignoreAll",
-        NativeDiffWhitespace::IgnoreAmount => "ignoreAmount",
-        NativeDiffWhitespace::IgnoreEndOfLine => "ignoreEndOfLine",
-    }
-}
-
-pub fn parse_whitespace(name: &str) -> NativeDiffWhitespace {
-    match name {
-        "ignoreAll" => NativeDiffWhitespace::IgnoreAll,
-        "ignoreAmount" => NativeDiffWhitespace::IgnoreAmount,
-        "ignoreEndOfLine" => NativeDiffWhitespace::IgnoreEndOfLine,
-        _ => NativeDiffWhitespace::Preserve,
-    }
-}
+use gitlama_workbench::inspector::whitespace_name;
+pub use gitlama_workbench::inspector::whitespace_of as parse_whitespace;
 
 /// The inspector's state as QML reads it.
 pub fn project(inspector: &InspectorService) -> Value {
@@ -213,14 +198,20 @@ mod inspector_state {
         /// Loads the diff again with these options.
         #[qslot]
         fn set_diff_options(&self, context_lines: i32, whitespace: String, layout: String) {
-            self.with_inspector(move |inspector| async move {
-                let options = DiffOptions {
-                    context_lines: context_lines.clamp(0, 100) as u32,
-                    whitespace: parse_whitespace(&whitespace),
-                    layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
-                };
-                inspector.update_diff_options(options).await;
-            });
+            let options = DiffOptions {
+                context_lines: context_lines.clamp(0, 100) as u32,
+                whitespace: parse_whitespace(&whitespace),
+                layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+            };
+            // The stored preferences are the source; the driver reloads
+            // every diff that shows other options.
+            if let Some(commands) = &self.commands {
+                commands.post(move |driver| {
+                    if let Some(services) = driver.app.services() {
+                        drop(services.settings.update(|document| options.store(&mut document.appearance)));
+                    }
+                });
+            }
         }
 
         /// Records the first visible row for Back and Forward.

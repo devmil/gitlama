@@ -23,6 +23,7 @@ Window {
     required property var workingDiff
     required property var commit
     required property var workflows
+    required property var settings
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -82,6 +83,7 @@ Window {
         Store.workingDiff = workingDiff
         Store.commit = commit
         Store.workflows = workflows
+        Store.settings = settings
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()

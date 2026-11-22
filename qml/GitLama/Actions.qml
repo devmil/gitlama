@@ -78,7 +78,11 @@ Item {
         }
     }
 
-    function showSettings() {}
+    function showSettings(category) { settingsDialog.show(category ?? "appearance") }
+    function showLicenses() {
+        licenseDialog.packages = Store.settings.licenses()
+        licenseDialog.open()
+    }
     function showAbout() {}
     function openFolder(path) {}
     function deleteWorktree(index, name) {}
@@ -108,6 +112,7 @@ Item {
         case "initializeRepository": Store.workspace.initializeRepository(false); return
         case "closeRepositoryTab": Store.workspace.closeTab(Store.workspace.activeTabId); return
         case "showSettings": showSettings(); return
+        case "showLicenses": showLicenses(); return
         case "showCommandPalette": commandPalette.show(); return
         case "fetch":
         case "remoteFetch":
@@ -296,6 +301,22 @@ Item {
         id: stashConfirm
         onAnswered: (id, confirmed) => actions.answer(id, confirmed)
     }
+    SettingsDialog {
+        id: settingsDialog
+        onLicensesRequested: actions.showLicenses()
+    }
+    MeridianLicenseDialog {
+        id: licenseDialog
+        title: L10n.t("licensesTitle")
+        applicationName: L10n.t("appTitle")
+        applicationVersion: Store.platform.version ?? ""
+        applicationIcon: "qrc:/GitLama/brand/tile-64.png"
+        closeLabel: L10n.t("close")
+        backLabel: L10n.t("licensesBack")
+        filterPlaceholder: L10n.t("licensesFilter")
+        noMatchesLabel: L10n.t("licensesNoMatches")
+        countText: count => L10n.tn("licensesCount", { count: count })
+    }
     CommitCheckoutDialog {
         id: commitCheckout
         onAnswered: (id, choice) => actions.answer(id, choice)
@@ -373,6 +394,10 @@ Item {
                 stashDialog.submit()
             else if (name === "confirmStash")
                 stashConfirm.submitted()
+            else if (name === "settings")
+                actions.showSettings(argument)
+            else if (name === "licenses")
+                actions.showLicenses()
         }
     }
 

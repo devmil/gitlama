@@ -9,6 +9,7 @@
 pub mod app;
 pub mod appearance;
 pub mod appearances;
+pub mod auto_fetch;
 pub mod backend;
 pub mod busy;
 pub mod changes;
@@ -23,6 +24,7 @@ pub mod images;
 pub mod inspector;
 pub mod notices;
 pub mod notify;
+pub mod preferences;
 pub mod prompts;
 pub mod refs;
 pub mod rewrite;

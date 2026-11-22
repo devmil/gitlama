@@ -205,6 +205,48 @@ impl Default for DiffOptions {
     }
 }
 
+impl DiffOptions {
+    /// The options the stored diff view preferences choose.
+    pub fn of(appearance: &gitlama_contract::storage::NativeAppearanceSettings) -> Self {
+        Self {
+            context_lines: appearance.diff_context_lines.min(100),
+            whitespace: whitespace_of(&appearance.diff_whitespace),
+            layout: if appearance.diff_layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+        }
+    }
+
+    /// Stores these options in `appearance`.
+    pub fn store(self, appearance: &mut gitlama_contract::storage::NativeAppearanceSettings) {
+        appearance.diff_context_lines = self.context_lines;
+        appearance.diff_whitespace = whitespace_name(self.whitespace).to_owned();
+        appearance.diff_layout = match self.layout {
+            NativeDiffLayout::SideBySide => "sideBySide",
+            NativeDiffLayout::Unified => "unified",
+        }
+        .to_owned();
+    }
+}
+
+/// The stored name of a whitespace mode.
+pub fn whitespace_name(whitespace: NativeDiffWhitespace) -> &'static str {
+    match whitespace {
+        NativeDiffWhitespace::Preserve => "preserve",
+        NativeDiffWhitespace::IgnoreAll => "ignoreAll",
+        NativeDiffWhitespace::IgnoreAmount => "ignoreAmount",
+        NativeDiffWhitespace::IgnoreEndOfLine => "ignoreEndOfLine",
+    }
+}
+
+/// The whitespace mode of a stored name; unknown names preserve.
+pub fn whitespace_of(name: &str) -> NativeDiffWhitespace {
+    match name {
+        "ignoreAll" => NativeDiffWhitespace::IgnoreAll,
+        "ignoreAmount" => NativeDiffWhitespace::IgnoreAmount,
+        "ignoreEndOfLine" => NativeDiffWhitespace::IgnoreEndOfLine,
+        _ => NativeDiffWhitespace::Preserve,
+    }
+}
+
 /// Everything the inspector shows.
 #[derive(Clone, Default)]
 pub struct InspectorState {

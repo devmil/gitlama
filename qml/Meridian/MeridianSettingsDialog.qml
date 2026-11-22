@@ -17,6 +17,9 @@ T.Dialog {
     property string closeLabel: "Close"
     default property list<Item> pageItems
     property alias footerContent: footerSlot.data
+    /// Whether the footer takes room: set it false while its content has
+    /// nothing to say (no failure to show).
+    property bool footerShown: footerSlot.children.length > 0
 
     readonly property real inset: Theme.touch ? Theme.space.s8 : Theme.space.s7
 
@@ -134,6 +137,9 @@ T.Dialog {
 
         Flickable {
             id: body
+            objectName: "settingsBody"
+            /// Where the page content starts below the heading and description.
+            readonly property real pageTop: pageHost.y
             MeridianWheelScroll { flickable: body }
             readonly property real topEdge: control.paged ? pagePicker.y + pagePicker.height : topRule.y + 1
             x: control.paged ? 0 : pageList.width
@@ -169,7 +175,9 @@ T.Dialog {
                 Item {
                     id: pageHost
                     width: parent.width
-                    height: childrenRect.height
+                    // The shown page alone: hidden pages keep their size.
+                    height: control.currentPage >= 0 && control.currentPage < control.pageItems.length
+                            ? control.pageItems[control.currentPage].height : 0
                     data: control.pageItems
                     Component.onCompleted: control._layoutPages()
                 }
@@ -180,18 +188,27 @@ T.Dialog {
 
         MeridianHairline {
             id: footerRule
-            visible: footerSlot.children.length > 0
+            visible: control.footerShown
             y: parent.height - footerBox.height - 1
             width: parent.width
         }
         Item {
             id: footerBox
+            objectName: "settingsFooter"
             visible: footerRule.visible
             y: parent.height - height
             width: parent.width
-            height: visible ? footerSlot.childrenRect.height + 2 * Theme.space.s4 : 0
+            height: visible ? footerSlot.contentHeight + 2 * Theme.space.s4 : 0
             Item {
                 id: footerSlot
+                // The tallest child; childrenRect would loop with children
+                // that take the slot's width.
+                readonly property real contentHeight: {
+                    let tallest = 0
+                    for (let i = 0; i < children.length; ++i)
+                        tallest = Math.max(tallest, children[i].y + children[i].height)
+                    return tallest
+                }
                 x: control.inset
                 y: Theme.space.s4
                 width: parent.width - 2 * control.inset

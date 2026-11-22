@@ -332,14 +332,13 @@ mod changes_state {
         #[qslot]
         fn set_diff_options(&self, context_lines: i32, whitespace: String, layout: String, force_text: bool) {
             self.with_services(move |services| {
-                services.working_detail.set_options(
-                    DiffOptions {
-                        context_lines: context_lines.clamp(0, 100) as u32,
-                        whitespace: parse_whitespace(&whitespace),
-                        layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
-                    },
-                    force_text,
-                )
+                let options = DiffOptions {
+                    context_lines: context_lines.clamp(0, 100) as u32,
+                    whitespace: parse_whitespace(&whitespace),
+                    layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+                };
+                drop(services.settings.update(|document| options.store(&mut document.appearance)));
+                services.working_detail.set_options(options, force_text);
             });
         }
 
