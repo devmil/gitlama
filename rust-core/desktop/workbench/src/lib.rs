@@ -14,6 +14,7 @@ pub mod commands;
 pub mod diagnostics;
 pub mod entry;
 pub mod history;
+pub mod history_rows;
 pub mod images;
 pub mod notices;
 pub mod notify;

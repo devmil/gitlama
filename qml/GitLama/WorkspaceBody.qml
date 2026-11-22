@@ -14,6 +14,11 @@ Item {
         Math.min(Metrics.sidebarMaxWidth, appearance.sidebarWidth ?? Theme.size.sidebar))
     /// The width while the splitter is dragged; saved when the drag ends.
     property real draggedSidebarWidth: -1
+    /// The detail island's height while its splitter is dragged.
+    property real draggedDetailHeight: -1
+    /// The detail island's chosen height for this window (not saved, as in
+    /// the Flutter shell); -1 splits evenly.
+    property real detailHeight: -1
     readonly property real shownSidebarWidth: draggedSidebarWidth >= 0 ? draggedSidebarWidth : sidebarWidth
 
     signal command(string id, var options)
@@ -72,12 +77,63 @@ Item {
         width: body.width - x - Theme.space.s3
         height: parent.height - Theme.space.s3
 
+        readonly property bool history: body.active !== null && body.active.pane === "history"
+        readonly property real detailHeight: Math.max(180, Math.min(height - GitLamaLayout.primaryIslandMinHeight - Theme.space.s3,
+            body.draggedDetailHeight >= 0 ? body.draggedDetailHeight
+                : body.detailHeight >= 0 ? body.detailHeight : (height - Theme.space.s3) / 2))
+
+        // History keeps the full width above; details and the diff below.
         MeridianIsland {
-            anchors.fill: parent
+            id: primary
+            width: parent.width
+            height: workspace.history ? parent.height - workspace.detailHeight - Theme.space.s3 : parent.height
+            HistoryPane {
+                anchors.fill: parent
+                visible: workspace.history
+                onCommand: (id, options) => body.command(id, options)
+            }
             MeridianText {
+                visible: !workspace.history
                 anchors.centerIn: parent
                 color: Theme.colors.inkMuted
                 text: body.active ? body.active.pane : ""
+            }
+        }
+        MeridianResizeHandle {
+            objectName: "detail-pane-splitter"
+            visible: workspace.history
+            y: primary.height
+            width: parent.width
+            orientation: Qt.Vertical
+            semanticLabel: L10n.t("workspaceResizeDetail")
+            keyboardStep: GitLamaLayout.paneResizeStep
+            activeFocusOnTab: false
+            onDragStarted: body.draggedDetailHeight = workspace.detailHeight
+            onDragged: delta => {
+                const base = body.draggedDetailHeight >= 0 ? body.draggedDetailHeight : workspace.detailHeight
+                body.draggedDetailHeight = base - delta
+                if (!dragging) {
+                    body.detailHeight = body.draggedDetailHeight
+                    body.draggedDetailHeight = -1
+                }
+            }
+            onDragFinished: {
+                if (body.draggedDetailHeight >= 0)
+                    body.detailHeight = workspace.detailHeight
+                body.draggedDetailHeight = -1
+            }
+        }
+        MeridianIsland {
+            objectName: "detail-pane"
+            visible: workspace.history
+            y: parent.height - height
+            width: parent.width
+            height: workspace.detailHeight
+            MeridianEmptyState {
+                anchors.fill: parent
+                compact: true
+                iconName: "inspect"
+                title: L10n.t("workspaceNoSelection")
             }
         }
     }

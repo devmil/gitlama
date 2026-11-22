@@ -12,6 +12,10 @@ QtObject {
     property var sidebar: null
     /// The sidebar's rows (a RowModel).
     property var sidebarRows: null
+    /// The HistoryState bridge: the History pane's state and slots.
+    property var history: null
+    /// History's rows (a HistoryModel).
+    property var historyRows: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).

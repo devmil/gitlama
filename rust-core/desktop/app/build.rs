@@ -63,6 +63,7 @@ fn main() {
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
         build_desktop_file_shim(&manifest);
     }
+    build_native_items(&manifest, &out_dir());
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         // Qt frameworks are linked by @rpath: the app bundle's Frameworks
         // folder, and Qt's own for development runs (packaging removes it).
@@ -81,6 +82,40 @@ fn main() {
         .status()
         .expect("start rcc");
     assert!(status.success(), "rcc failed");
+}
+
+fn out_dir() -> PathBuf {
+    PathBuf::from(env::var("OUT_DIR").expect("out dir"))
+}
+
+/// Compiles the Qt Quick items GitLama paints natively (the history graph
+/// rows), with moc, against the Qt that qtbridge links.
+fn build_native_items(manifest: &Path, out: &Path) {
+    use qtbridge_build_utils::qt_build::QtInstallation;
+    let header = manifest.join("src/native/graph_row.h");
+    let source = manifest.join("src/native/graph_row.cpp");
+    println!("cargo:rerun-if-changed={}", header.display());
+    println!("cargo:rerun-if-changed={}", source.display());
+    let qt = QtInstallation::new();
+    let moc = out.join("moc_graph_row.cpp");
+    qt.run_moc(&header, &moc);
+    let mut builder = cc::Build::new();
+    builder
+        .cpp(true)
+        .std("c++17")
+        .file(&source)
+        .file(&moc)
+        .include(manifest.join("src/native"))
+        .flag_if_supported("/Zc:__cplusplus")
+        .flag_if_supported("/permissive-")
+        .flag_if_supported("-Wno-sfinae-incomplete");
+    let modules = ["Core", "Gui", "Qml", "Quick"];
+    for include in qt.include_dirs(modules, false) {
+        builder.include(include);
+    }
+    qt.configure_builder(&mut builder);
+    builder.compile("gitlama_native_items");
+    qt.link_modules(modules);
 }
 
 fn collect(directory: &Path, files: &mut Vec<PathBuf>) {

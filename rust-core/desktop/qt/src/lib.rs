@@ -4,6 +4,8 @@
 
 mod app_state;
 mod driver;
+mod history_model;
+mod history_state;
 mod json;
 mod plumbing;
 mod projection;
@@ -15,6 +17,8 @@ pub use app_state::AppState;
 pub use driver::{Driver, Pump};
 pub use plumbing::{Commands, PumpWaker};
 pub use row_model::RowModel;
+pub use history_model::HistoryModel;
+pub use history_state::HistoryState;
 pub use sidebar_state::{SIDEBAR_ROLES, SidebarState};
 pub use workspace_state::WorkspaceState;
 

@@ -21,3 +21,4 @@ serde_json = { workspace = true }
 
 [build-dependencies]
 cc = "1"
+qtbridge-build-utils = "=0.2.0"

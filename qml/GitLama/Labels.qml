@@ -59,4 +59,37 @@ QtObject {
     function remoteRecentSubtitle(recent) {
         return L10n.t("remoteRecentSubtitle", [recent.hostName ?? "", recent.path])
     }
+
+    /// A commit date in History's date column: `iso` (2026-11-22), `local`
+    /// (the locale's medium date) or `relative` (now, 5 min, 3 h, 2 d, then
+    /// the medium date). `seconds` since the epoch; 0 shows nothing.
+    function historyDate(seconds, format, now) {
+        if (!seconds)
+            return ""
+        const value = new Date(seconds * 1000)
+        if (format === "iso")
+            return Qt.formatDate(value, "yyyy-MM-dd")
+        const medium = () => value.toLocaleDateString(Qt.locale(L10n.locale), "MMM d, yyyy")
+        if (format === "local")
+            return medium()
+        const difference = (now ?? Date.now()) - value.getTime()
+        const minutes = Math.floor(difference / 60000)
+        if (difference < 0 || minutes < 1)
+            return L10n.t("historyDateNow")
+        if (minutes < 60)
+            return L10n.tn("historyDateMinutes", { count: minutes })
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24)
+            return L10n.tn("historyDateHours", { count: hours })
+        const days = Math.floor(hours / 24)
+        if (days < 30)
+            return L10n.tn("historyDateDays", { count: days })
+        return medium()
+    }
+
+    /// What the working tree row says in place of a subject.
+    function worktreeSubject(conflict, changed, staged) {
+        return conflict ? L10n.tn("historyWorkingTreeConflicts", { count: changed })
+                        : L10n.tn("historyWorkingTreeChanges", { count: changed, staged: staged })
+    }
 }

@@ -52,6 +52,11 @@ fn set_desktop_file_name() {
     }
 }
 
+unsafe extern "C" {
+    /// Registers the natively painted Qt Quick items (src/native).
+    fn gitlama_register_native_types();
+}
+
 fn main() {
     // macOS starts applications with launchd's PATH; restart with the login
     // shell's before any thread exists so Git finds its helpers.
@@ -99,7 +104,17 @@ fn main() {
     let sidebar_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::SIDEBAR_ROLES)));
     gitlama_qt::RowModel::attach_qobject(&sidebar_rows);
 
+    let history = Rc::new(RefCell::new(gitlama_qt::HistoryState::default()));
+    gitlama_qt::HistoryState::attach_qobject(&history);
+    history.borrow_mut().commands = Some(commands.clone());
+    let history_rows = Rc::new(RefCell::new(gitlama_qt::HistoryModel::default()));
+    gitlama_qt::HistoryModel::attach_qobject(&history_rows);
+
     let driver = Rc::new(Driver {
+        history: Rc::clone(&history),
+        history_rows: Rc::clone(&history_rows),
+        history_context: RefCell::new(None),
+        history_published: RefCell::new(None),
         sidebar: Rc::clone(&sidebar),
         sidebar_rows: Rc::clone(&sidebar_rows),
         app: Rc::clone(&app),
@@ -130,6 +145,9 @@ fn main() {
         }
         _ => ("qrc:/".to_owned(), "qrc:/GitLama/Boot.qml".to_owned()),
     };
+    // SAFETY: registers QML types; called once on the GUI thread before
+    // any QML loads.
+    unsafe { gitlama_register_native_types() };
     let hooks = Rc::new(RefCell::new(PlatformHooks::default()));
     PlatformHooks::attach_qobject(&hooks);
     let properties = vec![
@@ -138,6 +156,8 @@ fn main() {
         ("workspace", workspace.borrow().as_qvariant()),
         ("sidebar", sidebar.borrow().as_qvariant()),
         ("sidebarRows", sidebar_rows.borrow().as_qvariant()),
+        ("history", history.borrow().as_qvariant()),
+        ("historyRows", history_rows.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

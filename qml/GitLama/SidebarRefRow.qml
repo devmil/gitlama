@@ -174,8 +174,10 @@ FocusScope {
 
         leading: Component {
             Row {
+                id: leadingRow
+                readonly property var item: root.entry ?? ({})
                 spacing: Theme.space.s3
-                leftPadding: root.entry.depth * Metrics.treeIndent
+                leftPadding: leadingRow.item.depth * Metrics.treeIndent
                 Item {
                     width: Metrics.chevronSize
                     height: Metrics.chevronSize
@@ -198,13 +200,13 @@ FocusScope {
                 MeridianIcon {
                     id: glyph
                     anchors.verticalCenter: parent.verticalCenter
-                    name: root.entry.icon
+                    name: leadingRow.item.icon
                     iconSize: MeridianIcon.Small
-                    color: root.entry.current === true ? Theme.colors.accentInk : Theme.colors.inkMuted
+                    color: leadingRow.item.current === true ? Theme.colors.accentInk : Theme.colors.inkMuted
                     HoverHandler { id: glyphHover }
                     MeridianTooltip {
-                        shown: glyphHover.hovered && (root.entry.currentDescription ?? "").length > 0
-                        text: root.entry.currentDescription ? L10n.t(root.entry.currentDescription) : ""
+                        shown: glyphHover.hovered && (leadingRow.item.currentDescription ?? "").length > 0
+                        text: leadingRow.item.currentDescription ? L10n.t(leadingRow.item.currentDescription) : ""
                     }
                 }
             }
@@ -212,9 +214,11 @@ FocusScope {
 
         trailing: Component {
             Row {
+                id: trailingRow
+                readonly property var item: root.entry ?? ({})
                 spacing: Theme.space.s2
                 Item {
-                    visible: root.entry.filtered === true || root.entry.holdsFiltered === true
+                    visible: trailingRow.item.filtered === true || trailingRow.item.holdsFiltered === true
                     objectName: "sidebar-ref-filtered"
                     width: Metrics.chevronSize
                     height: Metrics.chevronSize
@@ -223,7 +227,7 @@ FocusScope {
                         anchors.centerIn: parent
                         name: "list-filter"
                         iconSize: MeridianIcon.Small
-                        color: root.entry.filtered === true ? Theme.colors.accentInk : Theme.colors.inkMuted
+                        color: trailingRow.item.filtered === true ? Theme.colors.accentInk : Theme.colors.inkMuted
                     }
                     HoverHandler { id: filterHover }
                     MeridianTooltip {
@@ -232,28 +236,28 @@ FocusScope {
                     }
                 }
                 SyncBadge {
-                    visible: root.entry.ahead > 0 || root.entry.behind > 0
+                    visible: trailingRow.item.ahead > 0 || trailingRow.item.behind > 0
                     anchors.verticalCenter: parent.verticalCenter
-                    ahead: root.entry.ahead
-                    behind: root.entry.behind
+                    ahead: trailingRow.item.ahead
+                    behind: trailingRow.item.behind
                     HoverHandler { id: syncHover }
                     MeridianTooltip {
                         shown: syncHover.hovered
-                        text: L10n.tn("transferAheadBehind", { ahead: String(root.entry.ahead), behind: String(root.entry.behind) })
+                        text: L10n.tn("transferAheadBehind", { ahead: String(trailingRow.item.ahead), behind: String(trailingRow.item.behind) })
                     }
                 }
                 MeridianText {
-                    visible: (root.entry.subtitle ?? "").length > 0
+                    visible: (trailingRow.item.subtitle ?? "").length > 0
                     width: Math.min(implicitWidth, GitLamaLayout.trackingLabelMaxWidth)
                     anchors.verticalCenter: parent.verticalCenter
                     role: MeridianText.Caption
-                    text: root.entry.subtitle ?? ""
+                    text: trailingRow.item.subtitle ?? ""
                     color: Theme.colors.inkMuted
                     elide: Text.ElideRight
                     HoverHandler { id: subtitleHover }
                     MeridianTooltip {
                         shown: subtitleHover.hovered
-                        text: root.entry.subtitle ?? ""
+                        text: trailingRow.item.subtitle ?? ""
                     }
                 }
             }

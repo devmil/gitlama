@@ -50,3 +50,7 @@ SidebarRefRow 1.0 SidebarRefRow.qml
 SidebarSectionRow 1.0 SidebarSectionRow.qml
 SidebarGroupLabel 1.0 SidebarGroupLabel.qml
 SidebarRail 1.0 SidebarRail.qml
+RefChip 1.0 RefChip.qml
+AuthorAvatar 1.0 AuthorAvatar.qml
+HistoryRow 1.0 HistoryRow.qml
+HistoryPane 1.0 HistoryPane.qml

@@ -11,6 +11,8 @@ QtObject {
     required property var workspace
     required property var sidebar
     required property var sidebarRows
+    required property var history
+    required property var historyRows
     property var window: null
 
     Component.onCompleted: {
@@ -21,7 +23,8 @@ QtObject {
             return
         }
         window = component.createObject(null, { app: boot.app, hooks: boot.hooks, workspace: boot.workspace,
-                                                         sidebar: boot.sidebar, sidebarRows: boot.sidebarRows })
+                                                         sidebar: boot.sidebar, sidebarRows: boot.sidebarRows,
+                                                         history: boot.history, historyRows: boot.historyRows })
         if (window === null) {
             console.error("the main window could not be created")
             Qt.exit(3)

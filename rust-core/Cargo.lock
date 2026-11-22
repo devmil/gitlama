@@ -643,6 +643,7 @@ dependencies = [
  "gitlama-workbench",
  "gitlama_core",
  "qtbridge",
+ "qtbridge-build-utils",
  "serde_json",
 ]
 

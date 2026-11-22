@@ -6,6 +6,9 @@ use crate::projection;
 use crate::workspace_state::WorkspaceState;
 use crate::row_model::RowModel;
 use crate::sidebar_state::SidebarState;
+use crate::history_model::{HistoryModel, HistorySource};
+use crate::history_state::HistoryState;
+use gitlama_workbench::history_rows::ReferenceContext;
 use crate::json::to_value;
 use crate::plumbing::{Commands, PumpWaker};
 use gitlama_workbench::app::{App, StartupPhase};
@@ -26,6 +29,12 @@ pub struct Driver {
     pub workspace: Rc<RefCell<WorkspaceState>>,
     pub sidebar: Rc<RefCell<SidebarState>>,
     pub sidebar_rows: Rc<RefCell<RowModel>>,
+    pub history: Rc<RefCell<HistoryState>>,
+    pub history_rows: Rc<RefCell<HistoryModel>>,
+    /// The reference context of the last snapshot History showed.
+    pub history_context: RefCell<Option<(Rc<gitlama_contract::dto::NativeRepositorySnapshot>, Rc<ReferenceContext>)>>,
+    /// What History last published: generation, total, head, context.
+    pub history_published: RefCell<Option<(u64, u64, u64, Option<String>, usize)>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -80,6 +89,9 @@ impl Driver {
         }
         if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS) {
             self.project_workspace(changed);
+        }
+        if changed.intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION) {
+            self.project_history();
         }
         if changed.intersects(Topics::SETTINGS) {
             let appearance = self
@@ -189,5 +201,59 @@ impl Driver {
             sidebar.header = projection.header;
             sidebar.header_changed();
         }
+    }
+
+    fn project_history(&self) {
+        let Some(services) = self.app.services() else { return };
+        let history = &services.workspace.history;
+        let state = crate::history_state::project(history);
+        {
+            let mut pane = self.history.borrow_mut();
+            if pane.state != state {
+                pane.state = state;
+                pane.state_changed();
+            }
+        }
+        let session = services.workspace.current();
+        let context = match &session {
+            Some(session) => {
+                let cached = self
+                    .history_context
+                    .borrow()
+                    .as_ref()
+                    .filter(|(snapshot, _)| Rc::ptr_eq(snapshot, &session.snapshot))
+                    .map(|(_, context)| Rc::clone(context));
+                cached.unwrap_or_else(|| {
+                    let context = Rc::new(ReferenceContext::new(&session.snapshot.refs));
+                    *self.history_context.borrow_mut() = Some((Rc::clone(&session.snapshot), Rc::clone(&context)));
+                    context
+                })
+            }
+            None => Rc::new(ReferenceContext::default()),
+        };
+        let head = session.as_ref().and_then(|session| {
+            match session.snapshot.status.as_ref() {
+                Some(status) => status.head_object_id.clone(),
+                None => session.snapshot.identity.as_ref().and_then(|identity| identity.head_object_id.clone()),
+            }
+        });
+        let current = history.current();
+        let total = current.page.as_ref().map_or(0, |page| page.total_rows);
+        let key = (
+            history.pages_generation(),
+            history.revision(),
+            total,
+            head.clone(),
+            Rc::as_ptr(&context) as usize,
+        );
+        if self.history_published.borrow().as_ref() == Some(&key) {
+            return;
+        }
+        *self.history_published.borrow_mut() = Some(key);
+        let total = i32::try_from(total).unwrap_or(i32::MAX);
+        self.history_rows.borrow_mut().publish(
+            HistorySource { history: Some(Rc::clone(history)), context, head },
+            total,
+        );
     }
 }

@@ -1,0 +1,317 @@
+#include "graph_row.h"
+
+#include <QPainter>
+#include <QPainterPath>
+#include <QtQml/qqml.h>
+#include <cmath>
+
+namespace gitlama {
+
+namespace {
+
+// GitLamaLayout (docs/design-system): the graph's geometry.
+constexpr qreal laneWidth = 14;
+constexpr qreal graphLaneOrigin = 9;
+constexpr qreal graphCommitRadius = 4.5;
+constexpr qreal graphRingStroke = 2;
+constexpr qreal graphStrokeLit = 2.5;
+constexpr qreal graphHeadInnerRadius = 4;
+constexpr qreal graphHeadOuterRadius = 7;
+constexpr qreal graphHeadOuterStroke = 1.5;
+constexpr qreal graphMergeDotRadius = 1.75;
+constexpr qreal graphDash = 2.2;
+constexpr qreal graphBoundarySquare = 7;
+constexpr qreal graphBoundaryStroke = 1.5;
+// GitLamaOpacity.unlit
+constexpr qreal unlitOpacity = 0.3;
+
+// The row's node shapes, as Rust names them.
+enum Shape { Commit, Merge, Boundary, Graft, Replace, Wip, WipConflict, Stash };
+// Segment kinds.
+enum Kind { Straight, Join, MergeKind, Octopus, BoundaryKind, Missing, CollapsedMerge };
+
+QColor withAlpha(QColor color, qreal alpha)
+{
+    color.setAlphaF(color.alphaF() * alpha);
+    return color;
+}
+
+void drawDashedCircle(QPainter *painter, QPointF center, qreal radius, const QColor &color,
+                      qreal gapFactor = 1, qreal strokeWidth = graphRingStroke)
+{
+    QPen pen(color, strokeWidth);
+    pen.setCapStyle(Qt::RoundCap);
+    painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
+    if (gapFactor <= 0) {
+        painter->drawEllipse(center, radius, radius);
+        return;
+    }
+    const qreal circumference = 2 * M_PI * radius;
+    // A shrinking gap closes the dashes into a ring (NH-1).
+    const qreal dash = graphDash + graphDash * (1 - gapFactor);
+    const QRectF bounds(center.x() - radius, center.y() - radius, radius * 2, radius * 2);
+    for (qreal position = 0; position < circumference; position += graphDash * 2) {
+        // QPainter angles are in 1/16 degrees, counter-clockwise; Flutter's
+        // run clockwise from the x axis.
+        const qreal start = -(position / radius) * 180 / M_PI;
+        const qreal span = -(dash / radius) * 180 / M_PI;
+        painter->drawArc(bounds, int(std::round(start * 16)), int(std::round(span * 16)));
+    }
+}
+
+} // namespace
+
+GraphRow::GraphRow(QQuickItem *parent)
+    : QQuickPaintedItem(parent)
+{
+    setAntialiasing(true);
+    connect(this, &GraphRow::changed, this, [this] { update(); });
+}
+
+qreal GraphRow::laneX(int lane)
+{
+    return graphLaneOrigin + lane * laneWidth;
+}
+
+void GraphRow::setRow(const QVariant &row)
+{
+    rowValue_ = row;
+    const QVariantMap map = row.toMap();
+    lane_ = map.value(QStringLiteral("lane")).toInt();
+    shape_ = map.value(QStringLiteral("shape")).toInt();
+    current_ = map.value(QStringLiteral("current")).toBool();
+    wipStaged_ = map.value(QStringLiteral("wipStaged")).toInt();
+    wipChanged_ = map.value(QStringLiteral("wipChanged")).toInt();
+    segments_.clear();
+    const QVariantList segments = map.value(QStringLiteral("segments")).toList();
+    segments_.reserve(segments.size());
+    for (const QVariant &value : segments) {
+        const QVariantList fields = value.toList();
+        if (fields.size() < 6)
+            continue;
+        segments_.push_back(Segment {
+            fields[0].toInt(), fields[1].toInt(), fields[2].toInt(),
+            fields[3].toBool(), fields[4].toBool(), fields[5].toInt(),
+        });
+    }
+    emit changed();
+}
+
+void GraphRow::setClipRight(qreal value)
+{
+    if (qFuzzyCompare(clipRight_, value))
+        return;
+    clipRight_ = value;
+    emit changed();
+}
+
+void GraphRow::setLaneColors(const QVariantList &colors)
+{
+    laneColorValues_ = colors;
+    laneColors_.clear();
+    for (const QVariant &color : colors)
+        laneColors_.push_back(color.value<QColor>());
+    emit changed();
+}
+
+QColor GraphRow::laneColor(int lane) const
+{
+    if (laneColors_.empty())
+        return faintColor_;
+    const int count = int(laneColors_.size());
+    return laneColors_[std::size_t(((lane % count) + count) % count)];
+}
+
+void GraphRow::paint(QPainter *painter)
+{
+    if (drawProgress_ <= 0)
+        return;
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->save();
+    // Lanes draw in from the top (NH-2, NH-7): nodes included.
+    painter->setClipRect(QRectF(0, 0, clipRight_ > 0 ? clipRight_ : width(), height() * drawProgress_));
+    paintSegments(painter);
+    paintNodeBackground(painter);
+    paintNode(painter);
+    painter->restore();
+}
+
+void GraphRow::paintSegments(QPainter *painter)
+{
+    const bool rowLit = !lightingActive_ || lit_;
+    const bool arrivingLit = !lightingActive_ || incomingLit_;
+    const qreal centerY = height() / 2;
+    // The graph is clipped at the metadata columns; lanes beyond it are skipped.
+    const qreal visibleRight = (clipRight_ > 0 ? clipRight_ : width()) + laneWidth;
+    auto pen = [&](int lane, bool isLit) {
+        const QColor color = onAccent_ ? strongInk_ : withAlpha(laneColor(lane), isLit ? 1 : unlitOpacity);
+        QPen result(color, isLit ? graphStrokeLit : graphRingStroke);
+        result.setCapStyle(Qt::RoundCap);
+        return result;
+    };
+    painter->setBrush(Qt::NoBrush);
+    // Straight lanes first, then the edges that cross them.
+    for (int pass = 0; pass < 2; ++pass) {
+        for (const Segment &segment : segments_) {
+            if ((segment.from == segment.to) != (pass == 0))
+                continue;
+            const qreal fromX = laneX(segment.from);
+            const qreal toX = laneX(segment.to);
+            if (std::min(fromX, toX) > visibleRight)
+                continue;
+            const qreal startY = segment.top ? 0 : centerY;
+            const qreal endY = segment.center ? centerY : height();
+            QPainterPath path(QPointF(fromX, startY));
+            if (fromX == toX) {
+                path.lineTo(toX, endY);
+            } else {
+                const qreal midpoint = (startY + endY) / 2;
+                path.cubicTo(fromX, midpoint, toX, midpoint, toX, endY);
+            }
+            if (segment.lit >= 0) {
+                painter->setPen(pen(segment.from, !lightingActive_ || segment.lit == 1));
+                painter->drawPath(path);
+            } else if (segment.top && !segment.center && arrivingLit != rowLit) {
+                painter->save();
+                painter->setClipRect(QRectF(0, 0, width(), centerY), Qt::IntersectClip);
+                painter->setPen(pen(segment.from, arrivingLit));
+                painter->drawPath(path);
+                painter->restore();
+                painter->save();
+                painter->setClipRect(QRectF(0, centerY, width(), height() - centerY), Qt::IntersectClip);
+                painter->setPen(pen(segment.from, rowLit));
+                painter->drawPath(path);
+                painter->restore();
+            } else {
+                painter->setPen(pen(segment.from, segment.top ? arrivingLit : rowLit));
+                painter->drawPath(path);
+            }
+            if (segment.kind == Missing) {
+                const QPointF terminal(toX, endY == height() ? height() - 2 : endY);
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(nodeBackground_);
+                painter->drawEllipse(terminal, 2, 2);
+                painter->setBrush(Qt::NoBrush);
+                painter->setPen(QPen(onAccent_ ? strongInk_ : faintColor_, 1));
+                painter->drawEllipse(terminal, 2, 2);
+            }
+        }
+    }
+}
+
+void GraphRow::paintNodeBackground(QPainter *painter)
+{
+    const QPointF center(laneX(lane_), height() / 2);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(nodeBackground_);
+    if (shape_ == Commit && current_) {
+        painter->drawEllipse(center, graphHeadOuterRadius, graphHeadOuterRadius);
+    } else if (shape_ == Boundary) {
+        painter->drawRect(QRectF(center.x() - graphBoundarySquare / 2, center.y() - graphBoundarySquare / 2,
+                                 graphBoundarySquare, graphBoundarySquare));
+    } else if (shape_ == Graft || shape_ == Replace) {
+        painter->drawEllipse(center, graphHeadOuterRadius, graphHeadOuterRadius);
+    } else {
+        painter->drawEllipse(center, graphCommitRadius, graphCommitRadius);
+    }
+}
+
+void GraphRow::paintNode(QPainter *painter)
+{
+    const bool rowLit = !lightingActive_ || lit_;
+    const qreal centerY = height() / 2;
+    const qreal nodeX = laneX(lane_);
+    const QPointF center(nodeX, centerY);
+    const QColor nodeColor = onAccent_ ? strongInk_ : withAlpha(laneColor(lane_), rowLit ? 1 : unlitOpacity);
+    auto ring = [&](qreal radius, const QColor &color, qreal stroke) {
+        painter->setPen(QPen(color, stroke));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawEllipse(center, radius, radius);
+    };
+    auto dot = [&](qreal radius, const QColor &color) {
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(color);
+        painter->drawEllipse(center, radius, radius);
+    };
+    switch (shape_) {
+    case Wip:
+    case WipConflict: {
+        if (shape_ == Wip && wipStaged_ > 0 && wipStaged_ < wipChanged_) {
+            painter->save();
+            painter->setClipRect(QRectF(nodeX - graphCommitRadius, centerY, graphCommitRadius * 2, graphCommitRadius),
+                                 Qt::IntersectClip);
+            dot(graphCommitRadius, onAccent_ ? strongInk_ : addedColor_);
+            painter->restore();
+        }
+        const QColor color = onAccent_ ? strongInk_ : shape_ == WipConflict ? conflictColor_ : wipColor_;
+        drawDashedCircle(painter, center, graphCommitRadius, withAlpha(color, rowLit ? 1 : unlitOpacity));
+        break;
+    }
+    case Commit:
+        if (current_) {
+            if (landing_) {
+                paintLanding(painter, center, nodeColor);
+            } else {
+                ring(graphHeadOuterRadius, nodeColor, graphHeadOuterStroke);
+                dot(graphHeadInnerRadius, nodeColor);
+            }
+        } else {
+            ring(graphCommitRadius, nodeColor, graphRingStroke);
+        }
+        break;
+    case Stash:
+        drawDashedCircle(painter, center, graphCommitRadius, nodeColor);
+        break;
+    case Merge:
+        ring(graphCommitRadius, nodeColor, graphRingStroke);
+        dot(graphMergeDotRadius, nodeColor);
+        break;
+    case Boundary:
+        painter->setPen(QPen(onAccent_ ? strongInk_ : wipColor_, graphBoundaryStroke));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRect(QRectF(center.x() - graphBoundarySquare / 2, center.y() - graphBoundarySquare / 2,
+                                 graphBoundarySquare, graphBoundarySquare));
+        break;
+    case Graft:
+    case Replace:
+        ring(graphCommitRadius, nodeColor, graphBoundaryStroke);
+        if (shape_ == Graft) {
+            ring(graphHeadOuterRadius, nodeColor, graphBoundaryStroke);
+        } else {
+            painter->setPen(QPen(nodeColor, graphBoundaryStroke));
+            const QRectF bounds(center.x() - graphHeadOuterRadius, center.y() - graphHeadOuterRadius,
+                                graphHeadOuterRadius * 2, graphHeadOuterRadius * 2);
+            // Flutter: from -45° clockwise over 90°.
+            painter->drawArc(bounds, 45 * 16, -90 * 16);
+        }
+        break;
+    default:
+        ring(graphCommitRadius, nodeColor, graphRingStroke);
+    }
+}
+
+void GraphRow::paintLanding(QPainter *painter, QPointF center, const QColor &color)
+{
+    if (ringOpacity_ > 0)
+        drawDashedCircle(painter, center, graphCommitRadius, withAlpha(color, ringOpacity_), 1 - ringClose_,
+                         graphHeadOuterStroke);
+    if (halo_ > 0) {
+        const qreal radius = graphHeadInnerRadius + (graphHeadOuterRadius - graphHeadInnerRadius) * halo_;
+        painter->setPen(QPen(color, graphHeadOuterStroke));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawEllipse(center, radius, radius);
+    }
+    if (core_ > 0) {
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(color);
+        painter->drawEllipse(center, graphHeadInnerRadius * core_, graphHeadInnerRadius * core_);
+    }
+}
+
+} // namespace gitlama
+
+extern "C" void gitlama_register_native_types()
+{
+    qmlRegisterType<gitlama::GraphRow>("GitLamaNative", 1, 0, "GraphRow");
+}
