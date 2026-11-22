@@ -46,6 +46,19 @@ Item {
         case "transferFailure":
             transferFailureDialog.ask(id, payload)
             return
+        case "chooseRefMutation":
+            refDialog.ask(id, payload)
+            return
+        case "confirmRefMutation":
+            refConfirm.ask(id, payload)
+            return
+        case "editBranch":
+            editBranchDialog.ask(id, payload)
+            return
+        case "recoverRefTarget":
+            recoverTarget.promptId = id
+            recoverTarget.open()
+            return
         case "offerRefetch":
             refetchConfirm.promptId = id
             refetchConfirm.description = L10n.tn("transferMissingObjectDetail", { remote: payload.remote ?? "" })
@@ -94,6 +107,25 @@ Item {
         case "push":
         case "remotePush":
             Store.workflows.transfer("push", { initialRemote: options.initialName ?? null, initialForce: options.force === true }); return
+        case "createBranch":
+        case "deleteBranch":
+        case "createTag":
+        case "deleteTag":
+        case "addRemote":
+        case "editRemote":
+        case "renameRemote":
+        case "removeRemote":
+            Store.workflows.reference(id, { initialName: options.initialName ?? null, initialTarget: options.initialTarget ?? null }); return
+        case "resetBranch":
+            Store.workflows.reference("reset", { initialTarget: options.initialTarget ?? null }); return
+        case "checkoutCommit":
+            Store.workflows.reference("checkoutCommit", { initialTarget: options.initialTarget ?? null }); return
+        case "renameBranch":
+            Store.workflows.editBranch(options.initialName ?? ""); return
+        case "checkoutBranch":
+            Store.workflows.checkout(options.initialName ?? "", options.initialReference ?? ""); return
+        case "deleteRemoteBranch":
+            Store.workflows.deleteRemoteBranch(options.initialReference ?? ""); return
         case "pushTag":
             Store.workflows.transfer("pushTag", { initialBranch: options.initialName ?? null }); return
         case "showChanges": Store.sidebar.selectPane("changes"); return
@@ -212,6 +244,28 @@ Item {
         ]
     }
 
+    RefMutationDialog {
+        id: refDialog
+        onAnswered: (id, request) => actions.answer(id, request)
+    }
+    RefConfirmDialog {
+        id: refConfirm
+        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+    }
+    EditBranchDialog {
+        id: editBranchDialog
+        onAnswered: (id, edit) => actions.answer(id, edit)
+    }
+    MeridianConfirm {
+        id: recoverTarget
+        property int promptId: -1
+        title: L10n.t("refMutationTargetUnavailableTitle")
+        description: L10n.t("refMutationTargetUnavailableDetail")
+        confirmLabel: L10n.t("refMutationRefreshTarget")
+        cancelLabel: L10n.t("cancel")
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
     TransferDialog {
         id: transferDialog
         onAnswered: (id, request) => actions.answer(id, request)
@@ -249,6 +303,12 @@ Item {
         function onScreenshotStepRequested(name, argument) {
             if (name === "submitTransfer")
                 transferDialog.submit()
+            else if (name === "refName")
+                refDialog.fill(argument)
+            else if (name === "submitRef")
+                refDialog.submit()
+            else if (name === "confirmRef")
+                refConfirm.submitted()
         }
     }
 

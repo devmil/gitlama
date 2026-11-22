@@ -68,3 +68,6 @@ TransferDialog 1.0 TransferDialog.qml
 HostKeyDialog 1.0 HostKeyDialog.qml
 CredentialDialog 1.0 CredentialDialog.qml
 TransferFailureDialog 1.0 TransferFailureDialog.qml
+RefMutationDialog 1.0 RefMutationDialog.qml
+RefConfirmDialog 1.0 RefConfirmDialog.qml
+EditBranchDialog 1.0 EditBranchDialog.qml

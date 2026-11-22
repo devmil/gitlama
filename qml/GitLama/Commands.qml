@@ -38,7 +38,8 @@ QtObject {
 
     /// A dialog's title from a command name: without its trailing ellipsis.
     function dialogTitle(text) {
-        return text.endsWith("…") ? text.slice(0, -1) : text
+        const value = text ?? ""
+        return value.endsWith("…") ? value.slice(0, -1) : value
     }
 
     /// The Qt key sequence bound to `id`, or "".

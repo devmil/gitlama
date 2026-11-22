@@ -33,6 +33,50 @@ mod workflows_state {
             });
         }
 
+        /// A branch, tag or remote change of `kind` (refs.rs kind names);
+        /// `options` may carry initialName and initialTarget.
+        #[qslot]
+        fn reference(&self, kind: String, options: Value) {
+            let Some(kind) = gitlama_workbench::refs::parse_kind(&kind) else { return };
+            self.with_services(move |services| {
+                let refs = Rc::clone(&services.refs);
+                let name = options["initialName"].as_str().map(str::to_owned);
+                let target = options["initialTarget"].as_str().map(str::to_owned);
+                rt::spawn_detached(async move { refs.mutate(kind, name, target).await });
+            });
+        }
+
+        /// Renames a branch and changes its upstream.
+        #[qslot]
+        fn edit_branch(&self, name: String) {
+            self.with_services(move |services| {
+                let refs = Rc::clone(&services.refs);
+                let name = (!name.is_empty()).then_some(name);
+                rt::spawn_detached(async move { refs.edit_branch(name).await });
+            });
+        }
+
+        /// Checks out branch `name` (`reference` is its full name when known).
+        #[qslot]
+        fn checkout(&self, name: String, reference: String) {
+            self.with_services(move |services| {
+                let refs = Rc::clone(&services.refs);
+                let name = (!name.is_empty()).then_some(name);
+                let reference = (!reference.is_empty()).then_some(reference);
+                rt::spawn_detached(async move { refs.checkout(name, reference).await });
+            });
+        }
+
+        /// Deletes a branch on its remote.
+        #[qslot]
+        fn delete_remote_branch(&self, reference: String) {
+            self.with_services(move |services| {
+                let refs = Rc::clone(&services.refs);
+                let reference = (!reference.is_empty()).then_some(reference);
+                rt::spawn_detached(async move { refs.delete_remote_branch(reference).await });
+            });
+        }
+
         fn with_services(&self, action: impl FnOnce(&gitlama_workbench::app::Services) + 'static) {
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {
