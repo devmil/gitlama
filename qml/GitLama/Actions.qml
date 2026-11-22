@@ -64,12 +64,16 @@ Item {
         case "chooseStash":
             stashDialog.ask(id, payload)
             return
+        case "confirmRestore":
+            restoreConfirm.ask(id, payload)
+            return
         case "ignorePath":
             ignoreDialog.ask(id, payload)
             return
         case "confirmIntegration":
             integrationConfirm.promptId = id
             integrationConfirm.commands = payload.commands ?? []
+            integrationConfirm.summary = payload.summary ?? "integrationRunSummary"
             integrationConfirm.open()
             return
         case "confirmStash":
@@ -507,6 +511,38 @@ Item {
         id: refConfirm
         onAnswered: (id, confirmed) => actions.answer(id, confirmed)
     }
+    // Restoring a file to a commit's version (the Dart confirmRestore).
+    MeridianConfirm {
+        id: restoreConfirm
+        property int promptId: -1
+        property var payload: ({})
+        function ask(id, value) {
+            promptId = id
+            payload = value
+            open()
+        }
+        /// Two different sizes that round alike are shown exactly.
+        readonly property bool exact: payload.current !== null && payload.current !== undefined
+            && payload.current !== payload.source
+            && Labels.byteSize(payload.current) === Labels.byteSize(payload.source ?? 0)
+        function size(bytes) { return exact ? L10n.tn("byteCount", { count: bytes }) : Labels.byteSize(bytes) }
+        title: L10n.t("historyRestoreFile")
+        description: L10n.tn("historyRestorePreview", { path: payload.path ?? "" })
+        confirmLabel: L10n.t("historyRestoreConfirm")
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        MeridianPropertyList {
+            width: parent ? parent.width : 0
+            properties: [
+                { label: L10n.t("historyRestoreSourceSize"), value: restoreConfirm.size(restoreConfirm.payload.source ?? 0), selectable: false },
+                { label: L10n.t("historyRestoreCurrentSize"), selectable: false,
+                    value: restoreConfirm.payload.current === null || restoreConfirm.payload.current === undefined
+                        ? L10n.t("historyRestoreNoCurrentFile") : restoreConfirm.size(restoreConfirm.payload.current) },
+            ]
+        }
+    }
     IgnoreDialog {
         id: ignoreDialog
         onAnswered: (id, entry) => actions.answer(id, entry)
@@ -517,6 +553,7 @@ Item {
         id: integrationConfirm
         property int promptId: -1
         property var commands: []
+        property string summary: "integrationRunSummary"
         widthClass: MeridianDialog.Form
         title: L10n.t("integrationPreviewTitle")
         confirmLabel: L10n.t("integrationRun")
@@ -530,7 +567,7 @@ Item {
                 width: parent.width
                 role: MeridianText.Body
                 wrapMode: Text.Wrap
-                text: L10n.t("integrationRunSummary")
+                text: L10n.t(integrationConfirm.summary)
             }
             GitCommands {
                 width: parent.width

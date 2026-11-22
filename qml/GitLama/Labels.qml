@@ -27,6 +27,28 @@ QtObject {
     }
 
     /// The platform's file browser: Finder, Explorer or Files.
+    /// `bytes` for people: "512 bytes", "47 KB", "1.5 MB" (binary units,
+    /// one decimal below 10, the locale's number format; the Dart
+    /// formatByteSize).
+    function byteSize(bytes) {
+        if (bytes < 1024)
+            return L10n.tn("byteCount", { count: bytes })
+        const units = ["sizeKilobytes", "sizeMegabytes", "sizeGigabytes", "sizeTerabytes"]
+        let value = bytes / 1024
+        let index = 0
+        while (true) {
+            const digits = value < 10 ? 1 : 0
+            const rounded = digits === 0 ? Math.round(value) : Math.round(value * 10) / 10
+            // 1,023.7 KB reads as 1 MB, not as 1,024 KB.
+            if (rounded < 1024 || index === units.length - 1) {
+                const size = rounded.toLocaleString(L10n.locale, { minimumFractionDigits: 0, maximumFractionDigits: digits })
+                return L10n.tn(units[index], { size: size })
+            }
+            value /= 1024
+            index++
+        }
+    }
+
     function fileBrowserName() {
         if (Store.workflows && Store.workflows.fileBrowser.length > 0)
             return Store.workflows.fileBrowser

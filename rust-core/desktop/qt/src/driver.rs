@@ -91,6 +91,12 @@ impl Driver {
 
     fn project(&self, changed: Topics) {
         if changed.intersects(Topics::STARTUP) {
+            if let Some(services) = self.app.services() {
+                let mut inspector = self.inspector.borrow_mut();
+                if inspector.actions.is_none() {
+                    inspector.actions = Some(Rc::clone(&services.inspector_actions));
+                }
+            }
             let phase = match self.app.phase() {
                 StartupPhase::Loading => "loading",
                 StartupPhase::Failed => "failed",

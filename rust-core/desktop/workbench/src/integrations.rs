@@ -349,21 +349,32 @@ impl Integrations {
             Err(_) => None,
         };
         let Some(preview) = preview else { return self.notices.error("integrationLaunchFailed", Value::Null) };
-        self.confirm_and_run(identity.native_id, identity.generation, preview).await;
+        self.confirm_and_run(identity.native_id, identity.generation, preview, "integrationRunSummary", false).await;
     }
 
-    /// Asks to run `preview` when it needs confirmation, then runs it.
-    pub async fn confirm_and_run(&self, session: u64, generation: u64, preview: NativeIntegrationPreview) {
+    /// Asks to run `preview` when it needs confirmation (described by
+    /// `summary`, an l10n key), then runs it; `completed_only` reports a
+    /// tool that detached as a failure too.
+    pub async fn confirm_and_run(
+        &self,
+        session: u64,
+        generation: u64,
+        preview: NativeIntegrationPreview,
+        summary: &str,
+        completed_only: bool,
+    ) {
         if preview.requires_confirmation {
             let commands: Vec<String> = std::iter::once(preview.executable.clone()).chain(preview.arguments.iter().cloned()).collect();
-            let answer = self.prompts.ask("confirmIntegration", json!({"commands": commands})).await;
+            let answer = self.prompts.ask("confirmIntegration", json!({"commands": commands, "summary": summary})).await;
             if answer != Some(Value::Bool(true)) {
                 let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
                 return;
             }
         }
         match self.calls.repository_session_integration_execute(session, generation, preview.token, true).await {
-            Ok(result) if matches!(result.state, NativeIntegrationExecutionState::Completed | NativeIntegrationExecutionState::Detached) => {}
+            Ok(result)
+                if result.state == NativeIntegrationExecutionState::Completed
+                    || (!completed_only && result.state == NativeIntegrationExecutionState::Detached) => {}
             _ => self.notices.error("integrationLaunchFailed", Value::Null),
         }
     }

@@ -42,6 +42,66 @@ Rectangle {
                   typeChanged: "T", binary: "B", image: "I", submodule: "S", conflict: "U", untracked: "?" })[kind] ?? ""
     }
 
+    /// Opens the menu of changed file `file` ({path, oldPath, kind, mode})
+    /// at `x`, `y` of `item` (the Dart InspectorFileActions).
+    function showFileMenu(file, item, x, y) {
+        if (!location)
+            return
+        const host = Store.inspector.fileHost()
+        const canOpen = host.canOpenWorkingCopy === true
+        const remoteReason = L10n.t("remoteCommandUnsupported")
+        const capabilities = ["showDiff", "showContents", "blame", "fileHistory", "folderHistory", "copyPath", "restoreFromCommit"]
+        if (host.hasDiffTool === true)
+            capabilities.push("externalDiff")
+        if (canOpen)
+            capabilities.push("openExternally", "revealInFileBrowser")
+        fileMenu.file = file
+        fileMenu.target = location
+        fileMenu.showFor({
+            source: location.kind === "comparison" ? "comparedFile" : "committedFile",
+            path: file.path,
+            change: file.kind,
+            mode: file.mode ?? null,
+            exists: canOpen && Store.inspector.existsInWorkingTree(file.path),
+        }, null, {
+            capabilities: capabilities,
+            reasons: host.remote === true
+                ? { openExternally: remoteReason, revealInFileBrowser: remoteReason, restoreFromCommit: remoteReason } : ({}),
+            busy: false,
+        }, item, x, y)
+    }
+
+    FileActionMenu {
+        id: fileMenu
+        property var file: null
+        property var target: null
+        run: (action, selection) => {
+            const path = file.path
+            const commit = target.commit
+            switch (action) {
+            case "showDiff": Store.inspector.openFileLens(path, "diff", false, commit); return
+            case "showContents": Store.inspector.openFileLens(path, "contents", false, commit); return
+            case "blame": Store.inspector.openFileLens(path, "blame", false, commit); return
+            case "fileHistory": Store.inspector.openFileLens(path, "history", false, commit); return
+            case "externalDiff":
+                Store.inspector.externalDiff(target.base ?? "", commit, file.oldPath.length > 0 ? file.oldPath : path, path); return
+            case "openExternally": Store.workflows.openTool("editor", path); return
+            case "revealInFileBrowser": Store.workflows.openTool("fileManager", path); return
+            case "copyPath": Store.actions.copyText(path, L10n.t("filePathCopied")); return
+            case "restoreFromCommit": Store.inspector.restoreFile(path, commit); return
+            }
+        }
+    }
+    Component.onCompleted: Store.inspectorView = inspector
+    /// Development screenshots: builds file `index`'s menu and runs `action`.
+    function runFileAction(index, action) {
+        showFileMenu(files[index], inspector, 10, 10)
+        fileMenu.close()
+        console.log("inspector file menu:", JSON.stringify(fileMenu.shownItems.map(item => item.separator ? "-" : item.title + (item.enabled === false ? "(off)" : ""))))
+        if (action.length > 0)
+            fileMenu.run(action, false)
+    }
+
     // Back and Forward mouse buttons move through the inspector's history.
     TapHandler {
         acceptedButtons: Qt.BackButton | Qt.ForwardButton
@@ -269,6 +329,7 @@ Rectangle {
                                 status: inspector.fileStatus(modelData.kind)
                                 selected: inspector.location !== null && inspector.location.path === modelData.path
                                 onClicked: Store.inspector.selectFile(modelData.path)
+                                onContextMenuRequested: (x, y) => inspector.showFileMenu(modelData, this, x, y)
                             }
                         }
                     }

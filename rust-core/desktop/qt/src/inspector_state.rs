@@ -126,6 +126,7 @@ pub fn project(inspector: &InspectorService) -> Value {
                         "oldPath": text(&file.old_path),
                         "newPath": text(&file.new_path),
                         "kind": change_kind_name(file.kind),
+                        "mode": file.new_mode,
                         "similarity": file.similarity,
                     })
                 })
@@ -176,6 +177,8 @@ mod inspector_state {
     pub struct InspectorState {
         pub commands: Option<Commands>,
         pub(crate) state: Value,
+        /// The file menus' host actions, set once the services run.
+        pub(crate) actions: Option<Rc<gitlama_workbench::inspector_actions::InspectorActions>>,
     }
 
     impl InspectorState {
@@ -231,6 +234,67 @@ mod inspector_state {
                 };
                 inspector.navigate(Location { lens, anchor: 0, ..location }, true, false, None).await;
             });
+        }
+
+        /// What the file menus of this inspector can do:
+        /// {canOpenWorkingCopy, remote, hasDiffTool}.
+        #[qslot]
+        fn file_host(&self) -> Value {
+            let Some(actions) = &self.actions else { return json!({}) };
+            json!({
+                "canOpenWorkingCopy": actions.can_open_working_copy(),
+                "remote": actions.remote(),
+                "hasDiffTool": actions.diff_tool().is_some(),
+            })
+        }
+
+        /// Whether the repository-relative `path` exists in the working tree.
+        #[qslot]
+        fn exists_in_working_tree(&self, path: String) -> bool {
+            self.actions.as_ref().is_some_and(|actions| actions.exists_in_working_tree(&path))
+        }
+
+        /// Shows lens `lens` of `path` (a folder when `directory`) in
+        /// `revision`, or in the shown target when it is that target's commit;
+        /// the shown scope stays while the target does.
+        #[qslot]
+        fn open_file_lens(&self, path: String, lens: String, directory: bool, revision: String) {
+            self.with_inspector(move |inspector| async move {
+                let shown = inspector.current().location;
+                let target = match &shown {
+                    Some(location) if revision.is_empty() || location.target.commit() == revision => location.target.clone(),
+                    _ if revision.is_empty() => return,
+                    _ => Target::Commit(revision),
+                };
+                let scope = shown.as_ref().filter(|location| location.target == target).map_or(Scope::Changed, |location| location.scope);
+                let lens = if directory {
+                    Lens::History
+                } else {
+                    match lens.as_str() {
+                        "contents" => Lens::Contents,
+                        "blame" => Lens::Blame,
+                        "history" => Lens::History,
+                        _ => Lens::Diff,
+                    }
+                };
+                let location = Location { scope, path: Some(path.into_bytes()), directory, lens, ..Location::of(target) };
+                inspector.navigate(location, true, false, None).await;
+            });
+        }
+
+        /// Restores `path` to its content in `commit` after a preview.
+        #[qslot]
+        fn restore_file(&self, path: String, commit: String) {
+            let Some(actions) = self.actions.clone() else { return };
+            rt::spawn_detached(async move { actions.restore(path, commit).await });
+        }
+
+        /// Opens a change in the configured diff tool.
+        #[qslot]
+        fn external_diff(&self, old_revision: String, new_revision: String, old_path: String, new_path: String) {
+            let Some(actions) = self.actions.clone() else { return };
+            let old_revision = (!old_revision.is_empty()).then_some(old_revision);
+            rt::spawn_detached(async move { actions.external_diff(old_revision, new_revision, old_path, new_path).await });
         }
 
         /// Shows lens `lens` of the working-tree `path` (a folder when

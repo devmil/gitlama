@@ -74,6 +74,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   the History commit context menu; the integration launcher (configured or discovered editor,
   terminal and file manager with each platform's arguments, confirmation of configured tools)
   for Open in editor/terminal/file manager; command details behind a disclosure as in Flutter.
+  Inspector file menus: lenses of the shown or listed commit, open/reveal when the file exists in
+  the working tree, external diff tool, restore this version with its size confirmation.
 
 ## Next
 - Inspector: All files tree, search in contents/blame, image diffs, open in window.

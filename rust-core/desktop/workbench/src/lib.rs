@@ -29,6 +29,7 @@ pub mod history_rows;
 pub mod images;
 pub mod integrations;
 pub mod inspector;
+pub mod inspector_actions;
 pub mod notices;
 pub mod notify;
 pub mod operations;
