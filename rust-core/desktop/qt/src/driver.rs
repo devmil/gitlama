@@ -48,6 +48,7 @@ pub struct Driver {
     pub working_diff: Rc<RefCell<DiffModel>>,
     pub commit: Rc<RefCell<CommitState>>,
     pub settings: Rc<RefCell<SettingsState>>,
+    pub workflows: Rc<RefCell<crate::workflows_state::WorkflowsState>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -111,6 +112,27 @@ impl Driver {
         }
         if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS) {
             self.project_changes();
+        }
+        if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
+            && let Some(services) = self.app.services()
+        {
+            let busy = services
+                .busy
+                .blocking_of(services.workspace.active_tab_id())
+                .map_or(Value::Null, |operation| {
+                    let (key, args) = operation.activity.label();
+                    serde_json::json!({
+                        "key": key,
+                        "args": args,
+                        "cancellable": operation.cancel.is_some(),
+                        "canceling": operation.canceling.get(),
+                    })
+                });
+            let mut workflows = self.workflows.borrow_mut();
+            if workflows.busy != busy {
+                workflows.busy = busy;
+                workflows.busy_changed();
+            }
         }
         if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION)
             && let Some(services) = self.app.services()

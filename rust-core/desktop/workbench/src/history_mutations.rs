@@ -337,7 +337,16 @@ impl HistoryMutations {
             .busy
             .run(
                 Some(tab),
-                BusyActivity::HistoryMutation,
+                BusyActivity::HistoryMutation {
+                    kind: kind_name(preview.kind),
+                    source: preview
+                        .source_name
+                        .as_deref()
+                        .map(text)
+                        .unwrap_or_else(|| preview.targets.first().map(|target| target.chars().take(10).collect()).unwrap_or_default()),
+                    count: preview.targets.len(),
+                    branch: text(&preview.current_branch),
+                },
                 true,
                 Some(cancel),
                 self.calls.repository_session_history_mutation_execute(identity.native_id, identity.generation, token),

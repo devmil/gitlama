@@ -15,9 +15,27 @@ mod workflows_state {
     #[derive(Default)]
     pub struct WorkflowsState {
         pub commands: Option<Commands>,
+        /// The active tab's blocking operation for the busy overlay:
+        /// {key, args, cancellable, canceling}, or null.
+        pub(crate) busy: Value,
     }
 
     impl WorkflowsState {
+        qproperty!("busy", Member = busy, Notify = busy_changed);
+
+        #[qsignal]
+        pub fn busy_changed(&mut self);
+
+        /// Asks the active tab's blocking operation to stop.
+        #[qslot]
+        fn cancel_busy(&self) {
+            self.with_services(|services| {
+                if let Some(tab) = services.workspace.active_tab_id() {
+                    services.busy.cancel(tab);
+                }
+            });
+        }
+
         /// Fetch, pull, push, push or delete a tag, delete a remote branch:
         /// `options` may carry initialRemote, initialBranch, initialForce.
         #[qslot]

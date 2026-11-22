@@ -13,11 +13,46 @@ use std::rc::Rc;
 pub enum BusyActivity {
     CommitCheckout,
     Stash(&'static str),
-    HistoryMutation,
+    /// kind (merge, cherryPick, revert), source label, commit count and
+    /// the current branch.
+    HistoryMutation { kind: &'static str, source: String, count: usize, branch: String },
     Rebase { current_branch: Vec<u8>, onto: Vec<u8> },
     Restack { root_branch: Vec<u8> },
     ConflictPrediction,
     Changes,
+}
+
+impl BusyActivity {
+    /// What the busy overlay says: an l10n key and its arguments.
+    pub fn label(&self) -> (&'static str, serde_json::Value) {
+        use serde_json::{Value, json};
+        let text = |bytes: &[u8]| String::from_utf8_lossy(bytes).into_owned();
+        match self {
+            Self::CommitCheckout => ("commitCheckoutBusy", Value::Null),
+            Self::Stash(kind) => (
+                match *kind {
+                    "push" => "stashBusyPush",
+                    "apply" => "stashBusyApply",
+                    "pop" => "stashBusyPop",
+                    "drop" => "stashBusyDrop",
+                    "rename" => "stashBusyRename",
+                    _ => "stashBusyAutoStashCheckout",
+                },
+                Value::Null,
+            ),
+            Self::HistoryMutation { kind, source, count, branch } => match *kind {
+                "merge" => ("historyMutationBusyMerge", json!({"source": source, "branch": branch})),
+                "cherryPick" => ("historyMutationBusyCherryPick", json!({"count": count, "branch": branch})),
+                _ => ("historyMutationBusyRevert", json!({"count": count, "branch": branch})),
+            },
+            Self::Rebase { current_branch, onto } => {
+                ("rebaseBusy", json!({"branch": text(current_branch), "target": text(onto)}))
+            }
+            Self::Restack { root_branch } => ("restackBusy", json!({"root": text(root_branch)})),
+            Self::ConflictPrediction => ("conflictPredictionBusy", Value::Null),
+            Self::Changes => ("loading", Value::Null),
+        }
+    }
 }
 
 pub struct BusyOperation {

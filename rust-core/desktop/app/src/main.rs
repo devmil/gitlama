@@ -140,6 +140,7 @@ fn main() {
 
     let driver = Rc::new(Driver {
         settings: Rc::clone(&settings),
+        workflows: Rc::clone(&workflows),
         commit: Rc::clone(&commit),
         changes: Rc::clone(&changes),
         unstaged_rows: Rc::clone(&unstaged_rows),
