@@ -152,6 +152,12 @@ fn main() {
     gitlama_qt::PatchState::attach_qobject(&patches);
     patches.borrow_mut().commands = Some(commands.clone());
 
+    let line_selection = Rc::new(RefCell::new(gitlama_qt::LineSelectionState::default()));
+    gitlama_qt::LineSelectionState::attach_qobject(&line_selection);
+    line_selection.borrow_mut().commands = Some(commands.clone());
+    let line_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("rowId", gitlama_qt::LINE_ROLES)));
+    gitlama_qt::RowModel::attach_qobject(&line_rows);
+
     let inspector_blame = Rc::new(RefCell::new(gitlama_qt::BlameModel::default()));
     gitlama_qt::BlameModel::attach_qobject(&inspector_blame);
 
@@ -159,6 +165,8 @@ fn main() {
         inspector_blame: Rc::clone(&inspector_blame),
         operations: Rc::clone(&operations),
         patches: Rc::clone(&patches),
+        line_selection: Rc::clone(&line_selection),
+        line_rows: Rc::clone(&line_rows),
         conflicts: Rc::clone(&conflicts),
         conflict_rows: Rc::clone(&conflict_rows),
         settings: Rc::clone(&settings),
@@ -231,6 +239,8 @@ fn main() {
         ("operations", operations.borrow().as_qvariant()),
         ("inspectorBlame", inspector_blame.borrow().as_qvariant()),
         ("patches", patches.borrow().as_qvariant()),
+        ("lineSelection", line_selection.borrow().as_qvariant()),
+        ("lineRows", line_rows.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

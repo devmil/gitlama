@@ -54,6 +54,8 @@ pub struct Driver {
     pub conflict_rows: Rc<RefCell<RowModel>>,
     pub operations: Rc<RefCell<crate::operations_state::OperationsState>>,
     pub patches: Rc<RefCell<crate::patch_state::PatchState>>,
+    pub line_selection: Rc<RefCell<crate::line_selection_state::LineSelectionState>>,
+    pub line_rows: Rc<RefCell<RowModel>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -243,6 +245,24 @@ pub fn show_settings_result(state: &Rc<RefCell<SettingsState>>, key: &str) {
 }
 
 impl Driver {
+    /// Publishes "Select changed lines": its state and its rows.
+    pub(crate) fn publish_line_selection(&self) {
+        let (state, rows) = {
+            let selection = self.line_selection.borrow();
+            let rows: Vec<Value> =
+                selection.rows.iter().map(|row| crate::line_selection_state::row_value(row, &selection.selection)).collect();
+            (selection.project(), rows)
+        };
+        {
+            let mut selection = self.line_selection.borrow_mut();
+            if selection.state != state {
+                selection.state = state;
+                selection.state_changed();
+            }
+        }
+        self.line_rows.borrow_mut().publish(rows);
+    }
+
     pub(crate) fn settings_result(&self, key: &str) {
         show_settings_result(&self.settings, key);
     }

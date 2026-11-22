@@ -146,6 +146,9 @@ Item {
     /// Opens the patch dialog for `source` ({kind, ...}; see PatchDialog).
     function showPatchDialog(source, mode) { patchDialog.show(source, mode) }
     PatchDialog { id: patchDialog }
+    /// Opens "Select changed lines" for the Changes file `key` on `side`.
+    function showLineSelection(side, key) { lineSelectionDialog.show(side, key) }
+    LineSelectionDialog { id: lineSelectionDialog }
 
     /// Opens the local folder `path` itself in the file manager.
     function openFolder(path) { Store.workflows.openFolder(path) }
@@ -658,7 +661,15 @@ Item {
                 Store.patches.chooseDestination(argument)
             else if (name === "patchFile")
                 Store.patches.chooseFile(argument)
-            else if (name === "patchSubmit")
+            else if (name === "lineToggle") {
+                // lineToggle:<row index> toggles that row of "Select changed lines".
+                const row = Store.lineRows.get(Number(argument))
+                if (row)
+                    Store.lineSelection.toggle(row.rowId, row.checked !== true)
+            } else if (name === "lineStage") {
+                Store.lineSelection.stage()
+                lineSelectionDialog.close()
+            } else if (name === "patchSubmit")
                 patchDialog.submit()
             else if (name === "submitIgnore")
                 ignoreDialog.submit()

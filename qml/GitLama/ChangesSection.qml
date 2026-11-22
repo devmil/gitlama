@@ -63,7 +63,7 @@ Item {
 
     /// The file actions this list performs (the Dart _ChangesActionHost).
     readonly property var fileActionHost: ({
-        capabilities: ["stage", "unstage", "createPatch", "openExternally", "revealInFileBrowser", "copyPath", "discard", "clean",
+        capabilities: ["stage", "unstage", "inspectChanges", "createPatch", "openExternally", "revealInFileBrowser", "copyPath", "discard", "clean",
             "addToGitignore", "blame", "fileHistory", "folderHistory"],
         reasons: ({}),
         inspectionReason: (paneState.headObjectId ?? null) === null ? L10n.t("fileActionNoCommit") : null,
@@ -123,6 +123,8 @@ Item {
             case "stage":
             case "unstage":
                 Store.changes.stageFiles(owner.side, keys); return
+            case "inspectChanges":
+                Store.actions.showLineSelection(owner.side, target.key); return
             case "createPatch": {
                 const paths = []
                 for (const row of rows) {

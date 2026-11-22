@@ -28,6 +28,8 @@ Window {
     required property var conflictRows
     required property var operations
     required property var patches
+    required property var lineSelection
+    required property var lineRows
     required property var inspectorBlame
 
     readonly property var appearance: app.appearance ?? ({})
@@ -93,6 +95,8 @@ Window {
         Store.conflictRows = conflictRows
         Store.operations = operations
         Store.patches = patches
+        Store.lineSelection = lineSelection
+        Store.lineRows = lineRows
         Store.inspectorBlame = inspectorBlame
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()

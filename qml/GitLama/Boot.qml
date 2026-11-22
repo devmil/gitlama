@@ -26,6 +26,8 @@ QtObject {
     required property var conflictRows
     required property var operations
     required property var patches
+    required property var lineSelection
+    required property var lineRows
     required property var inspectorBlame
     property var window: null
 
@@ -44,7 +46,7 @@ QtObject {
                                                          stagedRows: boot.stagedRows, workingDiff: boot.workingDiff,
                                                          commit: boot.commit, workflows: boot.workflows, settings: boot.settings,
                                                          conflicts: boot.conflicts, conflictRows: boot.conflictRows, operations: boot.operations, inspectorBlame: boot.inspectorBlame,
-                                                         patches: boot.patches })
+                                                         patches: boot.patches, lineSelection: boot.lineSelection, lineRows: boot.lineRows })
         if (window === null) {
             console.error("the main window could not be created")
             Qt.exit(3)

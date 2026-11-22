@@ -79,6 +79,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Patches: the patch dialog (create: destination, preview of scope/format/name/size, overwrite,
   write, show in folder; apply: check, files, command, apply) from Create/Apply patch, the commit
   menu, the Changes and inspector file menus; remote repositories save the host's patch locally.
+- Select changed lines: the line-picking dialog (hunk and line checkboxes, picked count, select
+  all, load more) staging, discarding or making a patch of the chosen lines.
 
 ## Next
 - Inspector: All files tree, search in contents/blame, image diffs, open in window.
@@ -93,8 +95,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
   diff wrap, minimap, find, encoding, image diff, show more context.
-- Changes: tree mode with folder menus, drag between lists, flight animation, file menu entries
-  Select changed lines (partial staging dialog, with its patch of chosen lines).
+- Changes: tree mode with folder menus, drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,

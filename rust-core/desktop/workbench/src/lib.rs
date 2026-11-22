@@ -28,6 +28,7 @@ pub mod history_mutations;
 pub mod history_rows;
 pub mod images;
 pub mod integrations;
+pub mod line_selection;
 pub mod inspector;
 pub mod inspector_actions;
 pub mod notices;
