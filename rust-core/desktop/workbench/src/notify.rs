@@ -21,6 +21,7 @@ impl Topics {
     pub const UPDATES: Topics = Topics(1 << 10);
     pub const EVENTS: Topics = Topics(1 << 11);
     pub const STARTUP: Topics = Topics(1 << 12);
+    pub const CONFLICTS: Topics = Topics(1 << 13);
     pub const ALL: Topics = Topics(u64::MAX);
 
     pub fn contains(self, other: Topics) -> bool {

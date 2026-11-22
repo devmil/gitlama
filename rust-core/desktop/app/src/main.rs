@@ -138,7 +138,15 @@ fn main() {
     gitlama_qt::SettingsState::attach_qobject(&settings);
     settings.borrow_mut().commands = Some(commands.clone());
 
+    let conflicts = Rc::new(RefCell::new(gitlama_qt::ConflictsState::default()));
+    gitlama_qt::ConflictsState::attach_qobject(&conflicts);
+    conflicts.borrow_mut().commands = Some(commands.clone());
+    let conflict_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::CONFLICT_ROW_ROLES)));
+    gitlama_qt::RowModel::attach_qobject(&conflict_rows);
+
     let driver = Rc::new(Driver {
+        conflicts: Rc::clone(&conflicts),
+        conflict_rows: Rc::clone(&conflict_rows),
         settings: Rc::clone(&settings),
         workflows: Rc::clone(&workflows),
         commit: Rc::clone(&commit),
@@ -204,6 +212,8 @@ fn main() {
         ("commit", commit.borrow().as_qvariant()),
         ("workflows", workflows.borrow().as_qvariant()),
         ("settings", settings.borrow().as_qvariant()),
+        ("conflicts", conflicts.borrow().as_qvariant()),
+        ("conflictRows", conflict_rows.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

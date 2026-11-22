@@ -14,6 +14,8 @@ pub mod backend;
 pub mod busy;
 pub mod changes;
 pub mod commit;
+pub mod conflict_draft;
+pub mod conflicts;
 pub mod commands;
 pub mod diagnostics;
 pub mod diff_doc;

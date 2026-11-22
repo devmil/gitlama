@@ -333,6 +333,20 @@ impl ChangesService {
         })
     }
 
+    /// Opens (or closes) the resolver of `tab` after probing for a paused
+    /// operation the status does not show.
+    pub fn set_conflict_flow(&self, tab: u64, active: bool) {
+        let changed = self.with_tab(tab, |state| {
+            let before = state.conflict_flow_active;
+            state.conflict_flow_active = active;
+            state.conflict_flow_dismissed = !active;
+            before != active
+        });
+        if changed {
+            self.notify();
+        }
+    }
+
     pub fn finish_conflict_flow(&self, tab: u64) {
         self.with_tab(tab, |state| {
             state.conflict_flow_active = false;

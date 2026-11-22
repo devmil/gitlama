@@ -49,6 +49,8 @@ pub struct Driver {
     pub commit: Rc<RefCell<CommitState>>,
     pub settings: Rc<RefCell<SettingsState>>,
     pub workflows: Rc<RefCell<crate::workflows_state::WorkflowsState>>,
+    pub conflicts: Rc<RefCell<crate::conflicts_state::ConflictsState>>,
+    pub conflict_rows: Rc<RefCell<RowModel>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -112,6 +114,22 @@ impl Driver {
         }
         if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS) {
             self.project_changes();
+        }
+        if changed.intersects(Topics::CONFLICTS | Topics::WORKSPACE | Topics::SESSION)
+            && let Some(services) = self.app.services()
+            && let Some((state, text, revision, rows)) = services.conflicts.with_active(|session| crate::conflicts_state::project(session))
+        {
+            self.conflict_rows.borrow_mut().publish(rows);
+            let mut conflicts = self.conflicts.borrow_mut();
+            if conflicts.result_text != text || conflicts.text_revision != revision as i64 {
+                conflicts.result_text = text;
+                conflicts.text_revision = revision as i64;
+                conflicts.result_changed();
+            }
+            if conflicts.state != state {
+                conflicts.state = state;
+                conflicts.state_changed();
+            }
         }
         if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
             && let Some(services) = self.app.services()
