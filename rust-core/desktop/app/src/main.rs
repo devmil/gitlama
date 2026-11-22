@@ -4,7 +4,7 @@
 mod hooks;
 
 use hooks::PlatformHooks;
-use gitlama_qt::{AppState, Commands, Driver, Pump, PumpWaker};
+use gitlama_qt::{AppState, Commands, Driver, Pump, PumpWaker, WorkspaceState};
 use gitlama_workbench::app::App;
 use gitlama_workbench::notify::Notifier;
 use gitlama_workbench::rt::Runtime;
@@ -85,7 +85,12 @@ fn main() {
         "version": VERSION,
         "build": BUILD,
         "hyprland": std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some(),
+        "remoteEnabled": false,
     });
+
+    let workspace = Rc::new(RefCell::new(WorkspaceState::default()));
+    WorkspaceState::attach_qobject(&workspace);
+    workspace.borrow_mut().commands = Some(commands.clone());
 
     let driver = Rc::new(Driver {
         app: Rc::clone(&app),
@@ -93,6 +98,7 @@ fn main() {
         commands,
         waker: Arc::clone(&waker),
         state: Rc::clone(&state),
+        workspace: Rc::clone(&workspace),
     });
     let pump = Rc::new(RefCell::new(Pump::default()));
     Pump::attach_qobject(&pump);
@@ -110,16 +116,17 @@ fn main() {
                 .unwrap_or_else(|_| dir.clone().into());
             (
                 dir.display().to_string(),
-                format!("file://{}/GitLama/Main.qml", dir.display()),
+                format!("file://{}/GitLama/Boot.qml", dir.display()),
             )
         }
-        _ => ("qrc:/".to_owned(), "qrc:/GitLama/Main.qml".to_owned()),
+        _ => ("qrc:/".to_owned(), "qrc:/GitLama/Boot.qml".to_owned()),
     };
     let hooks = Rc::new(RefCell::new(PlatformHooks::default()));
     PlatformHooks::attach_qobject(&hooks);
     let properties = vec![
         ("app", state.borrow().as_qvariant()),
         ("hooks", hooks.borrow().as_qvariant()),
+        ("workspace", workspace.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

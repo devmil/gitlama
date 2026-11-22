@@ -3,10 +3,18 @@
 //!
 //! A failed start disposes what it built; Retry starts a fresh composition.
 
+use crate::backend::lifecycle::LocalLifecycle;
+use crate::backend::{LocalCalls, SessionCalls};
 use crate::diagnostics;
+use crate::entry::EntryWorkflows;
+use crate::history::{HistoryHooks, HistoryService};
+use crate::notices::Notices;
 use crate::notify::{Notifier, Topics};
+use crate::prompts::Prompts;
 use crate::rt;
 use crate::settings::{NativeSettingsStore, SettingsService};
+use crate::view_cache::{NoViewCache, SessionViewCache};
+use crate::workspace::{NoRemotes, WorkspaceHooks, WorkspaceService};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -21,10 +29,16 @@ pub enum StartupPhase {
 /// The initialized services of one successful start (the Dart `AppRuntime`).
 pub struct Services {
     pub settings: Rc<SettingsService>,
+    pub calls: Rc<dyn SessionCalls>,
+    pub history: Rc<HistoryService>,
+    pub workspace: Rc<WorkspaceService>,
+    pub entry: Rc<EntryWorkflows>,
+    pub prompts: Rc<Prompts>,
+    pub notices: Rc<Notices>,
 }
 
 impl Services {
-    async fn start(notifier: &Notifier) -> Result<Self, &'static str> {
+    async fn start(notifier: &Notifier, prompts: Rc<Prompts>, notices: Rc<Notices>) -> Result<Self, &'static str> {
         let info = rt::blocking(gitlama_core::api::core_info).await;
         if info.protocol_version != 1 {
             return Err("native_protocol_mismatch");
@@ -34,10 +48,87 @@ impl Services {
             .initialize()
             .await
             .map_err(|_| "settings")?;
-        Ok(Self { settings })
+        let calls: Rc<dyn SessionCalls> = Rc::new(LocalCalls);
+        let view_cache: Rc<dyn SessionViewCache> = Rc::new(NoViewCache);
+        let history = HistoryService::new(Rc::clone(&calls), notifier.clone());
+        let workspace = WorkspaceService::new(
+            Rc::new(LocalLifecycle { calls: Rc::clone(&calls) }),
+            Rc::clone(&history),
+            Some(Rc::clone(&settings)),
+            Rc::clone(&view_cache),
+            Rc::new(NoRemotes),
+            notifier.clone(),
+        );
+        let entry = EntryWorkflows::new(Rc::clone(&workspace), Rc::clone(&prompts), notifier.clone());
+        {
+            let weak = Rc::downgrade(&workspace);
+            let cache = Rc::clone(&view_cache);
+            let remember_cache = Rc::clone(&view_cache);
+            let filter_workspace = Rc::downgrade(&workspace);
+            let first_page_workspace = Rc::downgrade(&workspace);
+            let other_refs_settings = Rc::clone(&settings);
+            history.set_hooks(HistoryHooks {
+                cached_first_page: Some(Box::new(move |session| {
+                    let workspace = weak.upgrade()?;
+                    let tab = workspace.tab_for_session(session)?;
+                    cache.history(tab.canonical_identity()?)
+                })),
+                on_first_page: Some(Box::new(move |session, page| {
+                    let Some(workspace) = first_page_workspace.upgrade() else { return };
+                    let Some(tab) = workspace.tab_for_session(session) else { return };
+                    let Some(repository) = tab.canonical_identity() else { return };
+                    // A branch revealed from the sidebar is gone on the next visit.
+                    if crate::history::BranchFilter::of_page(page) != tab.navigation.branch_filter {
+                        return;
+                    }
+                    remember_cache.remember_history(repository, page);
+                })),
+                branch_filter_for: Some(Box::new(move |session| {
+                    let Some(workspace) = filter_workspace.upgrade() else {
+                        return crate::history::BranchFilter::NONE;
+                    };
+                    workspace
+                        .tab_for_session(session)
+                        .map_or(crate::history::BranchFilter::NONE, |tab| workspace.shown_branch_filter(tab.id))
+                })),
+                other_refs: Some(Box::new(move || {
+                    other_refs_settings.with(|document| document.appearance.history_other_refs)
+                })),
+            });
+        }
+        {
+            let entry_prompts = Rc::downgrade(&entry);
+            workspace.set_hooks(WorkspaceHooks {
+                choose_repository: Some(Box::new(move || {
+                    let entry = entry_prompts.clone();
+                    Box::pin(async move {
+                        match entry.upgrade() {
+                            Some(entry) => entry.choose_directory(false).await,
+                            None => None,
+                        }
+                    })
+                })),
+                on_published: None,
+                on_session_closed: None,
+            });
+        }
+        workspace.restore_workspace().await.map_err(|_| "workspace")?;
+        Ok(Self {
+            settings,
+            calls,
+            history,
+            workspace,
+            entry,
+            prompts,
+            notices,
+        })
     }
 
     async fn dispose(&self) {
+        self.prompts.cancel_all();
+        self.workspace.retire();
+        self.workspace.close().await;
+        self.history.dispose();
         self.settings.dispose().await;
     }
 }
@@ -45,6 +136,8 @@ impl Services {
 /// The window's application: startup, the services once ready, and shutdown.
 pub struct App {
     notifier: Notifier,
+    pub prompts: Rc<Prompts>,
+    pub notices: Rc<Notices>,
     phase: Cell<StartupPhase>,
     services: RefCell<Option<Rc<Services>>>,
     attempt: Cell<u64>,
@@ -53,6 +146,8 @@ pub struct App {
 impl App {
     pub fn new(notifier: Notifier) -> Rc<Self> {
         Rc::new(Self {
+            prompts: Rc::new(Prompts::new(notifier.clone())),
+            notices: Rc::new(Notices::new(notifier.clone())),
             notifier,
             phase: Cell::new(StartupPhase::Loading),
             services: RefCell::new(None),
@@ -85,7 +180,7 @@ impl App {
         self.set_phase(StartupPhase::Loading);
         let app = Rc::clone(self);
         rt::spawn_detached(async move {
-            match Services::start(&app.notifier).await {
+            match Services::start(&app.notifier, Rc::clone(&app.prompts), Rc::clone(&app.notices)).await {
                 Ok(services) => {
                     if app.attempt.get() != attempt {
                         services.dispose().await;

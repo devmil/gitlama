@@ -16,8 +16,8 @@ Rectangle {
         id: mark
         visible: !screen.failed
         anchors.centerIn: parent
-        width: Layout.launchMarkSize
-        height: Layout.launchMarkSize
+        width: GitLamaLayout.launchMarkSize
+        height: GitLamaLayout.launchMarkSize
         source: "qrc:/GitLama/brand/tile-256.png"
         sourceSize: Qt.size(256, 256)
         smooth: true
@@ -31,7 +31,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.leftMargin: Theme.space.s8
         anchors.rightMargin: Theme.space.s8
-        y: screen.height / 2 + Layout.launchMarkSize / 2 + Theme.space.s7
+        y: screen.height / 2 + GitLamaLayout.launchMarkSize / 2 + Theme.space.s7
         spacing: Theme.space.s4
         Accessible.role: Accessible.StaticText
         Accessible.name: L10n.t("startupLoading")

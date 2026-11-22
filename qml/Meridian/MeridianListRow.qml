@@ -19,6 +19,10 @@ T.ItemDelegate {
     property bool islandFocused: false
     property bool emphasized: false
     property bool dimmed: false
+    /// A filter or search query: its case-insensitive occurrences in the
+    /// title are set in `accent`, bold and underlined (`on-accent` on a solid
+    /// selection).
+    property string match
     default property alias hoverActions: actionRow.data
 
     signal contextMenuRequested(real x, real y)
@@ -72,7 +76,12 @@ T.ItemDelegate {
                    ? parent.width - x - parent.trailing
                    : Math.min(implicitWidth, parent.width - x - parent.trailing)
             role: control.emphasized ? MeridianText.BodyStrong : MeridianText.Body
-            text: control.text
+            readonly property string query: control.match.trim()
+            textFormat: query.length > 0 ? Text.StyledText : Text.PlainText
+            text: query.length > 0
+                  ? Theme.highlightMatches(control.text, query,
+                        !control.enabled ? Theme.colors.inkFaint : control.solid ? Theme.colors.inkOnAccent : Theme.colors.accent)
+                  : control.text
             color: control.inkColor
         }
         MeridianText {

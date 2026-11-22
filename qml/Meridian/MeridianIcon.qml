@@ -21,7 +21,9 @@ Item {
         : iconSize === MeridianIcon.Small ? Theme.size.iconSmall
         : iconSize === MeridianIcon.Toolbar ? Theme.size.iconToolbar
         : Theme.size.icon
-    readonly property string pathData: IconData.paths[name] ?? ""
+    /// The Lucide name `name` resolves to through the app's aliases.
+    readonly property string resolvedName: Theme.iconAliases[name] ?? name
+    readonly property string pathData: IconData.paths[resolvedName] ?? ""
     readonly property bool known: pathData.length > 0
 
     implicitWidth: dimension

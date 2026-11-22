@@ -10,6 +10,7 @@ Window {
 
     required property var app
     required property var hooks
+    required property var workspace
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -25,6 +26,7 @@ Window {
     flags: Store.drawsCaption ? (Qt.Window | Qt.FramelessWindowHint) : Qt.Window
 
     Binding { target: Theme; property: "brand"; value: "gitlama" }
+    Binding { target: Theme; property: "iconAliases"; value: GitLamaIcons.aliases }
     Binding {
         target: Theme
         property: "mode"
@@ -51,6 +53,8 @@ Window {
     Component.onCompleted: {
         Store.app = app
         Store.hooks = hooks
+        Store.workspace = workspace
+        Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()
         Store.captionLayout = _parseCaptionLayout(hooks.captionLayout())
@@ -123,6 +127,11 @@ Window {
     Component {
         id: homeComponent
         HomeScreen {}
+    }
+
+    Actions {
+        id: actions
+        window: appWindow
     }
 
     LinuxResizeEdges {

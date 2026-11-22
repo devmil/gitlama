@@ -1,12 +1,19 @@
 import QtQuick
 import Meridian
 
-// Placeholder until the welcome screen and workspace are ported.
-Rectangle {
-    color: Theme.colors.ground
-    MeridianText {
-        anchors.centerIn: parent
-        text: L10n.t("appTitle")
+// The window: the workspace while repositories are open, the welcome screen
+// otherwise.
+Item {
+    Loader {
+        anchors.fill: parent
+        sourceComponent: Store.hasTabs ? workspaceComponent : welcomeComponent
     }
-    CaptionBand {}
+    Component {
+        id: welcomeComponent
+        WelcomeScreen {}
+    }
+    Component {
+        id: workspaceComponent
+        WorkspaceShell {}
+    }
 }

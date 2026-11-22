@@ -41,6 +41,25 @@ mod app_state {
         #[qsignal]
         pub fn platform_changed(&mut self);
 
+        /// A workflow asks the window: show dialog `kind` and answer `id`.
+        #[qsignal]
+        pub fn prompt(&mut self, id: i64, kind: String, payload: String);
+
+        /// A status bar message; an error also opens the failure dialog.
+        #[qsignal]
+        pub fn notice(&mut self, key: String, args: String, error: bool);
+
+        /// Answers prompt `id` with a JSON value; an empty string cancels.
+        #[qslot]
+        fn answer_prompt(&self, id: i64, value: String) {
+            let answer = if value.is_empty() {
+                None
+            } else {
+                serde_json::from_str::<Value>(&value).ok()
+            };
+            self.post(move |driver| driver.app.prompts.answer(id as u64, answer));
+        }
+
         /// Starts the application again after a failed start.
         #[qslot]
         fn retry(&self) {
