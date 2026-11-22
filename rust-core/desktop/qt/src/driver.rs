@@ -8,6 +8,8 @@ use crate::row_model::RowModel;
 use crate::sidebar_state::SidebarState;
 use crate::history_model::{HistoryModel, HistorySource};
 use crate::history_state::HistoryState;
+use crate::diff_model::DiffModel;
+use crate::inspector_state::InspectorState;
 use gitlama_workbench::history_rows::ReferenceContext;
 use crate::json::to_value;
 use crate::plumbing::{Commands, PumpWaker};
@@ -35,6 +37,8 @@ pub struct Driver {
     pub history_context: RefCell<Option<(Rc<gitlama_contract::dto::NativeRepositorySnapshot>, Rc<ReferenceContext>)>>,
     /// What History last published: generation, total, head, context.
     pub history_published: RefCell<Option<(u64, u64, u64, Option<String>, usize)>>,
+    pub inspector: Rc<RefCell<InspectorState>>,
+    pub inspector_diff: Rc<RefCell<DiffModel>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -92,6 +96,9 @@ impl Driver {
         }
         if changed.intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION) {
             self.project_history();
+        }
+        if changed.intersects(Topics::INSPECTOR) {
+            self.project_inspector();
         }
         if changed.intersects(Topics::SETTINGS) {
             let appearance = self
@@ -255,5 +262,19 @@ impl Driver {
             HistorySource { history: Some(Rc::clone(history)), context, head },
             total,
         );
+    }
+
+    fn project_inspector(&self) {
+        let Some(services) = self.app.services() else { return };
+        let state = crate::inspector_state::project(&services.inspector);
+        {
+            let mut inspector = self.inspector.borrow_mut();
+            if inspector.state != state {
+                inspector.state = state;
+                inspector.state_changed();
+            }
+        }
+        let diff = services.inspector.current().diff;
+        self.inspector_diff.borrow_mut().publish(diff);
     }
 }

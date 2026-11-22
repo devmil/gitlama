@@ -56,6 +56,7 @@ MeridianStatusBar 1.0 MeridianStatusBar.qml
 MeridianStatusBarText 1.0 MeridianStatusBarText.qml
 MeridianToolbarButton 1.0 MeridianToolbarButton.qml
 MeridianBadgeDot 1.0 MeridianBadgeDot.qml
+MeridianBreadcrumbs 1.0 MeridianBreadcrumbs.qml
 MeridianSelect 1.0 MeridianSelect.qml
 MeridianMenuHeader 1.0 MeridianMenuHeader.qml
 MeridianCheckbox 1.0 MeridianCheckbox.qml

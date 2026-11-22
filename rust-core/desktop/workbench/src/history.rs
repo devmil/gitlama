@@ -169,6 +169,8 @@ pub enum SelectionOrigin {
     Search,
     Reference,
     Keyboard,
+    /// The inspector moved and the graph follows it.
+    Inspector,
 }
 
 /// The commit or comparison the graph selects for inspection.

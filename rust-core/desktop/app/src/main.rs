@@ -110,7 +110,15 @@ fn main() {
     let history_rows = Rc::new(RefCell::new(gitlama_qt::HistoryModel::default()));
     gitlama_qt::HistoryModel::attach_qobject(&history_rows);
 
+    let inspector = Rc::new(RefCell::new(gitlama_qt::InspectorState::default()));
+    gitlama_qt::InspectorState::attach_qobject(&inspector);
+    inspector.borrow_mut().commands = Some(commands.clone());
+    let inspector_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
+    gitlama_qt::DiffModel::attach_qobject(&inspector_diff);
+
     let driver = Rc::new(Driver {
+        inspector: Rc::clone(&inspector),
+        inspector_diff: Rc::clone(&inspector_diff),
         history: Rc::clone(&history),
         history_rows: Rc::clone(&history_rows),
         history_context: RefCell::new(None),
@@ -158,6 +166,8 @@ fn main() {
         ("sidebarRows", sidebar_rows.borrow().as_qvariant()),
         ("history", history.borrow().as_qvariant()),
         ("historyRows", history_rows.borrow().as_qvariant()),
+        ("inspector", inspector.borrow().as_qvariant()),
+        ("inspectorDiff", inspector_diff.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

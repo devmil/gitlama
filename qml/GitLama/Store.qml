@@ -16,6 +16,10 @@ QtObject {
     property var history: null
     /// History's rows (a HistoryModel).
     property var historyRows: null
+    /// The InspectorState bridge: the detail inspector and its slots.
+    property var inspector: null
+    /// The inspector's diff rows (a DiffModel).
+    property var inspectorDiff: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).
@@ -45,6 +49,12 @@ QtObject {
         else if (name === "size") {
             const parts = argument.split("x")
             screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "selectRow" && history && historyRows) {
+            const objectId = historyRows.objectIdAt(Number(argument))
+            if (objectId.length > 0)
+                history.select(objectId)
+        } else if (name === "file" && inspector) {
+            inspector.selectFile(argument)
         } else if (name === "open" && workspace)
             workspace.openPath(argument)
         screenshotStepRequested(name, argument)

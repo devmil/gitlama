@@ -3,9 +3,11 @@
 //! window's QObjects and the item models.
 
 mod app_state;
+mod diff_model;
 mod driver;
 mod history_model;
 mod history_state;
+mod inspector_state;
 mod json;
 mod plumbing;
 mod projection;
@@ -19,6 +21,8 @@ pub use plumbing::{Commands, PumpWaker};
 pub use row_model::RowModel;
 pub use history_model::HistoryModel;
 pub use history_state::HistoryState;
+pub use diff_model::DiffModel;
+pub use inspector_state::InspectorState;
 pub use sidebar_state::{SIDEBAR_ROLES, SidebarState};
 pub use workspace_state::WorkspaceState;
 

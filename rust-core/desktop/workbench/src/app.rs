@@ -39,6 +39,7 @@ pub struct Services {
     pub notices: Rc<Notices>,
     pub navigator: Rc<crate::navigator::Navigator>,
     pub sidebar: Rc<crate::sidebar::SidebarService>,
+    pub inspector: Rc<crate::inspector::InspectorService>,
 }
 
 impl Services {
@@ -125,7 +126,10 @@ impl Services {
             Rc::clone(&calls),
             notifier.clone(),
         );
+        let inspector = crate::inspector::InspectorService::new(Rc::clone(&calls), notifier.clone());
+        inspector.follow(&history);
         Ok(Self {
+            inspector,
             navigator,
             sidebar,
             settings,

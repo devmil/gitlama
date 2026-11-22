@@ -129,11 +129,8 @@ Item {
             y: parent.height - height
             width: parent.width
             height: workspace.detailHeight
-            MeridianEmptyState {
+            InspectorView {
                 anchors.fill: parent
-                compact: true
-                iconName: "inspect"
-                title: L10n.t("workspaceNoSelection")
             }
         }
     }

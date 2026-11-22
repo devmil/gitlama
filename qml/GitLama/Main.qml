@@ -15,6 +15,8 @@ Window {
     required property var sidebarRows
     required property var history
     required property var historyRows
+    required property var inspector
+    required property var inspectorDiff
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -66,6 +68,8 @@ Window {
         Store.sidebarRows = sidebarRows
         Store.history = history
         Store.historyRows = historyRows
+        Store.inspector = inspector
+        Store.inspectorDiff = inspectorDiff
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()
