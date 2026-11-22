@@ -27,6 +27,7 @@ pub mod notices;
 pub mod notify;
 pub mod preferences;
 pub mod prompts;
+pub mod rebases;
 pub mod refs;
 pub mod rewrite;
 pub mod rt;

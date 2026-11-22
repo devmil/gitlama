@@ -79,5 +79,13 @@ GitCommands 1.0 GitCommands.qml
 CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml
 SettingsChoice 1.0 SettingsChoice.qml
 HistoryMutationDialog 1.0 HistoryMutationDialog.qml
+ListWell 1.0 ListWell.qml
+StepNumber 1.0 StepNumber.qml
+BranchIntegrationDialog 1.0 BranchIntegrationDialog.qml
+RebaseTargetDialog 1.0 RebaseTargetDialog.qml
+RebaseEditorDialog 1.0 RebaseEditorDialog.qml
+RebasePreviewDialog 1.0 RebasePreviewDialog.qml
+RestackRootDialog 1.0 RestackRootDialog.qml
+RestackPreviewDialog 1.0 RestackPreviewDialog.qml
 HistoryMutationPreviewDialog 1.0 HistoryMutationPreviewDialog.qml
 SettingsDialog 1.0 SettingsDialog.qml

@@ -132,6 +132,38 @@ mod workflows_state {
             });
         }
 
+        /// Asks whether to merge `source_name` or rebase onto it.
+        #[qslot]
+        fn integrate_branch(&self, source_name: String, target: String) {
+            self.with_services(move |services| {
+                let rebases = Rc::clone(&services.rebases);
+                let source = (!source_name.is_empty()).then_some(source_name);
+                let target = (!target.is_empty()).then_some(target);
+                rt::spawn_detached(async move { rebases.integrate(source, target).await });
+            });
+        }
+
+        /// Rebases the current branch interactively onto `target` (an
+        /// object ID), or a branch the user chooses.
+        #[qslot]
+        fn rebase(&self, target: String) {
+            self.with_services(move |services| {
+                let rebases = Rc::clone(&services.rebases);
+                let target = (!target.is_empty()).then_some(target);
+                rt::spawn_detached(async move { rebases.rebase(target).await });
+            });
+        }
+
+        /// Restacks the branches on `root`, or a root the user chooses.
+        #[qslot]
+        fn restack(&self, root: String) {
+            self.with_services(move |services| {
+                let rebases = Rc::clone(&services.rebases);
+                let root = (!root.is_empty()).then_some(root);
+                rt::spawn_detached(async move { rebases.restack(root).await });
+            });
+        }
+
         fn with_services(&self, action: impl FnOnce(&gitlama_workbench::app::Services) + 'static) {
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {

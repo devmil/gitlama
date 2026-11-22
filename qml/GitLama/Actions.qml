@@ -71,6 +71,24 @@ Item {
         case "confirmHistoryMutation":
             historyMutationPreview.ask(id, payload)
             return
+        case "chooseBranchIntegration":
+            branchIntegration.ask(id, payload)
+            return
+        case "chooseRebaseTarget":
+            rebaseTarget.ask(id, payload)
+            return
+        case "editRebase":
+            rebaseEditor.ask(id, payload)
+            return
+        case "confirmRebase":
+            rebasePreview.ask(id, payload)
+            return
+        case "chooseRestackRoot":
+            restackRoot.ask(id, payload)
+            return
+        case "reviewRestack":
+            restackPreview.ask(id, payload)
+            return
         case "confirmCommitCheckout":
             commitCheckout.ask(id, payload)
             return
@@ -151,6 +169,14 @@ Item {
         case "autoStashCheckout": Store.workflows.stash("autoStashCheckout", { targetBranch: options.initialName ?? "" }); return
         case "mergeBranch":
             Store.workflows.mutateHistory("merge", options.initialName ?? "", options.initialTarget ?? ""); return
+        case "integrateBranch":
+            Store.workflows.integrateBranch(options.initialName ?? "", options.initialTarget ?? ""); return
+        case "rebaseBranch":
+            Store.workflows.rebase(options.initialTarget ?? ""); return
+        case "interactiveRebase":
+            Store.workflows.rebase(""); return
+        case "restackBranches":
+            Store.workflows.restack(options.initialName ?? ""); return
         case "cherryPickSelected":
             Store.workflows.mutateHistory("cherryPick", "", options.initialTarget ?? ""); return
         case "revertSelected":
@@ -321,6 +347,30 @@ Item {
         id: historyMutationPreview
         onAnswered: (id, confirmed) => actions.answer(id, confirmed)
     }
+    BranchIntegrationDialog {
+        id: branchIntegration
+        onAnswered: (id, choice) => actions.answer(id, choice)
+    }
+    RebaseTargetDialog {
+        id: rebaseTarget
+        onAnswered: (id, branch) => actions.answer(id, branch)
+    }
+    RebaseEditorDialog {
+        id: rebaseEditor
+        onAnswered: (id, edit) => actions.answer(id, edit)
+    }
+    RebasePreviewDialog {
+        id: rebasePreview
+        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+    }
+    RestackRootDialog {
+        id: restackRoot
+        onAnswered: (id, branch) => actions.answer(id, branch)
+    }
+    RestackPreviewDialog {
+        id: restackPreview
+        onAnswered: (id, acknowledge) => actions.answer(id, acknowledge)
+    }
     SettingsDialog {
         id: settingsDialog
         onLicensesRequested: actions.showLicenses()
@@ -420,6 +470,18 @@ Item {
                 historyMutationDialog.finish(argument === "applyOnly")
             else if (name === "confirmMutation")
                 historyMutationPreview.submitted()
+            else if (name === "rebaseAction") {
+                const parts = argument.split("=")
+                rebaseEditor.setAction(Number(parts[0]), parts[1])
+            } else if (name === "rebaseMove") {
+                const parts = argument.split(">")
+                rebaseEditor.move(Number(parts[0]), Number(parts[1]))
+            } else if (name === "submitRebaseTarget")
+                rebaseTarget.submit()
+            else if (name === "submitRebase")
+                rebaseEditor.submit()
+            else if (name === "confirmRebase")
+                rebasePreview.submitted()
             else if (name === "settings")
                 actions.showSettings(argument)
             else if (name === "licenses")

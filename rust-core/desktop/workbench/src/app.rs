@@ -47,6 +47,7 @@ pub struct Services {
     pub transfers: Rc<crate::transfers::TransferService>,
     pub auto_fetch: Rc<crate::auto_fetch::AutoFetchScheduler>,
     pub history_mutations: Rc<crate::history_mutations::HistoryMutations>,
+    pub rebases: Rc<crate::rebases::Rebases>,
     pub refs: Rc<crate::refs::RefService>,
     pub rewrite: Rc<crate::rewrite::RewriteService>,
 }
@@ -201,7 +202,17 @@ impl Services {
                     .unwrap_or_default()
             }),
         );
+        let rebases = crate::rebases::Rebases::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&busy),
+            Rc::clone(&navigator),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            Rc::clone(&history_mutations),
+        );
         Ok(Self {
+            rebases,
             history_mutations,
             rewrite,
             refs,
