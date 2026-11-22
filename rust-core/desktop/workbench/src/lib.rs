@@ -7,7 +7,13 @@
 //! through [`notify::Notifier`]; the Qt layer projects their state.
 
 pub mod app;
+pub mod appearance;
+pub mod backend;
 pub mod diagnostics;
+pub mod history;
 pub mod notify;
 pub mod rt;
+pub mod session;
 pub mod settings;
+pub mod view_cache;
+pub mod workspace;
