@@ -6,6 +6,16 @@
     <description>GitLama updates for macOS</description>
     <language>en</language>
     <item>
+      <title>GitLama 0.1.0-beta.68</title>
+      <link>https://devmil.de/gitlama/releases.html</link>
+      <sparkle:version>69</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-beta.68</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>beta</sparkle:channel>
+      <description>&lt;ul&gt;&lt;li&gt;Resizing the window on Linux no longer shows black flashes or black edges.&lt;/li&gt;&lt;li&gt;Bundle consecutive queued staging clicks for the same side. Stage large filtered folder selections in bounded batches, keeping hidden files untouched.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.68-69/GitLama-0.1.0-beta.68-69-macos-arm64.dmg" length="33855834" type="application/octet-stream" sparkle:edSignature="BDSoCbFgm002BjGuf8GVhBA122yLHrbp1QxT4veNQCZEyRWwxfo5aGf+u6pML6Vyh99Quz+O38iHLQPCRVdZAQ==" />
+    </item>
+    <item>
       <title>GitLama 0.1.0-beta.67</title>
       <link>https://devmil.de/gitlama/releases.html</link>
       <sparkle:version>68</sparkle:version>
@@ -44,16 +54,6 @@
       <sparkle:channel>beta</sparkle:channel>
       <description>&lt;ul&gt;&lt;li&gt;Fix Windows startup failing on accounts where Windows allows saved credentials only for the current sign-in session.&lt;/li&gt;&lt;/ul&gt;</description>
       <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.64-65/GitLama-0.1.0-beta.64-65-macos-arm64.dmg" length="33558384" type="application/octet-stream" sparkle:edSignature="0YxUp6JwiJ5b/Phq71I9gJ6KfTVvEOa02TRygPqwZz0blMF/ff9kx50i4BH6mVHiGIEYbDGrpZw+GEC8T/o+CQ==" />
-    </item>
-    <item>
-      <title>GitLama 0.1.0-beta.61</title>
-      <link>https://devmil.de/gitlama/releases.html</link>
-      <sparkle:version>62</sparkle:version>
-      <sparkle:shortVersionString>0.1.0-beta.61</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <sparkle:channel>beta</sparkle:channel>
-      <description>&lt;ul&gt;&lt;li&gt;The default branch’s CI status now sits inside its branch chip in History, matching pull request chips.&lt;/li&gt;&lt;li&gt;Creating a branch from the toolbar or sidebar now starts at the current commit. Creating one from History uses the chosen commit. If that commit is unavailable, GitLama lets you refresh and choose again while keeping your input. Switching repositories cannot apply an open branch dialog to another repository. Hosts receive a new GitLama helper.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/devmil/gitlama/releases/download/v0.1.0-beta.61-62/GitLama-0.1.0-beta.61-62-macos-arm64.dmg" length="33463140" type="application/octet-stream" sparkle:edSignature="D+vSo8LO2d/rXM3L6DjUXw6bM+PVT9L/eKZV4uciyAXc0Rg6qcW6luqkVbV+B5iFf3jj6mI12S0OZHYq/JC1Dw==" />
     </item>
   </channel>
 </rss>
