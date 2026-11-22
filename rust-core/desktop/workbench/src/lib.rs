@@ -25,6 +25,7 @@ pub mod notices;
 pub mod notify;
 pub mod prompts;
 pub mod refs;
+pub mod rewrite;
 pub mod rt;
 pub mod navigator;
 pub mod session;

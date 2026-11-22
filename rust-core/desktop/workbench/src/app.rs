@@ -46,6 +46,7 @@ pub struct Services {
     pub commit: Rc<crate::commit::CommitService>,
     pub transfers: Rc<crate::transfers::TransferService>,
     pub refs: Rc<crate::refs::RefService>,
+    pub rewrite: Rc<crate::rewrite::RewriteService>,
 }
 
 impl Services {
@@ -172,7 +173,16 @@ impl Services {
             Rc::clone(&prompts),
             Rc::clone(&notices),
         );
+        let rewrite = crate::rewrite::RewriteService::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&busy),
+            Rc::clone(&navigator),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+        );
         Ok(Self {
+            rewrite,
             refs,
             transfers,
             commit,

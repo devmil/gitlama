@@ -73,3 +73,7 @@ RefConfirmDialog 1.0 RefConfirmDialog.qml
 EditBranchDialog 1.0 EditBranchDialog.qml
 CommandShortcuts 1.0 CommandShortcuts.qml
 CommandPalette 1.0 CommandPalette.qml
+StashDialog 1.0 StashDialog.qml
+StashConfirmDialog 1.0 StashConfirmDialog.qml
+GitCommands 1.0 GitCommands.qml
+CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml

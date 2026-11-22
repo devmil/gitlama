@@ -59,6 +59,15 @@ Item {
             recoverTarget.promptId = id
             recoverTarget.open()
             return
+        case "chooseStash":
+            stashDialog.ask(id, payload)
+            return
+        case "confirmStash":
+            stashConfirm.ask(id, payload)
+            return
+        case "confirmCommitCheckout":
+            commitCheckout.ask(id, payload)
+            return
         case "offerRefetch":
             refetchConfirm.promptId = id
             refetchConfirm.description = L10n.tn("transferMissingObjectDetail", { remote: payload.remote ?? "" })
@@ -119,8 +128,16 @@ Item {
             Store.workflows.reference(id, { initialName: options.initialName ?? null, initialTarget: options.initialTarget ?? null }); return
         case "resetBranch":
             Store.workflows.reference("reset", { initialTarget: options.initialTarget ?? null }); return
-        case "checkoutCommit":
-            Store.workflows.reference("checkoutCommit", { initialTarget: options.initialTarget ?? null }); return
+        case "checkoutCommit": {
+            const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
+            Store.workflows.checkoutCommit(options.initialTarget ?? (selected.length === 1 ? selected[0] : "")); return
+        }
+        case "createStash": Store.workflows.stash("push", ({})); return
+        case "applyStash": Store.workflows.stash("apply", { selector: options.initialName ?? "" }); return
+        case "popStash": Store.workflows.stash("pop", { selector: options.initialName ?? "" }); return
+        case "dropStash": Store.workflows.stash("drop", { selector: options.initialName ?? "" }); return
+        case "renameStash": Store.workflows.stash("rename", { selector: options.initialName ?? "" }); return
+        case "autoStashCheckout": Store.workflows.stash("autoStashCheckout", { targetBranch: options.initialName ?? "" }); return
         case "renameBranch":
             Store.workflows.editBranch(options.initialName ?? ""); return
         case "checkoutBranch":
@@ -271,6 +288,18 @@ Item {
         ]
     }
 
+    StashDialog {
+        id: stashDialog
+        onAnswered: (id, request) => actions.answer(id, request)
+    }
+    StashConfirmDialog {
+        id: stashConfirm
+        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+    }
+    CommitCheckoutDialog {
+        id: commitCheckout
+        onAnswered: (id, choice) => actions.answer(id, choice)
+    }
     CommandPalette {
         id: commandPalette
         onRun: id => actions.runCommand(id, ({}))
@@ -340,6 +369,10 @@ Item {
                 refDialog.submit()
             else if (name === "confirmRef")
                 refConfirm.submitted()
+            else if (name === "submitStash")
+                stashDialog.submit()
+            else if (name === "confirmStash")
+                stashConfirm.submitted()
         }
     }
 

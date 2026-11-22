@@ -77,6 +77,30 @@ mod workflows_state {
             });
         }
 
+        /// A stash change of `kind` (push, apply, pop, drop, rename,
+        /// autoStashCheckout); `options` may carry selector, objectId and
+        /// targetBranch.
+        #[qslot]
+        fn stash(&self, kind: String, options: Value) {
+            let Some(kind) = gitlama_workbench::rewrite::parse_stash_kind(&kind) else { return };
+            self.with_services(move |services| {
+                let rewrite = Rc::clone(&services.rewrite);
+                let text = |key: &str| options[key].as_str().filter(|text| !text.is_empty()).map(str::to_owned);
+                let (selector, object_id, target) = (text("selector"), text("objectId"), text("targetBranch"));
+                rt::spawn_detached(async move { rewrite.stash(kind, selector, object_id, target).await });
+            });
+        }
+
+        /// Checks out commit `target` (detached).
+        #[qslot]
+        fn checkout_commit(&self, target: String) {
+            self.with_services(move |services| {
+                let rewrite = Rc::clone(&services.rewrite);
+                let target = (!target.is_empty()).then_some(target);
+                rt::spawn_detached(async move { rewrite.checkout_commit(target).await });
+            });
+        }
+
         fn with_services(&self, action: impl FnOnce(&gitlama_workbench::app::Services) + 'static) {
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {
