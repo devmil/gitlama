@@ -412,9 +412,20 @@ impl Driver {
         );
     }
 
-    fn project_inspector(&self) {
+    pub(crate) fn project_inspector(&self) {
         let Some(services) = self.app.services() else { return };
-        let state = crate::inspector_state::project(&services.inspector);
+        let tree = services.settings.with(|document| document.appearance.commit_files_mode == "tree");
+        let collapsed = {
+            let inspector = self.inspector.borrow();
+            let mut folded = inspector.collapsed.borrow_mut();
+            // Another commit starts with every folder open.
+            let commit = services.inspector.current().location.map(|location| location.target.commit().to_owned()).unwrap_or_default();
+            if folded.0 != commit {
+                *folded = (commit, Default::default());
+            }
+            folded.1.clone()
+        };
+        let state = crate::inspector_state::project(&services.inspector, tree, &collapsed);
         {
             let mut inspector = self.inspector.borrow_mut();
             if inspector.state != state {

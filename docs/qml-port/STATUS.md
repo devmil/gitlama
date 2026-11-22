@@ -84,9 +84,12 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Worktree deletion from the sidebar: confirmation, refusal banner under the worktrees, reload.
 - Changes tree mode per list (stored List/Tree choice, Meridian path tree ported to
   `workbench/src/path_tree.rs`), folder rows with folding, folder selection and folder menus.
+- Inspector file sidebar: Changed/All scope, changed files as list or tree (stored mode), the
+  All files tree (folders read on demand with paging and retry, the path to the shown file
+  opened, unchanged files listed only there), folder and tree-file menus.
 
 ## Next
-- Inspector: All files tree, search in contents/blame, image diffs, open in window.
+- Inspector: search in contents/blame, image diffs, open in window, +/− counts in the files header.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry and cancel once clone is ported; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode

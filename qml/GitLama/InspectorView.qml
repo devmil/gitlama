@@ -57,11 +57,16 @@ Rectangle {
             capabilities.push("openExternally", "revealInFileBrowser")
         fileMenu.file = file
         fileMenu.target = location
+        const folder = file.directory === true || file.rowKind === "folder"
+        const changed = !folder && (file.kind ?? "").length > 0
+        fileMenu.folder = folder
         fileMenu.showFor({
-            source: location.kind === "comparison" ? "comparedFile" : "committedFile",
+            source: folder ? "folder" : changed ? (location.kind === "comparison" ? "comparedFile" : "committedFile") : "treeFile",
             path: file.path,
-            change: file.kind,
+            change: changed ? file.kind : null,
+            tree: !folder && !changed ? (file.treeKind ?? null) : null,
             mode: file.mode ?? null,
+            changedFolder: folder && file.rowKind === undefined,
             exists: canOpen && Store.inspector.existsInWorkingTree(file.path),
         }, null, {
             capabilities: capabilities,
@@ -71,22 +76,31 @@ Rectangle {
         }, item, x, y)
     }
 
+    /// Opens the menu of a row of the All files tree.
+    function showTreeMenu(row, item, x, y) { showFileMenu(row, item, x, y) }
+
     FileActionMenu {
         id: fileMenu
         property var file: null
         property var target: null
+        property bool folder: false
         run: (action, selection) => {
             const path = file.path
             const commit = target.commit
             switch (action) {
+            case "folderHistory": Store.inspector.openFileLens(path, "history", true, commit); return
             case "showDiff": Store.inspector.openFileLens(path, "diff", false, commit); return
             case "showContents": Store.inspector.openFileLens(path, "contents", false, commit); return
             case "blame": Store.inspector.openFileLens(path, "blame", false, commit); return
             case "fileHistory": Store.inspector.openFileLens(path, "history", false, commit); return
-            case "createPatch":
-                Store.actions.showPatchDialog({ kind: "diff", base: target.base ?? "", commit: commit,
-                    paths: file.oldPath.length > 0 && file.oldPath !== path ? [file.oldPath, path] : [path] }, "create")
+            case "createPatch": {
+                // A folder's patch holds its changed files.
+                const paths = folder
+                    ? inspector.files.map(changed => changed.path).filter(changed => changed.startsWith(path + "/"))
+                    : (file.oldPath ?? "").length > 0 && file.oldPath !== path ? [file.oldPath, path] : [path]
+                Store.actions.showPatchDialog({ kind: "diff", base: target.base ?? "", commit: commit, paths: paths }, "create")
                 return
+            }
             case "externalDiff":
                 Store.inspector.externalDiff(target.base ?? "", commit, file.oldPath.length > 0 ? file.oldPath : path, path); return
             case "openExternally": Store.workflows.openTool("editor", path); return
@@ -275,21 +289,55 @@ Rectangle {
                         width: split.narrow ? split.width : split.listWidth
                         height: split.narrow ? Math.min(Math.max(Theme.size.row * 5, split.height * 0.4), split.height * 0.6) : split.height
 
-                        Item {
+                        MeridianSectionHeader {
                             id: filesHeader
                             visible: !inspector.historyLens
                             width: parent.width
-                            height: Theme.size.islandHeader
-                            MeridianText {
-                                x: Theme.space.s5
-                                anchors.verticalCenter: parent.verticalCenter
-                                role: MeridianText.BodyStrong
-                                text: L10n.tn("historyFilesCount", { count: inspector.files.length })
+                            color: Theme.colors.paneAlt
+                            size: MeridianSectionHeader.Small
+                            readonly property bool all: inspector.location !== null && inspector.location.scope === "all"
+                            readonly property bool comparison: inspector.location !== null && inspector.location.kind === "comparison"
+                            title: all ? L10n.t("inspectorScopeAll") : L10n.tn("historyFilesCount", { count: inspector.files.length })
+                            // Changed or All files: segmented, an icon button when narrow.
+                            MeridianSegmented {
+                                visible: filesHeader.width >= 240
+                                objectName: "inspector-scope"
+                                label: L10n.t("inspectorScope")
+                                controlSize: MeridianButton.Small
+                                segments: [{ value: "changed", label: L10n.t("historyChangedFilesShort") },
+                                           { value: "all", label: L10n.t("inspectorScopeAll"), enabled: !filesHeader.comparison,
+                                             tooltip: filesHeader.comparison ? L10n.t("inspectorScopeAllUnavailable") : "" }]
+                                value: filesHeader.all ? "all" : "changed"
+                                onActivated: value => Store.inspector.setAllFiles(value === "all")
                             }
                             MeridianIconButton {
-                                anchors.right: parent.right
-                                anchors.rightMargin: Theme.space.s3
-                                anchors.verticalCenter: parent.verticalCenter
+                                visible: filesHeader.width < 240
+                                objectName: "inspector-scope-compact"
+                                text: filesHeader.all ? L10n.t("historyChangedFilesShort") : L10n.t("inspectorScopeAll")
+                                iconName: filesHeader.all ? "list-view" : "tree-view"
+                                controlSize: MeridianButton.Small
+                                enabled: !(filesHeader.comparison && !filesHeader.all)
+                                onClicked: Store.inspector.setAllFiles(!filesHeader.all)
+                            }
+                            // List or tree of the changed files.
+                            MeridianSegmented {
+                                visible: !filesHeader.all && filesHeader.width >= 350
+                                objectName: "commit-files-mode"
+                                label: L10n.t("changesListView")
+                                controlSize: MeridianButton.Small
+                                segments: [{ value: "list", icon: "list-view", tooltip: L10n.t("changesListView") },
+                                           { value: "tree", icon: "tree-view", tooltip: L10n.t("changesTreeView") }]
+                                value: inspector.paneState.filesTree === true ? "tree" : "list"
+                                onActivated: value => Store.app.updateAppearance({ commitFilesMode: value })
+                            }
+                            MeridianIconButton {
+                                visible: !filesHeader.all && filesHeader.width < 350
+                                text: inspector.paneState.filesTree === true ? L10n.t("changesListView") : L10n.t("changesTreeView")
+                                iconName: inspector.paneState.filesTree === true ? "list-view" : "tree-view"
+                                controlSize: MeridianButton.Small
+                                onClicked: Store.app.updateAppearance({ commitFilesMode: inspector.paneState.filesTree === true ? "list" : "tree" })
+                            }
+                            MeridianIconButton {
                                 text: L10n.t("inspectorHideFiles")
                                 iconName: "panel-left"
                                 controlSize: MeridianButton.Small
@@ -302,10 +350,11 @@ Rectangle {
                             anchors.fill: parent
                             paneState: inspector.paneState
                         }
+                        // The changed files, as a list or a tree.
                         ListView {
                             id: fileList
                             objectName: "commit-files-list"
-                            visible: !inspector.historyLens
+                            visible: !inspector.historyLens && !filesHeader.all
                             anchors.top: filesHeader.bottom
                             anchors.bottom: parent.bottom
                             width: parent.width
@@ -313,7 +362,7 @@ Rectangle {
                             rightMargin: Theme.space.s2
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
-                            model: inspector.files
+                            model: inspector.paneState.fileRows ?? []
                             MeridianWheelScroll { flickable: fileList }
                             C.ScrollBar.vertical: MeridianScrollBar {}
                             header: MeridianListRow {
@@ -329,11 +378,91 @@ Rectangle {
                             delegate: FileRow {
                                 required property var modelData
                                 width: fileList.width - fileList.leftMargin - fileList.rightMargin
-                                path: modelData.path
-                                status: inspector.fileStatus(modelData.kind)
-                                selected: inspector.location !== null && inspector.location.path === modelData.path
-                                onClicked: Store.inspector.selectFile(modelData.path)
+                                path: modelData.label
+                                depth: modelData.depth
+                                folder: modelData.directory
+                                folderIcon: true
+                                expanded: modelData.expanded
+                                showDirectory: inspector.paneState.filesTree !== true
+                                status: modelData.directory ? "" : inspector.fileStatus(modelData.kind)
+                                selected: !modelData.directory && inspector.location !== null && inspector.location.path === modelData.path
+                                onClicked: {
+                                    if (modelData.directory)
+                                        Store.inspector.toggleFolder(modelData.path)
+                                    else
+                                        Store.inspector.selectFile(modelData.path)
+                                }
+                                onFolderToggled: Store.inspector.toggleFolder(modelData.path)
                                 onContextMenuRequested: (x, y) => inspector.showFileMenu(modelData, this, x, y)
+                            }
+                        }
+                        // Every file of the commit, one folder read at a time.
+                        ListView {
+                            id: allList
+                            objectName: "inspector-all-files"
+                            visible: !inspector.historyLens && filesHeader.all
+                            anchors.top: filesHeader.bottom
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            leftMargin: Theme.space.s2
+                            rightMargin: Theme.space.s2
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            model: visible ? (inspector.paneState.allRows ?? []) : []
+                            MeridianWheelScroll { flickable: allList }
+                            C.ScrollBar.vertical: MeridianScrollBar {}
+                            delegate: Loader {
+                                id: allRow
+                                required property var modelData
+                                width: allList.width - allList.leftMargin - allList.rightMargin
+                                sourceComponent: modelData.rowKind === "retry" || modelData.rowKind === "more" ? extraRow : treeRow
+                                Component {
+                                    id: treeRow
+                                    FileRow {
+                                        width: allRow.width
+                                        path: allRow.modelData.label
+                                        depth: allRow.modelData.depth
+                                        folder: allRow.modelData.rowKind === "folder"
+                                        folderIcon: true
+                                        expanded: allRow.modelData.expanded
+                                        showDirectory: false
+                                        status: inspector.fileStatus(allRow.modelData.kind)
+                                        selected: !folder && inspector.location !== null && inspector.location.path === allRow.modelData.path
+                                        function toggleFolder() {
+                                            if (allRow.modelData.expanded)
+                                                Store.inspector.collapseDirectory(allRow.modelData.path)
+                                            else
+                                                Store.inspector.expandDirectory(allRow.modelData.path)
+                                        }
+                                        onClicked: folder ? toggleFolder() : Store.inspector.selectFile(allRow.modelData.path)
+                                        onFolderToggled: toggleFolder()
+                                        onContextMenuRequested: (x, y) => inspector.showTreeMenu(allRow.modelData, this, x, y)
+                                    }
+                                }
+                                Component {
+                                    id: extraRow
+                                    MeridianListRow {
+                                        width: allRow.width
+                                        leftPadding: Theme.space.s4 + allRow.modelData.depth * Metrics.treeIndent
+                                        text: allRow.modelData.rowKind === "retry" ? L10n.t("retry") : L10n.t("inspectorLoadMoreFiles")
+                                        iconName: allRow.modelData.rowKind === "retry" ? "rotate-ccw" : "more"
+                                        enabled: allRow.modelData.loading !== true
+                                        onClicked: allRow.modelData.rowKind === "retry"
+                                            ? Store.inspector.expandDirectory(allRow.modelData.path)
+                                            : Store.inspector.loadMoreDirectory(allRow.modelData.path)
+                                    }
+                                }
+                            }
+                            MeridianSpinner {
+                                visible: allList.count === 0 && inspector.paneState.allLoading === true
+                                anchors.centerIn: parent
+                            }
+                            MeridianText {
+                                visible: allList.count === 0 && inspector.paneState.allLoading !== true
+                                anchors.centerIn: parent
+                                role: MeridianText.Caption
+                                color: Theme.colors.inkMuted
+                                text: L10n.t("inspectorNoFiles")
                             }
                         }
                     }

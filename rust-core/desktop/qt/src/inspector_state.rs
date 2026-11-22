@@ -35,7 +35,101 @@ use gitlama_workbench::inspector::whitespace_name;
 pub use gitlama_workbench::inspector::whitespace_of as parse_whitespace;
 
 /// The inspector's state as QML reads it.
-pub fn project(inspector: &InspectorService) -> Value {
+/// The changed files as list or tree rows: {key, path, label, depth,
+/// directory, expanded, kind, mode, oldPath}.
+fn file_rows(files: &[gitlama_contract::dto::NativeCommitFile], tree: bool, collapsed: &std::collections::HashSet<String>) -> Vec<Value> {
+    let rows = gitlama_workbench::path_tree::flatten(files.iter(), |file| text(change_path(file)), collapsed, tree, None);
+    rows.into_iter()
+        .map(|row| match row.item {
+            Some(file) => json!({
+                "key": format!("file:{}", row.identity),
+                "path": row.identity,
+                "label": row.label,
+                "depth": row.depth,
+                "directory": false,
+                "expanded": false,
+                "kind": change_kind_name(file.kind),
+                "mode": file.new_mode,
+                "oldPath": text(&file.old_path),
+            }),
+            None => json!({
+                "key": format!("dir:{}", row.identity),
+                "path": row.identity,
+                "label": row.label,
+                "depth": row.depth,
+                "directory": true,
+                "expanded": !collapsed.contains(&row.identity),
+                "kind": "",
+                "mode": null,
+                "oldPath": "",
+            }),
+        })
+        .collect()
+}
+
+fn tree_kind_name(kind: gitlama_contract::dto::NativeTreeEntryKind) -> &'static str {
+    use gitlama_contract::dto::NativeTreeEntryKind::*;
+    match kind {
+        Directory => "directory",
+        File => "file",
+        Symlink => "symlink",
+        Submodule => "submodule",
+    }
+}
+
+/// The All files tree's visible rows: folders and files of every open
+/// folder, then a retry or "load more" row where a folder needs one.
+fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> {
+    use gitlama_workbench::inspector::tree_key;
+    let changed: std::collections::HashMap<String, &gitlama_contract::dto::NativeCommitFile> = state
+        .inspection
+        .as_ref()
+        .map(|inspection| inspection.files.iter().map(|file| (text(change_path(file)), file)).collect())
+        .unwrap_or_default();
+    let mut rows = Vec::new();
+    fn add(
+        state: &gitlama_workbench::inspector::InspectorState,
+        changed: &std::collections::HashMap<String, &gitlama_contract::dto::NativeCommitFile>,
+        directory: Option<&[u8]>,
+        depth: usize,
+        rows: &mut Vec<Value>,
+    ) {
+        let key = tree_key(directory);
+        let Some(folder) = state.tree.get(&key) else { return };
+        for entry in &folder.entries {
+            let path = text(&entry.path);
+            let name = path.rsplit('/').next().unwrap_or_default().to_owned();
+            if entry.kind == gitlama_contract::dto::NativeTreeEntryKind::Directory {
+                let expanded = state.expanded.contains(&path);
+                let loading = expanded && state.tree.get(&path).is_some_and(|loaded| loaded.loading);
+                rows.push(json!({"key": format!("dir:{path}"), "rowKind": "folder", "path": path, "label": name, "depth": depth,
+                    "expanded": expanded, "loading": loading, "kind": "", "treeKind": "directory", "mode": entry.mode}));
+                if expanded {
+                    add(state, changed, Some(&entry.path), depth + 1, rows);
+                }
+                continue;
+            }
+            let change = changed.get(&path);
+            rows.push(json!({"key": format!("file:{path}"), "rowKind": "file", "path": path, "label": name, "depth": depth,
+                "expanded": false, "loading": false,
+                "kind": change.map_or("", |file| change_kind_name(file.kind)),
+                "oldPath": change.map_or(String::new(), |file| text(&file.old_path)),
+                "treeKind": tree_kind_name(entry.kind),
+                "mode": change.map_or(entry.mode, |file| file.new_mode)}));
+        }
+        if folder.failed {
+            rows.push(json!({"key": format!("retry:{key}"), "rowKind": "retry", "path": key, "label": "", "depth": depth, "expanded": false,
+                "loading": false, "kind": "", "treeKind": "", "mode": null}));
+        } else if folder.next_offset.is_some() {
+            rows.push(json!({"key": format!("more:{key}"), "rowKind": "more", "path": key, "label": "", "depth": depth, "expanded": false,
+                "loading": folder.loading, "kind": "", "treeKind": "", "mode": null}));
+        }
+    }
+    add(state, &changed, None, 0, &mut rows);
+    rows
+}
+
+pub fn project(inspector: &InspectorService, tree: bool, collapsed: &std::collections::HashSet<String>) -> Value {
     let state = inspector.current();
     let location = state.location.as_ref().map(|location| {
         json!({
@@ -142,6 +236,10 @@ pub fn project(inspector: &InspectorService) -> Value {
         "location": location,
         "summary": summary,
         "files": files,
+        "filesTree": tree,
+        "fileRows": state.inspection.as_ref().map_or_else(Vec::new, |inspection| file_rows(&inspection.files, tree, collapsed)),
+        "allRows": if state.location.as_ref().is_some_and(|location| location.scope == Scope::All) { all_rows(&state) } else { Vec::new() },
+        "allLoading": state.tree.get("").is_none_or(|root| root.loading),
         "hasDiff": state.diff.is_some(),
         "contents": contents,
         "hasBlame": state.blame.is_some(),
@@ -177,6 +275,9 @@ mod inspector_state {
     pub struct InspectorState {
         pub commands: Option<Commands>,
         pub(crate) state: Value,
+        /// The collapsed folders of the changed files tree, and the commit
+        /// they belong to.
+        pub(crate) collapsed: Rc<std::cell::RefCell<(String, std::collections::HashSet<String>)>>,
         /// The file menus' host actions, set once the services run.
         pub(crate) actions: Option<Rc<gitlama_workbench::inspector_actions::InspectorActions>>,
     }
@@ -233,6 +334,44 @@ mod inspector_state {
                     _ => Lens::Diff,
                 };
                 inspector.navigate(Location { lens, anchor: 0, ..location }, true, false, None).await;
+            });
+        }
+
+        /// Folds or unfolds folder `identity` of the changed files tree.
+        #[qslot]
+        fn toggle_folder(&self, identity: String) {
+            let collapsed = Rc::clone(&self.collapsed);
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                {
+                    let mut folded = collapsed.borrow_mut();
+                    if !folded.1.remove(&identity) {
+                        folded.1.insert(identity);
+                    }
+                }
+                driver.project_inspector();
+            });
+        }
+
+        /// Opens folder `path` of the All files tree ("" is the root).
+        #[qslot]
+        fn expand_directory(&self, path: String) {
+            self.with_inspector(move |inspector| async move {
+                inspector.expand_directory((!path.is_empty()).then(|| path.into_bytes())).await
+            });
+        }
+
+        /// Closes folder `path` of the All files tree.
+        #[qslot]
+        fn collapse_directory(&self, path: String) {
+            self.with_inspector(move |inspector| async move { inspector.collapse_directory(path.as_bytes()) });
+        }
+
+        /// Loads the next entries of folder `path` ("" is the root).
+        #[qslot]
+        fn load_more_directory(&self, path: String) {
+            self.with_inspector(move |inspector| async move {
+                inspector.load_more_directory((!path.is_empty()).then(|| path.into_bytes())).await
             });
         }
 

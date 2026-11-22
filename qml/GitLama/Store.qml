@@ -80,6 +80,10 @@ QtObject {
         else if (name === "size") {
             const parts = argument.split("x")
             screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "inspectorScope") {
+            inspector.setAllFiles(argument === "all")
+        } else if (name === "inspectorExpand") {
+            inspector.expandDirectory(argument)
         } else if (name === "changesTree") {
             // changesTree:<side>=<on|off>
             const parts = argument.split("=")

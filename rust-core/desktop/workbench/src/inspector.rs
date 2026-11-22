@@ -294,7 +294,28 @@ pub struct InspectorState {
     pub history_entry: Option<Rc<NativeCommitInspection>>,
     pub history_loading_more: bool,
     pub history_more_failed: bool,
+    /// The All files tree: each loaded folder's entries by its path ("" is
+    /// the root), and the folders shown open.
+    pub tree: HashMap<String, Rc<TreeDirectory>>,
+    pub expanded: std::collections::HashSet<String>,
 }
+
+/// One folder of the All files tree, read a page at a time.
+#[derive(Clone, Debug, Default)]
+pub struct TreeDirectory {
+    pub entries: Vec<gitlama_contract::dto::NativeTreeEntry>,
+    pub next_offset: Option<u64>,
+    pub loading: bool,
+    pub failed: bool,
+}
+
+/// The tree key of a folder path (None is the root).
+pub fn tree_key(directory: Option<&[u8]>) -> String {
+    directory.map(|path| String::from_utf8_lossy(path).into_owned()).unwrap_or_default()
+}
+
+/// Entries per page of a folder (as in Flutter).
+const TREE_PAGE_ROWS: u32 = 250;
 
 /// The blame lens's rows: the request, how many lines, and those loaded.
 #[derive(Clone, Debug, Default)]
@@ -395,6 +416,7 @@ struct Inner {
     diff_token: u64,
     history_token: u64,
     loading_blame_pages: std::collections::HashSet<u64>,
+    tree_token: u64,
 }
 
 /// Owns one inspector.
@@ -452,6 +474,7 @@ impl InspectorService {
                 diff_token: 0,
                 history_token: 0,
                 loading_blame_pages: std::collections::HashSet::new(),
+                tree_token: 0,
             }),
             options: Cell::new(DiffOptions::default()),
             on_target: RefCell::new(None),
@@ -647,6 +670,9 @@ impl InspectorService {
             || previous.inspection.is_none()
             || previous.phase == Phase::Failed
             || previous.location.as_ref().map(|location| &location.target) != Some(&location.target);
+        if target_changed {
+            self.inner.borrow_mut().tree_token += 1;
+        }
         if target_changed && emit_target && previous.location.as_ref().map(|location| &location.target) != Some(&location.target)
         {
             if let Some(listener) = self.on_target.borrow().as_ref() {
@@ -661,6 +687,8 @@ impl InspectorService {
             can_back,
             can_forward,
             all_changes_too_large: if target_changed { false } else { previous.all_changes_too_large },
+            tree: if target_changed { HashMap::new() } else { previous.tree.clone() },
+            expanded: if target_changed { Default::default() } else { previous.expanded.clone() },
             ..InspectorState::default()
         });
         let result: SessionResult<()> = async {
@@ -684,6 +712,23 @@ impl InspectorService {
                 .as_ref()
                 .and_then(|path| inspection.files.iter().find(|file| change_path(file) == path.as_slice()))
                 .cloned();
+            // A file the target did not change is only listed in All files.
+            if shown.path.is_some()
+                && change.is_none()
+                && !shown.directory
+                && shown.scope == Scope::Changed
+                && matches!(shown.target, Target::Commit(_))
+            {
+                shown.scope = Scope::All;
+                self.inner.borrow_mut().navigation.replace(shown.clone());
+                self.update(|state| state.location = Some(shown.clone()));
+            }
+            if shown.scope == Scope::All {
+                self.ensure_tree(identity, token, &shown).await;
+                if !self.accepts(identity, token) {
+                    return Ok(());
+                }
+            }
             let mut availability = Vec::new();
             if shown.path.is_some() {
                 availability = lens_availability(shown.directory, change.as_ref());
@@ -720,6 +765,108 @@ impl InspectorService {
                 state.content_loading = false;
             });
         }
+    }
+
+    /// Loads the root of the All files tree and every folder on the way to
+    /// the shown path, opening them.
+    async fn ensure_tree(&self, identity: SessionIdentity, token: u64, location: &Location) {
+        self.load_directory(identity, None, false).await;
+        let Some(path) = location.path.clone() else { return };
+        let mut expanded = self.inner.borrow().current.expanded.clone();
+        for (index, byte) in path.iter().enumerate() {
+            if *byte != b'/' || index == 0 {
+                continue;
+            }
+            let directory = path[..index].to_vec();
+            expanded.insert(tree_key(Some(&directory)));
+            if !self.accepts(identity, token) {
+                return;
+            }
+            self.load_directory(identity, Some(directory), false).await;
+        }
+        if location.directory {
+            expanded.insert(tree_key(Some(&path)));
+            self.load_directory(identity, Some(path), false).await;
+        }
+        if self.accepts(identity, token) {
+            self.update(|state| state.expanded = expanded);
+        }
+    }
+
+    /// Shows `directory`'s entries in the All files tree, loading them once
+    /// or again after a failure. None is the root.
+    pub async fn expand_directory(&self, directory: Option<Vec<u8>>) {
+        let Some(identity) = self.inner.borrow().identity else { return };
+        if self.inner.borrow().current.inspection.is_none() {
+            return;
+        }
+        let key = tree_key(directory.as_deref());
+        self.update(|state| {
+            state.expanded.insert(key);
+        });
+        self.load_directory(identity, directory, false).await;
+    }
+
+    pub fn collapse_directory(&self, directory: &[u8]) {
+        let key = tree_key(Some(directory));
+        if self.inner.borrow().current.expanded.contains(&key) {
+            self.update(|state| {
+                state.expanded.remove(&key);
+            });
+        }
+    }
+
+    pub async fn load_more_directory(&self, directory: Option<Vec<u8>>) {
+        let Some(identity) = self.inner.borrow().identity else { return };
+        self.load_directory(identity, directory, true).await;
+    }
+
+    async fn load_directory(&self, identity: SessionIdentity, directory: Option<Vec<u8>>, more: bool) {
+        let Some(commit) = self.inner.borrow().current.location.as_ref().map(|location| location.target.commit().to_owned()) else {
+            return;
+        };
+        let key = tree_key(directory.as_deref());
+        let loaded = self.inner.borrow().current.tree.get(&key).cloned();
+        if let Some(loaded) = &loaded
+            && (loaded.loading || (!more && !loaded.failed) || (more && loaded.next_offset.is_none()))
+        {
+            return;
+        }
+        let token = self.inner.borrow().tree_token;
+        let offset = if more { loaded.as_ref().and_then(|loaded| loaded.next_offset).unwrap_or(0) } else { 0 };
+        let previous_entries = loaded.as_ref().map(|loaded| loaded.entries.clone()).unwrap_or_default();
+        let previous_next = loaded.as_ref().and_then(|loaded| loaded.next_offset);
+        self.update(|state| {
+            state.tree.insert(
+                key.clone(),
+                Rc::new(TreeDirectory { entries: previous_entries.clone(), next_offset: previous_next, loading: true, failed: false }),
+            );
+        });
+        let result = self
+            .calls
+            .repository_session_tree(identity.native_id, identity.generation, commit, directory, offset, TREE_PAGE_ROWS)
+            .await;
+        let page = match result {
+            Ok(result) if result.failure.is_none() => result.page,
+            _ => None,
+        };
+        {
+            let inner = self.inner.borrow();
+            if inner.identity != Some(identity) || inner.tree_token != token {
+                return;
+            }
+        }
+        self.update(|state| {
+            let folder = match page {
+                Some(page) => {
+                    let mut entries = if more { previous_entries } else { Vec::new() };
+                    entries.extend(page.entries);
+                    TreeDirectory { entries, next_offset: page.next_offset, loading: false, failed: false }
+                }
+                None => TreeDirectory { entries: previous_entries, next_offset: previous_next, loading: false, failed: true },
+            };
+            state.tree.insert(key, Rc::new(folder));
+        });
     }
 
     async fn load_target(
