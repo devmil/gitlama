@@ -61,6 +61,87 @@ Item {
         list.currentIndex = index
     }
 
+    /// The file actions this list performs (the Dart _ChangesActionHost).
+    readonly property var fileActionHost: ({
+        capabilities: ["stage", "unstage", "openExternally", "revealInFileBrowser", "copyPath", "discard", "clean",
+            "addToGitignore", "blame", "fileHistory", "folderHistory"],
+        reasons: ({}),
+        inspectionReason: (paneState.headObjectId ?? null) === null ? L10n.t("fileActionNoCommit") : null,
+        busy: busy,
+        allowStagingWhileBusy: paneState.canQueue === true,
+    })
+
+    /// Opens the menu of row `index` at `x`, `y` of `item`: the selection's
+    /// actions first when the row belongs to a multiple selection.
+    function showFileMenu(index, item, x, y) {
+        const row = model.get(index)
+        if (!row)
+            return
+        const selection = row.selected ? keysOf(candidate => candidate.selected).map(key => {
+            for (let i = 0; i < model.count(); ++i) {
+                const candidate = model.get(i)
+                if (candidate.key === key)
+                    return candidate
+            }
+            return null
+        }).filter(candidate => candidate !== null) : []
+        const discardable = selection.every(candidate => candidate.discardable === true)
+        fileMenu.targets = selection.length >= 2 ? selection : [row]
+        fileMenu.target = row
+        fileMenu.showFor({
+            source: unstaged ? "unstagedFile" : "stagedFile",
+            path: row.path,
+            exists: true,
+            staged: !unstaged,
+            discardable: row.discardable === true,
+            untracked: row.untracked === true,
+        }, selection.length >= 2 ? {
+            count: selection.length,
+            staged: !unstaged,
+            clean: discardable ? selection.every(candidate => candidate.untracked === true) : null,
+        } : null, fileActionHost, item, x, y)
+    }
+
+    Component.onCompleted: Store.changesSections[side] = owner
+    /// Development screenshots: builds row `index`'s menu and runs `action` of it.
+    function runFileAction(index, action) {
+        showFileMenu(index, owner, 10, 10)
+        fileMenu.close()
+        console.log("file menu:", JSON.stringify(fileMenu.shownItems.map(item => item.separator ? "-" : item.header !== undefined ? "#" + item.header : item.title + (item.enabled === false ? "(off)" : ""))))
+        if (action.length > 0)
+            fileMenu.run(action, false)
+    }
+    FileActionMenu {
+        id: fileMenu
+        property var target: null
+        property var targets: []
+        run: (action, selection) => {
+            const rows = selection ? targets : [target]
+            const keys = rows.map(row => row.key)
+            const path = target.path
+            switch (action) {
+            case "stage":
+            case "unstage":
+                Store.changes.stageFiles(owner.side, keys); return
+            case "discard":
+            case "clean":
+                Store.changes.discardFiles(keys); return
+            case "copyPath":
+                Store.actions.copyText(path, L10n.t("filePathCopied")); return
+            case "openExternally":
+                Store.workflows.openTool("editor", path); return
+            case "revealInFileBrowser":
+                Store.workflows.openTool("fileManager", path); return
+            case "addToGitignore":
+                Store.workflows.ignorePath(path, false, rows.some(row => row.untracked !== true)); return
+            case "blame":
+                Store.inspector.inspectWorkingFile(path, "blame", false); return
+            case "fileHistory":
+                Store.inspector.inspectWorkingFile(path, "history", false); return
+            }
+        }
+    }
+
     clip: true
 
     // The header.
@@ -209,6 +290,7 @@ Item {
                 owner.selectRow(fileRow.index, fileRow.modifiers)
             }
             onDoubleClicked: Store.changes.stageFiles(owner.side, [fileRow.key])
+            onContextMenuRequested: (x, y) => owner.showFileMenu(fileRow.index, fileRow, x, y)
             // Stages or unstages this one file.
             MeridianIconButton {
                 visible: rowHover.hovered

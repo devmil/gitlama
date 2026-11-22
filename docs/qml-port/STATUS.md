@@ -68,6 +68,13 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   bands, blame before, line history, show commit, copy hash), File/Line history (paged list,
   renames, the selected commit's change). Fixed the inspector's state binding.
 
+- File actions: the shared catalogue (`workbench/src/file_actions.rs`, the spec §7.1 matrix with
+  tests) behind a QML `FileActionMenu`; the Changes file menu (stage, discard/clean, open in
+  editor, reveal, copy path, add to .gitignore with the ignore dialog, Blame/History at HEAD);
+  the History commit context menu; the integration launcher (configured or discovered editor,
+  terminal and file manager with each platform's arguments, confirmation of configured tools)
+  for Open in editor/terminal/file manager; command details behind a disclosure as in Flutter.
+
 ## Next
 - Inspector: All files tree, search in contents/blame, image diffs, open in window.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
@@ -81,8 +88,10 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
   diff wrap, minimap, find, encoding, image diff, show more context.
-- Changes: tree mode, drag between lists, flight animation, context menus (open, reveal,
-  ignore, patch), conflict resolver flow.
+- Changes: tree mode with folder menus, drag between lists, flight animation, file menu entries
+  Select changed lines (partial staging dialog) and Create patch (patch workflow).
+- Working-tree Blame/History opens an inspection window in Flutter when windows are available;
+  the port shows it in the History inspector until inspection windows are ported.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), commit context menu, selection glide,
   lane lighting/draw/landing motion, sync entrance, hosting chips, Gravatar.

@@ -233,6 +233,38 @@ mod inspector_state {
             });
         }
 
+        /// Shows lens `lens` of the working-tree `path` (a folder when
+        /// `directory`) at the current commit in the History inspector.
+        #[qslot]
+        fn inspect_working_file(&self, path: String, lens: String, directory: bool) {
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let head = services.workspace.current().and_then(|session| session.snapshot.status.as_ref()?.head_object_id.clone());
+                let Some(head) = head else {
+                    services.notices.status("commandContextUnavailable", Value::Null);
+                    return;
+                };
+                let navigator = Rc::clone(&services.navigator);
+                let inspector = Rc::clone(&services.inspector);
+                rt::spawn_detached(async move {
+                    navigator.show_commit(head.clone(), None, false, false).await;
+                    let lens = match lens.as_str() {
+                        "blame" => Lens::Blame,
+                        "contents" => Lens::Contents,
+                        _ => Lens::History,
+                    };
+                    let location = Location {
+                        path: Some(path.into_bytes()),
+                        directory,
+                        lens,
+                        ..Location::of(Target::Commit(head))
+                    };
+                    inspector.navigate(location, true, false, None).await;
+                });
+            });
+        }
+
         /// Shows commit `commit` (a parent of the shown one).
         #[qslot]
         fn show_commit(&self, commit: String) {

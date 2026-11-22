@@ -1,25 +1,43 @@
 import QtQuick
+import QtQuick.Controls.Basic as C
 import Meridian
 
-// The Git commands an action runs (GitCommandDetails), selectable in a
-// well so they can be copied.
-Rectangle {
+// The exact commands a workflow runs, one per line, behind a collapsed
+// "Git command details" disclosure (or `title`) (the Dart
+// GitCommandDetails). The commands are selectable and scroll within a
+// bounded height.
+MeridianDisclosure {
     id: root
 
     property var commands: []
 
-    implicitHeight: commandText.implicitHeight + 2 * Theme.space.s3
-    radius: Theme.radius.sm
-    color: Theme.colors.paneAlt
-    border.color: Theme.colors.line
+    title: L10n.t("gitCommandDetails")
 
-    MeridianSelectableText {
-        id: commandText
-        x: Theme.space.s3
-        y: Theme.space.s3
-        width: root.width - 2 * Theme.space.s3
-        role: MeridianText.CodeSm
-        text: root.commands.join("\n")
-        wrapMode: Text.WrapAnywhere
+    Rectangle {
+        width: parent ? parent.width : 0
+        height: Math.min(GitLamaLayout.commandDetailsMaxHeight, commandText.implicitHeight + 2 * Theme.space.s4)
+        radius: Theme.radius.md
+        color: Theme.colors.paneAlt
+
+        Flickable {
+            id: scroller
+            anchors.fill: parent
+            anchors.leftMargin: Theme.space.s5
+            anchors.rightMargin: Theme.space.s5
+            anchors.topMargin: Theme.space.s4
+            anchors.bottomMargin: Theme.space.s4
+            clip: true
+            contentHeight: commandText.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            C.ScrollBar.vertical: MeridianScrollBar {}
+
+            MeridianSelectableText {
+                id: commandText
+                width: scroller.width
+                role: MeridianText.CodeSm
+                text: root.commands.join("\n")
+                wrapMode: Text.WrapAnywhere
+            }
+        }
     }
 }

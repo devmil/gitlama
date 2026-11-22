@@ -18,13 +18,99 @@ mod workflows_state {
         /// The active tab's blocking operation for the busy overlay:
         /// {key, args, cancellable, canceling}, or null.
         pub(crate) busy: Value,
+        /// The file manager's name for "Open in …".
+        pub(crate) file_browser: String,
     }
 
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
+        qproperty!("fileBrowser", Member = file_browser, Notify = file_browser_changed);
 
         #[qsignal]
         pub fn busy_changed(&mut self);
+        #[qsignal]
+        pub fn file_browser_changed(&mut self);
+
+        /// The menu of a file or folder (file_actions.rs): `subject` names
+        /// it, `selection` is {count, staged, clean} or null, `host` is
+        /// {capabilities, reasons: {action: key}, inspectionReason, busy,
+        /// allowStagingWhileBusy}.
+        #[qslot]
+        fn file_menu(&self, subject: Value, selection: Value, host: Value) -> Value {
+            use gitlama_workbench::file_actions::{FileAction, Host, Selection, Subject, menu};
+            let Some(subject) = Subject::from_value(&subject) else { return Value::Array(Vec::new()) };
+            let selection = selection.get("count").and_then(Value::as_u64).map(|count| Selection {
+                count: count as usize,
+                staged: selection["staged"].as_bool().unwrap_or(false),
+                clean: selection["clean"].as_bool(),
+            });
+            let host = Host {
+                capabilities: host["capabilities"]
+                    .as_array()
+                    .map(|names| names.iter().filter_map(Value::as_str).filter_map(FileAction::parse).collect())
+                    .unwrap_or_default(),
+                file_browser: self.file_browser.clone(),
+                inspection_reason: host["inspectionReason"].as_str().map(str::to_owned),
+                reasons: host["reasons"]
+                    .as_object()
+                    .map(|reasons| {
+                        reasons
+                            .iter()
+                            .filter_map(|(name, reason)| Some((FileAction::parse(name)?, reason.as_str()?.to_owned())))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                busy: host["busy"].as_bool().unwrap_or(false),
+                allow_staging_while_busy: host["allowStagingWhileBusy"].as_bool().unwrap_or(false),
+            };
+            Value::Array(menu(&subject, &host, selection))
+        }
+
+        /// Opens the repository (`path` empty) or its file `path` with a tool
+        /// of `kind` (editor, terminal, fileManager).
+        #[qslot]
+        fn open_tool(&self, kind: String, path: String) {
+            use gitlama_workbench::integrations::{Target, parse_kind};
+            let Some(kind) = parse_kind(&kind) else { return };
+            self.with_services(move |services| {
+                let integrations = Rc::clone(&services.integrations);
+                let target = (!path.is_empty()).then_some(Target::Relative(path));
+                rt::spawn_detached(async move { integrations.open(kind, target).await });
+            });
+        }
+
+        /// Opens the local folder `path` itself in the file manager.
+        #[qslot]
+        fn open_folder(&self, path: String) {
+            use gitlama_contract::dto::{NativePathIdentity, NativePathPlatform};
+            self.with_services(move |services| {
+                let integrations = Rc::clone(&services.integrations);
+                let folder = if cfg!(windows) {
+                    NativePathIdentity { platform: NativePathPlatform::Windows, units: path.encode_utf16().collect(), remote: None }
+                } else {
+                    NativePathIdentity { platform: NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+                };
+                rt::spawn_detached(async move { integrations.open_folder(folder).await });
+            });
+        }
+
+        /// Offers and adds the `.gitignore` entry that hides `path`.
+        #[qslot]
+        fn ignore_path(&self, path: String, directory: bool, tracked: bool) {
+            self.with_services(move |services| {
+                let extensions = Rc::clone(&services.extensions);
+                rt::spawn_detached(async move { extensions.ignore(path, directory, tracked).await });
+            });
+        }
+
+        /// Runs the configured tool `id` on the repository.
+        #[qslot]
+        fn run_integration(&self, id: String) {
+            self.with_services(move |services| {
+                let integrations = Rc::clone(&services.integrations);
+                rt::spawn_detached(async move { integrations.run_stored(&id).await });
+            });
+        }
 
         /// Asks the active tab's blocking operation to stop.
         #[qslot]

@@ -28,6 +28,8 @@ QtObject {
 
     /// The platform's file browser: Finder, Explorer or Files.
     function fileBrowserName() {
+        if (Store.workflows && Store.workflows.fileBrowser.length > 0)
+            return Store.workflows.fileBrowser
         if (Store.isMac)
             return "Finder"
         if (Store.isWindows)

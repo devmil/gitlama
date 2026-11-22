@@ -17,7 +17,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 /// The roles of a Changes file list.
-pub const FILE_ROLES: &[&str] = &["key", "path", "status", "partial", "conflicted", "untracked", "selected", "pending"];
+pub const FILE_ROLES: &[&str] = &["key", "path", "status", "partial", "conflicted", "untracked", "discardable", "selected", "pending"];
 
 /// The status letter of `entry` on `side` (the Dart changeStatusCode).
 pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'static str {
@@ -100,6 +100,7 @@ pub fn project(services: &Services, filter: &str) -> Projection {
                     "partial": is_staged(entry) && is_unstaged(entry),
                     "conflicted": entry.kind == NativeStatusEntryKind::Unmerged,
                     "untracked": entry.kind == NativeStatusEntryKind::Untracked,
+                    "discardable": gitlama_workbench::changes::discardable(entry),
                     "selected": selected.contains(&key),
                     "pending": pending.contains(&key),
                 })

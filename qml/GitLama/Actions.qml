@@ -64,6 +64,14 @@ Item {
         case "chooseStash":
             stashDialog.ask(id, payload)
             return
+        case "ignorePath":
+            ignoreDialog.ask(id, payload)
+            return
+        case "confirmIntegration":
+            integrationConfirm.promptId = id
+            integrationConfirm.commands = payload.commands ?? []
+            integrationConfirm.open()
+            return
         case "confirmStash":
             stashConfirm.ask(id, payload)
             return
@@ -122,7 +130,8 @@ Item {
         licenseDialog.open()
     }
     function showAbout() {}
-    function openFolder(path) {}
+    /// Opens the local folder `path` itself in the file manager.
+    function openFolder(path) { Store.workflows.openFolder(path) }
     function deleteWorktree(index, name) {}
     function showRepositoryIconDialog(tab) {}
     function showTabGroupDialog(group, labels) {}
@@ -235,6 +244,9 @@ Item {
         case "inspectorBack": Store.inspector.back(); return
         case "inspectorForward": Store.inspector.forward(); return
         case "refreshRepository": Store.history.reload(); return
+        case "openInEditor": Store.workflows.openTool("editor", ""); return
+        case "openInTerminal": Store.workflows.openTool("terminal", ""); return
+        case "openInFileManager": Store.workflows.openTool("fileManager", ""); return
         default:
             Notifications.show(Commands.label(id), false)
         }
@@ -495,6 +507,38 @@ Item {
         id: refConfirm
         onAnswered: (id, confirmed) => actions.answer(id, confirmed)
     }
+    IgnoreDialog {
+        id: ignoreDialog
+        onAnswered: (id, entry) => actions.answer(id, entry)
+    }
+    // Asks to run a configured tool that needs confirmation (the Dart
+    // confirmIntegration).
+    MeridianConfirm {
+        id: integrationConfirm
+        property int promptId: -1
+        property var commands: []
+        widthClass: MeridianDialog.Form
+        title: L10n.t("integrationPreviewTitle")
+        confirmLabel: L10n.t("integrationRun")
+        cancelLabel: L10n.t("cancel")
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s4
+            MeridianText {
+                width: parent.width
+                role: MeridianText.Body
+                wrapMode: Text.Wrap
+                text: L10n.t("integrationRunSummary")
+            }
+            GitCommands {
+                width: parent.width
+                title: L10n.t("commandDetails")
+                commands: integrationConfirm.commands
+            }
+        }
+    }
     EditBranchDialog {
         id: editBranchDialog
         onAnswered: (id, edit) => actions.answer(id, edit)
@@ -558,6 +602,8 @@ Item {
                 stashConfirm.submitted()
             else if (name === "mutationSource")
                 historyMutationDialog.chooseSource(argument)
+            else if (name === "submitIgnore")
+                ignoreDialog.submit()
             else if (name === "submitMutation")
                 historyMutationDialog.finish(argument === "applyOnly")
             else if (name === "confirmMutation")

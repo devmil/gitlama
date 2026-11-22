@@ -48,6 +48,8 @@ pub struct Services {
     pub auto_fetch: Rc<crate::auto_fetch::AutoFetchScheduler>,
     pub history_mutations: Rc<crate::history_mutations::HistoryMutations>,
     pub rebases: Rc<crate::rebases::Rebases>,
+    pub integrations: Rc<crate::integrations::Integrations>,
+    pub extensions: Rc<crate::extensions::Extensions>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -221,9 +223,21 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let integrations = crate::integrations::Integrations::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&history),
+            Rc::clone(&settings),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+        );
+        let extensions =
+            crate::extensions::Extensions::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&prompts), Rc::clone(&notices));
         let operations = crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
         operations.start();
         Ok(Self {
+            integrations,
+            extensions,
             operations,
             conflicts,
             rebases,

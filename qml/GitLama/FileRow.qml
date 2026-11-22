@@ -38,6 +38,13 @@ Item {
     Accessible.selected: selected
 
     Keys.onReturnPressed: row.clicked()
+    // The menu key and Shift+F10 open the context menu at the row.
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
+            row.contextMenuRequested(Theme.space.s6, row.height)
+            event.accepted = true
+        }
+    }
     Keys.onSpacePressed: row.clicked()
 
     Rectangle {

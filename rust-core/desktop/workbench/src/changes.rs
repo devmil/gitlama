@@ -89,7 +89,7 @@ pub fn has_active_conflicts(status: Option<&NativeRepositoryStatus>) -> bool {
     })
 }
 
-fn discardable(entry: &NativeStatusEntry) -> bool {
+pub fn discardable(entry: &NativeStatusEntry) -> bool {
     matches!(
         entry.kind,
         NativeStatusEntryKind::Untracked | NativeStatusEntryKind::Ordinary | NativeStatusEntryKind::Rename

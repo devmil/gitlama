@@ -528,31 +528,51 @@ impl InspectorService {
     /// it replaces the current entry. `from_host` marks a navigation the
     /// graph asked for, which is not echoed back to it.
     pub async fn navigate(&self, location: Location, push: bool, from_host: bool, parent_hint: Option<Vec<String>>) {
+        if let Some(next) = self.record(location, push) {
+            self.show(next, !from_host, parent_hint, false).await;
+        }
+    }
+
+    /// The synchronous start of [`Self::navigate`]: records `location` in
+    /// the navigation and returns it when it still has to be shown.
+    fn record(&self, location: Location, push: bool) -> Option<Location> {
         if self.inner.borrow().identity.is_none() {
-            return;
+            return None;
         }
         let next = location.normalized();
+        let mut inner = self.inner.borrow_mut();
+        let shown = inner.navigation.current().cloned();
+        if let Some(shown) = shown
+            && shown.same_as(&next)
         {
-            let mut inner = self.inner.borrow_mut();
-            let shown = inner.navigation.current().cloned();
-            if let Some(shown) = shown
-                && shown.same_as(&next)
-            {
-                if inner.current.phase != Phase::Failed && inner.current.content_failure.is_none() {
-                    if !push {
-                        inner.navigation.replace(next.clone());
-                        inner.current.location = Some(next);
-                    }
-                    return;
+            if inner.current.phase != Phase::Failed && inner.current.content_failure.is_none() {
+                if !push {
+                    inner.navigation.replace(next.clone());
+                    inner.current.location = Some(next);
                 }
-                inner.navigation.replace(next.clone());
-            } else if push {
-                inner.navigation.push(next.clone());
-            } else {
-                inner.navigation.replace(next.clone());
+                return None;
             }
+            inner.navigation.replace(next.clone());
+        } else if push {
+            inner.navigation.push(next.clone());
+        } else {
+            inner.navigation.replace(next.clone());
         }
-        self.show(next, !from_host, parent_hint, false).await;
+        Some(next)
+    }
+
+    /// Navigates to `location` for the graph: recorded now, as the Dart
+    /// link's navigation starts synchronously, and shown unless another
+    /// navigation replaced it meanwhile.
+    fn navigate_for_graph(self: &Rc<Self>, location: Location, parent_hint: Option<Vec<String>>) {
+        let Some(next) = self.record(location, true) else { return };
+        let shown = Rc::clone(self);
+        rt::spawn_detached(async move {
+            let current = shown.inner.borrow().navigation.current().is_some_and(|location| location.same_as(&next));
+            if current {
+                shown.show(next, false, parent_hint, false).await;
+            }
+        });
     }
 
     /// Loads the current location again, after a failure.
@@ -1265,8 +1285,7 @@ impl InspectorService {
                 None => Target::Commit(commit),
             };
             let parents = if matches!(target, Target::Commit(_)) { selection.parents.clone() } else { None };
-            let shown = Rc::clone(&inspector);
-            rt::spawn_detached(async move { shown.navigate(Location::of(target), true, true, parents).await });
+            inspector.navigate_for_graph(Location::of(target), parents);
         });
         let graph = Rc::downgrade(history);
         self.on_target(move |target| {

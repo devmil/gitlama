@@ -55,6 +55,7 @@ AuthorAvatar 1.0 AuthorAvatar.qml
 HistoryRow 1.0 HistoryRow.qml
 HistoryPane 1.0 HistoryPane.qml
 StatusGlyph 1.0 StatusGlyph.qml
+FileActionMenu 1.0 FileActionMenu.qml
 FileRow 1.0 FileRow.qml
 DiffView 1.0 DiffView.qml
 CommitSummaryCard 1.0 CommitSummaryCard.qml
@@ -71,6 +72,7 @@ TransferFailureDialog 1.0 TransferFailureDialog.qml
 RefMutationDialog 1.0 RefMutationDialog.qml
 RefConfirmDialog 1.0 RefConfirmDialog.qml
 EditBranchDialog 1.0 EditBranchDialog.qml
+IgnoreDialog 1.0 IgnoreDialog.qml
 CommandShortcuts 1.0 CommandShortcuts.qml
 CommandPalette 1.0 CommandPalette.qml
 StashDialog 1.0 StashDialog.qml

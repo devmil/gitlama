@@ -44,6 +44,8 @@ QtObject {
     property var shell: null
     /// The History pane (development screenshots open its menus).
     property var historyPane: null
+    /// The Changes lists by side (development screenshots open their menus).
+    property var changesSections: ({})
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).
@@ -73,6 +75,12 @@ QtObject {
         else if (name === "size") {
             const parts = argument.split("x")
             screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "fileMenu") {
+            // fileMenu:<side>=<row>[=<action>]
+            const parts = argument.split("=")
+            const section = changesSections[parts[0]]
+            if (section)
+                section.runFileAction(Number(parts[1]), parts[2] ?? "")
         } else if (name === "commitMenu" && historyPane && historyRows) {
             // Development: builds row N's commit menu and reports its shape.
             historyPane.showCommitMenu(historyRows.objectIdAt(Number(argument)), "", historyPane, 10, 10)

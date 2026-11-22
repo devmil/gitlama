@@ -193,6 +193,14 @@ impl Driver {
             }
         }
         if changed.intersects(Topics::SETTINGS) {
+            if let Some(services) = self.app.services() {
+                let name = services.integrations.file_browser();
+                let mut workflows = self.workflows.borrow_mut();
+                if workflows.file_browser != name {
+                    workflows.file_browser = name;
+                    workflows.file_browser_changed();
+                }
+            }
             let appearance = self
                 .app
                 .services()
