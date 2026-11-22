@@ -44,6 +44,7 @@ pub struct Services {
     pub changes: Rc<crate::changes::ChangesService>,
     pub working_detail: Rc<crate::working_detail::WorkingDetail>,
     pub commit: Rc<crate::commit::CommitService>,
+    pub transfers: Rc<crate::transfers::TransferService>,
 }
 
 impl Services {
@@ -156,7 +157,15 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let transfers = crate::transfers::TransferService::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
         Ok(Self {
+            transfers,
             commit,
             working_detail,
             busy,

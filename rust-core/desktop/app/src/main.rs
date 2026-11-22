@@ -130,6 +130,10 @@ fn main() {
     gitlama_qt::CommitState::attach_qobject(&commit);
     commit.borrow_mut().commands = Some(commands.clone());
 
+    let workflows = Rc::new(RefCell::new(gitlama_qt::WorkflowsState::default()));
+    gitlama_qt::WorkflowsState::attach_qobject(&workflows);
+    workflows.borrow_mut().commands = Some(commands.clone());
+
     let driver = Rc::new(Driver {
         commit: Rc::clone(&commit),
         changes: Rc::clone(&changes),
@@ -192,6 +196,7 @@ fn main() {
         ("stagedRows", staged_rows.borrow().as_qvariant()),
         ("workingDiff", working_diff.borrow().as_qvariant()),
         ("commit", commit.borrow().as_qvariant()),
+        ("workflows", workflows.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)
@@ -218,6 +223,7 @@ fn main() {
     drop(application);
     drop(pump);
     drop(hooks);
+    drop(workflows);
     if exit_code != 0 {
         std::process::exit(exit_code);
     }

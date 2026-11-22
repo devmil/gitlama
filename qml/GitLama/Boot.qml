@@ -20,6 +20,7 @@ QtObject {
     required property var stagedRows
     required property var workingDiff
     required property var commit
+    required property var workflows
     property var window: null
 
     Component.onCompleted: {
@@ -35,7 +36,7 @@ QtObject {
                                                          inspector: boot.inspector, inspectorDiff: boot.inspectorDiff,
                                                          changes: boot.changes, unstagedRows: boot.unstagedRows,
                                                          stagedRows: boot.stagedRows, workingDiff: boot.workingDiff,
-                                                         commit: boot.commit })
+                                                         commit: boot.commit, workflows: boot.workflows })
         if (window === null) {
             console.error("the main window could not be created")
             Qt.exit(3)

@@ -34,6 +34,23 @@ Item {
         case "confirmSkipHooks":
             skipHooksDialog.ask(id)
             return
+        case "chooseTransfer":
+            transferDialog.ask(id, payload)
+            return
+        case "trustHostKey":
+            hostKeyDialog.ask(id, payload)
+            return
+        case "gitCredentials":
+            credentialDialog.ask(id, payload)
+            return
+        case "transferFailure":
+            transferFailureDialog.ask(id, payload)
+            return
+        case "offerRefetch":
+            refetchConfirm.promptId = id
+            refetchConfirm.description = L10n.tn("transferMissingObjectDetail", { remote: payload.remote ?? "" })
+            refetchConfirm.open()
+            return
         default:
             answer(id, null)
         }
@@ -69,6 +86,26 @@ Item {
         case "initializeRepository": Store.workspace.initializeRepository(false); return
         case "closeRepositoryTab": Store.workspace.closeTab(Store.workspace.activeTabId); return
         case "showSettings": showSettings(); return
+        case "fetch":
+        case "remoteFetch":
+            Store.workflows.transfer("fetch", { initialRemote: options.initialName ?? null }); return
+        case "pull":
+            Store.workflows.transfer("pull", { initialRemote: options.initialName ?? null }); return
+        case "push":
+        case "remotePush":
+            Store.workflows.transfer("push", { initialRemote: options.initialName ?? null, initialForce: options.force === true }); return
+        case "pushTag":
+            Store.workflows.transfer("pushTag", { initialBranch: options.initialName ?? null }); return
+        case "showChanges": Store.sidebar.selectPane("changes"); return
+        case "showHistory": Store.sidebar.selectPane("history"); return
+        case "nextPane": Store.sidebar.nextPane(); return
+        case "stageToggle": Store.changes.toggleFocused(); return
+        case "stageSelection": Store.changes.stageSelection("unstaged"); return
+        case "unstageSelection": Store.changes.stageSelection("staged"); return
+        case "discardChanges": Store.changes.discardSelection(); return
+        case "inspectorBack": Store.inspector.back(); return
+        case "inspectorForward": Store.inspector.forward(); return
+        case "refreshRepository": Store.history.reload(); return
         default:
             Notifications.show(Commands.label(id), false)
         }
@@ -175,9 +212,44 @@ Item {
         ]
     }
 
+    TransferDialog {
+        id: transferDialog
+        onAnswered: (id, request) => actions.answer(id, request)
+    }
+    HostKeyDialog {
+        id: hostKeyDialog
+        onAnswered: (id, trust) => actions.answer(id, trust)
+    }
+    CredentialDialog {
+        id: credentialDialog
+        onAnswered: (id, credentials) => actions.answer(id, credentials)
+    }
+    TransferFailureDialog {
+        id: transferFailureDialog
+        onAnswered: (id, remedy) => actions.answer(id, remedy)
+    }
+    MeridianConfirm {
+        id: refetchConfirm
+        property int promptId: -1
+        title: L10n.t("transferMissingObjectTitle")
+        confirmLabel: L10n.t("transferRefetchAction")
+        cancelLabel: L10n.t("cancel")
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
+
     InitializeRepositoryDialog {
         id: initializeDialog
         onChosen: (id, choice) => actions.answer(id, choice)
+    }
+
+    // Development screenshots can submit the transfer dialog.
+    Connections {
+        target: Store
+        function onScreenshotStepRequested(name, argument) {
+            if (name === "submitTransfer")
+                transferDialog.submit()
+        }
     }
 
     Connections {

@@ -22,6 +22,7 @@ Window {
     required property var stagedRows
     required property var workingDiff
     required property var commit
+    required property var workflows
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -80,6 +81,7 @@ Window {
         Store.stagedRows = stagedRows
         Store.workingDiff = workingDiff
         Store.commit = commit
+        Store.workflows = workflows
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()

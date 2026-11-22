@@ -63,3 +63,8 @@ ChangesSection 1.0 ChangesSection.qml
 ChangesPane 1.0 ChangesPane.qml
 WorkingDiffPane 1.0 WorkingDiffPane.qml
 CommitEditor 1.0 CommitEditor.qml
+ReferenceField 1.0 ReferenceField.qml
+TransferDialog 1.0 TransferDialog.qml
+HostKeyDialog 1.0 HostKeyDialog.qml
+CredentialDialog 1.0 CredentialDialog.qml
+TransferFailureDialog 1.0 TransferFailureDialog.qml

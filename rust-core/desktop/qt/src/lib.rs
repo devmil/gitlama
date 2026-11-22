@@ -15,6 +15,7 @@ mod plumbing;
 mod projection;
 pub mod row_model;
 mod sidebar_state;
+mod workflows_state;
 mod workspace_state;
 
 pub use app_state::AppState;
@@ -27,6 +28,7 @@ pub use diff_model::DiffModel;
 pub use inspector_state::InspectorState;
 pub use changes_state::{ChangesState, FILE_ROLES};
 pub use commit_state::CommitState;
+pub use workflows_state::WorkflowsState;
 pub use sidebar_state::{SIDEBAR_ROLES, SidebarState};
 pub use workspace_state::WorkspaceState;
 

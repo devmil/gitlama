@@ -28,6 +28,8 @@ QtObject {
     property var workingDiff: null
     /// The CommitState bridge: the commit editor's draft and commit.
     property var commit: null
+    /// The WorkflowsState bridge: starts repository workflows.
+    property var workflows: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).
@@ -69,6 +71,8 @@ QtObject {
             }
         } else if (name === "stageSelected" && changes) {
             changes.stageSelection(argument)
+        } else if (name === "command" && actions) {
+            actions.runCommand(argument, ({}))
         } else if (name === "commit" && commit) {
             commit.commit({ subject: argument, description: "", coauthors: [], author: "", amend: false,
                             skipHooks: false, signOff: false }, false, "")

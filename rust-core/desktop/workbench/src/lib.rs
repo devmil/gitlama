@@ -31,4 +31,5 @@ pub mod sidebar;
 pub mod settings;
 pub mod view_cache;
 pub mod working_detail;
+pub mod transfers;
 pub mod workspace;
