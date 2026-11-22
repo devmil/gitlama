@@ -20,6 +20,10 @@ Item {
     signal clicked()
     signal doubleClicked()
     signal contextMenuRequested(real x, real y)
+    /// The folder's chevron was tapped (folding never selects).
+    signal folderToggled()
+    /// A folder row shows an open or closed folder after its chevron.
+    property bool folderIcon: false
     /// The keyboard modifiers of the last click.
     property int modifiers: 0
     /// Before the glyph (a checkbox) and at the end (counts, actions).
@@ -81,6 +85,16 @@ Item {
                 iconSize: MeridianIcon.Small
                 color: Theme.colors.inkMuted
             }
+            // The chevron takes the press, so folding never selects.
+            MouseArea {
+                enabled: row.folder
+                anchors.fill: parent
+                anchors.margins: -Theme.space.s1
+                cursorShape: Qt.PointingHandCursor
+                onClicked: row.folderToggled()
+                Accessible.role: Accessible.Button
+                Accessible.name: row.expanded ? L10n.t("changesCollapseFolder") : L10n.t("changesExpandFolder")
+            }
             StatusGlyph {
                 visible: !row.folder && row.status.length > 0
                 anchors.centerIn: parent
@@ -88,11 +102,17 @@ Item {
                 partial: row.partial
             }
         }
+        MeridianIcon {
+            visible: row.folder && row.folderIcon
+            anchors.verticalCenter: parent.verticalCenter
+            name: row.expanded ? "folder-open" : "folder-closed"
+        }
         Row {
             id: label
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - GitLamaLayout.glyphSize - parent.spacing
                 - (leadingLoader.active ? leadingLoader.width + parent.spacing : 0)
+                - (row.folder && row.folderIcon ? Theme.size.icon + parent.spacing : 0)
             // The name keeps its width; the folder gives way from its start.
             MeridianText {
                 visible: text.length > 0

@@ -35,6 +35,7 @@ pub mod notices;
 pub mod notify;
 pub mod operations;
 pub mod patches;
+pub mod path_tree;
 pub mod preferences;
 pub mod prompts;
 pub mod rebases;

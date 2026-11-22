@@ -31,6 +31,8 @@ pub enum Source {
     Lines { request_id: u64, rows: Vec<String> },
     /// Exactly `paths` on `side`.
     Files { side: NativeStagingSide, paths: Vec<Vec<u8>> },
+    /// The Changes files `keys` on `side` (a folder's files).
+    Keys { side: NativeStagingSide, keys: Vec<String> },
 }
 
 fn patch_side(side: NativeStagingSide) -> NativePatchSide {
@@ -188,6 +190,20 @@ impl PatchService {
             Source::History { commit } => history_request(self.history.current().page.as_deref(), commit.clone(), destination, overwrite),
             Source::Diff { base, commit, paths } => diff_request(base.clone(), commit.clone(), paths.clone(), destination, overwrite),
             Source::Files { side, paths } => working_tree_request(*side, paths.clone(), destination, overwrite),
+            Source::Keys { side, keys } => {
+                let entries: Vec<_> = self
+                    .workspace
+                    .current()
+                    .and_then(|session| session.snapshot.status.clone())
+                    .map(|status| {
+                        crate::changes::entries_on(&status, *side)
+                            .into_iter()
+                            .filter(|entry| keys.contains(&crate::changes::change_key(entry)))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                working_tree_request(*side, unique_command_paths(&entries), destination, overwrite)
+            }
             Source::Lines { request_id, rows } => NativePatchExportRequest {
                 working_diff_request_id: Some(*request_id),
                 row_ids: rows.clone(),

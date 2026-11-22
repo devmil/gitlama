@@ -82,6 +82,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Select changed lines: the line-picking dialog (hunk and line checkboxes, picked count, select
   all, load more) staging, discarding or making a patch of the chosen lines.
 - Worktree deletion from the sidebar: confirmation, refusal banner under the worktrees, reload.
+- Changes tree mode per list (stored List/Tree choice, Meridian path tree ported to
+  `workbench/src/path_tree.rs`), folder rows with folding, folder selection and folder menus.
 
 ## Next
 - Inspector: All files tree, search in contents/blame, image diffs, open in window.
@@ -96,7 +98,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
   diff wrap, minimap, find, encoding, image diff, show more context.
-- Changes: tree mode with folder menus, drag between lists, flight animation.
+- Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,

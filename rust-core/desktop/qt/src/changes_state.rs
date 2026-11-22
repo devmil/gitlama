@@ -17,7 +17,24 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 /// The roles of a Changes file list.
-pub const FILE_ROLES: &[&str] = &["key", "path", "status", "partial", "conflicted", "untracked", "discardable", "source", "selected", "pending"];
+pub const FILE_ROLES: &[&str] = &[
+    "key", "path", "label", "depth", "directory", "expanded", "keys", "status", "partial", "conflicted", "untracked", "discardable", "source",
+    "selected", "pending",
+];
+
+/// A Changes file's label: its path, or "old → new" for a rename; as base
+/// names in a tree (the Dart _changesFileLabel).
+fn file_label(entry: &NativeStatusEntry, basename: bool) -> String {
+    let shown = |path: &gitlama_contract::dto::NativePathIdentity| {
+        let value = gitlama_workbench::session::display_path(path).replace('\\', "/");
+        if basename { value.rsplit('/').next().unwrap_or_default().to_owned() } else { value }
+    };
+    let target = shown(&entry.path);
+    match &entry.source {
+        Some(source) => format!("{} → {target}", shown(source)),
+        None => target,
+    }
+}
 
 /// The status letter of `entry` on `side` (the Dart changeStatusCode).
 pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'static str {
@@ -70,7 +87,7 @@ pub struct Projection {
     pub staged: Vec<Value>,
 }
 
-pub fn project(services: &Services, filter: &str) -> Projection {
+pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 2]) -> Projection {
     let changes = &services.changes;
     let detail = &services.working_detail;
     let active = services.workspace.active_tab();
@@ -88,14 +105,20 @@ pub fn project(services: &Services, filter: &str) -> Projection {
         let total = all.len();
         let pending = changes.pending_keys(tab.id, side);
         let selected = selection.of(side);
-        let shown = all
-            .iter()
-            .filter(|entry| !filtering || filter_matches(entry, filter))
-            .map(|entry| {
+        let tree = services.settings.with(|document| {
+            let mode = if side == NativeStagingSide::Staged { &document.appearance.changes_staged_mode } else { &document.appearance.changes_unstaged_mode };
+            mode == "tree"
+        });
+        let file = |entry: &NativeStatusEntry, depth: usize| {
                 let key = change_key(entry);
                 json!({
                     "key": key,
                     "path": display_identity(entry),
+                    "label": file_label(entry, tree),
+                    "depth": depth,
+                    "directory": false,
+                    "expanded": false,
+                    "keys": [],
                     "status": status_code(entry, side),
                     "partial": is_staged(entry) && is_unstaged(entry),
                     "conflicted": entry.kind == NativeStatusEntryKind::Unmerged,
@@ -105,6 +128,38 @@ pub fn project(services: &Services, filter: &str) -> Projection {
                     "selected": selected.contains(&key),
                     "pending": pending.contains(&key),
                 })
+        };
+        let visible: Vec<&NativeStatusEntry> = all.iter().filter(|entry| !filtering || filter_matches(entry, filter)).collect();
+        if !tree {
+            return (visible.into_iter().map(|entry| file(entry, 0)).collect(), total);
+        }
+        let folded = &collapsed[usize::from(side == NativeStagingSide::Staged)];
+        let shown = gitlama_workbench::path_tree::flatten(visible, |entry| display_identity(entry), folded, true, None)
+            .into_iter()
+            .map(|row| match row.item {
+                Some(entry) => file(entry, row.depth),
+                None => {
+                    let keys: Vec<String> = row.descendants.iter().map(|entry| change_key(entry)).collect();
+                    let entries: Vec<NativeStatusEntry> = row.descendants.iter().map(|entry| (*entry).clone()).collect();
+                    let discard = gitlama_workbench::changes::discard_kind_of(&entries);
+                    json!({
+                        "key": format!("dir:{}", row.identity),
+                        "path": row.identity,
+                        "label": row.label,
+                        "depth": row.depth,
+                        "directory": true,
+                        "expanded": !folded.contains(&row.identity),
+                        "keys": keys,
+                        "status": "",
+                        "partial": false,
+                        "conflicted": false,
+                        "untracked": discard == Some(gitlama_contract::dto::NativeDiscardKind::Clean),
+                        "discardable": discard.is_some(),
+                        "source": null,
+                        "selected": !keys.is_empty() && keys.iter().all(|key| selected.contains(key)),
+                        "pending": false,
+                    })
+                }
             })
             .collect();
         (shown, total)
@@ -129,8 +184,8 @@ pub fn project(services: &Services, filter: &str) -> Projection {
         "filtering": filtering,
         "unstagedTotal": unstaged_total,
         "stagedTotal": staged_total,
-        "unstagedShown": unstaged.len(),
-        "stagedShown": staged.len(),
+        "unstagedShown": unstaged.iter().filter(|row| row["directory"] != true).count(),
+        "stagedShown": staged.iter().filter(|row| row["directory"] != true).count(),
         "selectedUnstaged": selection.unstaged.len(),
         "selectedStaged": selection.staged.len(),
         "disabled": changes.disabled_selection_commands(tab.id),
@@ -166,6 +221,8 @@ mod changes_state {
         pub(crate) state: Value,
         /// The file filter, shared by both lists.
         pub filter: Rc<RefCell<String>>,
+        /// The collapsed folders of the unstaged and the staged tree.
+        pub collapsed: Rc<RefCell<[HashSet<String>; 2]>>,
     }
 
     impl ChangesState {
@@ -188,6 +245,23 @@ mod changes_state {
                 let shown: HashSet<String> =
                     status.entries.iter().filter(|entry| filter_matches(entry, &text)).map(change_key).collect();
                 services.changes.retain(tab.id, &shown);
+            });
+        }
+
+        /// Folds or unfolds folder `identity` of the tree `side`.
+        #[qslot]
+        fn toggle_folder(&self, side: String, identity: String) {
+            let collapsed = Rc::clone(&self.collapsed);
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                {
+                    let mut folded = collapsed.borrow_mut();
+                    let set = &mut folded[usize::from(side == "staged")];
+                    if !set.remove(&identity) {
+                        set.insert(identity);
+                    }
+                }
+                driver.project_changes();
             });
         }
 

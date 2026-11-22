@@ -31,6 +31,10 @@ pub fn parse_source(value: &Value) -> Option<Source> {
             rows: value["rows"].as_array().map(|rows| rows.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default(),
         },
         "files" => Source::Files { side: side(), paths: paths() },
+        "keys" => Source::Keys {
+            side: side(),
+            keys: value["keys"].as_array().map(|keys| keys.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default(),
+        },
         _ => return None,
     })
 }

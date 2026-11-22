@@ -80,6 +80,15 @@ QtObject {
         else if (name === "size") {
             const parts = argument.split("x")
             screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "changesTree") {
+            // changesTree:<side>=<on|off>
+            const parts = argument.split("=")
+            if (changesSections[parts[0]])
+                changesSections[parts[0]].setTree(parts[1] !== "off")
+        } else if (name === "toggleFolder") {
+            // toggleFolder:<side>=<folder path>
+            const parts = argument.split("=")
+            changes.toggleFolder(parts[0], parts[1])
         } else if (name === "fileMenu") {
             // fileMenu:<side>=<row>[=<action>]
             const parts = argument.split("=")

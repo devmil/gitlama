@@ -123,7 +123,7 @@ impl Driver {
         if changed.intersects(Topics::INSPECTOR) {
             self.project_inspector();
         }
-        if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS) {
+        if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS | Topics::SETTINGS) {
             self.project_changes();
         }
         if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
@@ -427,12 +427,13 @@ impl Driver {
         self.inspector_blame.borrow_mut().publish(services.inspector.current().blame);
     }
 
-    fn project_changes(&self) {
+    pub(crate) fn project_changes(&self) {
         let Some(services) = self.app.services() else { return };
         services.changes.sync();
         services.working_detail.follow();
         let filter = self.changes.borrow().filter.borrow().clone();
-        let projection = crate::changes_state::project(&services, &filter);
+        let collapsed = self.changes.borrow().collapsed.borrow().clone();
+        let projection = crate::changes_state::project(&services, &filter, &collapsed);
         self.unstaged_rows.borrow_mut().publish(projection.unstaged);
         self.staged_rows.borrow_mut().publish(projection.staged);
         self.working_diff.borrow_mut().publish(services.working_detail.document());

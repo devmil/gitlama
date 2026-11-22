@@ -18,7 +18,8 @@ Item {
     required property var model
     property var paneState: ({})
     readonly property bool unstaged: side === "unstaged"
-    readonly property int shown: model ? model.size : 0
+    /// The files shown (folder rows of a tree do not count).
+    readonly property int shown: unstaged ? (paneState.unstagedShown ?? 0) : (paneState.stagedShown ?? 0)
     readonly property int total: unstaged ? (paneState.unstagedTotal ?? 0) : (paneState.stagedTotal ?? 0)
     readonly property int selectedCount: unstaged ? (paneState.selectedUnstaged ?? 0) : (paneState.selectedStaged ?? 0)
     readonly property bool filtering: paneState.filtering === true
@@ -26,11 +27,16 @@ Item {
     /// The row the Shift range starts from.
     property int anchor: -1
 
+    /// The list shows folders (Store.app appearance changes*Mode).
+    readonly property bool tree: (unstaged ? Store.appearance.changesUnstagedMode : Store.appearance.changesStagedMode) === "tree"
+    function setTree(value) {
+        Store.app.updateAppearance(unstaged ? { changesUnstagedMode: value ? "tree" : "list" } : { changesStagedMode: value ? "tree" : "list" })
+    }
     function keysOf(predicate) {
         const keys = []
         for (let i = 0; i < model.count(); ++i) {
             const row = model.get(i)
-            if (predicate(row, i))
+            if (!row.directory && predicate(row, i))
                 keys.push(row.key)
         }
         return keys
@@ -40,6 +46,12 @@ Item {
         const row = model.get(index)
         if (!row)
             return
+        // Selecting a folder selects its files; only its chevron folds it.
+        if (row.directory) {
+            Store.changes.select(side, row.keys ?? [])
+            anchor = index
+            return
+        }
         if (modifiers & Qt.ShiftModifier && anchor >= 0) {
             const from = Math.min(anchor, index), to = Math.max(anchor, index)
             Store.changes.select(side, keysOf((_, at) => at >= from && at <= to))
@@ -77,6 +89,19 @@ Item {
         const row = model.get(index)
         if (!row)
             return
+        if (row.directory) {
+            fileMenu.targets = [row]
+            fileMenu.target = row
+            fileMenu.showFor({
+                source: "changesFolder",
+                path: row.path,
+                exists: (row.keys ?? []).length > 0,
+                staged: !unstaged,
+                discardable: row.discardable === true,
+                untracked: row.untracked === true,
+            }, null, fileActionHost, item, x, y)
+            return
+        }
         const selection = row.selected ? keysOf(candidate => candidate.selected).map(key => {
             for (let i = 0; i < model.count(); ++i) {
                 const candidate = model.get(i)
@@ -117,7 +142,8 @@ Item {
         property var targets: []
         run: (action, selection) => {
             const rows = selection ? targets : [target]
-            const keys = rows.map(row => row.key)
+            const folder = target.directory === true
+            const keys = folder ? (target.keys ?? []) : rows.map(row => row.key)
             const path = target.path
             switch (action) {
             case "stage":
@@ -126,6 +152,10 @@ Item {
             case "inspectChanges":
                 Store.actions.showLineSelection(owner.side, target.key); return
             case "createPatch": {
+                if (folder) {
+                    Store.actions.showPatchDialog({ kind: "keys", side: owner.side, keys: keys }, "create")
+                    return
+                }
                 const paths = []
                 for (const row of rows) {
                     for (const candidate of [row.source ?? "", row.path])
@@ -145,11 +175,13 @@ Item {
             case "revealInFileBrowser":
                 Store.workflows.openTool("fileManager", path); return
             case "addToGitignore":
-                Store.workflows.ignorePath(path, false, rows.some(row => row.untracked !== true)); return
+                Store.workflows.ignorePath(path, folder, rows.some(row => row.untracked !== true)); return
             case "blame":
                 Store.inspector.inspectWorkingFile(path, "blame", false); return
             case "fileHistory":
                 Store.inspector.inspectWorkingFile(path, "history", false); return
+            case "folderHistory":
+                Store.inspector.inspectWorkingFile(path, "history", true); return
             }
         }
     }
@@ -184,6 +216,28 @@ Item {
             anchors.rightMargin: Theme.space.s3
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.space.s1
+
+            // List or tree: a segmented control, one icon button when narrow.
+            MeridianSegmented {
+                visible: sectionHeader.width >= 350
+                anchors.verticalCenter: parent.verticalCenter
+                objectName: "changes-" + owner.side + "-mode"
+                label: owner.title
+                controlSize: MeridianButton.Small
+                segments: [{ value: "list", icon: "list-view", tooltip: L10n.t("changesListView") },
+                           { value: "tree", icon: "tree-view", tooltip: L10n.t("changesTreeView") }]
+                value: owner.tree ? "tree" : "list"
+                onActivated: value => owner.setTree(value === "tree")
+            }
+            MeridianIconButton {
+                visible: sectionHeader.width < 350
+                anchors.verticalCenter: parent.verticalCenter
+                text: owner.tree ? L10n.t("changesListView") : L10n.t("changesTreeView")
+                iconName: owner.tree ? "list-view" : "tree-view"
+                controlSize: MeridianButton.Small
+                onClicked: owner.setTree(!owner.tree)
+            }
+            Item { width: Theme.space.s4 - parent.spacing; height: 1 }
 
             MeridianIconButton {
                 visible: owner.unstaged
@@ -291,7 +345,12 @@ Item {
             readonly property string key: model.key ?? ""
             readonly property bool pending: model.pending === true
             width: list.width - list.leftMargin - list.rightMargin
-            path: model.path ?? ""
+            path: model.label ?? model.path ?? ""
+            depth: model.depth ?? 0
+            folder: model.directory === true
+            folderIcon: true
+            expanded: model.expanded === true
+            showDirectory: !owner.tree
             status: model.status ?? ""
             partial: model.partial === true
             selected: model.selected === true
@@ -301,11 +360,12 @@ Item {
                 list.forceActiveFocus()
                 owner.selectRow(fileRow.index, fileRow.modifiers)
             }
-            onDoubleClicked: Store.changes.stageFiles(owner.side, [fileRow.key])
+            onDoubleClicked: if (!folder) Store.changes.stageFiles(owner.side, [fileRow.key])
+            onFolderToggled: Store.changes.toggleFolder(owner.side, model.path)
             onContextMenuRequested: (x, y) => owner.showFileMenu(fileRow.index, fileRow, x, y)
             // Stages or unstages this one file.
             MeridianIconButton {
-                visible: rowHover.hovered
+                visible: rowHover.hovered && !fileRow.folder
                 anchors.right: parent.right
                 anchors.rightMargin: Theme.space.s3
                 anchors.verticalCenter: parent.verticalCenter
