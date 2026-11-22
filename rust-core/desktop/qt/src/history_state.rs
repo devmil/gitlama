@@ -58,6 +58,8 @@ mod history_state {
     pub struct HistoryState {
         pub commands: Option<Commands>,
         pub(crate) state: Value,
+        /// The snapshot History shows, for the commit menu's references.
+        pub(crate) snapshot: Option<std::rc::Rc<gitlama_contract::dto::NativeRepositorySnapshot>>,
     }
 
     impl HistoryState {
@@ -94,6 +96,33 @@ mod history_state {
         #[qslot]
         fn reveal(&self, object_id: String) {
             self.with_services(move |services| services.navigator.reveal_identity(object_id));
+        }
+
+        /// The references at commit `object_id` for its context menu:
+        /// [{name, entry: {name, commandName, target, filterReference,
+        /// filterUpstream, commands, current}}].
+        #[qslot]
+        fn references_at(&self, object_id: String) -> Value {
+            let Some(snapshot) = self.snapshot.as_ref() else { return Value::Array(Vec::new()) };
+            Value::Array(
+                gitlama_workbench::sidebar::entries_at(&snapshot.refs, &object_id)
+                    .into_iter()
+                    .map(|(name, entry)| {
+                        serde_json::json!({
+                            "name": name,
+                            "entry": {
+                                "name": entry.name,
+                                "commandName": entry.command_name,
+                                "target": entry.target,
+                                "filterReference": entry.filter_reference,
+                                "filterUpstream": entry.filter_upstream,
+                                "commands": entry.commands,
+                                "current": entry.current,
+                            }
+                        })
+                    })
+                    .collect(),
+            )
         }
 
         /// Moves the keyboard selection by `delta` rows (from the focused one).

@@ -345,6 +345,7 @@ impl Driver {
                 cached.unwrap_or_else(|| {
                     let context = Rc::new(ReferenceContext::new(&session.snapshot.refs));
                     *self.history_context.borrow_mut() = Some((Rc::clone(&session.snapshot), Rc::clone(&context)));
+                    self.history.borrow_mut().snapshot = Some(Rc::clone(&session.snapshot));
                     context
                 })
             }

@@ -42,6 +42,8 @@ QtObject {
     property var operations: null
     /// The workspace shell, which owns the floating panels.
     property var shell: null
+    /// The History pane (development screenshots open its menus).
+    property var historyPane: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).
@@ -71,6 +73,10 @@ QtObject {
         else if (name === "size") {
             const parts = argument.split("x")
             screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "commitMenu" && historyPane && historyRows) {
+            // Development: builds row N's commit menu and reports its shape.
+            historyPane.showCommitMenu(historyRows.objectIdAt(Number(argument)), "", historyPane, 10, 10)
+            console.log("commit menu:", JSON.stringify(historyPane.commitMenuItems.map(item => item.separator ? "-" : item.title + (item.children ? "[" + item.children.length + "]" : "") + (item.enabled === false ? "(off)" : ""))))
         } else if (name === "selectRow" && history && historyRows) {
             const objectId = historyRows.objectIdAt(Number(argument))
             if (objectId.length > 0)

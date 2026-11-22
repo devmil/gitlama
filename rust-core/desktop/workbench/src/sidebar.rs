@@ -219,6 +219,26 @@ pub fn filter_entries(entries: &[Entry], needle: &str) -> Vec<Entry> {
 }
 
 /// Sidebar entries derived from one reference snapshot.
+/// Every reference at `commit` (branches, remote branches, tags), for the
+/// History commit menu's submenus: (shown name, entry).
+pub fn entries_at(refs: &NativeRepositoryRefs, commit: &str) -> Vec<(String, Entry)> {
+    fn walk(entries: &[Entry], commit: &str, found: &mut Vec<(String, Entry)>) {
+        for entry in entries {
+            if entry.target.as_deref() == Some(commit) && (entry.filter_reference.is_some() || entry.command_name.is_some()) {
+                let name = entry.command_name.clone().unwrap_or_else(|| entry.name.clone());
+                found.push((name, entry.clone()));
+            }
+            walk(&entry.children, commit, found);
+        }
+    }
+    let references = References::new(refs);
+    let mut found = Vec::new();
+    walk(&references.branches, commit, &mut found);
+    walk(&references.remotes, commit, &mut found);
+    walk(&references.tags, commit, &mut found);
+    found
+}
+
 pub struct References {
     pub current_branch: Option<String>,
     pub branches: Vec<Entry>,

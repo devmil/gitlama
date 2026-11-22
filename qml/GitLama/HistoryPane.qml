@@ -56,6 +56,72 @@ Item {
         return Math.ceil(width)
     }
 
+    property var commitMenuItems: []
+    Component.onCompleted: Store.historyPane = pane
+    CommandMenu {
+        id: commitMenu
+        onSelected: value => { if (typeof value === "function") value() }
+    }
+
+    /// The commit menu (the Dart _commitContextMenu): the selection's
+    /// commands when several are selected, the commit's commands, copying,
+    /// then a submenu per reference at the commit.
+    function showCommitMenu(objectId, subject, item, x, y) {
+        if (objectId === "wip" || objectId.startsWith("loading-"))
+            return
+        const selected = (pane.paneState.selectedIds ?? []).filter(id => id !== "wip")
+        const inSelection = selected.length >= 2 && selected.indexOf(objectId) >= 0
+        const availability = Store.actions ? Store.actions.availability : ({})
+        const commandItem = (id, selection, title) => {
+            const reason = Commands.reason(id, availability, selection ? ({ contextual: true }) : ({ target: objectId, contextual: true }))
+            return {
+                title: title ?? Commands.label(id),
+                icon: Commands.icon(id),
+                shortcut: Commands.shortcutLabel(id),
+                danger: Commands.definition(id)?.destructive === true,
+                enabled: reason.length === 0,
+                value: () => pane.command(id, selection ? ({}) : ({ initialTarget: objectId })),
+            }
+        }
+        const destructiveLast = items => {
+            const safe = items.filter(item => item.separator || !item.danger)
+            const dangerous = items.filter(item => !item.separator && item.danger)
+            return dangerous.length > 0 ? safe.concat([{ separator: true }], dangerous) : safe
+        }
+        const items = []
+        if (inSelection) {
+            items.push({ title: L10n.tn("menuSelectedCommits", { count: selected.length }), children: destructiveLast([
+                commandItem("historyCompare", true),
+                commandItem("cherryPickSelected", true),
+                commandItem("revertSelected", true),
+                commandItem("createPatch", true, L10n.t("patchCreateFromSelection")),
+            ]) })
+            items.push({ separator: true })
+        }
+        for (const item of destructiveLast([
+            commandItem("revertSelected", false, L10n.t("historyRevertCommit")),
+            commandItem("cherryPickSelected", false),
+            commandItem("createPatch", false, L10n.t("patchCreateFromCommit")),
+            commandItem("checkoutCommit", false),
+            commandItem("saveCommitArchive", false),
+            commandItem("createBranch", false),
+            commandItem("createTag", false),
+            commandItem("resetBranch", false),
+            { separator: true },
+            { title: L10n.t("historyCopyObjectId"), icon: "copy", value: () => Store.actions.copyText(objectId, L10n.t("menuCommitHashCopied")) },
+            { title: L10n.t("historyCopySubject"), icon: "copy", value: () => Store.actions.copyText(subject, L10n.t("menuCommitSubjectCopied")) },
+        ]))
+            items.push(item)
+        const references = Store.history.referencesAt(objectId)
+        if (references.length > 0)
+            items.push({ separator: true })
+        for (const reference of references)
+            items.push({ title: reference.name, children: ReferenceMenu.items(reference.entry, [], (id, options) => pane.command(id, options)) })
+        commitMenu.items = items
+        commitMenuItems = items
+        commitMenu.show(item, x, y)
+    }
+
     function select(objectId, toggle) {
         list.forceActiveFocus()
         if (toggle)
@@ -201,6 +267,7 @@ Item {
             }
 
             delegate: HistoryRow {
+                id: historyRow
                 width: list.width
                 height: Theme.size.row
                 metadataLeft: pane.metadataLeft
@@ -214,6 +281,7 @@ Item {
                 onActivated: (objectId, toggle) => pane.select(objectId, toggle)
                 onDoubleActivated: objectId => pane.command("checkoutCommit", { initialTarget: objectId })
                 onCopyRequested: value => Store.actions.copyText(value, L10n.t("historyObjectIdCopied"))
+                onContextMenuRequested: (objectId, x, y) => pane.showCommitMenu(objectId, historyRow.subject, historyRow, x, y)
             }
 
             footer: Item {
