@@ -33,12 +33,18 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Changes: staging lists (queue, merge, phases, follow-the-move selection), filter, discard
   review, working diff with in-place reloads and line staging, commit editor (drafts per
   worktree, amend, skip hooks/sign-off, failure panel with retries, results).
-- Meridian QML: breadcrumbs, text area.
+- Meridian QML: breadcrumbs, text area, keycaps, radio; dialog title spacing as in Flutter.
+- Commands: registry shortcuts bound in the window, command palette, availability state for the
+  shared policy; transfers (fetch/pull/push/push tag/delete remote branch with host keys,
+  credentials, failure guide, refetch offer), references (create/rename/delete/checkout
+  branches, tags with remote deletion, remotes, reset, edit branch with upstream), stashes
+  (create/apply/pop/drop/rename/stash-and-switch) and commit checkout with stash choices.
 - Meridian list row slots (`leading`, `titleTrailing`, `trailing`, `semanticValue`).
 
 ## Next
-- Command execution (toolbar, menus, shortcuts): transfers (fetch/pull/push), ref dialogs,
-  stash, checkout; operation center; command palette; settings dialog.
+- Settings dialog; operation center/logbook/activity; busy overlay (MeridianBusyOverlay QML);
+  merge/cherry-pick/revert/integrate/rebase/interactive rebase/restack; clone; repository
+  details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
   diff wrap, minimap, find, encoding, image diff, show more context.
 - Changes: tree mode, drag between lists, flight animation, context menus (open, reveal,
@@ -49,6 +55,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Shortcuts bound from the registry; command palette; operation center; settings dialog.
 
 ## Deferred / notes
+- Transfer failure guide: lock listing and removal (repository lock inspection) not yet.
+- Palette: custom integration commands, background run (Cmd+Enter), scope cycling (Tab).
 - Sidebar: MeridianGlide check indicator between current branches; hosting checks/pull
   requests; worktree deletion flow (`Actions.deleteWorktree` stub).
 - Delegates built through `Loader` components log null reads at engine teardown only.

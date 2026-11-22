@@ -42,7 +42,9 @@ T.Dialog {
     width: Math.min(preferredWidth, (parent ? parent.width : preferredWidth) - 2 * Theme.space.s6)
     height: Math.min(implicitHeight, (parent ? parent.height : implicitHeight) * 0.85)
     padding: pad
-    topPadding: pad
+    // Under a title the body starts `space-4` below it (Flutter:
+    // MeridianDialog), not a full padding plus the footer spacing.
+    topPadding: implicitHeaderHeight > 0 ? Theme.space.s4 - spacing : pad
     spacing: Theme.space.s6
 
 
@@ -118,6 +120,7 @@ T.Dialog {
         implicitWidth: column.implicitWidth
         implicitHeight: column.implicitHeight
         contentWidth: width
+        // The description sits `space-5` above the body.
         contentHeight: column.height
         clip: contentHeight > height
         boundsBehavior: Flickable.StopAtBounds
@@ -126,7 +129,7 @@ T.Dialog {
             // The popup's width, not the content item's: that one follows
             // its children and would collapse to zero.
             width: control.availableWidth
-            spacing: control.spacing
+            spacing: Theme.space.s5
             MeridianText {
                 width: parent.width
                 visible: control.description.length > 0
