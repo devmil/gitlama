@@ -877,6 +877,18 @@
   "rebaseInterrupted": "Der Rebase ist angehalten.",
   "rebaseStale": "Der aktuelle Commit oder das Rebase-Ziel hat sich geändert. Prüfe einen neuen Plan.",
   "rebaseFailed": "Der interaktive Rebase wurde nicht abgeschlossen.",
+  "historyRewriteTwoSentences": "{first} {second}",
+  "@historyRewriteTwoSentences": {
+    "description": "A history operation's outcome followed by where the set-aside local changes are.",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
   "historyMutationCompleted": "Verlaufsoperation abgeschlossen.",
   "historyMutationConflict": "Die Operation wurde mit {count} Konfliktpfad(en) angehalten. Setze sie im Konfliktablauf fort.",
   "historyMutationInterrupted": "Die Operation ist angehalten. Setze sie fort, überspringe sie oder brich sie ab.",

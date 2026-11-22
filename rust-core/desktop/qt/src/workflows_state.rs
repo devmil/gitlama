@@ -101,6 +101,19 @@ mod workflows_state {
             });
         }
 
+        /// Merges a branch, or cherry-picks or reverts commits: `kind` is
+        /// merge, cherryPick or revert; empty strings leave a value unset.
+        #[qslot]
+        fn mutate_history(&self, kind: String, source_name: String, target: String) {
+            self.with_services(move |services| {
+                let Some(kind) = gitlama_workbench::history_mutations::parse_kind(&kind) else { return };
+                let mutations = Rc::clone(&services.history_mutations);
+                let source = (!source_name.is_empty()).then_some(source_name);
+                let target = (!target.is_empty()).then_some(target);
+                rt::spawn_detached(async move { mutations.mutate(kind, source, target).await });
+            });
+        }
+
         fn with_services(&self, action: impl FnOnce(&gitlama_workbench::app::Services) + 'static) {
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {

@@ -19,6 +19,7 @@ pub mod diagnostics;
 pub mod diff_doc;
 pub mod entry;
 pub mod history;
+pub mod history_mutations;
 pub mod history_rows;
 pub mod images;
 pub mod inspector;

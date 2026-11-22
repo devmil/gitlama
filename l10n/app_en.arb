@@ -3652,6 +3652,18 @@
   "rebaseInterrupted": "The rebase is paused.",
   "rebaseStale": "The current commit or the rebase target changed. Review a fresh plan.",
   "rebaseFailed": "The interactive rebase did not complete.",
+  "historyRewriteTwoSentences": "{first} {second}",
+  "@historyRewriteTwoSentences": {
+    "description": "A history operation's outcome followed by where the set-aside local changes are.",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
   "historyMutationCompleted": "History operation completed.",
   "@historyMutationCompleted": {
     "description": "History mutation completion."

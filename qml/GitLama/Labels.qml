@@ -63,6 +63,11 @@ QtObject {
     /// A commit date in History's date column: `iso` (2026-11-22), `local`
     /// (the locale's medium date) or `relative` (now, 5 min, 3 h, 2 d, then
     /// the medium date). `seconds` since the epoch; 0 shows nothing.
+    /// The first eight characters of an object ID (the Dart shortObjectId).
+    function shortObjectId(value) {
+        return value.length <= 8 ? value : value.substring(0, 8)
+    }
+
     function historyDate(seconds, format, now) {
         if (!seconds)
             return ""

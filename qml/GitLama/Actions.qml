@@ -65,6 +65,12 @@ Item {
         case "confirmStash":
             stashConfirm.ask(id, payload)
             return
+        case "chooseHistoryMutation":
+            historyMutationDialog.ask(id, payload)
+            return
+        case "confirmHistoryMutation":
+            historyMutationPreview.ask(id, payload)
+            return
         case "confirmCommitCheckout":
             commitCheckout.ask(id, payload)
             return
@@ -143,6 +149,12 @@ Item {
         case "dropStash": Store.workflows.stash("drop", { selector: options.initialName ?? "" }); return
         case "renameStash": Store.workflows.stash("rename", { selector: options.initialName ?? "" }); return
         case "autoStashCheckout": Store.workflows.stash("autoStashCheckout", { targetBranch: options.initialName ?? "" }); return
+        case "mergeBranch":
+            Store.workflows.mutateHistory("merge", options.initialName ?? "", options.initialTarget ?? ""); return
+        case "cherryPickSelected":
+            Store.workflows.mutateHistory("cherryPick", "", options.initialTarget ?? ""); return
+        case "revertSelected":
+            Store.workflows.mutateHistory("revert", "", options.initialTarget ?? ""); return
         case "renameBranch":
             Store.workflows.editBranch(options.initialName ?? ""); return
         case "checkoutBranch":
@@ -301,6 +313,14 @@ Item {
         id: stashConfirm
         onAnswered: (id, confirmed) => actions.answer(id, confirmed)
     }
+    HistoryMutationDialog {
+        id: historyMutationDialog
+        onAnswered: (id, request) => actions.answer(id, request)
+    }
+    HistoryMutationPreviewDialog {
+        id: historyMutationPreview
+        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+    }
     SettingsDialog {
         id: settingsDialog
         onLicensesRequested: actions.showLicenses()
@@ -394,6 +414,12 @@ Item {
                 stashDialog.submit()
             else if (name === "confirmStash")
                 stashConfirm.submitted()
+            else if (name === "mutationSource")
+                historyMutationDialog.chooseSource(argument)
+            else if (name === "submitMutation")
+                historyMutationDialog.finish(argument === "applyOnly")
+            else if (name === "confirmMutation")
+                historyMutationPreview.submitted()
             else if (name === "settings")
                 actions.showSettings(argument)
             else if (name === "licenses")
@@ -413,7 +439,7 @@ Item {
                 for (const name in values) {
                     const value = values[name]
                     if (value !== null && typeof value === "object" && value.l10n !== undefined)
-                        values[name] = L10n.t(value.l10n)
+                        values[name] = value.args ? L10n.tn(value.l10n, value.args) : L10n.t(value.l10n)
                 }
             }
             Notifications.show(values === null ? L10n.t(key)

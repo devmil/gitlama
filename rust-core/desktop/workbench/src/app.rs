@@ -46,6 +46,7 @@ pub struct Services {
     pub commit: Rc<crate::commit::CommitService>,
     pub transfers: Rc<crate::transfers::TransferService>,
     pub auto_fetch: Rc<crate::auto_fetch::AutoFetchScheduler>,
+    pub history_mutations: Rc<crate::history_mutations::HistoryMutations>,
     pub refs: Rc<crate::refs::RefService>,
     pub rewrite: Rc<crate::rewrite::RewriteService>,
 }
@@ -184,7 +185,24 @@ impl Services {
             Rc::clone(&prompts),
             Rc::clone(&notices),
         );
+        let selected_history = Rc::clone(&history);
+        let history_mutations = crate::history_mutations::HistoryMutations::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&busy),
+            Rc::clone(&navigator),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            Box::new(move || {
+                selected_history
+                    .current()
+                    .page
+                    .map(|page| page.selected_object_ids.iter().filter(|id| id.as_str() != "wip").cloned().collect())
+                    .unwrap_or_default()
+            }),
+        );
         Ok(Self {
+            history_mutations,
             rewrite,
             refs,
             auto_fetch,

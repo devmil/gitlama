@@ -78,4 +78,6 @@ StashConfirmDialog 1.0 StashConfirmDialog.qml
 GitCommands 1.0 GitCommands.qml
 CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml
 SettingsChoice 1.0 SettingsChoice.qml
+HistoryMutationDialog 1.0 HistoryMutationDialog.qml
+HistoryMutationPreviewDialog 1.0 HistoryMutationPreviewDialog.qml
 SettingsDialog 1.0 SettingsDialog.qml
