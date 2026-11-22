@@ -25,11 +25,22 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   header, list-row match, icon aliases, nudge/spinning/badge tones, MeridianReveal,
   MeridianSwap, swap-text weight, tab strip with groups/chips/rename/grow/collapse/drag.
 
+- Workspace body: sidebar (reference tree/filter/expansion in Rust, keyed `RowModel`, rail,
+  splitter), History pane (lazy `HistoryModel` over every row, native C++ `GraphRow` painter,
+  ref chips, metadata columns, search field, keyboard selection, reveal), History/detail split.
+- Meridian list row slots (`leading`, `titleTrailing`, `trailing`, `semanticValue`).
+
 ## Next
-- Workspace body: sidebar, History pane + graph, Changes pane, diff, composer, inspector.
+- Inspector (commit details, file list, diff), Changes pane, diff view, composer.
+- History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
+  notices (stale upstream, filtered out, collapsed), commit context menu, selection glide,
+  lane lighting/draw/landing motion, sync entrance, hosting chips, Gravatar.
 - Shortcuts bound from the registry; command palette; operation center; settings dialog.
 
 ## Deferred / notes
+- Sidebar: MeridianGlide check indicator between current branches; hosting checks/pull
+  requests; worktree deletion flow (`Actions.deleteWorktree` stub).
+- Delegates built through `Loader` components log null reads at engine teardown only.
 - Tab strip accessibility move actions (Flutter custom semantics actions) have no QML equivalent yet.
 - Worktree open menu needs the extensions inventory (extensions family).
 - Remote tab host marks (`hostBuilder`) wait for remote workspaces.
