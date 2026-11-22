@@ -182,6 +182,23 @@ FocusScope {
                     onCommand: id => sidebar.command(id, ({}))
                 }
             }
+            // Why the last worktree deletion failed.
+            DelegateChoice {
+                roleValue: "banner"
+                Item {
+                    required property var model
+                    width: list.width - list.leftMargin - list.rightMargin
+                    implicitHeight: banner.implicitHeight + 2 * Theme.space.s3
+                    MeridianBanner {
+                        id: banner
+                        x: Theme.space.s3
+                        y: Theme.space.s3
+                        width: parent.width - 2 * Theme.space.s3
+                        tone: MeridianBanner.Error
+                        message: L10n.t(parent.model.name ?? "")
+                    }
+                }
+            }
             DelegateChoice {
                 roleValue: "ref"
                 SidebarRefRow {

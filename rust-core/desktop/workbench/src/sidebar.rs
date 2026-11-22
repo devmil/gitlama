@@ -395,6 +395,9 @@ pub struct Flatten<'a> {
     pub selected: Option<&'a str>,
     pub branch_filter: &'a BranchFilter,
     pub has_repository: bool,
+    /// Why the last worktree deletion failed (an l10n key), shown under
+    /// the worktrees.
+    pub worktree_failure: Option<&'a str>,
 }
 
 impl Flatten<'_> {
@@ -429,6 +432,11 @@ impl Flatten<'_> {
             }));
             if expanded && !section.entries.is_empty() {
                 self.flatten(&mut rows, section, &section.entries, section.command, 0);
+            }
+            if section.command == "addWorktree"
+                && let Some(failure) = self.worktree_failure
+            {
+                rows.push(json!({"key": "banner:addWorktree", "kind": "banner", "section": section.command, "name": failure, "depth": 0}));
             }
         }
         rows
@@ -525,6 +533,7 @@ struct Inner {
     filter: Filter,
     references: Option<(Rc<NativeRepositorySnapshot>, Rc<References>)>,
     worktrees: Option<Worktrees>,
+    worktree_failure: Option<&'static str>,
 }
 
 /// The sidebar's state: expansion, the reference filter and the worktree
@@ -595,6 +604,14 @@ impl SidebarService {
     }
 
     /// Reloads the worktree inventory now (after opening its section).
+    /// Shows (or clears) why the last worktree deletion failed.
+    pub fn set_worktree_failure(&self, failure: Option<&'static str>) {
+        if self.inner.borrow().worktree_failure != failure {
+            self.inner.borrow_mut().worktree_failure = failure;
+            self.changed();
+        }
+    }
+
     pub fn reload_worktrees(self: &Rc<Self>) {
         self.inner.borrow_mut().worktrees = None;
         self.changed();
@@ -736,6 +753,7 @@ impl SidebarService {
             selected,
             branch_filter: &branch_filter,
             has_repository: session.is_some(),
+            worktree_failure: inner.worktree_failure,
         };
         let rows = flatten.rows();
         let header = json!({
@@ -814,6 +832,7 @@ mod tests {
             selected: Some("main"),
             branch_filter: &filter,
             has_repository: true,
+            worktree_failure: None,
         }
         .rows();
         let keys: Vec<&str> = rows.iter().map(|row| row["key"].as_str().unwrap()).collect();

@@ -243,7 +243,13 @@ impl Services {
         );
         let patches = crate::patches::PatchService::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&history), Rc::clone(&changes));
         let extensions =
-            crate::extensions::Extensions::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&prompts), Rc::clone(&notices));
+            crate::extensions::Extensions::new(
+                Rc::clone(&calls),
+                Rc::clone(&workspace),
+                Rc::clone(&sidebar),
+                Rc::clone(&prompts),
+                Rc::clone(&notices),
+            );
         let operations = crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
         operations.start();
         Ok(Self {

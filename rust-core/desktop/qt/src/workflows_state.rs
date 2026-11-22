@@ -121,6 +121,16 @@ mod workflows_state {
             });
         }
 
+        /// Deletes linked worktree `index` of the sidebar after a confirmation.
+        #[qslot]
+        fn delete_worktree(&self, index: i32) {
+            let Ok(index) = usize::try_from(index) else { return };
+            self.with_services(move |services| {
+                let extensions = Rc::clone(&services.extensions);
+                rt::spawn_detached(async move { extensions.delete_worktree(index).await });
+            });
+        }
+
         /// Runs the configured tool `id` on the repository.
         #[qslot]
         fn run_integration(&self, id: String) {

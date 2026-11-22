@@ -67,6 +67,11 @@ Item {
         case "confirmRestore":
             restoreConfirm.ask(id, payload)
             return
+        case "confirmWorktreeDelete":
+            worktreeDeleteConfirm.promptId = id
+            worktreeDeleteConfirm.path = payload.path ?? ""
+            worktreeDeleteConfirm.open()
+            return
         case "ignorePath":
             ignoreDialog.ask(id, payload)
             return
@@ -152,7 +157,7 @@ Item {
 
     /// Opens the local folder `path` itself in the file manager.
     function openFolder(path) { Store.workflows.openFolder(path) }
-    function deleteWorktree(index, name) {}
+    function deleteWorktree(index, name) { Store.workflows.deleteWorktree(index) }
     function showRepositoryIconDialog(tab) {}
     function showTabGroupDialog(group, labels) {}
 
@@ -561,6 +566,20 @@ Item {
             ]
         }
     }
+    // Asks before a linked worktree and its files are removed (the Dart
+    // confirmWorktreeDeletion).
+    MeridianConfirm {
+        id: worktreeDeleteConfirm
+        property int promptId: -1
+        property string path
+        title: L10n.t("extensionWorktreeDeleteTitle")
+        description: L10n.tn("extensionWorktreeDeleteBody", { path: path })
+        confirmLabel: L10n.t("delete")
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
     IgnoreDialog {
         id: ignoreDialog
         onAnswered: (id, entry) => actions.answer(id, entry)
@@ -666,6 +685,11 @@ Item {
                 const row = Store.lineRows.get(Number(argument))
                 if (row)
                     Store.lineSelection.toggle(row.rowId, row.checked !== true)
+            } else if (name === "deleteWorktree") {
+                deleteWorktree(Number(argument), "")
+            } else if (name === "confirmWorktreeDelete") {
+                worktreeDeleteConfirm.close()
+                worktreeDeleteConfirm.confirmed()
             } else if (name === "lineStage") {
                 Store.lineSelection.stage()
                 lineSelectionDialog.close()

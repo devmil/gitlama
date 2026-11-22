@@ -81,6 +81,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   menu, the Changes and inspector file menus; remote repositories save the host's patch locally.
 - Select changed lines: the line-picking dialog (hunk and line checkboxes, picked count, select
   all, load more) staging, discarding or making a patch of the chosen lines.
+- Worktree deletion from the sidebar: confirmation, refusal banner under the worktrees, reload.
 
 ## Next
 - Inspector: All files tree, search in contents/blame, image diffs, open in window.

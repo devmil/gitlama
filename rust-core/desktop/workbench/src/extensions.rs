@@ -4,6 +4,8 @@
 use crate::backend::SessionCalls;
 use crate::notices::Notices;
 use crate::prompts::Prompts;
+use crate::session::display_path;
+use crate::sidebar::{SidebarService, worktree_deletion_protected};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::extensions::{
     NativeExtensionFailureKind, NativeExtensionMutationKind, NativeExtensionMutationRequest, NativeExtensionMutationResult,
@@ -24,6 +26,21 @@ pub fn reported_failure(result: &NativeExtensionMutationResult) -> Option<Native
     })
 }
 
+/// What a failed extension change says (the Dart extensionFailureLabel).
+pub fn failure_key(kind: NativeExtensionFailureKind) -> &'static str {
+    match kind {
+        NativeExtensionFailureKind::InvalidRequest => "extensionFailureInvalid",
+        NativeExtensionFailureKind::Unavailable => "extensionFailureUnavailable",
+        NativeExtensionFailureKind::Dirty => "extensionFailureDirty",
+        NativeExtensionFailureKind::Locked => "extensionFailureLocked",
+        NativeExtensionFailureKind::CurrentWorktree => "extensionFailureCurrent",
+        NativeExtensionFailureKind::Stale => "extensionFailureStale",
+        NativeExtensionFailureKind::Canceled => "extensionFailureCanceled",
+        NativeExtensionFailureKind::TooLarge => "extensionFailureTooLarge",
+        NativeExtensionFailureKind::Read | NativeExtensionFailureKind::Git => "extensionFailureGit",
+    }
+}
+
 /// The field error of the ignore dialog for `kind`.
 pub fn ignore_failure_key(kind: NativeExtensionFailureKind) -> &'static str {
     if kind == NativeExtensionFailureKind::InvalidRequest { "ignoreFailureInvalid" } else { "ignoreFailureWrite" }
@@ -32,13 +49,61 @@ pub fn ignore_failure_key(kind: NativeExtensionFailureKind) -> &'static str {
 pub struct Extensions {
     calls: Rc<dyn SessionCalls>,
     workspace: Rc<WorkspaceService>,
+    sidebar: Rc<SidebarService>,
     prompts: Rc<Prompts>,
     notices: Rc<Notices>,
 }
 
 impl Extensions {
-    pub fn new(calls: Rc<dyn SessionCalls>, workspace: Rc<WorkspaceService>, prompts: Rc<Prompts>, notices: Rc<Notices>) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, prompts, notices })
+    pub fn new(
+        calls: Rc<dyn SessionCalls>,
+        workspace: Rc<WorkspaceService>,
+        sidebar: Rc<SidebarService>,
+        prompts: Rc<Prompts>,
+        notices: Rc<Notices>,
+    ) -> Rc<Self> {
+        Rc::new(Self { calls, workspace, sidebar, prompts, notices })
+    }
+
+    /// Deletes linked worktree `index` of the sidebar's inventory after a
+    /// confirmation (the Dart sidebar _delete).
+    pub async fn delete_worktree(&self, index: usize) {
+        let Some(inventory) = self.sidebar.worktrees() else { return };
+        let Some(entry) = inventory.worktrees.get(index).cloned() else { return };
+        if worktree_deletion_protected(&inventory, &entry) {
+            return;
+        }
+        let Some(session) = self.workspace.current() else { return };
+        let identity = session.identity;
+        let payload = json!({"path": display_path(&entry.worktree_root)});
+        if self.prompts.ask("confirmWorktreeDelete", payload).await != Some(Value::Bool(true)) {
+            return;
+        }
+        if self.workspace.current().map(|session| session.identity) != Some(identity) {
+            return;
+        }
+        self.sidebar.set_worktree_failure(None);
+        let request = NativeExtensionMutationRequest {
+            kind: NativeExtensionMutationKind::WorktreeDelete,
+            path: None,
+            worktree_root: Some(entry.worktree_root),
+            pattern: None,
+            reference: None,
+        };
+        let failure = match self.calls.repository_session_extension_execute(identity.native_id, identity.generation, request).await {
+            Ok(result) if result.state == NativeExtensionMutationState::OutcomeUncertain => {
+                self.notices.error("mutationOutcomeUncertain", Value::Null);
+                self.sidebar.reload_worktrees();
+                return;
+            }
+            Ok(result) => reported_failure(&result),
+            Err(_) => Some(NativeExtensionFailureKind::Git),
+        };
+        if let Some(failure) = failure {
+            self.notices.error(failure_key(failure), Value::Null);
+        }
+        self.sidebar.set_worktree_failure(failure.map(failure_key));
+        self.sidebar.reload_worktrees();
     }
 
     /// Offers the `.gitignore` entry that matches exactly `path` and adds
