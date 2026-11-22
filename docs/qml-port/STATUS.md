@@ -64,7 +64,12 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Clone: source dialog, destination, progress with Cancel, failure banner with credential and
   host-key retries (a new folder for a partial destination), the new tab adopted.
 
+- Inspector lenses: Contents (line numbers, show binary as text), Blame (lazy pages, author
+  bands, blame before, line history, show commit, copy hash), File/Line history (paged list,
+  renames, the selected commit's change). Fixed the inspector's state binding.
+
 ## Next
+- Inspector: All files tree, search in contents/blame, image diffs, open in window.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry and cancel once clone is ported; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode

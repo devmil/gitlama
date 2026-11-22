@@ -80,6 +80,9 @@ CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml
 SettingsChoice 1.0 SettingsChoice.qml
 HistoryMutationDialog 1.0 HistoryMutationDialog.qml
 ListWell 1.0 ListWell.qml
+InspectorContents 1.0 InspectorContents.qml
+InspectorBlame 1.0 InspectorBlame.qml
+InspectorHistoryList 1.0 InspectorHistoryList.qml
 TimelineRow 1.0 TimelineRow.qml
 LogbookPanel 1.0 LogbookPanel.qml
 ActivityIsland 1.0 ActivityIsland.qml

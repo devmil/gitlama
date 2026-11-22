@@ -42,6 +42,7 @@ pub struct Driver {
     pub history_published: RefCell<Option<(u64, u64, u64, Option<String>, usize)>>,
     pub inspector: Rc<RefCell<InspectorState>>,
     pub inspector_diff: Rc<RefCell<DiffModel>>,
+    pub inspector_blame: Rc<RefCell<crate::blame_model::BlameModel>>,
     pub changes: Rc<RefCell<ChangesState>>,
     pub unstaged_rows: Rc<RefCell<RowModel>>,
     pub staged_rows: Rc<RefCell<RowModel>>,
@@ -387,6 +388,7 @@ impl Driver {
         }
         let diff = services.inspector.current().diff;
         self.inspector_diff.borrow_mut().publish(diff);
+        self.inspector_blame.borrow_mut().publish(services.inspector.current().blame);
     }
 
     fn project_changes(&self) {

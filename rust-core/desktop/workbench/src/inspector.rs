@@ -95,13 +95,26 @@ pub struct Location {
     pub path: Option<Vec<u8>>,
     pub directory: bool,
     pub lens: Lens,
+    /// Restricts the history lens to these lines (1-based, inclusive).
+    pub lines: Option<(u64, u64)>,
+    /// The history lens's selected commit.
+    pub history_commit: Option<String>,
     /// The first visible row, restored by Back and Forward.
     pub anchor: u64,
 }
 
 impl Location {
     pub fn of(target: Target) -> Self {
-        Self { target, scope: Scope::Changed, path: None, directory: false, lens: Lens::Diff, anchor: 0 }
+        Self {
+            target,
+            scope: Scope::Changed,
+            path: None,
+            directory: false,
+            lens: Lens::Diff,
+            lines: None,
+            history_commit: None,
+            anchor: 0,
+        }
     }
 
     pub fn normalized(mut self) -> Self {
@@ -115,6 +128,14 @@ impl Location {
         } else if self.directory {
             self.lens = Lens::History;
         }
+        // A line range and a history selection only exist in the history
+        // lens; a folder's history has no lines.
+        if self.lens != Lens::History {
+            self.history_commit = None;
+            self.lines = None;
+        } else if self.directory {
+            self.lines = None;
+        }
         self
     }
 
@@ -124,6 +145,8 @@ impl Location {
             && self.path == other.path
             && self.directory == other.directory
             && self.lens == other.lens
+            && self.lines == other.lines
+            && self.history_commit == other.history_commit
     }
 }
 
@@ -261,6 +284,47 @@ pub struct InspectorState {
     pub can_back: bool,
     pub can_forward: bool,
     pub all_changes_too_large: bool,
+    /// The contents lens's bytes.
+    pub file_bytes: Option<Rc<Vec<u8>>>,
+    /// The blame lens: the first page's facts and the loaded rows by line.
+    pub blame: Option<Rc<BlameView>>,
+    /// The history lens: the path's commits, or a line range's.
+    pub history: Option<Rc<HistoryList>>,
+    /// The commit the history lens shows.
+    pub history_entry: Option<Rc<NativeCommitInspection>>,
+    pub history_loading_more: bool,
+    pub history_more_failed: bool,
+}
+
+/// The blame lens's rows: the request, how many lines, and those loaded.
+#[derive(Clone, Debug, Default)]
+pub struct BlameView {
+    pub request_id: u64,
+    pub revision: String,
+    pub path: Vec<u8>,
+    pub total_rows: u64,
+    pub rows: HashMap<u64, gitlama_contract::dto::NativeBlameRow>,
+}
+
+/// One commit of a path's (or a line range's) history.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HistoryItem {
+    pub commit: String,
+    pub author: Vec<u8>,
+    pub author_time: i64,
+    pub summary: Vec<u8>,
+    pub path: Option<Vec<u8>>,
+    pub old_path: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct HistoryList {
+    pub entries: Vec<HistoryItem>,
+    pub next_offset: Option<u64>,
+    pub rename_hops: u64,
+    pub incomplete: bool,
+    /// Lines' history (no more pages).
+    pub range: bool,
 }
 
 const SYMLINK_MODE: u32 = 0xA000;
@@ -329,6 +393,8 @@ struct Inner {
     inspection_order: VecDeque<String>,
     token: u64,
     diff_token: u64,
+    history_token: u64,
+    loading_blame_pages: std::collections::HashSet<u64>,
 }
 
 /// Owns one inspector.
@@ -343,6 +409,31 @@ pub struct InspectorService {
 }
 
 const INSPECTION_CACHE: usize = 8;
+/// Blame rows per page (the contract's page rows).
+const BLAME_PAGE_ROWS: u32 = 512;
+/// Commits per page of a path's history.
+const HISTORY_PAGE_ROWS: u32 = 100;
+
+fn history_list(page: gitlama_contract::dto::NativePathHistoryPage) -> HistoryList {
+    HistoryList {
+        entries: page
+            .entries
+            .into_iter()
+            .map(|entry| HistoryItem {
+                commit: entry.commit,
+                author: entry.author,
+                author_time: entry.author_time,
+                summary: entry.summary,
+                path: Some(entry.path),
+                old_path: entry.old_path,
+            })
+            .collect(),
+        next_offset: page.next_offset,
+        rename_hops: page.rename_hops,
+        incomplete: page.incomplete,
+        range: false,
+    }
+}
 
 impl InspectorService {
     pub fn new(calls: Rc<dyn SessionCalls>, notifier: Notifier) -> Rc<Self> {
@@ -359,6 +450,8 @@ impl InspectorService {
                 inspection_order: VecDeque::new(),
                 token: 0,
                 diff_token: 0,
+                history_token: 0,
+                loading_blame_pages: std::collections::HashSet::new(),
             }),
             options: Cell::new(DiffOptions::default()),
             on_target: RefCell::new(None),
@@ -489,6 +582,8 @@ impl InspectorService {
                 return false;
             }
             Location { scope: Scope::Changed, anchor: 0, ..location }
+        } else if location.lens == Lens::History && location.lines.is_some() {
+            Location { lines: None, history_commit: None, anchor: 0, ..location }
         } else if location.lens != Lens::Diff && available(&availability, Lens::Diff) && !availability.is_empty() {
             Location { lens: Lens::Diff, anchor: 0, ..location }
         } else {
@@ -585,11 +680,9 @@ impl InspectorService {
             });
             match shown.lens {
                 Lens::Diff => self.load_target_diff(identity, token, &shown, &inspection, change.as_ref()).await,
-                // Contents, blame and history follow; until then they show nothing.
-                _ => {
-                    self.update(|state| state.content_loading = false);
-                    Ok(())
-                }
+                Lens::Contents => self.load_contents(identity, token, &shown).await,
+                Lens::Blame => self.load_blame(identity, token, &shown).await,
+                Lens::History => self.load_history(identity, token, shown).await,
             }
         }
         .await;
@@ -703,6 +796,337 @@ impl InspectorService {
             layout: options.layout,
             maximum_rows: DIFF_PAGE_ROWS as u32,
             force_text: false,
+        }
+    }
+
+    async fn load_contents(&self, identity: SessionIdentity, token: u64, location: &Location) -> SessionResult<()> {
+        let Some(path) = location.path.clone() else { return Ok(()) };
+        let result = self
+            .calls
+            .repository_session_commit_file_content(identity.native_id, identity.generation, location.target.commit().to_owned(), path)
+            .await?;
+        check(&result.failure)?;
+        let bytes = required(result.bytes)?;
+        if self.accepts(identity, token) {
+            self.update(|state| {
+                state.file_bytes = Some(Rc::new(bytes));
+                state.content_loading = false;
+            });
+        }
+        Ok(())
+    }
+
+    async fn load_blame(&self, identity: SessionIdentity, token: u64, location: &Location) -> SessionResult<()> {
+        let Some(path) = location.path.clone() else { return Ok(()) };
+        let options = gitlama_contract::dto::NativeBlameOptions {
+            revision: location.target.commit().to_owned(),
+            path,
+            first_line: None,
+            last_line: None,
+            detect_moves: true,
+            detect_copies: true,
+            maximum_rows: BLAME_PAGE_ROWS,
+        };
+        let result = self.calls.repository_session_blame_load(identity.native_id, identity.generation, options).await?;
+        check(&result.failure)?;
+        let page = required(result.page)?;
+        if self.accepts(identity, token) {
+            let mut view = BlameView {
+                request_id: page.request_id,
+                revision: page.revision,
+                path: page.path,
+                total_rows: page.total_rows,
+                rows: HashMap::new(),
+            };
+            for (index, row) in page.rows.into_iter().enumerate() {
+                view.rows.insert(page.offset + index as u64, row);
+            }
+            self.update(|state| {
+                state.blame = Some(Rc::new(view));
+                state.content_loading = false;
+            });
+        }
+        Ok(())
+    }
+
+    /// Loads the blame page holding row `index` when it is missing.
+    pub async fn ensure_blame_row(&self, index: u64) {
+        let (identity, token, blame) = {
+            let inner = self.inner.borrow();
+            (inner.identity, inner.token, inner.current.blame.clone())
+        };
+        let (Some(identity), Some(blame)) = (identity, blame) else { return };
+        if index >= blame.total_rows || blame.rows.contains_key(&index) {
+            return;
+        }
+        let offset = index / u64::from(BLAME_PAGE_ROWS) * u64::from(BLAME_PAGE_ROWS);
+        if !self.inner.borrow_mut().loading_blame_pages.insert(offset) {
+            return;
+        }
+        let result = self
+            .calls
+            .repository_session_blame_page(identity.native_id, identity.generation, blame.request_id, offset, BLAME_PAGE_ROWS)
+            .await;
+        self.inner.borrow_mut().loading_blame_pages.remove(&offset);
+        let Ok(result) = result else { return };
+        let Some(page) = result.page.filter(|_| result.failure.is_none()) else { return };
+        if !self.accepts(identity, token) {
+            return;
+        }
+        self.update(|state| {
+            let Some(shown) = &state.blame else { return };
+            if shown.request_id != blame.request_id {
+                return;
+            }
+            let mut view = (**shown).clone();
+            for (index, row) in page.rows.into_iter().enumerate() {
+                view.rows.insert(page.offset + index as u64, row);
+            }
+            state.blame = Some(Rc::new(view));
+        });
+    }
+
+    /// Shows the blame of `row`'s file in the parent of the commit that
+    /// last changed the line, at that line.
+    pub async fn blame_before(&self, line: u64) {
+        let (identity, row) = {
+            let inner = self.inner.borrow();
+            (inner.identity, inner.current.blame.as_ref().and_then(|blame| blame.rows.get(&line).cloned()))
+        };
+        let (Some(identity), Some(row)) = (identity, row) else { return };
+        let Some(commit) = row.commit.clone().filter(|_| !row.boundary) else { return };
+        let Ok(inspection) = self.inspect(identity, &commit, None, None).await else { return };
+        let Some(parent) = inspection.detail.parents.first().cloned() else { return };
+        if self.inner.borrow().identity != Some(identity) {
+            return;
+        }
+        let mut location = Location::of(Target::Commit(parent));
+        location.path = Some(row.original_path.clone());
+        location.lens = Lens::Blame;
+        location.anchor = row.original_line.saturating_sub(1);
+        self.navigate(location, true, false, None).await;
+    }
+
+    /// Shows the history of `first`…`last` (1-based) of the blamed file.
+    pub async fn line_history(&self, first: u64, last: u64) {
+        let location = self.inner.borrow().navigation.current().cloned();
+        let Some(location) = location else { return };
+        let next = Location { lens: Lens::History, lines: Some((first, last)), history_commit: None, anchor: 0, ..location };
+        self.navigate(next, true, false, None).await;
+    }
+
+    async fn load_history(&self, identity: SessionIdentity, token: u64, location: Location) -> SessionResult<()> {
+        let Some(path) = location.path.clone() else { return Ok(()) };
+        let commit = location.target.commit().to_owned();
+        let list = if let Some((first, last)) = location.lines {
+            let result = self
+                .calls
+                .repository_session_range_history(
+                    identity.native_id,
+                    identity.generation,
+                    commit,
+                    path,
+                    first as u32,
+                    last as u32,
+                    HISTORY_PAGE_ROWS,
+                )
+                .await?;
+            check(&result.failure)?;
+            HistoryList {
+                entries: result
+                    .entries
+                    .into_iter()
+                    .map(|entry| HistoryItem {
+                        commit: entry.commit,
+                        author: entry.author,
+                        author_time: entry.author_time,
+                        summary: entry.summary,
+                        path: None,
+                        old_path: None,
+                    })
+                    .collect(),
+                next_offset: None,
+                rename_hops: 0,
+                incomplete: result.incomplete,
+                range: true,
+            }
+        } else {
+            let page = self.path_history(identity, &location, 0, 0).await?;
+            history_list(page)
+        };
+        if !self.accepts(identity, token) {
+            return Ok(());
+        }
+        let selected = location.history_commit.clone().or_else(|| list.entries.first().map(|entry| entry.commit.clone()));
+        self.update(|state| state.history = Some(Rc::new(list)));
+        let Some(selected) = selected else {
+            self.update(|state| state.content_loading = false);
+            return Ok(());
+        };
+        let mut shown = location;
+        if shown.history_commit.is_none() {
+            shown.history_commit = Some(selected.clone());
+            self.inner.borrow_mut().navigation.replace(shown.clone());
+            self.update(|state| state.location = Some(shown.clone()));
+        }
+        self.load_history_entry(identity, token, &shown, &selected).await
+    }
+
+    async fn path_history(
+        &self,
+        identity: SessionIdentity,
+        location: &Location,
+        offset: u64,
+        rename_hops_before: u64,
+    ) -> SessionResult<gitlama_contract::dto::NativePathHistoryPage> {
+        let options = gitlama_contract::dto::NativePathHistoryOptions {
+            revision: Some(location.target.commit().to_owned()),
+            path: location.path.clone().unwrap_or_default(),
+            directory: location.directory,
+            offset,
+            maximum_rows: HISTORY_PAGE_ROWS,
+            rename_hops_before,
+        };
+        let result = self.calls.repository_session_path_history(identity.native_id, identity.generation, options).await?;
+        check(&result.failure)?;
+        required(result.page)
+    }
+
+    /// Selects the history entry of `commit` and shows its change to the path.
+    pub async fn select_history_entry(&self, commit: String) {
+        let (identity, location, token) = {
+            let mut inner = self.inner.borrow_mut();
+            let Some(location) = inner.navigation.current().cloned() else { return };
+            if location.lens != Lens::History || location.history_commit.as_deref() == Some(commit.as_str()) {
+                return;
+            }
+            let shown = Location { history_commit: Some(commit.clone()), anchor: 0, ..location };
+            inner.navigation.replace(shown.clone());
+            inner.diff_token += 1;
+            if let Some(diff) = inner.current.diff.take() {
+                diff.retire();
+            }
+            (inner.identity, shown, inner.token)
+        };
+        let Some(identity) = identity else { return };
+        self.update(|state| {
+            state.location = Some(location.clone());
+            state.history_entry = None;
+            state.content_failure = None;
+            state.content_loading = true;
+        });
+        if let Err(error) = self.load_history_entry(identity, token, &location, &commit).await
+            && self.accepts(identity, token)
+        {
+            self.update(|state| {
+                state.content_loading = false;
+                state.content_failure = Some(error.code());
+            });
+        }
+    }
+
+    async fn load_history_entry(&self, identity: SessionIdentity, token: u64, location: &Location, commit: &str) -> SessionResult<()> {
+        let history_token = {
+            let mut inner = self.inner.borrow_mut();
+            inner.history_token += 1;
+            inner.history_token
+        };
+        let current = || self.accepts(identity, token) && self.inner.borrow().history_token == history_token;
+        let inspection = self.inspect(identity, commit, None, None).await?;
+        if !current() {
+            return Ok(());
+        }
+        if location.directory {
+            self.update(|state| {
+                state.history_entry = Some(inspection);
+                state.content_loading = false;
+            });
+            return Ok(());
+        }
+        let path = location.path.clone().unwrap_or_default();
+        let entry = self
+            .inner
+            .borrow()
+            .current
+            .history
+            .as_ref()
+            .and_then(|history| history.entries.iter().find(|item| item.commit == commit).cloned());
+        let new_path = entry.as_ref().and_then(|entry| entry.path.clone()).unwrap_or(path);
+        let old_path = entry.and_then(|entry| entry.old_path).unwrap_or_else(|| new_path.clone());
+        let first_parent = inspection.detail.parents.first().cloned();
+        let options = self.options.get();
+        let request = NativeCommitDiffOptions {
+            commit: commit.to_owned(),
+            first_parent: first_parent.clone(),
+            old_path: Some(old_path),
+            new_path: Some(new_path),
+            context_lines: options.context_lines,
+            whitespace: options.whitespace,
+            layout: options.layout,
+            maximum_rows: DIFF_PAGE_ROWS as u32,
+            force_text: false,
+        };
+        let result = self.calls.repository_session_commit_diff_load(identity.native_id, identity.generation, request).await?;
+        check(&result.failure)?;
+        let page = required(result.page)?;
+        if !current() {
+            return Ok(());
+        }
+        let document = DiffDocument::new(
+            Rc::clone(&self.calls),
+            self.notifier.clone(),
+            Topics::INSPECTOR,
+            identity,
+            NativeDiffSyntaxOrigin::Committed,
+            page,
+        );
+        self.inner.borrow_mut().diff_source = Some((commit.to_owned(), first_parent));
+        self.update(|state| {
+            state.history_entry = Some(inspection);
+            state.diff = Some(document);
+            state.content_loading = false;
+        });
+        Ok(())
+    }
+
+    /// Loads the next page of the path's history.
+    pub async fn load_more_history(&self) {
+        let (identity, location, history, token) = {
+            let inner = self.inner.borrow();
+            (inner.identity, inner.navigation.current().cloned(), inner.current.history.clone(), inner.token)
+        };
+        let (Some(identity), Some(location), Some(history)) = (identity, location, history) else { return };
+        let Some(offset) = history.next_offset.filter(|_| location.lens == Lens::History && location.lines.is_none()) else {
+            return;
+        };
+        if self.inner.borrow().current.history_loading_more {
+            return;
+        }
+        self.update(|state| {
+            state.history_loading_more = true;
+            state.history_more_failed = false;
+        });
+        let result = self.path_history(identity, &location, offset, history.rename_hops).await;
+        if !self.accepts(identity, token) {
+            return;
+        }
+        match result {
+            Ok(page) => {
+                let next = history_list(page);
+                self.update(|state| {
+                    let mut list = (*history).clone();
+                    list.entries.extend(next.entries);
+                    list.next_offset = next.next_offset;
+                    list.rename_hops = next.rename_hops;
+                    list.incomplete |= next.incomplete;
+                    state.history = Some(Rc::new(list));
+                    state.history_loading_more = false;
+                });
+            }
+            Err(_) => self.update(|state| {
+                state.history_loading_more = false;
+                state.history_more_failed = true;
+            }),
         }
     }
 

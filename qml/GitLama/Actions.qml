@@ -227,6 +227,11 @@ Item {
         case "stageSelection": Store.changes.stageSelection("unstaged"); return
         case "unstageSelection": Store.changes.stageSelection("staged"); return
         case "discardChanges": Store.changes.discardSelection(); return
+        case "inspectorLensDiff": Store.inspector.selectLens("diff"); return
+        case "inspectorLensContents": Store.inspector.selectLens("contents"); return
+        case "inspectorLensBlame": case "historyBlame": Store.inspector.selectLens("blame"); return
+        case "inspectorLensHistory": case "historyPathHistory": Store.inspector.selectLens("history"); return
+        case "inspectorUp": Store.inspector.up(); return
         case "inspectorBack": Store.inspector.back(); return
         case "inspectorForward": Store.inspector.forward(); return
         case "refreshRepository": Store.history.reload(); return

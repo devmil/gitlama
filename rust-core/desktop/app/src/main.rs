@@ -148,7 +148,11 @@ fn main() {
     gitlama_qt::OperationsState::attach_qobject(&operations);
     operations.borrow_mut().commands = Some(commands.clone());
 
+    let inspector_blame = Rc::new(RefCell::new(gitlama_qt::BlameModel::default()));
+    gitlama_qt::BlameModel::attach_qobject(&inspector_blame);
+
     let driver = Rc::new(Driver {
+        inspector_blame: Rc::clone(&inspector_blame),
         operations: Rc::clone(&operations),
         conflicts: Rc::clone(&conflicts),
         conflict_rows: Rc::clone(&conflict_rows),
@@ -220,6 +224,7 @@ fn main() {
         ("conflicts", conflicts.borrow().as_qvariant()),
         ("conflictRows", conflict_rows.borrow().as_qvariant()),
         ("operations", operations.borrow().as_qvariant()),
+        ("inspectorBlame", inspector_blame.borrow().as_qvariant()),
     ];
     let exit_code = application
         .add_import_path(&import_path)

@@ -9,7 +9,7 @@ import Meridian
 Rectangle {
     id: inspector
 
-    readonly property var paneState: Store.inspector ? (Store.inspector.paneState ?? ({})) : ({})
+    readonly property var paneState: Store.inspector ? (Store.inspector.state ?? ({})) : ({})
     readonly property var location: paneState.location ?? null
     readonly property var summary: paneState.summary ?? null
     readonly property var files: paneState.files ?? []
@@ -26,6 +26,7 @@ Rectangle {
         default: return L10n.t("inspectorLoadFailed")
         }
     }
+    readonly property bool historyLens: location !== null && location !== undefined && location.path !== null && location.lens === "history"
     function lensReasonText(reason) {
         switch (reason) {
         case "notChanged": return L10n.t("inspectorNotChanged")
@@ -185,7 +186,7 @@ Rectangle {
 
                 CommitSummaryCard {
                     id: card
-                    visible: inspector.summary !== null && (inspector.location.path === null || inspector.location.lens === "diff")
+                    visible: inspector.summary !== null && inspector.location !== null && (inspector.location.path === null || inspector.location.lens === "diff")
                     width: parent.width
                     height: visible ? Math.min(implicitHeight, parent.height * GitLamaLayout.commitSummaryMaxHeightFraction) : 0
                     summary: inspector.summary ?? ({})
@@ -212,6 +213,7 @@ Rectangle {
 
                         Item {
                             id: filesHeader
+                            visible: !inspector.historyLens
                             width: parent.width
                             height: Theme.size.islandHeader
                             MeridianText {
@@ -230,9 +232,16 @@ Rectangle {
                                 onClicked: inspector.filesHidden = true
                             }
                         }
+                        // The history lens lists the path's commits here instead.
+                        InspectorHistoryList {
+                            visible: inspector.historyLens
+                            anchors.fill: parent
+                            paneState: inspector.paneState
+                        }
                         ListView {
                             id: fileList
                             objectName: "commit-files-list"
+                            visible: !inspector.historyLens
                             anchors.top: filesHeader.bottom
                             anchors.bottom: parent.bottom
                             width: parent.width
@@ -322,20 +331,74 @@ Rectangle {
                                 onClicked: Store.inspector.retry()
                             }
                         }
-                        DiffView {
-                            visible: inspector.paneState.hasDiff === true && inspector.location.lens === "diff"
-                                && !inspector.paneState.contentFailure
+                        // The history lens: the selected commit, then its change to the path.
+                        Item {
+                            id: historyHeader
+                            visible: inspector.historyLens && inspector.paneState.historyEntry !== null && inspector.paneState.historyEntry !== undefined
                             anchors.top: progress.visible ? progress.bottom : showFiles.visible ? showFiles.bottom : parent.top
+                            width: parent.width
+                            height: visible ? historyColumn.implicitHeight + 2 * Theme.space.s4 : 0
+                            readonly property var entry: inspector.paneState.historyEntry ?? null
+                            Column {
+                                id: historyColumn
+                                x: Theme.space.s5
+                                y: Theme.space.s4
+                                width: parent.width - 2 * Theme.space.s5
+                                spacing: Theme.space.s2
+                                MeridianText {
+                                    width: parent.width
+                                    role: MeridianText.BodyStrong
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 2
+                                    text: historyHeader.entry ? historyHeader.entry.subject : ""
+                                }
+                                Row {
+                                    spacing: Theme.space.s3
+                                    AuthorAvatar {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        author: historyHeader.entry ? historyHeader.entry.author : ""
+                                    }
+                                    MeridianText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: MeridianText.Caption
+                                        color: Theme.colors.inkMuted
+                                        text: historyHeader.entry ? historyHeader.entry.author.split("<")[0].trim() + " · "
+                                            + Labels.historyDate(historyHeader.entry.authorTime, Store.appearance.dateFormat ?? "relative")
+                                            + " · " + Labels.shortObjectId(historyHeader.entry.commit) : ""
+                                    }
+                                }
+                            }
+                            MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
+                        }
+                        InspectorContents {
+                            visible: inspector.location !== null && inspector.location.lens === "contents"
+                            anchors.top: showFiles.visible ? showFiles.bottom : parent.top
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            contents: inspector.paneState.contents ?? null
+                            failure: inspector.paneState.contentFailure ?? ""
+                        }
+                        InspectorBlame {
+                            visible: inspector.location !== null && inspector.location.lens === "blame" && inspector.paneState.hasBlame === true
+                            anchors.top: showFiles.visible ? showFiles.bottom : parent.top
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                        }
+                        DiffView {
+                            visible: inspector.paneState.hasDiff === true && (inspector.location.lens === "diff" || inspector.historyLens)
+                                && !inspector.paneState.contentFailure
+                            anchors.top: historyHeader.visible ? historyHeader.bottom : progress.visible ? progress.bottom : showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
                             width: parent.width
                             model: Store.inspectorDiff
                             layout: inspector.paneState.options ? inspector.paneState.options.layout : "unified"
                         }
                         MeridianEmptyState {
-                            visible: inspector.location !== null && inspector.location.lens !== "diff"
+                            visible: inspector.location !== null && inspector.location.lens === "blame" && inspector.paneState.hasBlame !== true
+                                && !inspector.paneState.contentFailure
                             anchors.fill: parent
                             compact: true
-                            iconName: "file-text"
+                            progress: true
                             title: L10n.t("loading")
                         }
                     }

@@ -46,7 +46,50 @@ pub fn project(inspector: &InspectorService) -> Value {
             "path": location.path.as_deref().map(text),
             "directory": location.directory,
             "lens": location.lens.name(),
+            "lines": location.lines.map(|(first, last)| json!([first, last])),
+            "historyCommit": location.history_commit,
             "anchor": location.anchor,
+        })
+    });
+    // The contents lens: the file's lines, or why it shows none.
+    let contents = state.file_bytes.as_ref().map(|bytes| {
+        if bytes.is_empty() {
+            return json!({"empty": true});
+        }
+        match std::str::from_utf8(bytes) {
+            Ok(text) if !bytes.contains(&0) => {
+                let mut lines: Vec<&str> = text.split('\n').collect();
+                if lines.last() == Some(&"") {
+                    lines.pop();
+                }
+                json!({"lines": lines.iter().map(|line| line.trim_end_matches('\r').replace('\t', "    ")).collect::<Vec<_>>()})
+            }
+            _ => {
+                // Shown as text on request, NUL bytes as visible symbols.
+                let text = String::from_utf8_lossy(bytes).replace('\0', "\u{2400}");
+                let mut lines: Vec<&str> = text.split('\n').collect();
+                if lines.last() == Some(&"") {
+                    lines.pop();
+                }
+                json!({"binary": true, "lines": lines.iter().map(|line| line.replace('\t', "    ")).collect::<Vec<_>>()})
+            }
+        }
+    });
+    let history = state.history.as_ref().map(|history| {
+        json!({
+            "range": history.range,
+            "incomplete": history.incomplete,
+            "hasMore": history.next_offset.is_some(),
+            "loadingMore": state.history_loading_more,
+            "moreFailed": state.history_more_failed,
+            "entries": history.entries.iter().map(|entry| json!({
+                "commit": entry.commit,
+                "author": text(&entry.author),
+                "authorTime": entry.author_time,
+                "summary": text(&entry.summary),
+                "path": entry.path.as_deref().map(text),
+                "oldPath": entry.old_path.as_deref().map(text),
+            })).collect::<Vec<_>>(),
         })
     });
     let summary = state.inspection.as_ref().map(|inspection| {
@@ -99,6 +142,19 @@ pub fn project(inspector: &InspectorService) -> Value {
         "summary": summary,
         "files": files,
         "hasDiff": state.diff.is_some(),
+        "contents": contents,
+        "hasBlame": state.blame.is_some(),
+        "history": history,
+        "historyEntry": state.history_entry.as_ref().map(|inspection| {
+            let message = text(&inspection.detail.message);
+            json!({
+                "commit": inspection.detail.commit,
+                "subject": message.trim().lines().next().unwrap_or_default(),
+                "author": text(&inspection.detail.author),
+                "authorTime": inspection.detail.author_time,
+                "files": inspection.files.len(),
+            })
+        }),
         "diffRows": state.diff.as_ref().map_or(0, |diff| diff.total()),
         "lensAvailability": state.lens_availability.iter().map(|(lens, reason)| json!({"lens": lens.name(), "reason": reason.map(|reason| reason.name())})).collect::<Vec<_>>(),
         "canBack": state.can_back,
@@ -212,6 +268,36 @@ mod inspector_state {
                     }
                 });
             }
+        }
+
+        /// Loads the blame page holding line `index` (0-based).
+        #[qslot]
+        fn ensure_blame_row(&self, index: i32) {
+            self.with_inspector(move |inspector| async move { inspector.ensure_blame_row(index.max(0) as u64).await });
+        }
+
+        /// Blames line `index`'s file in the parent of its commit.
+        #[qslot]
+        fn blame_before(&self, index: i32) {
+            self.with_inspector(move |inspector| async move { inspector.blame_before(index.max(0) as u64).await });
+        }
+
+        /// The history of lines `first`…`last` (1-based).
+        #[qslot]
+        fn line_history(&self, first: i32, last: i32) {
+            self.with_inspector(move |inspector| async move {
+                inspector.line_history(first.max(1) as u64, last.max(first).max(1) as u64).await
+            });
+        }
+
+        #[qslot]
+        fn select_history_entry(&self, commit: String) {
+            self.with_inspector(move |inspector| async move { inspector.select_history_entry(commit).await });
+        }
+
+        #[qslot]
+        fn load_more_history(&self) {
+            self.with_inspector(|inspector| async move { inspector.load_more_history().await });
         }
 
         /// Records the first visible row for Back and Forward.
