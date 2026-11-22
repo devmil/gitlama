@@ -28,10 +28,21 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Workspace body: sidebar (reference tree/filter/expansion in Rust, keyed `RowModel`, rail,
   splitter), History pane (lazy `HistoryModel` over every row, native C++ `GraphRow` painter,
   ref chips, metadata columns, search field, keyboard selection, reveal), History/detail split.
+- Inspector: commit/comparison targets, summary card, changed files, diff lens (paged rows,
+  idle syntax colours with contrast checks, changed-word marks, side by side), Back/Forward/Up.
+- Changes: staging lists (queue, merge, phases, follow-the-move selection), filter, discard
+  review, working diff with in-place reloads and line staging, commit editor (drafts per
+  worktree, amend, skip hooks/sign-off, failure panel with retries, results).
+- Meridian QML: breadcrumbs, text area.
 - Meridian list row slots (`leading`, `titleTrailing`, `trailing`, `semanticValue`).
 
 ## Next
-- Inspector (commit details, file list, diff), Changes pane, diff view, composer.
+- Command execution (toolbar, menus, shortcuts): transfers (fetch/pull/push), ref dialogs,
+  stash, checkout; operation center; command palette; settings dialog.
+- Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
+  diff wrap, minimap, find, encoding, image diff, show more context.
+- Changes: tree mode, drag between lists, flight animation, context menus (open, reveal,
+  ignore, patch), conflict resolver flow.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), commit context menu, selection glide,
   lane lighting/draw/landing motion, sync entrance, hosting chips, Gravatar.

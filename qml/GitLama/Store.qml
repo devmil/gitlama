@@ -69,6 +69,9 @@ QtObject {
             }
         } else if (name === "stageSelected" && changes) {
             changes.stageSelection(argument)
+        } else if (name === "commit" && commit) {
+            commit.commit({ subject: argument, description: "", coauthors: [], author: "", amend: false,
+                            skipHooks: false, signOff: false }, false, "")
         } else if (name === "file" && inspector) {
             inspector.selectFile(argument)
         } else if (name === "open" && workspace)
