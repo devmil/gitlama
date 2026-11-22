@@ -35,6 +35,11 @@ Item {
             Column {
                 id: banners
                 width: parent.width
+                RepositoryConditions {
+                    width: parent.width
+                    onCommand: id => pane.command(id, ({}))
+                    onSkip: Store.conflicts.sequence("skip")
+                }
                 MeridianBanner {
                     visible: (pane.paneState.stopped ?? 0) > 0
                     width: parent.width

@@ -20,6 +20,7 @@ MeridianSwitch 1.0 MeridianSwitch.qml
 MeridianSegmented 1.0 MeridianSegmented.qml
 MeridianChip 1.0 MeridianChip.qml
 MeridianSpinner 1.0 MeridianSpinner.qml
+MeridianSteps 1.0 MeridianSteps.qml
 MeridianBusyOverlay 1.0 MeridianBusyOverlay.qml
 MeridianProgressBar 1.0 MeridianProgressBar.qml
 MeridianBanner 1.0 MeridianBanner.qml

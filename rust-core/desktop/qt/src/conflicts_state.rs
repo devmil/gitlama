@@ -149,6 +149,36 @@ pub fn project(session: &ConflictSession) -> (Value, String, u64, Vec<Value>) {
                     }));
                 }
             }
+            // Whole-line bands under the result: an open conflict, or the
+            // parts taken from each side (both: current, then incoming).
+            let mut marks = Vec::new();
+            if draft.side.is_none()
+                && let Some(merge) = &draft.draft
+            {
+                let units = &draft.text;
+                let line_at = |offset: usize| units[..offset.min(units.len())].iter().filter(|unit| **unit == b'\n' as u16).count();
+                let mut mark = |start: usize, end: usize, kind: &str| {
+                    if end > start {
+                        marks.push(json!({"first": line_at(start), "last": line_at(end - 1), "kind": kind}));
+                    }
+                };
+                let mut offset = 0;
+                for block in &merge.blocks {
+                    let start = block.start.clamp(offset, units.len());
+                    let end = block.end.clamp(start, units.len());
+                    offset = end;
+                    match block.choice {
+                        None => mark(start, end, "open"),
+                        Some(NativeConflictRegionChoice::Current) => mark(start, end, "current"),
+                        Some(NativeConflictRegionChoice::Incoming) => mark(start, end, "incoming"),
+                        Some(NativeConflictRegionChoice::Both) => {
+                            let split = (start + block.current.len()).clamp(start, end);
+                            mark(start, split, "current");
+                            mark(split, end, "incoming");
+                        }
+                    }
+                }
+            }
             let side_name = draft.side.map(|side| match side {
                 NativeConflictSideChoice::Current => "current",
                 NativeConflictSideChoice::Incoming => "incoming",
@@ -180,6 +210,8 @@ pub fn project(session: &ConflictSession) -> (Value, String, u64, Vec<Value>) {
                 "regions": blocks.as_ref().map_or(0, Vec::len),
                 "unresolved": draft.draft.as_ref().map_or(file.regions.len(), |merge| merge.unresolved_count()),
                 "blocks": blocks,
+                "marks": marks,
+                "blockRows": draft.draft.as_ref().map_or(Vec::new(), |merge| merge.block_rows().iter().map(|(first, count)| json!([first, count])).collect()),
             })
         }
         _ => Value::Null,

@@ -2566,6 +2566,18 @@
   "conflictOutcomeExternal": "Im externen Werkzeug zusammengeführt",
   "conflictResolvedNext": "{resolved} aufgelöst. Jetzt: {next}.",
   "conflictGuideTitle": "Schritte der Konfliktlösung",
+  "stepStateDone": "Erledigt",
+  "@stepStateDone": {
+    "description": "A step's state in a step indicator, read by assistive technology."
+  },
+  "stepStateCurrent": "Aktuell",
+  "@stepStateCurrent": {
+    "description": "A step's state in a step indicator, read by assistive technology."
+  },
+  "stepStateUpcoming": "Ausstehend",
+  "@stepStateUpcoming": {
+    "description": "A step's state in a step indicator, read by assistive technology."
+  },
   "conflictStepPick": "Änderungen auswählen",
   "conflictStepReview": "Ergebnis prüfen",
   "conflictStepResolve": "Auflösen",

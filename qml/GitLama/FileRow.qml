@@ -22,6 +22,9 @@ Item {
     signal contextMenuRequested(real x, real y)
     /// The keyboard modifiers of the last click.
     property int modifiers: 0
+    /// Before the glyph (a checkbox) and at the end (counts, actions).
+    property Component leading: null
+    property Component trailing: null
 
     readonly property int slash: path.lastIndexOf("/")
     readonly property string directory: !showDirectory || slash < 0 ? "" : path.substring(0, slash + 1)
@@ -48,9 +51,17 @@ Item {
 
     Row {
         x: Theme.space.s4 + Theme.space.s2 + row.depth * Metrics.treeIndent
-        width: row.width - x - Theme.space.s4 - Theme.space.s2
+        width: row.width - x - Theme.space.s4 - Theme.space.s2 - (trailingLoader.active ? trailingLoader.width + Theme.space.s2 : 0)
         height: parent.height
         spacing: Theme.space.s4
+
+        Loader {
+            id: leadingLoader
+            active: row.leading !== null
+            visible: active
+            anchors.verticalCenter: parent.verticalCenter
+            sourceComponent: row.leading
+        }
 
         Item {
             width: GitLamaLayout.glyphSize
@@ -74,6 +85,7 @@ Item {
             id: label
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - GitLamaLayout.glyphSize - parent.spacing
+                - (leadingLoader.active ? leadingLoader.width + parent.spacing : 0)
             // The name keeps its width; the folder gives way from its start.
             MeridianText {
                 visible: text.length > 0
@@ -93,6 +105,16 @@ Item {
                 elide: Text.ElideRight
             }
         }
+    }
+
+    Loader {
+        id: trailingLoader
+        active: row.trailing !== null
+        visible: active
+        x: row.width - width - Theme.space.s4
+        anchors.verticalCenter: parent.verticalCenter
+        sourceComponent: row.trailing
+        z: 1
     }
 
     HoverHandler { id: hover }

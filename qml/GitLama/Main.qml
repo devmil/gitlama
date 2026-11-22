@@ -24,6 +24,8 @@ Window {
     required property var commit
     required property var workflows
     required property var settings
+    required property var conflicts
+    required property var conflictRows
 
     readonly property var appearance: app.appearance ?? ({})
 
@@ -84,6 +86,8 @@ Window {
         Store.commit = commit
         Store.workflows = workflows
         Store.settings = settings
+        Store.conflicts = conflicts
+        Store.conflictRows = conflictRows
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()

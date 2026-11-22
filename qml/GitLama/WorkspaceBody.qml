@@ -82,11 +82,23 @@ Item {
             body.draggedDetailHeight >= 0 ? body.draggedDetailHeight
                 : body.detailHeight >= 0 ? body.detailHeight : (height - Theme.space.s3) / 2))
 
+        readonly property bool conflictFlow: !workspace.history && body.active !== null && body.active.hasStatus === true
+            && Store.changes !== null && (Store.changes.state ?? ({})).conflictFlow === true
+
         // Changes: the files island beside the diff.
         ChangesPane {
-            visible: !workspace.history && body.active !== null && body.active.hasStatus === true
+            visible: !workspace.history && body.active !== null && body.active.hasStatus === true && !workspace.conflictFlow
             anchors.fill: parent
             onCommand: (id, options) => body.command(id, options)
+        }
+        // A paused operation at conflicts: the resolver replaces Changes.
+        Loader {
+            id: resolverLoader
+            active: workspace.conflictFlow
+            anchors.fill: parent
+            sourceComponent: ConflictResolver {
+                onCommand: (id, options) => body.command(id, options)
+            }
         }
 
         // History keeps the full width above; details and the diff below.

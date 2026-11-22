@@ -9,6 +9,8 @@ Item {
     id: actions
 
     required property var window
+    /// The shown conflict resolver, which takes the conflict commands.
+    property var conflictResolver: null
 
     function answer(id, value) {
         Store.app.answerPrompt(id, value === undefined || value === null ? "" : JSON.stringify(value))
@@ -89,6 +91,15 @@ Item {
         case "reviewRestack":
             restackPreview.ask(id, payload)
             return
+        case "confirmSequencer": {
+            const abort = payload.action === "abort"
+            sequencerConfirm.promptId = id
+            sequencerConfirm.title = L10n.t(abort ? "conflictAbortTitle" : "conflictSkipTitle")
+            sequencerConfirm.description = L10n.t(abort ? "conflictAbortMessage" : "conflictSkipMessage")
+            sequencerConfirm.confirmLabel = L10n.t(abort ? "conflictAbort" : "conflictSkip")
+            sequencerConfirm.open()
+            return
+        }
         case "confirmCommitCheckout":
             commitCheckout.ask(id, payload)
             return
@@ -169,6 +180,14 @@ Item {
         case "autoStashCheckout": Store.workflows.stash("autoStashCheckout", { targetBranch: options.initialName ?? "" }); return
         case "mergeBranch":
             Store.workflows.mutateHistory("merge", options.initialName ?? "", options.initialTarget ?? ""); return
+        case "rebaseContinue": Store.conflicts.sequence("continue"); return
+        case "rebaseAbort": Store.conflicts.sequence("abort"); return
+        case "conflictNext": case "conflictPrevious": case "conflictTakeCurrent": case "conflictTakeIncoming":
+        case "conflictTakeBoth":
+            if (actions.conflictResolver && actions.conflictResolver.runCommand(id))
+                return
+            Notifications.show(Commands.reasonText("contextRequired"), false)
+            return
         case "integrateBranch":
             Store.workflows.integrateBranch(options.initialName ?? "", options.initialTarget ?? ""); return
         case "rebaseBranch":
@@ -371,6 +390,14 @@ Item {
         id: restackPreview
         onAnswered: (id, acknowledge) => actions.answer(id, acknowledge)
     }
+    MeridianConfirm {
+        id: sequencerConfirm
+        property int promptId: -1
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
     SettingsDialog {
         id: settingsDialog
         onLicensesRequested: actions.showLicenses()
@@ -482,6 +509,15 @@ Item {
                 rebaseEditor.submit()
             else if (name === "confirmRebase")
                 rebasePreview.submitted()
+            else if (name === "conflictTake") {
+                const parts = argument.split("=")
+                Store.conflicts.takeRegion(Number(parts[0]), parts[1], false)
+            } else if (name === "conflictSide")
+                Store.conflicts.chooseSide(argument)
+            else if (name === "conflictSave")
+                Store.conflicts.save()
+            else if (name === "conflictSelect")
+                Store.conflicts.select(Number(argument), false)
             else if (name === "settings")
                 actions.showSettings(argument)
             else if (name === "licenses")

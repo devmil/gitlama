@@ -92,19 +92,19 @@ fn out_dir() -> PathBuf {
 /// rows), with moc, against the Qt that qtbridge links.
 fn build_native_items(manifest: &Path, out: &Path) {
     use qtbridge_build_utils::qt_build::QtInstallation;
-    let header = manifest.join("src/native/graph_row.h");
-    let source = manifest.join("src/native/graph_row.cpp");
-    println!("cargo:rerun-if-changed={}", header.display());
-    println!("cargo:rerun-if-changed={}", source.display());
     let qt = QtInstallation::new();
-    let moc = out.join("moc_graph_row.cpp");
-    qt.run_moc(&header, &moc);
     let mut builder = cc::Build::new();
+    builder.cpp(true).std("c++17");
+    for name in ["graph_row", "text_formatter"] {
+        let header = manifest.join(format!("src/native/{name}.h"));
+        let source = manifest.join(format!("src/native/{name}.cpp"));
+        println!("cargo:rerun-if-changed={}", header.display());
+        println!("cargo:rerun-if-changed={}", source.display());
+        let moc = out.join(format!("moc_{name}.cpp"));
+        qt.run_moc(&header, &moc);
+        builder.file(&source).file(&moc);
+    }
     builder
-        .cpp(true)
-        .std("c++17")
-        .file(&source)
-        .file(&moc)
         .include(manifest.join("src/native"))
         .flag_if_supported("/Zc:__cplusplus")
         .flag_if_supported("/permissive-")

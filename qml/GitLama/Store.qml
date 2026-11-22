@@ -33,6 +33,9 @@ QtObject {
     /// The SettingsState bridge: the settings dialog's Git page, refused
     /// writes and licenses.
     property var settings: null
+    /// The ConflictsState bridge and the shown file's comparison rows.
+    property var conflicts: null
+    property var conflictRows: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).

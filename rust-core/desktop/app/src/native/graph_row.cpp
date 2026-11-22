@@ -1,4 +1,5 @@
 #include "graph_row.h"
+#include "text_formatter.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -314,4 +315,5 @@ void GraphRow::paintLanding(QPainter *painter, QPointF center, const QColor &col
 extern "C" void gitlama_register_native_types()
 {
     qmlRegisterType<gitlama::GraphRow>("GitLamaNative", 1, 0, "GraphRow");
+    qmlRegisterType<gitlama::TextFormatter>("GitLamaNative", 1, 0, "TextFormatter");
 }

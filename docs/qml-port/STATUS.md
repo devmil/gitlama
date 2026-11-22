@@ -46,7 +46,20 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   shortcut recorder), accessibility, diagnostics (detailed capture, clear, preview, save) and
   licenses (Meridian license dialog with Qt runtime notices).
 
+- History rewrites: merge / cherry-pick / revert (input, merge conflict prediction, preview,
+  set-aside revert), branch integration, interactive rebase (target, editor with reorder by
+  grip/arrows/keys, drag-to-squash, actions, reword, autosquash; preview with todo), restack
+  (root, review with published acknowledgement); busy overlay with Cancel.
+- Conflicts: repository conditions banner (failures, detached HEAD, conflict count, paused
+  operations with Continue/Skip/Abort); the resolver (steps guide, conflicted files with ticks
+  and bulk sides, details, whole-file and deletion decisions, side-by-side comparison with
+  region toolbars and click-to-take, result editor with region bands at fixed 25px lines via
+  the native TextFormatter, panes following each other, resolved page with merge message and
+  undo, footer navigation). Merge drafts and sessions live in Rust.
+
 ## Next
+- Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode
+  of its file list, the Continue pulse, file action menus.
 - Settings pages for features not yet ported: integrations, repository binding, remote hosts,
   custom commands, diff renderer, updates; diagnostics Share on macOS/Windows.
 - Operation center/logbook/activity; busy overlay (MeridianBusyOverlay QML);

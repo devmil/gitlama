@@ -209,6 +209,11 @@ pub fn active(tab: Option<&Tab>, group_name: Option<&str>) -> Value {
         "tagCount": refs.map_or(0, |refs| refs.tags.len()),
         "stashCount": refs.map_or(0, |refs| refs.stashes.len()),
         "bare": identity.is_some_and(|identity| identity.kind == gitlama_contract::dto::NativeRepositoryKind::Bare),
+        // The repository conditions banner.
+        "watchOverflow": tab.watch_overflow_revision.is_some(),
+        "watchFailure": snapshot.is_some_and(|snapshot| snapshot.watch_failure.is_some()),
+        "statusFailure": snapshot.is_some_and(|snapshot| snapshot.status_failure.is_some()),
+        "refsFailure": snapshot.is_some_and(|snapshot| snapshot.refs_failure.is_some()),
     })
 }
 

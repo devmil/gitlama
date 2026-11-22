@@ -80,6 +80,13 @@ CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml
 SettingsChoice 1.0 SettingsChoice.qml
 HistoryMutationDialog 1.0 HistoryMutationDialog.qml
 ListWell 1.0 ListWell.qml
+WorkflowHeader 1.0 WorkflowHeader.qml
+ConflictFileDetails 1.0 ConflictFileDetails.qml
+ConflictComparison 1.0 ConflictComparison.qml
+ConflictResultPane 1.0 ConflictResultPane.qml
+ConflictResolvedPage 1.0 ConflictResolvedPage.qml
+ConflictResolver 1.0 ConflictResolver.qml
+RepositoryConditions 1.0 RepositoryConditions.qml
 StepNumber 1.0 StepNumber.qml
 BranchIntegrationDialog 1.0 BranchIntegrationDialog.qml
 RebaseTargetDialog 1.0 RebaseTargetDialog.qml

@@ -9729,6 +9729,18 @@
   "@conflictGuideTitle": {
     "description": "Accessibility label of the conflict resolver's step line."
   },
+  "stepStateDone": "Done",
+  "@stepStateDone": {
+    "description": "A step's state in a step indicator, read by assistive technology."
+  },
+  "stepStateCurrent": "Current",
+  "@stepStateCurrent": {
+    "description": "A step's state in a step indicator, read by assistive technology."
+  },
+  "stepStateUpcoming": "Upcoming",
+  "@stepStateUpcoming": {
+    "description": "A step's state in a step indicator, read by assistive technology."
+  },
   "conflictStepPick": "Pick changes",
   "@conflictStepPick": {
     "description": "Conflict resolver step: pick the changes for each conflict."

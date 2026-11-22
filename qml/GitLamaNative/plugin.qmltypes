@@ -32,4 +32,16 @@ Module {
         Property { name: "core"; type: "double" }
         Signal { name: "changed" }
     }
+    Component {
+        file: "text_formatter.h"
+        name: "gitlama::TextFormatter"
+        accessSemantics: "reference"
+        prototype: "QObject"
+        exports: ["GitLamaNative/TextFormatter 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "document"; type: "QQuickTextDocument"; isPointer: true }
+        Property { name: "lineHeight"; type: "double" }
+        Signal { name: "documentChanged" }
+        Signal { name: "lineHeightChanged" }
+    }
 }
