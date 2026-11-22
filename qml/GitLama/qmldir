@@ -19,3 +19,27 @@ WelcomeScreen 1.0 WelcomeScreen.qml
 WorkspaceShell 1.0 WorkspaceShell.qml
 Boot 1.0 Boot.qml
 singleton GitLamaIcons 1.0 GitLamaIcons.qml
+singleton Commands 1.0 Commands.qml
+Compass 1.0 Compass.qml
+CompassGlint 1.0 CompassGlint.qml
+CompassRule 1.0 CompassRule.qml
+CompassState 1.0 CompassState.qml
+DirtyCount 1.0 DirtyCount.qml
+SyncBadge 1.0 SyncBadge.qml
+SyncPart 1.0 SyncPart.qml
+CommandMenu 1.0 CommandMenu.qml
+ToolbarCommand 1.0 ToolbarCommand.qml
+WorkspaceToolbar 1.0 WorkspaceToolbar.qml
+singleton CommandMenus 1.0 CommandMenus.qml
+BrandSignature 1.0 BrandSignature.qml
+LamaSignature 1.0 LamaSignature.qml
+RepositoryTabs 1.0 RepositoryTabs.qml
+WorkspaceBody 1.0 WorkspaceBody.qml
+WorkspaceStatusBar 1.0 WorkspaceStatusBar.qml
+singleton AppearanceColors 1.0 AppearanceColors.qml
+RepositoryIcon 1.0 RepositoryIcon.qml
+GroupContextMenu 1.0 GroupContextMenu.qml
+TabContextMenu 1.0 TabContextMenu.qml
+TabMark 1.0 TabMark.qml
+WorktreeOpenMenu 1.0 WorktreeOpenMenu.qml
+WorktreeRow 1.0 WorktreeRow.qml

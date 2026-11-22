@@ -30,6 +30,41 @@ Item {
     }
 
     function showSettings() {}
+    function showAbout() {}
+    function openFolder(path) {}
+    function showRepositoryIconDialog(tab) {}
+    function showTabGroupDialog(group, labels) {}
+
+    /// Copies `text` and confirms it with `message` in the status bar.
+    function copyText(text, message) {
+        clipboard.text = text
+        clipboard.selectAll()
+        clipboard.copy()
+        clipboard.text = ""
+        Notifications.show(message, false)
+    }
+    TextEdit { id: clipboard; visible: false }
+
+    /// Runs command `id` when the shared policy allows it now, and
+    /// otherwise says why (the Flutter shell's _executeCommand).
+    function runCommand(id, options) {
+        const reason = Commands.reason(id, actions.availability)
+        if (reason.length > 0) {
+            Notifications.show(Commands.reasonText(reason), false)
+            return
+        }
+        switch (id) {
+        case "openRepository": Store.workspace.openRepository(); return
+        case "initializeRepository": Store.workspace.initializeRepository(false); return
+        case "closeRepositoryTab": Store.workspace.closeTab(Store.workspace.activeTabId); return
+        case "showSettings": showSettings(); return
+        default:
+            Notifications.show(Commands.label(id), false)
+        }
+    }
+
+    /// What panes contribute to command availability.
+    property var availability: ({})
     function openRemoteRepository() {}
     function cloneRepository() {}
     function openRecent(recent) {

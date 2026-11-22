@@ -20,6 +20,16 @@ T.AbstractButton {
     property real turns: 0
     /// Nudge the icon 2px towards this direction on activation (-1, 0, 1).
     property int nudgeDirection: 0
+    /// A MeridianNudge direction the icon moves on each click (Fetch
+    /// down, Push up, Refresh rotates).
+    property int nudge: MeridianNudge.None
+    /// The icon turns continuously while true; when it stops it finishes
+    /// the turn it is in (NM-11).
+    property bool spinning: false
+    /// A count over the top corner that pops in, rolls and shrinks away
+    /// (MM-06); 0 hides it.
+    property int badge: 0
+    property int badgeTone: MeridianCount.Accent
     /// Overrides the icon colour (a row's `secondary` ink, `accent-ink`).
     property color iconColorOverride: "transparent"
     /// The hover label; `text` by default.
@@ -74,7 +84,37 @@ T.AbstractButton {
         }
     }
 
-    onClicked: if (nudgeDirection !== 0) nudge.restart()
+    onClicked: {
+        if (nudgeDirection !== 0)
+            nudgeMotion.restart()
+        nudger.play()
+    }
+
+    MeridianNudge { id: nudger; direction: control.nudge }
+
+    property real _spin: 0
+    onSpinningChanged: spinning ? _startSpin() : _finishSpin()
+    Component.onCompleted: if (spinning) _startSpin()
+    function _startSpin() {
+        if (Motion.reduced)
+            return
+        spinTo.stop()
+        spinLoop.from = _spin % 1
+        spinLoop.to = spinLoop.from + 1
+        _spin = spinLoop.from
+        spinLoop.restart()
+    }
+    function _finishSpin() {
+        if (!spinLoop.running)
+            return
+        spinLoop.stop()
+        const left = Math.ceil(_spin) - _spin
+        spinTo.to = Math.ceil(_spin)
+        spinTo.duration = Math.max(0, Motion.spinner * left)
+        spinTo.restart()
+    }
+    NumberAnimation on _spin { id: spinLoop; running: false; loops: Animation.Infinite; duration: Motion.spinner; easing.type: Easing.Linear }
+    NumberAnimation on _spin { id: spinTo; running: false; easing.type: Easing.Linear }
 
     contentItem: Item {
         MeridianIcon {
@@ -83,7 +123,7 @@ T.AbstractButton {
             name: control.iconName
             iconSize: control.controlSize === MeridianButton.Small ? MeridianIcon.Small : MeridianIcon.Regular
             color: control.iconColor
-            rotation: control.turns * 360
+            rotation: control.turns * 360 + nudger.angle + (control._spin % 1) * 360
             Behavior on rotation {
                 NumberAnimation { duration: Motion.quick; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
             }
@@ -93,10 +133,10 @@ T.AbstractButton {
                 enabled: control.iconColorOverride.a === 0
                 ColorAnimation { duration: Motion.select }
             }
-            transform: Translate { id: shift }
+            transform: Translate { id: shift; y: nudger.yOffset; x: nudger.xOffset }
         }
         SequentialAnimation {
-            id: nudge
+            id: nudgeMotion
             NumberAnimation {
                 target: shift; property: "x"
                 to: control.nudgeDirection * Motion.nudgeDistance
@@ -109,6 +149,14 @@ T.AbstractButton {
                 easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.snappy.curve
             }
         }
+    }
+
+    MeridianBadgeDot {
+        count: control.badge
+        tone: control.badgeTone
+        z: 2
+        x: control.width - width + Metrics.toolbarBadgeRight - (control.width - control.extent) / 2
+        y: -Metrics.toolbarBadgeTop + (control.height - control.extent) / 2
     }
 
     background: Item {

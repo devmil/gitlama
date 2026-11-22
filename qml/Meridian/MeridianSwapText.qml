@@ -18,6 +18,8 @@ Item {
     property int role: MeridianText.Body
     property color color: Theme.colors.ink
     property bool tabular: false
+    /// A weight on top of the role's (MeridianText.fontWeight); -1 keeps it.
+    property int fontWeight: -1
     /// False swaps at once. For text that changes on every refresh: each
     /// animation frame redraws the whole window.
     property bool animated: true
@@ -52,6 +54,7 @@ Item {
         role: root.role
         color: root.color
         tabular: root.tabular
+        fontWeight: root.fontWeight
         horizontalAlignment: root.horizontalAlignment
         elide: root.elide
         opacity: 0
@@ -64,6 +67,7 @@ Item {
         role: root.role
         color: root.color
         tabular: root.tabular
+        fontWeight: root.fontWeight
         horizontalAlignment: root.horizontalAlignment
         elide: root.elide
         text: root._shown

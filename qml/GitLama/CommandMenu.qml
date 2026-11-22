@@ -1,0 +1,66 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import Meridian
+
+// A menu built from data, shown with the platform's own menu UI (the
+// Flutter NativeMenuButton / native menu presenter). `items` are
+// {title, value, icon, shortcut, enabled, checked, danger, reason} entries,
+// {separator: true}, {header: title} or {title, children: [...]}.
+// Selecting an available item emits `selected(value)`.
+MeridianMenu {
+    id: menu
+
+    property var items: []
+    signal selected(var value)
+
+    nativeMenu: true
+
+    /// Rebuilds the menu from `items` and opens it at `x`, `y` of `parentItem`.
+    function show(parentItem, x, y) {
+        build()
+        if (parentItem)
+            menu.parent = parentItem
+        menu.popup(parentItem, x ?? 0, y ?? 0)
+    }
+
+    function build() {
+        _fill(menu, items)
+    }
+
+    function _fill(target, entries) {
+        while (target.count > 0)
+            target.takeItem(0).destroy()
+        while (target.menuAt(0) !== null)
+            target.takeMenu(0).destroy()
+        for (const entry of entries) {
+            if (entry.separator) {
+                target.addItem(separatorComponent.createObject(null))
+            } else if (entry.header !== undefined) {
+                target.addItem(headerComponent.createObject(null, { text: entry.header }))
+            } else if (entry.children) {
+                const submenu = submenuComponent.createObject(null, { title: entry.title })
+                _fill(submenu, entry.children)
+                target.addMenu(submenu)
+            } else {
+                const item = itemComponent.createObject(null, {
+                    text: entry.title,
+                    iconName: entry.icon ?? "",
+                    shortcut: entry.shortcut ?? "",
+                    hint: entry.hint ?? "",
+                    danger: entry.danger === true,
+                    checkable: entry.checked !== undefined,
+                    checked: entry.checked === true,
+                    enabled: entry.enabled !== false,
+                })
+                const value = entry.value
+                item.triggered.connect(() => menu.selected(value))
+                target.addItem(item)
+            }
+        }
+    }
+
+    Component { id: itemComponent; MeridianMenuItem {} }
+    Component { id: separatorComponent; MeridianMenuSeparator {} }
+    Component { id: headerComponent; MeridianMenuHeader {} }
+    Component { id: submenuComponent; MeridianMenu { nativeMenu: true } }
+}

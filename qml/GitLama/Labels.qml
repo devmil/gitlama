@@ -26,6 +26,15 @@ QtObject {
         return detail.length > 0 ? detail : L10n.t("repositoryOpenFailed")
     }
 
+    /// The platform's file browser: Finder, Explorer or Files.
+    function fileBrowserName() {
+        if (Store.isMac)
+            return "Finder"
+        if (Store.isWindows)
+            return "Explorer"
+        return "Files"
+    }
+
     /// Whether every word of `query` occurs in `text`, ignoring case.
     function recentMatches(query, text) {
         const haystack = String(text).toLowerCase()

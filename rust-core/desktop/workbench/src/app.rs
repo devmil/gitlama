@@ -3,6 +3,7 @@
 //!
 //! A failed start disposes what it built; Retry starts a fresh composition.
 
+use crate::appearances::AppearanceService;
 use crate::backend::lifecycle::LocalLifecycle;
 use crate::backend::{LocalCalls, SessionCalls};
 use crate::diagnostics;
@@ -33,6 +34,7 @@ pub struct Services {
     pub history: Rc<HistoryService>,
     pub workspace: Rc<WorkspaceService>,
     pub entry: Rc<EntryWorkflows>,
+    pub appearances: Rc<AppearanceService>,
     pub prompts: Rc<Prompts>,
     pub notices: Rc<Notices>,
 }
@@ -60,6 +62,7 @@ impl Services {
             notifier.clone(),
         );
         let entry = EntryWorkflows::new(Rc::clone(&workspace), Rc::clone(&prompts), notifier.clone());
+        let appearances = AppearanceService::new(Rc::clone(&settings), notifier.clone());
         {
             let weak = Rc::downgrade(&workspace);
             let cache = Rc::clone(&view_cache);
@@ -119,6 +122,7 @@ impl Services {
             history,
             workspace,
             entry,
+            appearances,
             prompts,
             notices,
         })

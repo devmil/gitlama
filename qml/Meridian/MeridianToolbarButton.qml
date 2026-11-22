@@ -18,7 +18,10 @@ Item {
     property string menuLabel: "Show menu"
     property MeridianMenu menu: null
     property int badge: 0
+    property int badgeTone: MeridianCount.Accent
     property int nudgeDirection: 0
+    /// A MeridianNudge direction the icon moves on each click.
+    property int nudge: MeridianNudge.None
 
     signal clicked()
 
@@ -42,9 +45,12 @@ Item {
         Accessible.checkable: root.selected
         onClicked: {
             if (root.nudgeDirection !== 0)
-                nudge.restart()
+                nudgeMotion.restart()
+            nudger.play()
             root.clicked()
         }
+
+        MeridianNudge { id: nudger; direction: root.nudge }
 
         scale: down ? Motion.pressScale : 1
         Behavior on scale {
@@ -71,7 +77,8 @@ Item {
                 name: root.iconName
                 iconSize: MeridianIcon.Toolbar
                 color: root.enabled ? Theme.colors.ink : Theme.colors.inkFaint
-                transform: Translate { id: shift }
+                rotation: nudger.angle
+                transform: Translate { id: shift; x: nudger.xOffset; y: nudger.yOffset }
             }
             MeridianText {
                 visible: root.showLabel
@@ -83,7 +90,7 @@ Item {
             }
         }
         SequentialAnimation {
-            id: nudge
+            id: nudgeMotion
             NumberAnimation { target: shift; property: "x"; to: root.nudgeDirection * Motion.nudgeDistance; duration: Motion.nudge }
             NumberAnimation { target: shift; property: "x"; to: 0; duration: Motion.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.snappy.curve }
         }
@@ -108,6 +115,7 @@ Item {
             }
             MeridianBadgeDot {
                 count: root.badge
+                tone: root.badgeTone
                 anchors.right: parent.right
                 anchors.rightMargin: -Metrics.toolbarBadgeRight
                 y: Metrics.toolbarBadgeTop

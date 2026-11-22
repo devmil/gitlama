@@ -12,6 +12,8 @@ mod workspace_state {
 
     pub struct WorkspaceState {
         pub commands: Option<Commands>,
+        /// A group a command created, reported once after the pump.
+        pub(crate) created: std::rc::Rc<std::cell::Cell<Option<u64>>>,
         pub(crate) tabs: Value,
         pub(crate) active_tab_id: i64,
         pub(crate) groups: Value,
@@ -24,6 +26,7 @@ mod workspace_state {
         fn default() -> Self {
             Self {
                 commands: None,
+                created: std::rc::Rc::new(std::cell::Cell::new(None)),
                 tabs: Value::Array(Vec::new()),
                 active_tab_id: -1,
                 groups: Value::Array(Vec::new()),
@@ -50,6 +53,9 @@ mod workspace_state {
         pub fn recents_changed(&mut self);
         #[qsignal]
         pub fn active_changed(&mut self);
+        /// A group was created for a tab; the strip asks for its name.
+        #[qsignal]
+        pub fn group_created(&mut self, group: i64);
 
         /// Lets the user choose a repository folder and opens it.
         #[qslot]
@@ -112,6 +118,141 @@ mod workspace_state {
                 services
                     .workspace
                     .reorder_tab(tab_id as u64, target_index.max(0) as usize)
+            });
+        }
+
+        /// Puts `tabId` at `index` among the other tabs, in group `group`
+        /// (-1 for none).
+        #[qslot]
+        fn move_tab(&self, tab_id: i64, index: i32, group: i64) {
+            self.with_services(move |services| {
+                services.workspace.move_tab(
+                    tab_id as u64,
+                    index.max(0) as usize,
+                    (group >= 0).then_some(group as u64),
+                )
+            });
+        }
+
+        #[qslot]
+        fn move_tab_group(&self, group: i64, index: i32) {
+            self.with_services(move |services| {
+                services.workspace.move_tab_group(group as u64, index.max(0) as usize)
+            });
+        }
+
+        #[qslot]
+        fn move_worktree_tab(&self, tab_id: i64, index: i32) {
+            self.with_services(move |services| {
+                services.workspace.move_worktree_tab(tab_id as u64, i64::from(index))
+            });
+        }
+
+        #[qslot]
+        fn close_tabs(&self, tab_ids: Vec<i64>) {
+            self.with_services(move |services| {
+                let workspace = std::rc::Rc::clone(&services.workspace);
+                let ids = tab_ids.into_iter().map(|id| id as u64).collect();
+                rt::spawn_detached(async move { workspace.close_tabs(ids).await });
+            });
+        }
+
+        /// Names the tab's repository; an empty name restores the folder's.
+        #[qslot]
+        fn rename_tab(&self, tab_id: i64, name: String) {
+            self.with_services(move |services| {
+                let Some(identity) = services
+                    .workspace
+                    .tab(tab_id as u64)
+                    .and_then(|tab| tab.canonical_identity().cloned())
+                else {
+                    return;
+                };
+                let appearances = std::rc::Rc::clone(&services.appearances);
+                let notices = std::rc::Rc::clone(&services.notices);
+                rt::spawn_detached(async move {
+                    let name = (!name.trim().is_empty()).then_some(name);
+                    if appearances.rename(identity, name).await.is_err() {
+                        notices.error("repositoryIconSaveFailed", serde_json::json!([]));
+                    }
+                });
+            });
+        }
+
+        /// Removes the icon, colour and image of the tab's repository.
+        #[qslot]
+        fn remove_tab_icon(&self, tab_id: i64) {
+            self.with_services(move |services| {
+                let Some(identity) = services
+                    .workspace
+                    .tab(tab_id as u64)
+                    .and_then(|tab| tab.canonical_identity().cloned())
+                else {
+                    return;
+                };
+                let appearances = std::rc::Rc::clone(&services.appearances);
+                let notices = std::rc::Rc::clone(&services.notices);
+                rt::spawn_detached(async move {
+                    if appearances.remove_mark(identity).await.is_err() {
+                        notices.error("repositoryIconSaveFailed", serde_json::json!([]));
+                    }
+                });
+            });
+        }
+
+        /// Puts the tab in a new group; `groupCreated` names it for renaming.
+        #[qslot]
+        fn create_tab_group(&self, tab_id: i64) {
+            let state = self.created.clone();
+            self.with_services(move |services| {
+                if let Some(group) = services.workspace.create_tab_group(tab_id as u64) {
+                    state.set(Some(group));
+                }
+            });
+        }
+
+        #[qslot]
+        fn add_tab_to_group(&self, tab_id: i64, group: i64) {
+            self.with_services(move |services| services.workspace.add_tab_to_group(tab_id as u64, group as u64));
+        }
+
+        #[qslot]
+        fn remove_tab_from_group(&self, tab_id: i64) {
+            self.with_services(move |services| services.workspace.remove_tab_from_group(tab_id as u64));
+        }
+
+        #[qslot]
+        fn rename_tab_group(&self, group: i64, name: String) {
+            self.with_services(move |services| services.workspace.rename_tab_group(group as u64, &name));
+        }
+
+        #[qslot]
+        fn edit_tab_group(&self, group: i64, name: String, color: String, icon: String) {
+            self.with_services(move |services| {
+                services.workspace.edit_tab_group(
+                    group as u64,
+                    &name,
+                    &color,
+                    (!icon.is_empty()).then_some(icon.as_str()),
+                )
+            });
+        }
+
+        #[qslot]
+        fn set_tab_group_collapsed(&self, group: i64, collapsed: bool) {
+            self.with_services(move |services| services.workspace.set_tab_group_collapsed(group as u64, collapsed));
+        }
+
+        #[qslot]
+        fn ungroup_tabs(&self, group: i64) {
+            self.with_services(move |services| services.workspace.ungroup_tabs(group as u64));
+        }
+
+        #[qslot]
+        fn close_tab_group(&self, group: i64) {
+            self.with_services(move |services| {
+                let workspace = std::rc::Rc::clone(&services.workspace);
+                rt::spawn_detached(async move { workspace.close_tab_group(group as u64).await });
             });
         }
 

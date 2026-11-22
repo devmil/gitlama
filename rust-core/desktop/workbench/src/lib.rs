@@ -8,10 +8,13 @@
 
 pub mod app;
 pub mod appearance;
+pub mod appearances;
 pub mod backend;
+pub mod commands;
 pub mod diagnostics;
 pub mod entry;
 pub mod history;
+pub mod images;
 pub mod notices;
 pub mod notify;
 pub mod prompts;

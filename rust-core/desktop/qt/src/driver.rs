@@ -83,9 +83,19 @@ impl Driver {
                 .services()
                 .map(|services| services.settings.with(|document| to_value(&document.appearance)))
                 .unwrap_or(Value::Null);
+            let shortcuts = self
+                .app
+                .services()
+                .map(|services| {
+                    services
+                        .settings
+                        .with(|document| projection::shortcuts(&document.shortcut_overrides))
+                })
+                .unwrap_or_else(|| projection::shortcuts(&[]));
             let mut state = self.state.borrow_mut();
-            if state.appearance != appearance {
+            if state.appearance != appearance || state.shortcuts != shortcuts {
                 state.appearance = appearance;
+                state.shortcuts = shortcuts;
                 state.appearance_changed();
             }
         }
@@ -126,13 +136,25 @@ impl Driver {
             services.entry.follow_session(services.workspace.current().as_ref());
             let (tabs, active, groups) = services.workspace.with_tabs(|tabs, active, groups| {
                 (
-                    Value::Array(tabs.iter().map(projection::tab).collect()),
+                    Value::Array(tabs.iter().map(|tab| projection::tab(tab, &services.appearances)).collect()),
                     active.map_or(-1, |id| id as i64),
                     Value::Array(groups.iter().map(projection::group).collect()),
                 )
             });
             let entry = projection::entry(services.entry.current());
+            let active_projection = services.workspace.with_tabs(|tabs, active, groups| {
+                let tab = active.and_then(|id| tabs.iter().find(|tab| tab.id == id));
+                let group = tab
+                    .and_then(|tab| tab.group_id)
+                    .and_then(|id| groups.iter().find(|group| group.id == id))
+                    .map(|group| group.name.as_str());
+                projection::active(tab, group)
+            });
             let mut workspace = self.workspace.borrow_mut();
+            if workspace.active != active_projection {
+                workspace.active = active_projection;
+                workspace.active_changed();
+            }
             if workspace.tabs != tabs || workspace.active_tab_id != active || workspace.groups != groups {
                 workspace.tabs = tabs;
                 workspace.active_tab_id = active;
@@ -142,6 +164,10 @@ impl Driver {
             if workspace.entry != entry {
                 workspace.entry = entry;
                 workspace.entry_changed();
+            }
+            let created = workspace.created.take();
+            if let Some(group) = created {
+                workspace.group_created(group as i64);
             }
         }
     }

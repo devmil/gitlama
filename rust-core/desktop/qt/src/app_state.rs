@@ -16,6 +16,8 @@ mod app_state {
         pub(crate) startup: String,
         pub(crate) appearance: Value,
         pub platform: Value,
+        pub command_registry: Value,
+        pub(crate) shortcuts: Value,
     }
 
     impl Default for AppState {
@@ -25,6 +27,8 @@ mod app_state {
                 startup: "loading".into(),
                 appearance: Value::Null,
                 platform: Value::Null,
+                command_registry: Value::Null,
+                shortcuts: Value::Null,
             }
         }
     }
@@ -33,6 +37,8 @@ mod app_state {
         qproperty!("startup", Member = startup, Notify = startup_changed);
         qproperty!("appearance", Member = appearance, Notify = appearance_changed);
         qproperty!("platform", Member = platform, Notify = platform_changed);
+        qproperty!("commands", Member = command_registry, Notify = platform_changed);
+        qproperty!("shortcuts", Member = shortcuts, Notify = appearance_changed);
 
         #[qsignal]
         pub fn startup_changed(&mut self);

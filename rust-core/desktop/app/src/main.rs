@@ -80,6 +80,7 @@ fn main() {
     let state = Rc::new(RefCell::new(AppState::default()));
     AppState::attach_qobject(&state);
     state.borrow_mut().commands = Some(commands.clone());
+    state.borrow_mut().command_registry = gitlama_qt::command_registry();
     state.borrow_mut().platform = json!({
         "os": os_name(),
         "version": VERSION,

@@ -13,3 +13,8 @@ pub use app_state::AppState;
 pub use driver::{Driver, Pump};
 pub use plumbing::{Commands, PumpWaker};
 pub use workspace_state::WorkspaceState;
+
+/// The command registry as QML reads it.
+pub fn command_registry() -> serde_json::Value {
+    projection::commands()
+}
