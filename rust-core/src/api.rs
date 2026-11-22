@@ -92,25 +92,22 @@ pub fn child_process_start(
     executable: String,
     arguments: Vec<String>,
     environment: Vec<NativeEnvironmentVariable>,
-    sink: crate::frb_generated::StreamSink<NativeChildEvent>,
+    sink: crate::sink::StreamSink<NativeChildEvent>,
 ) {
     crate::child_process::start(executable, arguments, environment, sink);
 }
 
 /// Queues bytes for a child's standard input; false once it closed.
-#[flutter_rust_bridge::frb(sync)]
 #[must_use]
 pub fn child_process_write(child_id: u64, bytes: Vec<u8>) -> bool {
     crate::child_process::write(child_id, bytes)
 }
 
-#[flutter_rust_bridge::frb(sync)]
 pub fn child_process_close_stdin(child_id: u64) {
     crate::child_process::close_stdin(child_id);
 }
 
 /// Sends SIGTERM, or SIGKILL when `kill`, to a running child.
-#[flutter_rust_bridge::frb(sync)]
 #[must_use]
 pub fn child_process_signal(child_id: u64, kill: bool) -> bool {
     crate::child_process::signal(child_id, kill)
@@ -965,7 +962,6 @@ pub fn repository_session_lfs_pointer(
 
 /// The top-level `.gitignore` pattern that matches exactly this repository-relative path, or
 /// `None` when no ignore line can express it.
-#[flutter_rust_bridge::frb(sync)]
 #[must_use]
 pub fn ignore_exact_pattern(path: Vec<u8>, directory: bool) -> Option<String> {
     devmil_git::ignore::exact_pattern(&path, directory)
@@ -2503,7 +2499,7 @@ pub fn detach_native_diagnostics() {
 }
 /// Installs the Dart diagnostic availability hook. At most one notification is
 /// outstanding until the bounded native history is drained.
-pub fn watch_native_diagnostics(sink: crate::frb_generated::StreamSink<()>) {
+pub fn watch_native_diagnostics(sink: crate::sink::StreamSink<()>) {
     devmil_logging::install_hook(Some(std::sync::Arc::new(move || sink.add(()).is_ok())));
     devmil_logging::record("native.hook_ready", "INFO", &[], false);
 }

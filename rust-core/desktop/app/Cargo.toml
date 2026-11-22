@@ -1,0 +1,23 @@
+[package]
+name = "gitlama"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+publish = false
+description = "GitLama, a desktop Git client for Linux, macOS and Windows"
+build = "build.rs"
+
+[[bin]]
+name = "gitlama"
+path = "src/main.rs"
+
+[dependencies]
+gitlama_core = { workspace = true }
+gitlama-workbench = { workspace = true }
+gitlama-qt = { workspace = true }
+qtbridge = { workspace = true, features = ["serde_json"] }
+serde_json = { workspace = true }
+
+[build-dependencies]
+cc = "1"

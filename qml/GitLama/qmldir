@@ -1,0 +1,11 @@
+module GitLama
+singleton L10n 1.0 L10n.qml
+singleton Store 1.0 Store.qml
+singleton Layout 1.0 Layout.qml
+singleton GitColors 1.0 GitColors.qml
+CaptionBand 1.0 CaptionBand.qml
+HomeScreen 1.0 HomeScreen.qml
+LinuxResizeEdges 1.0 LinuxResizeEdges.qml
+StartupScreen 1.0 StartupScreen.qml
+WindowControls 1.0 WindowControls.qml
+WindowDragArea 1.0 WindowDragArea.qml

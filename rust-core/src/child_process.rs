@@ -4,7 +4,7 @@
 //! The Dart VM reaps every child of the process (`waitpid(-1)`) while any `dart:io` process
 //! runs, so a Git command the core starts at that time loses its exit status and looks failed.
 //! Starting these children here keeps every child owned and waited for by Rust.
-use crate::frb_generated::StreamSink;
+use crate::sink::StreamSink;
 pub use gitlama_contract::child_process::*;
 use std::collections::HashMap;
 use std::io::{Read, Write};
