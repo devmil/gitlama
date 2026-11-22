@@ -71,3 +71,4 @@ TransferFailureDialog 1.0 TransferFailureDialog.qml
 RefMutationDialog 1.0 RefMutationDialog.qml
 RefConfirmDialog 1.0 RefConfirmDialog.qml
 EditBranchDialog 1.0 EditBranchDialog.qml
+CommandShortcuts 1.0 CommandShortcuts.qml

@@ -162,6 +162,11 @@ Window {
         window: appWindow
     }
 
+    // Commands' keyboard shortcuts, once a repository can take them.
+    CommandShortcuts {
+        enabled: Store.app && Store.app.startup === "ready"
+    }
+
     LinuxResizeEdges {
         anchors.fill: parent
         visible: Store.drawsCaption && appWindow.visibility === Window.Windowed
