@@ -38,6 +38,55 @@ Item {
     property string dateFormat: "iso"
     property bool selectedHere: false
     property bool copied: false
+    /// A MeridianSelectionGlide paints this row's selection bar.
+    property bool glided: false
+
+    // ---------------------------------------------------------------- chips
+
+    /// The chips shown: {key, chip, arrived, leaving}; leaving chips keep their old place.
+    property var displayChips: []
+    property string _chipsRow: ""
+    property string _chipsSeen: ""
+    onChipsChanged: _updateChips()
+    onObjectIdChanged: _updateChips()
+    onLoadingChanged: _updateChips()
+    function _chipKey(chip) {
+        return chip.kind + "|" + chip.label
+    }
+    function _updateChips() {
+        const current = loading ? [] : (chips ?? [])
+        const seen = objectId + "\n" + JSON.stringify(current)
+        if (seen === _chipsSeen)
+            return
+        _chipsSeen = seen
+        const landing = motion !== null && motion.landingId === objectId
+        const sameRow = (_chipsRow === objectId || landing) && !Motion.reduced
+        const before = _chipsRow === objectId ? displayChips : []
+        _chipsRow = objectId
+        const shown = before.filter(item => !item.leaving).map(item => item.key)
+        const next = current.map(chip => {
+            const key = _chipKey(chip)
+            return { key: key, chip: chip, arrived: sameRow && shown.indexOf(key) < 0, leaving: false }
+        })
+        if (sameRow) {
+            const keys = next.map(item => item.key)
+            before.forEach((item, index) => {
+                if (keys.indexOf(item.key) < 0)
+                    next.splice(Math.min(index, next.length), 0, { key: item.key, chip: item.chip, arrived: false, leaving: true })
+            })
+        }
+        displayChips = next
+    }
+    function chipSettled(key) {
+        // Later rebuilds show the chip at rest.
+        for (const item of displayChips)
+            if (item.key === key)
+                item.arrived = false
+    }
+    function chipLeft(key) {
+        displayChips = displayChips.filter(item => !(item.leaving && item.key === key))
+            .map(item => ({ key: item.key, chip: item.chip, arrived: false, leaving: item.leaving }))
+    }
     /// The graph's motion (HistoryMotion), or null.
     property var motion: null
     /// Each increase tints the row once: a commit made here (after `commitTintDelay`, once per
@@ -49,7 +98,10 @@ Item {
     property int entranceOrder: 0
     property real _enter: 1
     property string _enteredKey: ""
-    Component.onCompleted: _enterOnce()
+    Component.onCompleted: {
+        _enterOnce()
+        _updateChips()
+    }
     onEntranceKeyChanged: _enterOnce()
     function _enterOnce() {
         if (entranceKey === _enteredKey)
@@ -123,6 +175,7 @@ Item {
         anchors.fill: parent
         radius: Theme.radius.sm
         color: entry.compared && !entry.shownSelected ? Theme.colors.accentSoft
+            : entry.shownSelected && entry.glided ? Theme.clear(Theme.colors.accentSoft)
             : entry.shownSelected ? Theme.colors.accentSoft
             : hover.hovered && !entry.loading ? Theme.colors.paneHover
             : Theme.clear(Theme.colors.paneHover)
@@ -193,7 +246,8 @@ Item {
         laneColors: entry.laneColors
         wipColor: Theme.colors.inkMuted
         conflictColor: Theme.colors.attention
-        nodeBackground: entry.shownSelected || entry.compared ? fill.color : Theme.colors.pane
+        nodeBackground: entry.shownSelected && entry.glided ? Theme.colors.accentSoft
+            : entry.shownSelected || entry.compared ? fill.color : Theme.colors.pane
         strongInk: Theme.colors.inkOnAccent
         faintColor: Theme.colors.inkFaint
         addedColor: Theme.colors.successBg
@@ -251,32 +305,78 @@ Item {
             kind: "head"
             detached: true
         }
+        // A chip that appears while the row shows pops in from `opacity-badge-leave-scale` on
+        // `spring-pop`; one that goes fades and shrinks away (NM-35). A row shown fresh (scrolled
+        // into view, recycled) shows its chips at rest, except the commit just made, whose
+        // chips arrive with it.
         Repeater {
-            model: entry.chips
-            delegate: Row {
-                id: chipRow
+            model: entry.displayChips
+            delegate: Item {
+                id: chipSlot
                 required property var modelData
+                readonly property var chip: modelData.chip
                 anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-                spacing: Theme.space.s1
-                RefChip {
-                    anchors.verticalCenter: parent.verticalCenter
-                    name: chipRow.modelData.label
-                    kind: chipRow.modelData.kind
-                    upstream: chipRow.modelData.upstream ?? ""
-                    lane: entry.graph ? entry.graph.lane : 0
-                    ahead: chipRow.modelData.ahead
-                    behind: chipRow.modelData.behind
-                    checks: chipRow.modelData.checks ?? ""
-                    TapHandler {
-                        onTapped: entry.activated(entry.objectId, false)
+                implicitWidth: modelData.leaving ? leavingLoader.implicitWidth : chipRow.implicitWidth
+                implicitHeight: chipRow.implicitHeight
+                width: implicitWidth
+                height: implicitHeight
+                Row {
+                    id: chipRow
+                    visible: !chipSlot.modelData.leaving
+                    spacing: Theme.space.s1
+                    scale: chipSlot.popScale
+                    RefChip {
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: chipSlot.chip.label
+                        kind: chipSlot.chip.kind
+                        upstream: chipSlot.chip.upstream ?? ""
+                        lane: entry.graph ? entry.graph.lane : 0
+                        ahead: chipSlot.chip.ahead
+                        behind: chipSlot.chip.behind
+                        checks: chipSlot.chip.checks ?? ""
+                        TapHandler {
+                            onTapped: entry.activated(entry.objectId, false)
+                        }
+                    }
+                    // A branch's pull request follows its chip.
+                    Loader {
+                        active: !!chipSlot.chip.pull
+                        visible: active
+                        anchors.verticalCenter: parent.verticalCenter
+                        sourceComponent: PullRequestChip { pull: chipSlot.chip.pull }
                     }
                 }
-                // A branch's pull request follows its chip.
+                property real popScale: 1
+                NumberAnimation {
+                    id: chipPop
+                    target: chipSlot
+                    property: "popScale"
+                    from: Metrics.opacityBadgeLeaveScale
+                    to: 1
+                    duration: Motion.pop.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Motion.pop.curve
+                    onFinished: entry.chipSettled(chipSlot.modelData.key)
+                }
+                Component.onCompleted: if (modelData.arrived) chipPop.start()
                 Loader {
-                    active: !!chipRow.modelData.pull
-                    visible: active
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: PullRequestChip { pull: chipRow.modelData.pull }
+                    id: leavingLoader
+                    active: chipSlot.modelData.leaving
+                    sourceComponent: MeridianRemovingRow {
+                        axis: MeridianReveal.Horizontal
+                        onRemoved: entry.chipLeft(chipSlot.modelData.key)
+                        Row {
+                            spacing: Theme.space.s1
+                            RefChip {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: chipSlot.chip.label
+                                kind: chipSlot.chip.kind
+                                lane: entry.graph ? entry.graph.lane : 0
+                                ahead: chipSlot.chip.ahead
+                                behind: chipSlot.chip.behind
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -333,12 +433,48 @@ Item {
                 MeridianTooltip { shown: authorHover.hovered; text: entry.author }
             }
         }
-        MeridianSwapText {
+        // A copied hash shows a drawn check and "Copied" for a moment (NM-34).
+        Item {
             width: entry.hashWidth
-            anchors.verticalCenter: parent.verticalCenter
-            role: entry.copied ? MeridianText.Caption : MeridianText.CodeSm
-            text: entry.copied ? L10n.t("historyHashCopied") : entry.objectId.substring(0, 10)
-            color: Theme.colors.inkMuted
+            height: parent.height
+            clip: true
+            MeridianSwap {
+                anchors.verticalCenter: parent.verticalCenter
+                swapKey: entry.copied
+                rise: Motion.riseOverlay
+                Item {
+                    implicitWidth: entry.copied ? copiedRow.implicitWidth : hashText.implicitWidth
+                    implicitHeight: Math.max(copiedRow.implicitHeight, hashText.implicitHeight)
+                    MeridianText {
+                        id: hashText
+                        visible: !entry.copied
+                        anchors.verticalCenter: parent.verticalCenter
+                        role: MeridianText.CodeSm
+                        text: entry.objectId.substring(0, 10)
+                        color: Theme.colors.inkMuted
+                    }
+                    Row {
+                        id: copiedRow
+                        visible: entry.copied
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.space.s1
+                        MeridianStrokeIcon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "check"
+                            iconSize: MeridianIcon.Small
+                            color: Theme.colors.inkMuted
+                            drawn: entry.copied
+                            duration: Metrics.successCheckDraw
+                        }
+                        MeridianText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: MeridianText.Caption
+                            text: L10n.t("historyHashCopied")
+                            color: Theme.colors.inkMuted
+                        }
+                    }
+                }
+            }
             HoverHandler { id: hashHover }
             TapHandler {
                 onTapped: {

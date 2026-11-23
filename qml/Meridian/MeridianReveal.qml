@@ -29,8 +29,10 @@ Item {
     readonly property Item _child: holder.children.length > 0 ? holder.children[0] : null
     readonly property real _childWidth: _child ? (_child.implicitWidth > 0 ? _child.implicitWidth : _child.width) : 0
     readonly property real _childHeight: _child ? (_child.implicitHeight > 0 ? _child.implicitHeight : _child.height) : 0
-    property real _factor: shown && !appear ? 1 : 0
-    property real _fade: shown && !appear ? 1 : 0
+    // Plain values, set once on creation: a binding here would jump to its end state
+    // before the animation that follows `shown` could run.
+    property real _factor: 1
+    property real _fade: 1
     readonly property int _sizeDuration: duration >= 0 ? (Motion.reduced ? 0 : duration) : Motion.layout
 
     implicitWidth: axis === MeridianReveal.Horizontal && !fadeOnly ? _childWidth * _factor : _childWidth
@@ -38,7 +40,14 @@ Item {
     clip: _factor < 1
     visible: _factor > 0 || _fade > 0
 
-    Component.onCompleted: if (shown && appear) _show()
+    Component.onCompleted: {
+        if (!shown || appear) {
+            _factor = 0
+            _fade = 0
+        }
+        if (shown && appear)
+            _show()
+    }
     onShownChanged: shown ? _show() : _hide()
 
     function _show() {

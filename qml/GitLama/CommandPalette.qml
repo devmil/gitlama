@@ -29,7 +29,27 @@ T.Popup {
 
     /// Increments with each opening: the rows enter once per opening (NH-6).
     property int openings: 0
-    function show() {
+    // NH-6: opened from the toolbar, the surface grows out of the palette button's rect and
+    // pill radius on `spring-snappy` while its content fades in after `paletteContentDelay`;
+    // closed without running a command it shrinks back over `motion-dialog`. Opened from the
+    // keyboard (or under reduce motion) it uses the dialog entrance.
+    property rect originRect: Qt.rect(0, 0, 0, 0)
+    readonly property bool morphing: originRect.width > 0 && !Motion.reduced
+    /// 0 at the button, 1 at the palette's own place.
+    property real morph: 1
+    property real contentOpacity: 1
+    property bool _ran: false
+    readonly property real _scaleX: morphing ? 1 + (originRect.width / Math.max(1, width) - 1) * (1 - morph) : 1
+    readonly property real _scaleY: morphing ? 1 + (originRect.height / Math.max(1, height) - 1) * (1 - morph) : 1
+    readonly property real _shiftX: morphing ? (originRect.x + originRect.width / 2 - (x + width / 2)) * (1 - morph) : 0
+    readonly property real _shiftY: morphing ? (originRect.y + originRect.height / 2 - (y + height / 2)) * (1 - morph) : 0
+    readonly property real _radius: morphing
+        ? (originRect.height / 2 * (1 - morph) + Theme.radius.lg * morph) / Math.max(0.01, Math.min(_scaleX, _scaleY))
+        : Theme.radius.lg
+
+    function show(origin) {
+        originRect = origin ? Qt.rect(origin.x, origin.y, origin.width, origin.height) : Qt.rect(0, 0, 0, 0)
+        _ran = false
         openings += 1
         query = ""
         field.text = ""
@@ -47,12 +67,14 @@ T.Popup {
         if (command.custom) {
             if (customReason.length > 0 || !Store.workflows)
                 return
+            _ran = true
             close()
             Store.workflows.runIntegration(command.id)
             return
         }
         if (reasonOf(command.id).length > 0)
             return
+        _ran = true
         close()
         run(command.id)
     }
@@ -76,19 +98,58 @@ T.Popup {
 
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.fade(Motion.dialog) }
-            NumberAnimation { property: "scale"; from: Motion.dialogEnterScale; to: 1; duration: Motion.dialog; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: commandPalette.morphing ? 0 : Motion.fade(Motion.dialog) }
+            NumberAnimation { property: "scale"; from: commandPalette.morphing ? 1 : Motion.dialogEnterScale; to: 1; duration: commandPalette.morphing ? 0 : Motion.dialog; easing.type: Easing.OutCubic }
+            NumberAnimation {
+                target: commandPalette; property: "morph"; from: commandPalette.morphing ? 0 : 1; to: 1
+                duration: !commandPalette.morphing ? 0 : Motion.snappy.duration
+                easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.snappy.curve
+            }
+            SequentialAnimation {
+                PropertyAction { target: commandPalette; property: "contentOpacity"; value: commandPalette.morphing ? 0 : 1 }
+                PauseAnimation { duration: commandPalette.morphing ? GitLamaLayout.paletteContentDelay : 0 }
+                NumberAnimation {
+                    target: commandPalette; property: "contentOpacity"; to: 1
+                    duration: commandPalette.morphing ? Motion.quick : 0
+                    easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard
+                }
+            }
         }
     }
     exit: Transition {
-        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Motion.fade(Motion.exit) }
+        ParallelAnimation {
+            // Shrinks back into the button unless a command ran; then it fades.
+            NumberAnimation {
+                target: commandPalette; property: "morph"; to: commandPalette.morphing && !commandPalette._ran ? 0 : 1
+                duration: commandPalette.morphing && !commandPalette._ran ? Motion.dialog : 0
+                easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.exitCurve
+            }
+            NumberAnimation {
+                target: commandPalette; property: "contentOpacity"; to: 0
+                duration: commandPalette.morphing && !commandPalette._ran ? Motion.exit : 0
+            }
+            NumberAnimation {
+                property: "opacity"; from: 1; to: 0
+                duration: commandPalette.morphing && !commandPalette._ran ? Motion.dialog : Motion.fade(Motion.exit)
+                easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.exitCurve
+            }
+        }
     }
 
     background: MeridianSurface {
-        radius: Theme.radius.lg
+        radius: commandPalette._radius
+        transform: [
+            Scale { origin.x: commandPalette.width / 2; origin.y: commandPalette.height / 2; xScale: commandPalette._scaleX; yScale: commandPalette._scaleY },
+            Translate { x: commandPalette._shiftX; y: commandPalette._shiftY }
+        ]
     }
 
     contentItem: Item {
+        opacity: commandPalette.contentOpacity
+        transform: [
+            Scale { origin.x: commandPalette.width / 2; origin.y: commandPalette.height / 2; xScale: commandPalette._scaleX; yScale: commandPalette._scaleY },
+            Translate { x: commandPalette._shiftX; y: commandPalette._shiftY }
+        ]
         Keys.onUpPressed: commandPalette.move(-1)
         Keys.onDownPressed: commandPalette.move(1)
         Keys.onReturnPressed: commandPalette.activate(commandPalette.selectedIndex)

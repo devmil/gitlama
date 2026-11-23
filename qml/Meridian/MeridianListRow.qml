@@ -41,7 +41,10 @@ T.ItemDelegate {
     readonly property bool solid: selected && islandFocused
     readonly property bool actionsShown: actionRow.children.length > 0
         && (hovered || activeFocus || actionRow.activeFocusInside)
-    readonly property color fillColor: solid ? Theme.colors.accent
+    /// A MeridianSelectionGlide paints this row's selected fill.
+    property bool selectionGlided: false
+    readonly property color fillColor: selected && selectionGlided ? Theme.clear(solid ? Theme.colors.accent : Theme.colors.accentSoft)
+        : solid ? Theme.colors.accent
         : selected ? Theme.colors.accentSoft
         : down ? Theme.pressed(Theme.colors.paneHover)
         : hovered ? Theme.colors.paneHover

@@ -212,6 +212,14 @@ QtObject {
     readonly property int refreshSpinDelay: Motion.spinnerDelay
     readonly property int stageWash: Motion.emphasized
     readonly property int copiedHold: 1200
+    /// How long a press on a Changes row holds before the row drags (Flutter's long press).
+    readonly property int longPressDrag: 500
+    /// The palette's content fades in this long after its surface starts growing (NH-6).
+    readonly property int paletteContentDelay: 60
+    /// Leaving Logbook rows start `motion-stagger` apart, bottom-up, at most this many steps.
+    readonly property int logbookLeaveStaggerMax: 5
+    /// A file row dragged to the other list stays behind at this opacity.
+    readonly property real opacityDragSource: 0.35
     readonly property int openStagger: 40
     readonly property int pullLanesDelay: 60
     readonly property int paletteMorph: 300
@@ -225,4 +233,5 @@ QtObject {
     readonly property int reconnectCountdownTick: 1000
     readonly property int remoteCheckSettle: 3000
     readonly property int screenshotSettle: 2500
+    readonly property int screenshotStepWait: 1200
 }

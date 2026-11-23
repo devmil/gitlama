@@ -231,6 +231,11 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
         "selectedStaged": selection.staged.len(),
         "disabled": changes.disabled_selection_commands(tab.id),
         "headObjectId": status.head_object_id,
+        // The last commit made in this repository: the staged list empties as it leaves.
+        "commitSequence": services
+            .commit
+            .last_committed(tab.canonical_identity())
+            .map_or(0, |committed| committed.sequence),
         "detail": {
             "identity": key.as_ref().map(|key| key.identity.clone()),
             "side": key.as_ref().map(|key| side_name(key.side)),

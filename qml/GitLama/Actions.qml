@@ -497,7 +497,7 @@ Item {
             archiveDestinationLazy.get().open()
             return
         }
-        case "showCommandPalette": commandPalette.show(); return
+        case "showCommandPalette": commandPalette.show(options.origin ?? null); return
         case "fetch":
         case "remoteFetch":
             Store.workflows.transfer("fetch", { initialRemote: options.initialName ?? null }); return

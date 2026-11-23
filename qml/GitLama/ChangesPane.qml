@@ -24,6 +24,47 @@ Item {
 
     signal command(string id, var options)
 
+    // What the Changes workflows ask of the lists on screen (Flutter: ChangesPane._effect): a
+    // move tells both lists which files leave and arrive and lets one file fly (NH-4); a
+    // failed action shakes its button.
+    property int mutationSequence: 0
+    property string mutationSource: ""
+    property var movingKeys: []
+    property string flightKey: ""
+    function sectionOf(side) {
+        return side === "staged" ? stagedSection : unstagedSection
+    }
+    Connections {
+        target: Store.changes
+        function onEffect(kind, payload) {
+            const data = JSON.parse(payload)
+            if (data.tab !== pane.paneState.tabId)
+                return
+            if (kind === "moveStarted") {
+                let flight = ""
+                if (data.single && data.keys.length === 1) {
+                    const key = data.keys[0]
+                    const source = pane.sectionOf(data.side)
+                    const destination = pane.sectionOf(data.side === "staged" ? "unstaged" : "staged")
+                    if (destination.willShow(key, source.pathOf(key)) && source.captureEntry(key))
+                        flight = key
+                }
+                pane.mutationSource = data.side
+                pane.movingKeys = data.keys
+                pane.flightKey = flight
+                pane.mutationSequence += 1
+            } else if (kind === "moveEnded") {
+                if (data.moved)
+                    return
+                pane.movingKeys = []
+                pane.flightKey = ""
+                pane.mutationSequence += 1
+            } else if (kind === "actionFailed") {
+                pane.sectionOf(data.side).showActionFailure(data.all === true)
+            }
+        }
+    }
+
     MeridianIsland {
         id: files
         width: pane.filesWidth
@@ -108,6 +149,10 @@ Item {
                     title: L10n.t("changesUnstaged")
                     model: Store.unstagedRows
                     paneState: pane.paneState
+                    mutationSequence: pane.mutationSequence
+                    mutationSource: pane.mutationSource
+                    movingKeys: pane.movingKeys
+                    flightKey: pane.flightKey
                 }
                 MeridianResizeHandle {
                     objectName: "changes-pane-splitter"
@@ -142,6 +187,11 @@ Item {
                     title: L10n.t("changesStaged")
                     model: Store.stagedRows
                     paneState: pane.paneState
+                    mutationSequence: pane.mutationSequence
+                    mutationSource: pane.mutationSource
+                    movingKeys: pane.movingKeys
+                    flightKey: pane.flightKey
+                    commitSequence: pane.paneState.commitSequence ?? 0
                 }
             }
 

@@ -1057,11 +1057,6 @@ impl Driver {
         let filter = self.changes.borrow().filter.borrow().clone();
         let collapsed = self.changes.borrow().collapsed.borrow().clone();
         let projection = crate::changes_state::project(&services, &filter, &collapsed);
-        self.unstaged_rows.borrow_mut().publish(projection.unstaged);
-        self.staged_rows.borrow_mut().publish(projection.staged);
-        self.working_diff
-            .borrow_mut()
-            .publish(services.working_detail.document());
         // The editor shows the active worktree's draft when the tab changes.
         let tab = services.workspace.active_tab();
         let tab_id = tab.as_ref().map_or(-1, |tab| tab.id as i64);
@@ -1080,6 +1075,7 @@ impl Driver {
             changes.state_changed();
         }
         for effect in effects {
+            use gitlama_contract::dto::NativeStagingScope;
             use gitlama_workbench::changes::{ChangesEffect, side_name};
             let (kind, payload) = match effect {
                 ChangesEffect::MoveStarted {
@@ -1094,9 +1090,13 @@ impl Driver {
                 ChangesEffect::MoveEnded { tab, moved } => {
                     ("moveEnded", serde_json::json!({"tab": tab, "moved": moved}))
                 }
-                ChangesEffect::ActionFailed { tab, side } => (
+                ChangesEffect::ActionFailed { tab, side, scope } => (
                     "actionFailed",
-                    serde_json::json!({"tab": tab, "side": side_name(side)}),
+                    serde_json::json!({
+                        "tab": tab,
+                        "side": side_name(side),
+                        "all": scope == NativeStagingScope::All,
+                    }),
                 ),
                 ChangesEffect::DiffSelectionRequested { tab, discard } => (
                     "diffSelectionRequested",
@@ -1105,5 +1105,13 @@ impl Driver {
             };
             changes.effect(kind.to_owned(), payload.to_string());
         }
+        drop(changes);
+        // The rows change after the state and the effects, so the lists know why a row
+        // leaves (a commit, a move) when it does.
+        self.unstaged_rows.borrow_mut().publish(projection.unstaged);
+        self.staged_rows.borrow_mut().publish(projection.staged);
+        self.working_diff
+            .borrow_mut()
+            .publish(services.working_detail.document());
     }
 }

@@ -67,9 +67,39 @@ FocusScope {
         color: Theme.colors.ground
     }
 
+    // Opening or closing a section reveals its rows (MM-24): they fade in over
+    // `motion-select` (out over `motion-exit`) while the rows below move over `motion-layout`.
+    // Only a toggle animates; refreshes and filtering change the list at once.
+    Timer {
+        id: revealWindow
+        interval: Motion.layout + Motion.exit + Motion.select
+    }
+    function setExpanded(key, expanded) {
+        if (!Motion.reduced)
+            revealWindow.restart()
+        Store.sidebar.setExpanded(key, expanded)
+    }
+    Transition {
+        id: revealIn
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.select; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
+    }
+    Transition {
+        id: revealOut
+        NumberAnimation { property: "opacity"; to: 0; duration: Motion.exit; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.exitCurve }
+    }
+    Transition {
+        id: revealMove
+        NumberAnimation { property: "y"; duration: Motion.layout; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
+        // A row displaced mid-fade finishes it.
+        NumberAnimation { property: "opacity"; to: 1; duration: Motion.select }
+    }
+
     ListView {
         id: list
         anchors.fill: parent
+        add: revealWindow.running ? revealIn : null
+        remove: revealWindow.running ? revealOut : null
+        displaced: revealWindow.running ? revealMove : null
         anchors.topMargin: Theme.space.s2
         anchors.bottomMargin: Theme.space.s2
         leftMargin: Theme.space.s3
@@ -177,7 +207,7 @@ FocusScope {
                     onToggled: {
                         if (!row.expanded && row.section === "addWorktree")
                             Store.sidebar.reloadWorktrees()
-                        Store.sidebar.setExpanded(row.section, !row.expanded)
+                        sidebar.setExpanded(row.section, !row.expanded)
                     }
                     onCommand: id => sidebar.command(id, ({}))
                 }
@@ -205,7 +235,7 @@ FocusScope {
                     required property var model
                     width: list.width - list.leftMargin - list.rightMargin
                     row: model ?? ({})
-                    onToggled: Store.sidebar.setExpanded(row.key, !row.expanded)
+                    onToggled: sidebar.setExpanded(row.key, !row.expanded)
                     onCommand: (id, options) => sidebar.command(id, options)
                 }
             }

@@ -13,6 +13,14 @@ Item {
     readonly property var paneState: Store.history ? (Store.history.state ?? ({})) : ({})
     readonly property var active: Store.workspace ? Store.workspace.active : null
     readonly property string selectedObjectId: active && active.selectedIdentity ? active.selectedIdentity : ""
+    /// The row of the single selected commit, whose selection bar glides between rows (NM-31);
+    /// -1 with several selected (their rows keep their own fills).
+    readonly property int glideIndex: {
+        void paneState
+        if ((paneState.selectedIds ?? []).length > 1 || selectedObjectId.length === 0)
+            return -1
+        return Store.historyRows.indexOf(selectedObjectId)
+    }
     readonly property string dateFormat: Store.appearance.dateFormat ?? "iso"
     signal command(string id, var options)
 
@@ -653,6 +661,11 @@ Item {
 
             MeridianWheelScroll { flickable: list }
             C.ScrollBar.vertical: MeridianScrollBar { viewHovered: listHover.hovered }
+            MeridianSelectionGlide {
+                view: list
+                itemExtent: Theme.size.row
+                selectedIndex: pane.glideIndex
+            }
 
             Keys.onPressed: event => {
                 const extend = (event.modifiers & Qt.ShiftModifier) !== 0
@@ -689,6 +702,7 @@ Item {
                 queryActive: pane.paneState.queryActive === true
                 dateFormat: pane.dateFormat
                 selectedHere: objectId === pane.selectedObjectId
+                glided: pane.glideIndex >= 0
                 motion: graphMotion
                 flashTrigger: objectId === pane.flashObjectId ? pane.flashSequence : 0
                 attentionTrigger: objectId === pane.attentionObjectId ? pane.attentionSequence : 0

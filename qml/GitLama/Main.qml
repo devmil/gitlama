@@ -135,6 +135,8 @@ Window {
         id: screenshot
         property string path
         property var steps: []
+        /// The wait after each step; `pace:<ms>` changes it, to capture motion mid-way.
+        property int pace: GitLamaLayout.screenshotStepWait
         interval: GitLamaLayout.screenshotSettle
         function start(request) {
             const parts = request.split(";")
@@ -148,8 +150,14 @@ Window {
                 const separator = step.indexOf(":")
                 const name = separator < 0 ? step : step.slice(0, separator)
                 const argument = separator < 0 ? "" : step.slice(separator + 1)
+                if (name === "pace") {
+                    pace = Number(argument)
+                    interval = 1
+                    restart()
+                    return
+                }
                 Store.screenshotStep(name, argument)
-                interval = 1200
+                interval = pace
                 restart()
                 return
             }

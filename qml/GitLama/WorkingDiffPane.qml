@@ -38,6 +38,20 @@ Rectangle {
 
     // Development screenshots: `diffRow:<index>` scrolls the diff to a row;
     // `stageHunk:<n>` stages (or unstages) the n-th hunk.
+    // Stage, unstage and Discard act on the lines selected here (Space, Delete, the lists'
+    // selection commands while lines are selected).
+    Connections {
+        target: Store.changes
+        function onEffect(kind, payload) {
+            if (kind !== "diffSelectionRequested")
+                return
+            const data = JSON.parse(payload)
+            if (data.tab !== pane.paneState.tabId)
+                return
+            // After the effect's delivery, which runs inside the Changes projection.
+            Qt.callLater(() => data.discard ? Store.changes.discardRows() : Store.changes.stageRows())
+        }
+    }
     Connections {
         target: Store
         function onScreenshotStepRequested(name, argument) {

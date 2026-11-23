@@ -189,7 +189,8 @@ Item {
             tooltip: Commands.shortcutLabel("showCommandPalette").length > 0
                      ? L10n.t("commandPaletteShortcutTooltip", [Commands.shortcutLabel("showCommandPalette")])
                      : L10n.t("commandPaletteTitle")
-            onClicked: toolbar.command("showCommandPalette", {})
+            // The palette grows out of this button (NH-6).
+            onClicked: toolbar.command("showCommandPalette", { origin: paletteToolbarButton.mapToItem(null, 0, 0, width, height) })
         }
     }
 

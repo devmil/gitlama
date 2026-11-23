@@ -20,6 +20,8 @@ Item {
     signal clicked()
     signal doubleClicked()
     signal contextMenuRequested(real x, real y)
+    /// A press held for `longPressDrag`: the row's file can be dragged from anywhere on it.
+    signal longPressed()
     /// The folder's chevron was tapped (folding never selects).
     signal folderToggled()
     /// A folder row shows an open or closed folder after its chevron.
@@ -164,6 +166,8 @@ Item {
             row.clicked()
         }
         onDoubleTapped: row.doubleClicked()
+        longPressThreshold: GitLamaLayout.longPressDrag / 1000
+        onLongPressed: row.longPressed()
     }
     TapHandler {
         acceptedButtons: Qt.RightButton

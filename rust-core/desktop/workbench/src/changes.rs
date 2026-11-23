@@ -243,9 +243,11 @@ pub enum ChangesEffect {
         tab: u64,
         moved: bool,
     },
+    /// A staging action failed: its button shakes (`scope` says which one).
     ActionFailed {
         tab: u64,
         side: NativeStagingSide,
+        scope: NativeStagingScope,
     },
     DiffSelectionRequested {
         tab: u64,
@@ -899,13 +901,13 @@ impl ChangesService {
                         self.follow_move(tab, &status, side, &intent.entries, next);
                     }
                 } else {
-                    self.effect(ChangesEffect::ActionFailed { tab, side });
+                    self.effect(ChangesEffect::ActionFailed { tab, side, scope });
                 }
                 self.report_staging(state, diagnostic);
                 state == NativeStagingExecutionState::Completed
             }
             Err(code) => {
-                self.effect(ChangesEffect::ActionFailed { tab, side });
+                self.effect(ChangesEffect::ActionFailed { tab, side, scope });
                 self.report_failure(code, "stagingFailed");
                 false
             }

@@ -55,14 +55,29 @@ Item {
     // Dragging files to the other list: the drag
     // label follows the pointer over the window; dropping on the other
     // list stages or unstages them.
+    /// The keys being dragged from this list; their rows stay behind faded.
+    property var draggingKeys: []
     function startDrag(keys, item, position) {
         const window = owner.Window.contentItem
         dragProxy.parent = window
         dragProxy.keys = keys
+        draggingKeys = keys
         dragProxy.side = side
         moveDrag(item, position)
         dragProxy.visible = true
         dragProxy.Drag.active = true
+    }
+    /// The row dragged after a long press, or null.
+    property Item longDragRow: null
+    function startLongDrag(row, position) {
+        longDragRow = row
+        list.interactive = false
+        startDrag(row.actionRows.map(entry => entry.key), row, position)
+    }
+    function endLongDrag() {
+        longDragRow = null
+        list.interactive = true
+        endDrag()
     }
     function moveDrag(item, position) {
         const at = item.mapToItem(dragProxy.parent, position.x, position.y)
@@ -75,31 +90,39 @@ Item {
         dragProxy.Drag.drop()
         dragProxy.Drag.active = false
         dragProxy.visible = false
+        draggingKeys = []
     }
-    Rectangle {
+    // The label under the pointer, lifted (MeridianLift).
+    Item {
         id: dragProxy
         objectName: "changes-drag-label"
         property var keys: []
         property string side: ""
         visible: false
         z: 1000
-        width: dragLabel.implicitWidth + 2 * Theme.space.s4
-        height: dragLabel.implicitHeight + 2 * Theme.space.s3
-        radius: Theme.radius.md
-        color: Theme.colors.pane
-        border.width: Metrics.hairline
-        border.color: Theme.colors.line
+        width: dragLift.implicitWidth
+        height: dragLift.implicitHeight
         Drag.keys: ["gitlama/changes"]
         Drag.source: owner
         Drag.dragType: Drag.Internal
-        MeridianShadow { anchors.fill: parent; layers: Theme.shadows.float; radius: parent.radius; z: -1 }
-        MeridianText {
-            id: dragLabel
-            anchors.centerIn: parent
-            role: MeridianText.Label
-            text: dragProxy.side === "unstaged"
-                ? L10n.tn("changesDragStageCount", { count: dragProxy.keys.length })
-                : L10n.tn("changesDragUnstageCount", { count: dragProxy.keys.length })
+        MeridianLift {
+            id: dragLift
+            lifted: dragProxy.visible
+            radius: Theme.radius.md
+            Rectangle {
+                implicitWidth: dragLabel.implicitWidth + 2 * Theme.space.s4
+                implicitHeight: dragLabel.implicitHeight + 2 * Theme.space.s3
+                radius: Theme.radius.md
+                color: Theme.colors.raised
+                MeridianText {
+                    id: dragLabel
+                    anchors.centerIn: parent
+                    role: MeridianText.Label
+                    text: dragProxy.side === "unstaged"
+                        ? L10n.tn("changesDragStageCount", { count: dragProxy.keys.length })
+                        : L10n.tn("changesDragUnstageCount", { count: dragProxy.keys.length })
+                }
+            }
         }
     }
     // Files dragged from the other list land here.
@@ -212,7 +235,93 @@ Item {
         } : null, fileActionHost, item, x, y)
     }
 
-    Component.onCompleted: Store.changesSections[side] = owner
+    // ---------------------------------------------------------------- motion
+
+    // What the pane passes on from the Changes workflows (ChangesPane): each move names the
+    // list its files leave, their keys and the one file that flies to the other list (NH-4).
+    property int mutationSequence: 0
+    property string mutationSource: ""
+    property var movingKeys: []
+    property string flightKey: ""
+    /// The last commit in this repository: the staged rows leave as it does.
+    property int commitSequence: 0
+    property var _leavingKeys: []
+    property bool _commitLeaving: false
+    property int _seenCommit: -1
+    property int _arrivals: 0
+    /// Rows still fading out; the empty state waits for them.
+    property int leavingRows: 0
+    onMutationSequenceChanged: {
+        _leavingKeys = mutationSource === side ? movingKeys : []
+        _arrivals = 0
+    }
+    onCommitSequenceChanged: {
+        if (!unstaged && _seenCommit >= 0 && commitSequence > _seenCommit)
+            _commitLeaving = true
+        _seenCommit = commitSequence
+    }
+    /// Whether the row `key` the list just removed leaves visibly (fading and collapsing):
+    /// a committed staged file, or a file moving to the other list.
+    function leaves(key) {
+        const leaving = _commitLeaving || _leavingKeys.indexOf(key) >= 0
+        if (leaving)
+            Qt.callLater(owner._settleLeaving)
+        return leaving
+    }
+    function _settleLeaving() {
+        _commitLeaving = false
+        _leavingKeys = []
+    }
+    /// Whether the row `key` the list just added came from the other list.
+    function arrives(key) {
+        return mutationSource.length > 0 && mutationSource !== side && movingKeys.indexOf(key) >= 0
+    }
+    function nextArrival() {
+        return _arrivals++
+    }
+    /// Records row `key`'s place and image before it moves to the other list.
+    function captureEntry(key) {
+        const item = list.itemAtIndex(model.indexOf(key))
+        if (!item)
+            return false
+        item.capture()
+        return true
+    }
+    /// Whether a file at `path` arriving here would land in view.
+    function willShow(key, path) {
+        if (model.indexOf(key) >= 0)
+            return false
+        let index = 0
+        for (let i = 0; i < model.count(); ++i) {
+            const row = model.get(i)
+            if (row && (row.path ?? "") < path)
+                index = i + 1
+        }
+        const top = index * Theme.size.row
+        return top + Theme.size.row > list.contentY && top < list.contentY + list.height
+    }
+    /// The path of row `key`, or "".
+    function pathOf(key) {
+        const row = model.get(model.indexOf(key))
+        return row ? (row.path ?? "") : ""
+    }
+
+    // A failed stage or unstage shakes its button: the selection's or the list's.
+    property int _selectedFailures: 0
+    property int _allFailures: 0
+    function showActionFailure(all) {
+        if (all)
+            _allFailures += 1
+        else
+            _selectedFailures += 1
+    }
+    MeridianShake { id: selectedShake; trigger: owner._selectedFailures; width: 0; height: 0 }
+    MeridianShake { id: allShake; trigger: owner._allFailures; width: 0; height: 0 }
+
+    Component.onCompleted: {
+        Store.changesSections[side] = owner
+        _seenCommit = commitSequence
+    }
     // Development screenshots: `dragFile:<index>` drags row `index` of the
     // unstaged list onto the staged one (`hold` keeps it over the target).
     Connections {
@@ -372,6 +481,7 @@ Item {
             MeridianIconButton {
                 text: owner.unstaged ? L10n.t("stageSelected") : L10n.t("unstageSelected")
                 iconName: owner.unstaged ? "arrow-down" : "arrow-up"
+                transform: Translate { x: selectedShake.offset }
                 controlSize: MeridianButton.Small
                 enabled: (!owner.busy || owner.paneState.canQueue === true) && owner.selectedCount > 0
                 onClicked: Store.changes.stageFiles(owner.side, owner.selectedKeys())
@@ -381,6 +491,7 @@ Item {
                 text: owner.unstaged ? (owner.filtering ? L10n.t("stageShown") : L10n.t("stageAll"))
                                      : (owner.filtering ? L10n.t("unstageShown") : L10n.t("unstageAll"))
                 iconName: owner.unstaged ? "stage-all" : "unstage-all"
+                transform: Translate { x: allShake.offset }
                 controlSize: MeridianButton.Small
                 enabled: !owner.busy && owner.shown > 0
                 onClicked: Store.changes.stageAll(owner.side)
@@ -393,6 +504,7 @@ Item {
                 text: owner.filtering ? (owner.unstaged ? L10n.t("stageShortShown") : L10n.t("unstageShortShown")) : allLabel
                 tooltip: allLabel
                 iconName: owner.unstaged ? "stage-all" : "unstage-all"
+                transform: Translate { x: allShake.offset }
                 controlSize: MeridianButton.Small
                 variant: owner.unstaged ? MeridianButton.Secondary : MeridianButton.Quiet
                 enabled: !owner.busy && owner.shown > 0
@@ -441,110 +553,179 @@ Item {
             }
         }
 
-        delegate: FileRow {
-            id: fileRow
+        // A row that leaves (a committed file, a file moving away) fades and collapses; one that
+        // comes from the other list enters, or lands from its flight (NH-4) with a tint.
+        delegate: Item {
+            id: slot
             required property int index
             required property var model
             readonly property string key: model.key ?? ""
-            readonly property bool pending: model.pending === true
+            /// The move this row arrived with, or 0.
+            property int arrival: 0
+            property int arrivalOrder: 0
+            readonly property bool flown: arrival > 0 && key === owner.flightKey
             width: list.width - list.leftMargin - list.rightMargin
-            path: model.label ?? model.path ?? ""
-            depth: model.depth ?? 0
-            folder: model.directory === true
-            folderIcon: true
-            expanded: model.expanded === true
-            showDirectory: !owner.tree
-            status: model.status ?? ""
-            partial: model.partial === true
-            selected: model.selected === true
-            opacity: pending ? 0.5 : 1
-            activeFocusOnTab: false
-            onClicked: {
-                list.forceActiveFocus()
-                owner.selectRow(fileRow.index, fileRow.modifiers)
+            height: leaving.implicitHeight
+
+            function capture() {
+                travel.capture()
             }
-            onDoubleClicked: if (!folder) Store.changes.stageFiles(owner.side, [fileRow.key])
-            onFolderToggled: Store.changes.toggleFolder(owner.side, model.path)
-            onContextMenuRequested: (x, y) => owner.showFileMenu(fileRow.index, fileRow, x, y)
-            // The rows an action on this one affects: the selection when the
-            // row belongs to a multiple selection.
-            readonly property var actionRows: model.selected === true && owner.selectedCount > 1
-                ? owner.rowsOf(owner.selectedKeys()) : [model]
-            readonly property bool discardShown: owner.unstaged && actionRows.length > 0 && actionRows.every(entry => entry.discardable === true)
-            readonly property bool cleanOnly: actionRows.every(entry => entry.untracked === true)
-            trailing: folder ? null : rowActions
-            Component {
-                id: rowActions
-                Row {
-                    spacing: Theme.space.s1
-                    // Stage (or unstage) and discard on hover.
-                    MeridianIconButton {
-                        visible: rowHover.hovered || fileRow.activeFocus
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: fileRow.actionRows.length > 1
-                            ? (owner.unstaged ? L10n.t("stageSelected") : L10n.t("unstageSelected"))
-                            : (owner.unstaged ? L10n.t("stageFile") : L10n.t("unstageFile"))
-                        iconName: owner.unstaged ? "arrow-down" : "arrow-up"
-                        controlSize: MeridianButton.Small
-                        enabled: (!owner.busy || owner.paneState.canQueue === true)
-                            && !fileRow.actionRows.every(entry => entry.pending === true)
-                        onClicked: Store.changes.stageFiles(owner.side, fileRow.actionRows.map(entry => entry.key))
-                    }
-                    MeridianIconButton {
-                        visible: (rowHover.hovered || fileRow.activeFocus) && fileRow.discardShown
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: fileRow.cleanOnly
-                            ? (fileRow.actionRows.length > 1 ? L10n.t("cleanSelected") : L10n.t("cleanFile"))
-                            : (fileRow.actionRows.length > 1 ? L10n.t("discardSelected") : L10n.t("discardFile"))
-                        iconName: "undo"
-                        controlSize: MeridianButton.Small
-                        enabled: !owner.busy
-                        onClicked: Store.changes.discardFiles(fileRow.actionRows.map(entry => entry.key))
-                    }
-                    // Queued work spins; otherwise the grip drags the file to
-                    // the other list.
-                    MeridianSpinner {
-                        visible: fileRow.pending
-                        anchors.verticalCenter: parent.verticalCenter
-                        Accessible.name: L10n.t("stagingPendingFile")
-                    }
-                    Item {
-                        id: grip
-                        visible: !fileRow.pending
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Theme.size.iconSmall + 2 * Theme.space.s2
-                        height: width
-                        MeridianIcon {
-                            anchors.centerIn: parent
-                            name: "grip-vertical"
-                            iconSize: MeridianIcon.Small
-                            color: Theme.colors.inkMuted
-                        }
-                        HoverHandler { id: gripHover; cursorShape: Qt.OpenHandCursor }
-                        MeridianTooltip {
-                            text: L10n.t("dragChangeToOtherList")
-                            shown: gripHover.hovered && !gripDrag.active
-                        }
-                        DragHandler {
-                            id: gripDrag
-                            target: null
-                            enabled: !owner.busy || owner.paneState.canQueue === true
-                            onActiveChanged: {
-                                if (active)
-                                    owner.startDrag(fileRow.actionRows.map(entry => entry.key), grip, centroid.position)
-                                else
-                                    owner.endDrag()
+
+            ListView.onAdd: {
+                if (owner.arrives(key)) {
+                    arrivalOrder = owner.nextArrival()
+                    arrival = owner.mutationSequence
+                }
+            }
+            ListView.onRemove: {
+                if (owner.leaves(key)) {
+                    slot.ListView.delayRemove = true
+                    owner.leavingRows += 1
+                    leaving.start()
+                }
+            }
+            ListView.onReused: arrival = 0
+
+            // Pressed anywhere: a long press drags the row's files (the grip drags at once).
+            PointHandler {
+                id: pointer
+                onPointChanged: if (owner.longDragRow === fileRow) owner.moveDrag(fileRow, point.position)
+                onActiveChanged: if (!active && owner.longDragRow === fileRow) owner.endLongDrag()
+            }
+
+            MeridianRemovingRow {
+                id: leaving
+                width: slot.width
+                autoStart: false
+                onRemoved: {
+                    owner.leavingRows -= 1
+                    slot.ListView.delayRemove = false
+                }
+                MeridianEntrance {
+                    implicitWidth: slot.width
+                    entranceKey: slot.arrival > 0 && !slot.flown
+                        ? "stage-arrival|" + owner.side + "|" + slot.key + "|" + slot.arrival : ""
+                    order: slot.arrivalOrder
+                    MeridianTravel {
+                        id: travel
+                        implicitWidth: slot.width
+                        travelKey: "changes-file|" + slot.key
+                        radius: Theme.radius.sm
+                FileRow {
+                            id: fileRow
+                            readonly property int index: slot.index
+                            readonly property var model: slot.model
+                            readonly property string key: slot.key
+                            readonly property bool pending: model.pending === true
+                            width: slot.width
+                            path: model.label ?? model.path ?? ""
+                            depth: model.depth ?? 0
+                            folder: model.directory === true
+                            folderIcon: true
+                            expanded: model.expanded === true
+                            showDirectory: !owner.tree
+                            status: model.status ?? ""
+                            partial: model.partial === true
+                            selected: model.selected === true
+                            opacity: pending ? 0.5 : owner.draggingKeys.indexOf(key) >= 0 ? GitLamaLayout.opacityDragSource : 1
+                            onLongPressed: if (!folder && gripEnabled) owner.startLongDrag(fileRow, pointer.point.position)
+                            readonly property bool gripEnabled: !pending && (!owner.busy || owner.paneState.canQueue === true)
+                            activeFocusOnTab: false
+                            onClicked: {
+                                list.forceActiveFocus()
+                                owner.selectRow(fileRow.index, fileRow.modifiers)
                             }
-                            onCentroidChanged: if (active) owner.moveDrag(grip, centroid.position)
+                            onDoubleClicked: if (!folder) Store.changes.stageFiles(owner.side, [fileRow.key])
+                            onFolderToggled: Store.changes.toggleFolder(owner.side, model.path)
+                            onContextMenuRequested: (x, y) => owner.showFileMenu(fileRow.index, fileRow, x, y)
+                            // The rows an action on this one affects: the selection when the
+                            // row belongs to a multiple selection.
+                            readonly property var actionRows: model.selected === true && owner.selectedCount > 1
+                                ? owner.rowsOf(owner.selectedKeys()) : [model]
+                            readonly property bool discardShown: owner.unstaged && actionRows.length > 0 && actionRows.every(entry => entry.discardable === true)
+                            readonly property bool cleanOnly: actionRows.every(entry => entry.untracked === true)
+                            trailing: folder ? null : rowActions
+                            Component {
+                                id: rowActions
+                                Row {
+                                    spacing: Theme.space.s1
+                                    // Stage (or unstage) and discard on hover.
+                                    MeridianIconButton {
+                                        visible: rowHover.hovered || fileRow.activeFocus
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: fileRow.actionRows.length > 1
+                                            ? (owner.unstaged ? L10n.t("stageSelected") : L10n.t("unstageSelected"))
+                                            : (owner.unstaged ? L10n.t("stageFile") : L10n.t("unstageFile"))
+                                        iconName: owner.unstaged ? "arrow-down" : "arrow-up"
+                                        controlSize: MeridianButton.Small
+                                        enabled: (!owner.busy || owner.paneState.canQueue === true)
+                                            && !fileRow.actionRows.every(entry => entry.pending === true)
+                                        onClicked: Store.changes.stageFiles(owner.side, fileRow.actionRows.map(entry => entry.key))
+                                    }
+                                    MeridianIconButton {
+                                        visible: (rowHover.hovered || fileRow.activeFocus) && fileRow.discardShown
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: fileRow.cleanOnly
+                                            ? (fileRow.actionRows.length > 1 ? L10n.t("cleanSelected") : L10n.t("cleanFile"))
+                                            : (fileRow.actionRows.length > 1 ? L10n.t("discardSelected") : L10n.t("discardFile"))
+                                        iconName: "undo"
+                                        controlSize: MeridianButton.Small
+                                        enabled: !owner.busy
+                                        onClicked: Store.changes.discardFiles(fileRow.actionRows.map(entry => entry.key))
+                                    }
+                                    // Queued work spins; otherwise the grip drags the file to
+                                    // the other list.
+                                    MeridianSpinner {
+                                        visible: fileRow.pending
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        Accessible.name: L10n.t("stagingPendingFile")
+                                    }
+                                    Item {
+                                        id: grip
+                                        visible: !fileRow.pending
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: Theme.size.iconSmall + 2 * Theme.space.s2
+                                        height: width
+                                        MeridianIcon {
+                                            anchors.centerIn: parent
+                                            name: "grip-vertical"
+                                            iconSize: MeridianIcon.Small
+                                            color: Theme.colors.inkMuted
+                                        }
+                                        HoverHandler { id: gripHover; cursorShape: Qt.OpenHandCursor }
+                                        MeridianTooltip {
+                                            text: L10n.t("dragChangeToOtherList")
+                                            shown: gripHover.hovered && !gripDrag.active
+                                        }
+                                        DragHandler {
+                                            id: gripDrag
+                                            target: null
+                                            enabled: !owner.busy || owner.paneState.canQueue === true
+                                            onActiveChanged: {
+                                                if (active)
+                                                    owner.startDrag(fileRow.actionRows.map(entry => entry.key), grip, centroid.position)
+                                                else
+                                                    owner.endDrag()
+                                            }
+                                            onCentroidChanged: if (active) owner.moveDrag(grip, centroid.position)
+                                        }
+                                    }
+                                }
+                            }
+                            HoverHandler { id: rowHover }
                         }
                     }
                 }
             }
-            HoverHandler { id: rowHover }
+            MeridianAttention {
+                anchors.fill: parent
+                trigger: slot.flown ? slot.arrival : 0
+                memoryKey: "stage-flight|" + slot.key
+            }
         }
 
         MeridianEmptyState {
-            visible: owner.shown === 0
+            visible: owner.shown === 0 && owner.leavingRows === 0
             anchors.fill: parent
             compact: true
             title: owner.filtering && owner.total > 0 ? L10n.t("changesFilterNoMatches") : L10n.t("stagingEmpty")

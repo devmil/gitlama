@@ -194,235 +194,220 @@ MeridianDialog {
                     // into this commit.
                     DropArea {
                         id: squashTarget
-                        anchors.fill: card
+                        anchors.fill: cardLift
                         keys: ["gitlama/rebase-instruction"]
                         onEntered: drag => drag.accepted = drag.source !== null && dialog.draggedInstruction(drag.source) !== row.instructionId
                         onDropped: drop => dialog.squashOnto(dialog.draggedInstruction(drop.source), row.instructionId)
                     }
 
-                    Rectangle {
-                        id: card
+                    // The row lifts while its grip drags it (NM-70).
+                    MeridianLift {
+                        id: cardLift
                         width: parent.width
-                        height: content.height
+                        height: card.height
+                        lifted: grip.drag.active
                         radius: Theme.radius.lg
-                        color: squashTarget.containsDrag ? Theme.colors.accentSoft : Theme.colors.paneAlt
-                        Behavior on color { ColorAnimation { duration: Motion.quick } }
-                        FocusScope {
-                            id: rowFocus
-                            anchors.fill: parent
-                            activeFocusOnTab: true
-                            onActiveFocusChanged: if (activeFocus) dialog.selectedId = row.instructionId
-                            Keys.onPressed: event => event.accepted = row.keyAction(event)
-                        }
-                        MeridianFocusRing { target: card; shown: rowFocus.activeFocus; targetRadius: Theme.radius.lg }
-
-                        // The connector from the commit above into a squash.
-                        Canvas {
-                            id: connector
-                            property real progress: row.joined ? 1 : 0
-                            Behavior on progress { NumberAnimation { duration: GitLamaLayout.laneDrawRow; easing.type: Easing.OutCubic } }
-                            width: GitLamaLayout.rebaseIndent
-                            height: parent.height
-                            visible: progress > 0
-                            onProgressChanged: requestPaint()
-                            onHeightChanged: requestPaint()
-                            onPaint: {
-                                const ctx = getContext("2d")
-                                ctx.reset()
-                                ctx.strokeStyle = Theme.colors.accent
-                                ctx.lineWidth = Metrics.hairline
-                                const h = height
-                                const w = width
-                                // Draw the path up to `progress` of its length.
-                                const steps = 24
-                                const end = Math.round(steps * progress)
-                                ctx.beginPath()
-                                ctx.moveTo(0.5, 0)
-                                for (let i = 1; i <= end; ++i) {
-                                    const t = i / steps
-                                    if (t <= 0.5) {
-                                        ctx.lineTo(0.5, h * t)
-                                    } else {
-                                        const u = (t - 0.5) * 2
-                                        // Quadratic from (0, h/2) via (0, .75h) to (w, .75h).
-                                        const x = 2 * (1 - u) * u * 0 + u * u * w
-                                        const y = (1 - u) * (1 - u) * h * 0.5 + 2 * (1 - u) * u * h * 0.75 + u * u * h * 0.75
-                                        ctx.lineTo(Math.max(0.5, x), y)
-                                    }
-                                }
-                                ctx.stroke()
+                        Rectangle {
+                            id: card
+                            width: cardLift.width
+                            height: content.height
+                            radius: Theme.radius.lg
+                            color: squashTarget.containsDrag ? Theme.colors.accentSoft : Theme.colors.paneAlt
+                            Behavior on color { ColorAnimation { duration: Motion.quick } }
+                            FocusScope {
+                                id: rowFocus
+                                anchors.fill: parent
+                                activeFocusOnTab: true
+                                onActiveFocusChanged: if (activeFocus) dialog.selectedId = row.instructionId
+                                Keys.onPressed: event => event.accepted = row.keyAction(event)
                             }
-                        }
+                            MeridianFocusRing { target: card; shown: rowFocus.activeFocus; targetRadius: Theme.radius.lg }
 
-                        Column {
-                            id: content
-                            property real indent: row.joined ? GitLamaLayout.rebaseIndent : Theme.space.s4
-                            Behavior on indent { NumberAnimation { duration: Motion.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.snappy.curve } }
-                            x: indent
-                            width: card.width - indent - Theme.space.s4
-                            bottomPadding: row.action === "reword" ? Theme.space.s4 : 0
-                            Item {
-                                width: parent.width
-                                height: Theme.size.row
+                            // The connector from the commit above into a squash draws in (NM-71).
+                            MeridianStroke {
+                                id: connector
+                                property real draw: row.joined ? 1 : 0
+                                Behavior on draw { NumberAnimation { duration: GitLamaLayout.laneDrawRow; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard } }
+                                width: GitLamaLayout.rebaseIndent
+                                height: parent.height
+                                progress: draw
+                                color: Theme.colors.accent
+                                strokeWidth: Metrics.hairline
+                                pathData: "M 0.5 0 L 0.5 " + height / 2 + " Q 0.5 " + height * 0.75 + " " + width + " " + height * 0.75
+                            }
+
+                            Column {
+                                id: content
+                                property real indent: row.joined ? GitLamaLayout.rebaseIndent : Theme.space.s4
+                                Behavior on indent { NumberAnimation { duration: Motion.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.snappy.curve } }
+                                x: indent
+                                width: card.width - indent - Theme.space.s4
+                                bottomPadding: row.action === "reword" ? Theme.space.s4 : 0
                                 Item {
-                                    id: grip
-                                    readonly property alias drag: gripDrag
-                                    width: Theme.size.controlSmall
-                                    height: Theme.size.controlSmall
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    MeridianIcon { anchors.centerIn: parent; name: "grip-vertical"; iconSize: MeridianIcon.Small; color: Theme.colors.inkMuted }
-                                    HoverHandler { id: gripHover; cursorShape: Qt.OpenHandCursor }
-                                    MeridianTooltip { text: L10n.t("rebaseDragToReorder"); shown: gripHover.hovered && !gripDrag.active }
-                                    // Reorders by the row's place under the pointer.
-                                    DragHandler {
-                                        id: gripDrag
-                                        target: null
-                                        yAxis.enabled: true
-                                        xAxis.enabled: false
-                                        cursorShape: Qt.ClosedHandCursor
-                                        onCentroidChanged: {
-                                            if (!active)
-                                                return
-                                            const point = grip.mapToItem(list.contentItem, centroid.position.x, centroid.position.y)
-                                            const target = list.indexAt(10, point.y)
-                                            if (target >= 0 && target !== row.index)
-                                                dialog.move(row.index, target)
-                                        }
-                                    }
-                                }
-                                MeridianSelect {
-                                    id: actionSelect
-                                    x: grip.width + Theme.space.s2
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    fixedWidth: GitLamaLayout.rebaseActionWidth
-                                    animateValue: true
-                                    label: L10n.t("rebaseEditorTitle")
-                                    values: dialog.actionNames
-                                    value: row.action
-                                    valueLabel: v => dialog.actionLabel(v)
-                                    onActivated: v => dialog.setAction(row.index, v)
-                                }
-                                MeridianText {
-                                    id: oidText
-                                    x: actionSelect.x + actionSelect.width + Theme.space.s4
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    role: MeridianText.CodeSm
-                                    color: Theme.colors.inkMuted
-                                    text: row.oid.substring(0, 8)
-                                }
-                                Item {
-                                    id: subjectBox
-                                    x: oidText.x + oidText.width + Theme.space.s4
-                                    width: tools.x - x - (badge.visible ? badge.width + 2 * Theme.space.s3 : 0)
-                                    height: parent.height
-                                    property real strike: row.dropped ? 1 : 0
-                                    Behavior on strike { NumberAnimation { duration: Motion.quick } }
-                                    MeridianText {
-                                        id: subjectText
-                                        width: Math.min(implicitWidth, parent.width)
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: row.subject
-                                        opacity: 1 - (1 - GitLamaLayout.opacityIgnoredRow) * subjectBox.strike
-                                    }
-                                    // The strike ends with the (elided) subject, not the row.
-                                    Rectangle {
-                                        visible: subjectBox.strike > 0
-                                        anchors.verticalCenter: subjectText.verticalCenter
-                                        width: subjectText.width * subjectBox.strike
-                                        height: Metrics.hairline
-                                        color: Theme.colors.inkMuted
-                                    }
-                                }
-                                MeridianCount {
-                                    id: badge
-                                    visible: row.published
-                                    x: tools.x - width - Theme.space.s3
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    label: L10n.t("rebasePublishedBadge")
-                                }
-                                Row {
-                                    id: tools
-                                    x: parent.width - width
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    // Drag onto another row to squash into it.
+                                    width: parent.width
+                                    height: Theme.size.row
                                     Item {
-                                        id: squashHandle
-                                        readonly property string instructionId: row.instructionId
+                                        id: grip
+                                        readonly property alias drag: gripDrag
                                         width: Theme.size.controlSmall
                                         height: Theme.size.controlSmall
-                                        Drag.active: squashDrag.active
-                                        Drag.keys: ["gitlama/rebase-instruction"]
-                                        Drag.source: squashHandle
-                                        Drag.hotSpot.x: width / 2
-                                        Drag.hotSpot.y: height / 2
-                                        MeridianIcon { anchors.centerIn: parent; name: "git-merge"; color: Theme.colors.inkMuted }
-                                        HoverHandler { id: squashHover; cursorShape: Qt.OpenHandCursor }
-                                        MeridianTooltip { text: L10n.t("rebaseDragToSquash"); shown: squashHover.hovered && !squashDrag.active }
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        MeridianIcon { anchors.centerIn: parent; name: "grip-vertical"; iconSize: MeridianIcon.Small; color: Theme.colors.inkMuted }
+                                        HoverHandler { id: gripHover; cursorShape: Qt.OpenHandCursor }
+                                        MeridianTooltip { text: L10n.t("rebaseDragToReorder"); shown: gripHover.hovered && !gripDrag.active }
+                                        // Reorders by the row's place under the pointer.
                                         DragHandler {
-                                            id: squashDrag
-                                            target: squashHandle
-                                            onActiveChanged: {
-                                                if (active) {
-                                                    squashHandle.parent = list
+                                            id: gripDrag
+                                            target: null
+                                            yAxis.enabled: true
+                                            xAxis.enabled: false
+                                            cursorShape: Qt.ClosedHandCursor
+                                            onCentroidChanged: {
+                                                if (!active)
                                                     return
-                                                }
-                                                squashHandle.Drag.drop()
-                                                squashHandle.parent = tools
-                                                squashHandle.x = 0
-                                                squashHandle.y = 0
+                                                const point = grip.mapToItem(list.contentItem, centroid.position.x, centroid.position.y)
+                                                const target = list.indexAt(10, point.y)
+                                                if (target >= 0 && target !== row.index)
+                                                    dialog.move(row.index, target)
                                             }
                                         }
-                                        Rectangle {
-                                            visible: squashDrag.active
-                                            anchors.left: parent.right
+                                    }
+                                    MeridianSelect {
+                                        id: actionSelect
+                                        x: grip.width + Theme.space.s2
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        fixedWidth: GitLamaLayout.rebaseActionWidth
+                                        animateValue: true
+                                        label: L10n.t("rebaseEditorTitle")
+                                        values: dialog.actionNames
+                                        value: row.action
+                                        valueLabel: v => dialog.actionLabel(v)
+                                        onActivated: v => dialog.setAction(row.index, v)
+                                    }
+                                    MeridianText {
+                                        id: oidText
+                                        x: actionSelect.x + actionSelect.width + Theme.space.s4
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: MeridianText.CodeSm
+                                        color: Theme.colors.inkMuted
+                                        text: row.oid.substring(0, 8)
+                                    }
+                                    Item {
+                                        id: subjectBox
+                                        x: oidText.x + oidText.width + Theme.space.s4
+                                        width: tools.x - x - (badge.visible ? badge.width + 2 * Theme.space.s3 : 0)
+                                        height: parent.height
+                                        property real strike: row.dropped ? 1 : 0
+                                        Behavior on strike { NumberAnimation { duration: Motion.quick } }
+                                        MeridianText {
+                                            id: subjectText
+                                            width: Math.min(implicitWidth, parent.width)
                                             anchors.verticalCenter: parent.verticalCenter
-                                            width: dragLabel.implicitWidth + 2 * Theme.space.s4
-                                            height: dragLabel.implicitHeight + 2 * Theme.space.s4
-                                            radius: Theme.radius.lg
-                                            color: Theme.colors.raised
-                                            MeridianShadow { anchors.fill: parent; layers: Theme.shadows.float; radius: parent.radius; z: -1 }
-                                            MeridianText { id: dragLabel; anchors.centerIn: parent; text: L10n.t("rebaseDragToSquash") }
+                                            text: row.subject
+                                            opacity: 1 - (1 - GitLamaLayout.opacityIgnoredRow) * subjectBox.strike
+                                        }
+                                        // The strike draws across the (elided) subject, not the row (NM-72).
+                                        MeridianStroke {
+                                            anchors.verticalCenter: subjectText.verticalCenter
+                                            width: subjectText.width
+                                            height: Metrics.hairline * 2
+                                            progress: subjectBox.strike
+                                            color: Theme.colors.inkMuted
+                                            strokeWidth: Metrics.hairline
+                                            pathData: "M 0 " + height / 2 + " L " + width + " " + height / 2
                                         }
                                     }
-                                    MeridianIconButton {
-                                        iconName: "arrow-up"
-                                        text: L10n.t("rebaseMoveUp")
-                                        controlSize: MeridianButton.Small
-                                        enabled: row.index > 0
-                                        onClicked: dialog.move(row.index, row.index - 1)
+                                    MeridianCount {
+                                        id: badge
+                                        visible: row.published
+                                        x: tools.x - width - Theme.space.s3
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        label: L10n.t("rebasePublishedBadge")
                                     }
-                                    MeridianIconButton {
-                                        iconName: "arrow-down"
-                                        text: L10n.t("rebaseMoveDown")
-                                        controlSize: MeridianButton.Small
-                                        enabled: row.index < instructions.count - 1
-                                        onClicked: dialog.move(row.index, row.index + 1)
-                                    }
-                                    MeridianIconButton {
-                                        id: moreButton
-                                        iconName: "more"
-                                        text: L10n.t("toolbarMore")
-                                        onClicked: {
-                                            actionMenu.items = dialog.actionNames.map(name => ({ title: dialog.actionLabel(name), value: name,
-                                                                                                 checked: name === row.action }))
-                                            actionMenu.show(moreButton, 0, moreButton.height)
+                                    Row {
+                                        id: tools
+                                        x: parent.width - width
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        // Drag onto another row to squash into it.
+                                        Item {
+                                            id: squashHandle
+                                            readonly property string instructionId: row.instructionId
+                                            width: Theme.size.controlSmall
+                                            height: Theme.size.controlSmall
+                                            Drag.active: squashDrag.active
+                                            Drag.keys: ["gitlama/rebase-instruction"]
+                                            Drag.source: squashHandle
+                                            Drag.hotSpot.x: width / 2
+                                            Drag.hotSpot.y: height / 2
+                                            MeridianIcon { anchors.centerIn: parent; name: "git-merge"; color: Theme.colors.inkMuted }
+                                            HoverHandler { id: squashHover; cursorShape: Qt.OpenHandCursor }
+                                            MeridianTooltip { text: L10n.t("rebaseDragToSquash"); shown: squashHover.hovered && !squashDrag.active }
+                                            DragHandler {
+                                                id: squashDrag
+                                                target: squashHandle
+                                                onActiveChanged: {
+                                                    if (active) {
+                                                        squashHandle.parent = list
+                                                        return
+                                                    }
+                                                    squashHandle.Drag.drop()
+                                                    squashHandle.parent = tools
+                                                    squashHandle.x = 0
+                                                    squashHandle.y = 0
+                                                }
+                                            }
+                                            Rectangle {
+                                                visible: squashDrag.active
+                                                anchors.left: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: dragLabel.implicitWidth + 2 * Theme.space.s4
+                                                height: dragLabel.implicitHeight + 2 * Theme.space.s4
+                                                radius: Theme.radius.lg
+                                                color: Theme.colors.raised
+                                                MeridianShadow { anchors.fill: parent; layers: Theme.shadows.float; radius: parent.radius; z: -1 }
+                                                MeridianText { id: dragLabel; anchors.centerIn: parent; text: L10n.t("rebaseDragToSquash") }
+                                            }
                                         }
-                                        CommandMenu {
-                                            id: actionMenu
-                                            onSelected: value => dialog.setAction(row.index, value)
+                                        MeridianIconButton {
+                                            iconName: "arrow-up"
+                                            text: L10n.t("rebaseMoveUp")
+                                            controlSize: MeridianButton.Small
+                                            enabled: row.index > 0
+                                            onClicked: dialog.move(row.index, row.index - 1)
+                                        }
+                                        MeridianIconButton {
+                                            iconName: "arrow-down"
+                                            text: L10n.t("rebaseMoveDown")
+                                            controlSize: MeridianButton.Small
+                                            enabled: row.index < instructions.count - 1
+                                            onClicked: dialog.move(row.index, row.index + 1)
+                                        }
+                                        MeridianIconButton {
+                                            id: moreButton
+                                            iconName: "more"
+                                            text: L10n.t("toolbarMore")
+                                            onClicked: {
+                                                actionMenu.items = dialog.actionNames.map(name => ({ title: dialog.actionLabel(name), value: name,
+                                                                                                     checked: name === row.action }))
+                                                actionMenu.show(moreButton, 0, moreButton.height)
+                                            }
+                                            CommandMenu {
+                                                id: actionMenu
+                                                onSelected: value => dialog.setAction(row.index, value)
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            MeridianTextField {
-                                visible: row.action === "reword"
-                                width: parent.width
-                                placeholderText: L10n.t("rebaseReplacementMessage")
-                                Accessible.name: L10n.t("rebaseReplacementMessage")
-                                text: row.message
-                                onTextEdited: {
-                                    instructions.setProperty(row.index, "message", text)
-                                    dialog.revision++
+                                MeridianTextField {
+                                    visible: row.action === "reword"
+                                    width: parent.width
+                                    placeholderText: L10n.t("rebaseReplacementMessage")
+                                    Accessible.name: L10n.t("rebaseReplacementMessage")
+                                    text: row.message
+                                    onTextEdited: {
+                                        instructions.setProperty(row.index, "message", text)
+                                        dialog.revision++
+                                    }
                                 }
                             }
                         }

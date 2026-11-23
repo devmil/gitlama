@@ -39,7 +39,6 @@ Item {
     property bool entranceActive: true
     property real _enter: 1
     property string _enteredKey: ""
-    Component.onCompleted: _enterOnce()
     onEntranceKeyChanged: _enterOnce()
     function _enterOnce() {
         if (entranceKey === _enteredKey)
@@ -68,10 +67,25 @@ Item {
     transform: Translate { y: -Motion.riseContent * (1 - row._enter) }
 
     // A failure shakes the row once (NM-63).
-    property string _previous: state_
+    // A plain value set on creation: a binding would already hold the new state here.
+    property string _previous: ""
     property int _failures: 0
     readonly property real shakeX: shaker.offset
+    /// A run that just succeeded draws its check (NM-62) instead of showing it.
+    property bool drawCompletion: false
+    Component.onCompleted: {
+        _previous = state_
+        _enterOnce()
+    }
+    Timer {
+        id: completionTimer
+        interval: GitLamaLayout.landRingClose
+        onTriggered: row.drawCompletion = false
+    }
     onState_Changed: {
+        drawCompletion = _previous === "running" && state_ === "succeeded" && !Motion.reduced
+        if (drawCompletion)
+            completionTimer.restart()
         if (_previous !== "failed" && state_ === "failed" && !Motion.reduced)
             failurePop.restart()
         if (shakeOnFailure && _previous !== "failed" && state_ === "failed")
@@ -132,9 +146,18 @@ Item {
                         color: row.tone
                         immediate: true
                     }
+                    MeridianStrokeIcon {
+                        visible: row.drawCompletion
+                        anchors.centerIn: parent
+                        name: "check"
+                        extent: GitLamaLayout.logbookMarkIconSize
+                        color: row.tone
+                        drawn: row.drawCompletion
+                        duration: GitLamaLayout.landRingClose
+                    }
                     MeridianIcon {
                         id: markIcon
-                        visible: row.iconName.length > 0
+                        visible: row.iconName.length > 0 && !row.drawCompletion
                         anchors.centerIn: parent
                         name: row.iconName
                         extent: GitLamaLayout.logbookMarkIconSize

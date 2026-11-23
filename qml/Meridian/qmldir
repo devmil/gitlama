@@ -100,3 +100,9 @@ MeridianAttention 1.0 MeridianAttention.qml
 MeridianShake 1.0 MeridianShake.qml
 MeridianRollingNumber 1.0 MeridianRollingNumber.qml
 MeridianResize 1.0 MeridianResize.qml
+MeridianRemovingRow 1.0 MeridianRemovingRow.qml
+MeridianLift 1.0 MeridianLift.qml
+MeridianStroke 1.0 MeridianStroke.qml
+MeridianStrokeIcon 1.0 MeridianStrokeIcon.qml
+MeridianSelectionGlide 1.0 MeridianSelectionGlide.qml
+MeridianTravel 1.0 MeridianTravel.qml
