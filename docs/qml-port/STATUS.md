@@ -170,38 +170,47 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   turned off; an avatar explains and offers Gravatar while it is off. Not loaded against
   Gravatar here.
 
+- Release gate (2026-11-23): `scripts/verify.py` runs the Rust/QML lanes; qmllint with no
+  warnings; architecture, dependency, Meridian usage, design contract, command inventory and
+  localization checks rewritten for Rust/QML; license notices follow the shipped programs.
+- Parity sweep driven by `docs/qml-port/l10n-pending.txt` (every Flutter message the port does
+  not use yet): diff hunk actions, pinned hunk headers, copy lines/patch, binary details and
+  Show as text; commit options dialog (co-authors, author, signing, fixup/squash, recent);
+  repository lock list and Inspect index lock; Find, Report issue; history empty/retry states
+  and row accessibility; Changes row hover actions, partial marker, pending spinner, drag by
+  grip between lists, Clear queue; repository chooser tabs; stash file picker; blame ages;
+  reference fields (normalize, segment suggestions, choices, picker); Edit branch as Flutter;
+  Refresh with spin and failure; worktree open menu; grouped Compass titles. Meridian gained
+  MeridianTextMenu (native Cut/Copy/Paste/Select All in every text control).
+
 ## Next
-Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
-- Integrations panel (the hosting resources view) and the Integrations/Repository binding
-  settings pages (with hosting).
-- History: selection glide, lane lighting/draw/landing motion, sync entrance.
-- Hosting: review workspace and check retry, branch CI decorations;
-  macOS window configuration, macOS open-file events.
+The remaining work, also listed by `docs/qml-port/l10n-pending.txt` (the port is complete
+when it is empty) and by `scripts/audit_command_inventory.py` (`openRemoteRepository`):
 - Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
-  remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).
-- Inspector: changed-word marks on wrapped lines.
-- Logbook: user failures recorded from workflow failures (with their support report); clone
-  retry from the logbook; row entrance/exit stagger.
-- Conflict resolver: wrapped comparison lines, syntax colours.
-- Settings pages: integrations, repository binding, remote hosts; diagnostics Share on macOS/Windows.
-- Changes: drag between lists, flight animation.
-- Working-tree Blame/History opens an inspection window in Flutter when windows are available;
-  the port shows it in the History inspector until inspection windows are ported.
-- Release work: lint gate for GitLama QML, verify.sh, license generator, packaging and CI for
-  every target plus Arch, docs, changelog, performance comparison, moving the checkout.
+  remote_host_dialog, remote_operations, initialize location, repository details host).
+- Inspection windows (inspection_window_app; `historyWindowFailed`, `inspector*` window
+  actions): working-tree Blame/History open there in Flutter.
+- Hosting review workspace and check retry, branch CI decorations (`hostingReview*`,
+  `hostingBranchChecks`, `hostingRequestDetails`, `hostingStale`, `hostingReferenceEmpty`).
+- Diagnostics Share on macOS/Windows; macOS window configuration and open-file events.
+- Motion: History selection glide, lane lighting/draw/landing, sync entrance; Changes flight
+  between lists and long-press row drag (the grip drags today); Logbook stagger.
+- Conflict resolver: wrapped comparison lines, syntax colours; inspector changed-word marks on
+  wrapped lines.
+- Release work: packaging and CI for every target plus Arch, remaining Flutter tooling
+  (package.py, qualify scripts, tests/package, remote_wire generator), docs, changelog,
+  performance comparison, Foundry proposals, moving the checkout.
 
 ## Deferred / notes
 - Found while porting (pre-existing, Flutter too): devmil-git's `parse_unified_patch` rejects
   `git format-patch` output because of its `-- ` signature trailer, so Apply refuses the email
   patches GitLama itself writes (plain unified diffs apply). Fix belongs in devmil-git (helper
   version raise).
-- Transfer failure guide: lock listing and removal (repository lock inspection) not yet.
 - Palette: custom integration commands, background run (Cmd+Enter), scope cycling (Tab).
 - Sidebar: MeridianGlide check indicator between current branches; hosting checks/pull
   requests.
 - Delegates built through `Loader` components log null reads at engine teardown only.
 - Tab strip accessibility move actions (Flutter custom semantics actions) have no QML equivalent yet.
-- Worktree open menu needs the extensions inventory (extensions family).
 - Remote tab host marks (`hostBuilder`) wait for remote workspaces.
 - View cache persistence (disposable; `NoViewCache` for now; new format allowed).
 - Remote workspaces: router, SSH transport, reconnector (`WorkspaceRemotes` is a stub).
@@ -210,3 +219,5 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
 - Remove `flutter_rust_bridge:ignore` comments from the contract crate
   (`--record --keep-version`).
 - Move the diagnostics history into devmil-logging (shared code placement).
+- `extensionWorktreeChooseFolderFailure`: Qt's folder dialog has no failure path; decide
+  whether the message goes or a failure path exists before the pending list can be empty.
