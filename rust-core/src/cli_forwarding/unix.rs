@@ -261,6 +261,8 @@ impl ReplayGuard {
 pub struct ForwardingServer {
     cancellation: Arc<AtomicBool>,
     worker: Option<std::thread::JoinHandle<()>>,
+    /// Connecting to it wakes the blocked `accept` so the worker sees the cancellation.
+    socket: PathBuf,
 }
 
 impl ForwardingServer {
@@ -270,7 +272,10 @@ impl ForwardingServer {
         paths: RuntimePaths,
         handler: Arc<dyn Fn(ForwardAction) -> ForwardResponse + Send + Sync>,
     ) -> Result<Self, IpcError> {
-        listener.set_nonblocking(true).map_err(io_error)?;
+        // `accept` blocks: the worker sleeps until a client connects, instead of waking every
+        // 2 ms while the app is idle. `stop` connects once to wake it.
+        listener.set_nonblocking(false).map_err(io_error)?;
+        let socket = paths.socket.clone();
         let cancellation = Arc::new(AtomicBool::new(false));
         let stopping = Arc::clone(&cancellation);
         let worker = std::thread::Builder::new()
@@ -293,6 +298,7 @@ impl ForwardingServer {
                         continue;
                     }
                     match listener.accept() {
+                        Ok(_) if stopping.load(Ordering::Acquire) => break,
                         Ok((stream, _)) => {
                             let replay = Arc::clone(&replay);
                             let handler = Arc::clone(&handler);
@@ -300,9 +306,7 @@ impl ForwardingServer {
                                 let _ = serve_connection(stream, &token, &replay, &handler);
                             }));
                         }
-                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                            std::thread::sleep(Duration::from_millis(2))
-                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
                         Err(_) => break,
                     }
                 }
@@ -317,11 +321,14 @@ impl ForwardingServer {
         Ok(Self {
             cancellation,
             worker: Some(worker),
+            socket,
         })
     }
 
     fn stop(&mut self) {
         self.cancellation.store(true, Ordering::Release);
+        // Wakes the blocked `accept`; a failed connection means the worker has already ended.
+        let _ = std::os::unix::net::UnixStream::connect(&self.socket);
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
         }

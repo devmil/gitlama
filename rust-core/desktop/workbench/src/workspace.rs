@@ -2097,6 +2097,10 @@ impl WorkspaceService {
             return;
         };
         let reveal = self.take_head_reveal(&tab);
+        if reveal.is_none() && self.history_is_current(&tab, &session) {
+            self.history.restore_detail();
+            return;
+        }
         match reveal {
             Some(reveal) => {
                 self.load_history_and_reveal(tab_id, session.identity, reveal)
@@ -2417,7 +2421,6 @@ impl WorkspaceService {
             self.history.restore_detail();
             return;
         }
-        self.inner.borrow_mut().history_basis = Some((tab_id, Rc::clone(&session.snapshot)));
         let this = Rc::clone(self);
         match reveal {
             Some(reveal) => rt::spawn_detached(async move {
@@ -2437,6 +2440,14 @@ impl WorkspaceService {
                 })
             }
         }
+    }
+
+    /// Remembers the snapshot History of `tab_id` is loaded for now.
+    fn record_history_basis(&self, tab_id: u64) {
+        let snapshot = self
+            .tab(tab_id)
+            .and_then(|tab| tab.session.map(|session| session.snapshot));
+        self.inner.borrow_mut().history_basis = snapshot.map(|snapshot| (tab_id, snapshot));
     }
 
     /// Whether History still shows `tab`'s complete graph and nothing it depends on changed
@@ -2499,6 +2510,7 @@ impl WorkspaceService {
         identity: SessionIdentity,
         object_id: String,
     ) {
+        self.record_history_basis(tab_id);
         self.history.load(identity, vec![object_id.clone()]).await;
         for attempt in 0..3 {
             let Some(tab) = self.tab_shows_history_of(tab_id, identity) else {
@@ -2539,6 +2551,7 @@ impl WorkspaceService {
         selected: Option<String>,
         entering: bool,
     ) {
+        self.record_history_basis(tab_id);
         let remembered = selected.clone().or_else(|| {
             entering
                 .then(|| self.inner.borrow().history_selections.get(&tab_id).cloned())
