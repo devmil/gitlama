@@ -265,6 +265,8 @@ mod conflicts_state {
         pub(crate) state: Value,
         pub(crate) result_text: String,
         pub(crate) text_revision: i64,
+        /// Syntax colours of the texts the resolver shows.
+        pub(crate) syntax: Rc<gitlama_workbench::text_syntax::TextSyntax>,
     }
 
     impl ConflictsState {
@@ -280,6 +282,60 @@ mod conflicts_state {
         pub fn state_changed(&mut self);
         #[qsignal]
         pub fn result_changed(&mut self);
+        /// A page of `colour_text`'s answer: from the one-based `first_line`, each line's
+        /// `[start, end, kind]` runs over UTF-16 offsets of the line.
+        #[qsignal]
+        pub fn text_coloured(
+            &mut self,
+            view: String,
+            generation: i32,
+            first_line: i32,
+            lines: Value,
+        );
+
+        /// Colours `text` as the file `path` (its grammar) for `view` ("current",
+        /// "incoming", "ancestor" or "result"); a newer `generation` for a view replaces the
+        /// older one. Answered page by page by `text_coloured`; plain text gets no answer.
+        #[qslot]
+        fn colour_text(&self, view: String, generation: i32, path: String, text: String) {
+            let id = match view.as_str() {
+                "current" => 1,
+                "incoming" => 2,
+                "ancestor" => 3,
+                "result" => 4,
+                _ => return,
+            };
+            let syntax = Rc::clone(&self.syntax);
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(move |driver| {
+                let shared = Rc::clone(&driver.conflicts);
+                syntax.colour(
+                    id,
+                    u64::try_from(generation).unwrap_or_default(),
+                    path.into_bytes(),
+                    text,
+                    move |first, lines| {
+                        let lines: Vec<Value> = lines
+                            .into_iter()
+                            .map(|spans| {
+                                spans
+                                    .into_iter()
+                                    .map(|(start, end, kind)| json!([start, end, kind]))
+                                    .collect()
+                            })
+                            .collect();
+                        shared.borrow_mut().text_coloured(
+                            view.clone(),
+                            generation,
+                            i32::try_from(first).unwrap_or(i32::MAX),
+                            Value::Array(lines),
+                        );
+                    },
+                );
+            });
+        }
 
         /// Reads the paused operation again.
         #[qslot]

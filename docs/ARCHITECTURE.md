@@ -198,6 +198,13 @@ Topology and summaries load under separate bounds: complete topology serves navi
 filters without hydrating every commit message. Publications are anchored by object ID;
 offscreen continuation geometry is kept.
 
+Diff rows carry their syntax colours as styled text from the diff model. Texts the window
+holds itself (a conflicted file's sides, its ancestor and unsaved result) are coloured by
+`text_syntax_page` through `gitlama_workbench::text_syntax`, page by page in the background;
+the editors apply the runs with the native `SyntaxHighlighter`
+(`desktop/app/src/native/syntax_highlighter.cpp`), which keeps them on their text blocks so
+an edit never waits for colours.
+
 Diffs and staging use revision-scoped hunk and line identities with the original bytes kept
 natively. Stage, unstage and discard are different commands with different safety rules.
 Patch preconditions, line endings, encodings, missing newlines, renames, binary files and an

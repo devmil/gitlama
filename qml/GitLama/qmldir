@@ -5,6 +5,7 @@ singleton GitLamaLayout 1.0 GitLamaLayout.qml
 singleton BranchFilters 1.0 BranchFilters.qml
 singleton ReferenceMenu 1.0 ReferenceMenu.qml
 singleton GitColors 1.0 GitColors.qml
+singleton SyntaxStyle 1.0 SyntaxStyle.qml
 CaptionBand 1.0 CaptionBand.qml
 HomeScreen 1.0 HomeScreen.qml
 ImageDiffView 1.0 ImageDiffView.qml

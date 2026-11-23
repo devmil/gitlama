@@ -476,7 +476,7 @@ Item {
                             x: -view.textOffset
                             height: parent.height
                             width: view.wrap ? textCell.width : lineText.implicitWidth
-                            // Changed words (wrapped lines show none).
+                            // Changed words.
                             Repeater {
                                 model: view.wrap ? [] : line.marks
                                 delegate: Rectangle {
@@ -487,6 +487,53 @@ Item {
                                     height: GitLamaLayout.diffLineHeight - 2
                                     radius: Theme.radius.xs
                                     color: line.deleted ? GitColors.deletedStrong : GitColors.addedStrong
+                                }
+                            }
+                            // On a wrapped line a changed word can break across visual lines: a
+                            // hidden copy of the text laid out the same way places each part.
+                            Loader {
+                                active: view.wrap && (line.marks ?? []).length > 0 && !cell.blank
+                                y: lineText.y
+                                width: textCell.width
+                                sourceComponent: Item {
+                                    TextEdit {
+                                        id: measure
+                                        width: textCell.width
+                                        opacity: 0
+                                        readOnly: true
+                                        activeFocusOnPress: false
+                                        wrapMode: TextEdit.WrapAnywhere
+                                        font: Theme.type.code
+                                        text: line.text
+                                    }
+                                    Repeater {
+                                        model: {
+                                            void measure.contentHeight
+                                            const parts = []
+                                            for (const mark of line.marks ?? []) {
+                                                const from = measure.positionToRectangle(mark[0])
+                                                const to = measure.positionToRectangle(mark[1])
+                                                if (Math.abs(from.y - to.y) < 1) {
+                                                    parts.push({ x: from.x, y: from.y, width: to.x - from.x, height: from.height })
+                                                    continue
+                                                }
+                                                parts.push({ x: from.x, y: from.y, width: measure.width - from.x, height: from.height })
+                                                for (let y = from.y + from.height; y < to.y - 1; y += from.height)
+                                                    parts.push({ x: 0, y: y, width: measure.width, height: from.height })
+                                                parts.push({ x: 0, y: to.y, width: to.x, height: to.height })
+                                            }
+                                            return parts.filter(part => part.width > 0.5)
+                                        }
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            x: modelData.x
+                                            y: modelData.y + 1
+                                            width: modelData.width
+                                            height: modelData.height - 2
+                                            radius: Theme.radius.xs
+                                            color: line.deleted ? GitColors.deletedStrong : GitColors.addedStrong
+                                        }
+                                    }
                                 }
                             }
                             Text {

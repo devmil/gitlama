@@ -44,7 +44,50 @@ Item {
         function onResultChanged() { root.bind() }
     }
     Component.onCompleted: bind()
-    onFileChanged: if (file === null) showAncestor = false
+    onFileChanged: {
+        if (file === null)
+            showAncestor = false
+        resultHighlighter.clear()
+        ancestorHighlighter.clear()
+        resultColour.restart()
+        ancestorColour.restart()
+    }
+
+    // Syntax colours for the result and the ancestor, asked once their text has rested for
+    // `syntaxIdle`; a newer request for a text replaces the older one.
+    property int _resultGeneration: 0
+    property int _ancestorGeneration: 0
+    readonly property string _path: file && file.path ? file.path : ""
+    Timer {
+        id: resultColour
+        interval: GitLamaLayout.syntaxIdle
+        onTriggered: {
+            if (!root.textFile || editor.text.length === 0)
+                return
+            root._resultGeneration += 1
+            Store.conflicts.colourText("result", root._resultGeneration, root._path, editor.text)
+        }
+    }
+    Timer {
+        id: ancestorColour
+        interval: GitLamaLayout.syntaxIdle
+        onTriggered: {
+            if (!ancestor.visible || ancestorText.text.length === 0)
+                return
+            root._ancestorGeneration += 1
+            Store.conflicts.colourText("ancestor", root._ancestorGeneration, root._path, ancestorText.text)
+        }
+    }
+    onShowAncestorChanged: if (showAncestor) ancestorColour.restart()
+    Connections {
+        target: Store.conflicts
+        function onTextColoured(view, generation, firstLine, lines) {
+            if (view === "result" && generation === root._resultGeneration)
+                resultHighlighter.setLines(firstLine, lines)
+            else if (view === "ancestor" && generation === root._ancestorGeneration)
+                ancestorHighlighter.setLines(firstLine, lines)
+        }
+    }
 
     // The header: title, ancestor, external merge and Resolve.
     Rectangle {
@@ -123,6 +166,7 @@ Item {
                 width: ancestorFlick.width - 2 * Theme.space.s4
                 role: MeridianText.Code
                 text: root.file && root.file.ancestor ? root.file.ancestor : ""
+                SyntaxHighlighter { id: ancestorHighlighter; document: ancestorText.textDocument; palette: SyntaxStyle.palette }
             }
         }
     }
@@ -206,7 +250,11 @@ Item {
                         event.accepted = true
                     }
                 }
-                onTextChanged: if (root._boundRevision === Store.conflicts.textRevision && text !== Store.conflicts.resultText) Store.conflicts.editResult(text)
+                onTextChanged: {
+                    if (root._boundRevision === Store.conflicts.textRevision && text !== Store.conflicts.resultText)
+                        Store.conflicts.editResult(text)
+                    resultColour.restart()
+                }
                 onCursorRectangleChanged: {
                     if (!activeFocus)
                         return
@@ -216,6 +264,7 @@ Item {
                         flick.contentY = cursorRectangle.y + cursorRectangle.height - flick.height + bottomPadding
                 }
                 TextFormatter { document: editor.textDocument; lineHeight: root.rowHeight }
+                SyntaxHighlighter { id: resultHighlighter; document: editor.textDocument; palette: SyntaxStyle.palette }
             }
         }
     }

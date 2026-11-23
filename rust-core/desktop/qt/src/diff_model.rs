@@ -5,9 +5,9 @@
 
 use gitlama_contract::diff::{
     NativeDiffFileKind, NativeDiffRow, NativeDiffRowKind, NativeSyntaxSideState, NativeSyntaxSpan,
-    NativeSyntaxTokenKind,
 };
 use gitlama_workbench::diff_doc::DiffDocument;
+use gitlama_workbench::text_syntax::token_name;
 use qtbridge::qtbridge_type_lib::{QByteArray, QHash, QModelIndex, QVariant};
 use qtbridge::{QAbstractItemModel, QAbstractItemModelBase};
 use serde_json::{Value, json};
@@ -75,24 +75,6 @@ pub fn file_kind_name(kind: NativeDiffFileKind) -> &'static str {
         NativeDiffFileKind::Submodule => "submodule",
         NativeDiffFileKind::Conflict => "conflict",
         NativeDiffFileKind::Untracked => "untracked",
-    }
-}
-
-fn token_name(kind: NativeSyntaxTokenKind) -> &'static str {
-    match kind {
-        NativeSyntaxTokenKind::Plain => "plain",
-        NativeSyntaxTokenKind::Comment => "comment",
-        NativeSyntaxTokenKind::Keyword => "keyword",
-        NativeSyntaxTokenKind::String => "string",
-        NativeSyntaxTokenKind::Number => "number",
-        NativeSyntaxTokenKind::Type => "type",
-        NativeSyntaxTokenKind::Function => "function",
-        NativeSyntaxTokenKind::Variable => "variable",
-        NativeSyntaxTokenKind::Constant => "constant",
-        NativeSyntaxTokenKind::Operator => "operator",
-        NativeSyntaxTokenKind::Punctuation => "punctuation",
-        NativeSyntaxTokenKind::Attribute => "attribute",
-        NativeSyntaxTokenKind::Tag => "tag",
     }
 }
 
@@ -839,6 +821,7 @@ pub use diff_model::DiffModel;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gitlama_contract::diff::NativeSyntaxTokenKind;
 
     #[test]
     fn tabs_expand_and_offsets_follow() {

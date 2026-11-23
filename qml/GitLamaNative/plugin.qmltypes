@@ -48,4 +48,22 @@ Module {
         Signal { name: "documentChanged" }
         Signal { name: "lineHeightChanged" }
     }
+    Component {
+        file: "syntax_highlighter.h"
+        name: "gitlama::SyntaxHighlighter"
+        accessSemantics: "reference"
+        prototype: "QObject"
+        exports: ["GitLamaNative/SyntaxHighlighter 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "document"; type: "QQuickTextDocument"; isPointer: true }
+        Property { name: "palette"; type: "QVariantMap" }
+        Signal { name: "documentChanged" }
+        Signal { name: "paletteChanged" }
+        Method {
+            name: "setLines"
+            Parameter { name: "firstLine"; type: "int" }
+            Parameter { name: "lines"; type: "QVariantList" }
+        }
+        Method { name: "clear" }
+    }
 }

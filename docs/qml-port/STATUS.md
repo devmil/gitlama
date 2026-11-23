@@ -226,15 +226,16 @@ Windows, large repositories (100k commits), frame timing while scrolling.
 
 ## Remaining parity gaps
 Known differences from the Flutter build, none of them data or workflow loss:
-- Motion: the Changes stage flight between lists (NH-4: MeridianTravel, MeridianLift) and
-  long-press row drag (the grip drags today); rebase editor lift and stroke effects (NM-70 to
-  NM-72); the History selection glide (NM-31); rows fading and collapsing when removed
-  (MeridianRemovingRow: Changes rows, Logbook dismiss, the working-tree row); the head chip
-  entering on a commit; the palette growing out of the Compass (NH-6 morph; the palette uses
-  the dialog entrance); sidebar sections revealing (MM-24). Meridian QML still lacks
-  MeridianTravel, MeridianLift, MeridianStroke, MeridianSelectionGlide and MeridianRemovingRow.
-- Conflict resolver: wrapped comparison lines and syntax colours; inspector changed-word marks
-  on wrapped lines.
+- Motion: Flutter's motion is ported, including the Changes stage flight, leaving and arriving
+  rows, long-press drag with lift, the History selection glide and ref chip pop/leave, the
+  Logbook's leaving rows, the rebase lift and strokes, sidebar section reveal and the palette
+  growing out of the toolbar button (NH-6). Differences: the selection bar does not follow the
+  slide of rows when a commit is inserted above it, and a sidebar toggle animates every row
+  change for `motion-layout` + `motion-exit` + `motion-select` after the click.
+- Conflict resolver: comparison lines wrap with the shared diff choice and both sides, the
+  ancestor and the result are syntax-coloured (`text_syntax_page`, a native QSyntaxHighlighter
+  for the editors). Wrapped row heights are computed from the code font's average advance, so
+  lines with tabs or wide characters can be a line off.
 - Tab strip accessibility move actions (Flutter custom semantics actions) have no QML
   equivalent.
 - Memory: about 115 MB more resident memory than the Flutter build with a repository open

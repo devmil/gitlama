@@ -214,6 +214,8 @@ QtObject {
     readonly property int copiedHold: 1200
     /// How long a press on a Changes row holds before the row drags (Flutter's long press).
     readonly property int longPressDrag: 500
+    /// Quiet time after a text appears or changes before it is coloured.
+    readonly property int syntaxIdle: 150
     /// The palette's content fades in this long after its surface starts growing (NH-6).
     readonly property int paletteContentDelay: 60
     /// Leaving Logbook rows start `motion-stagger` apart, bottom-up, at most this many steps.

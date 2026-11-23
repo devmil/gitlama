@@ -29,20 +29,150 @@ Item {
     /// Content offsets of each region, toolbar included: [{top, bottom}].
     function regionExtents() {
         const extents = []
-        let toolbars = 0
         for (let i = 0; i < blockRows.length; ++i) {
             const first = blockRows[i][0]
             const count = blockRows[i][1]
-            if (count === 0) {
-                extents.push({ top: first * rowHeight + toolbars * toolbarHeight, bottom: first * rowHeight + toolbars * toolbarHeight })
-                continue
-            }
-            const top = first * rowHeight + toolbars * toolbarHeight
-            toolbars++
-            extents.push({ top: top, bottom: top + toolbarHeight + count * rowHeight })
+            const top = rowTop(first)
+            extents.push({ top: top, bottom: count === 0 ? top : rowTop(first + count) })
         }
         return extents
     }
+
+    // ---------------------------------------------------------------- wrapping
+
+    /// Long lines wrap (the shared diff choice) instead of scrolling sideways together.
+    readonly property bool wrap: Store.appearance.diffWrap === true
+    readonly property real wrapLineHeight: Theme.type.codeLineHeight
+    /// Each row's line height, and each row's top in the list (toolbars included), measured
+    /// for every row so scrolling to a region and following the result stay exact.
+    property var _lineHeights: []
+    property var _tops: []
+    function lineHeightAt(index) {
+        return wrap ? (_lineHeights[index] ?? rowHeight) : rowHeight
+    }
+    function rowTop(index) {
+        if (index <= 0)
+            return 0
+        return _tops[Math.min(index, _tops.length - 1)] ?? 0
+    }
+    FontMetrics { id: codeMetrics; font: Theme.type.code }
+    function _visualLines(text) {
+        if (text.length === 0 || textWidth <= 0)
+            return 1
+        const column = Math.max(1, codeMetrics.averageCharacterWidth)
+        const perLine = Math.max(1, Math.floor(textWidth / column))
+        const columns = Math.round(codeMetrics.advanceWidth(text) / column)
+        return Math.max(1, Math.ceil(columns / perLine))
+    }
+    function _measure() {
+        const model = Store.conflictRows
+        const count = model ? model.count() : 0
+        const heights = []
+        const tops = [0]
+        const padding = Math.max(0, rowHeight - wrapLineHeight)
+        let y = 0
+        for (let i = 0; i < count; ++i) {
+            const row = model.get(i)
+            let height = rowHeight
+            if (wrap && row) {
+                const lines = Math.max(_visualLines(row.current ?? ""), _visualLines(row.incoming ?? ""))
+                height = Math.max(rowHeight, lines * wrapLineHeight + padding)
+            }
+            heights.push(height)
+            y += height + (row && row.first ? toolbarHeight : 0)
+            tops.push(y)
+        }
+        _lineHeights = heights
+        _tops = tops
+    }
+    onWrapChanged: Qt.callLater(root._measure)
+    onTextWidthChanged: if (wrap) Qt.callLater(root._measure)
+    Connections {
+        target: Store.conflictRows
+        function onCountChanged() {
+            Qt.callLater(root._measure)
+            colourLater.restart()
+        }
+    }
+
+    // ---------------------------------------------------------------- syntax
+
+    // Each side as the comparison shows it, one line per row that shows the side, coloured by
+    // the file's grammar once it rests for `syntaxIdle`.
+    property var _currentLineOf: []
+    property var _incomingLineOf: []
+    property var _currentRuns: ({})
+    property var _incomingRuns: ({})
+    property int _colourGeneration: 0
+    property string _colouredKey: ""
+    readonly property string _fileKey: file ? (file.key ?? "") + "|" + blocks.length : ""
+    on_FileKeyChanged: {
+        colourLater.restart()
+        Qt.callLater(root._measure)
+    }
+    Timer {
+        id: colourLater
+        interval: GitLamaLayout.syntaxIdle
+        onTriggered: root._colourSides()
+    }
+    function _colourSides() {
+        const model = Store.conflictRows
+        const count = model ? model.count() : 0
+        const key = _fileKey + "|" + count
+        if (key === _colouredKey)
+            return
+        _colouredKey = key
+        const current = [], incoming = []
+        const currentLineOf = [], incomingLineOf = []
+        for (let i = 0; i < count; ++i) {
+            const row = model.get(i)
+            if (row && row.currentLine !== null && row.currentLine !== undefined) {
+                current.push(row.current ?? "")
+                currentLineOf.push(current.length)
+            } else {
+                currentLineOf.push(0)
+            }
+            if (row && row.incomingLine !== null && row.incomingLine !== undefined) {
+                incoming.push(row.incoming ?? "")
+                incomingLineOf.push(incoming.length)
+            } else {
+                incomingLineOf.push(0)
+            }
+        }
+        _currentLineOf = currentLineOf
+        _incomingLineOf = incomingLineOf
+        _currentRuns = ({})
+        _incomingRuns = ({})
+        if (!file || file.kind !== "text" || count === 0)
+            return
+        _colourGeneration += 1
+        const path = file.path ?? ""
+        Store.conflicts.colourText("current", _colourGeneration, path, current.join("\n"))
+        Store.conflicts.colourText("incoming", _colourGeneration, path, incoming.join("\n"))
+    }
+    Connections {
+        target: Store.conflicts
+        function onTextColoured(view, generation, firstLine, lines) {
+            if (generation !== root._colourGeneration || (view !== "current" && view !== "incoming"))
+                return
+            const runs = Object.assign({}, view === "current" ? root._currentRuns : root._incomingRuns)
+            for (let i = 0; i < lines.length; ++i)
+                if (lines[i].length > 0)
+                    runs[firstLine + i] = lines[i]
+            if (view === "current")
+                root._currentRuns = runs
+            else
+                root._incomingRuns = runs
+        }
+    }
+    /// The styled text of row `index`'s side, or "".
+    function styledAt(index, current, text) {
+        const line = (current ? _currentLineOf : _incomingLineOf)[index] ?? 0
+        if (line === 0)
+            return ""
+        return SyntaxStyle.styled(text, (current ? _currentRuns : _incomingRuns)[line])
+    }
+
     function choiceLabel(choice) {
         return L10n.t({ current: "conflictTakeCurrent", incoming: "conflictTakeIncoming", both: "conflictTakeBoth" }[choice])
     }
@@ -59,6 +189,14 @@ Item {
         color: Theme.colors.paneAlt
         title: root.blocks.length === 0 ? L10n.t("conflictComparisonTitle")
             : L10n.tn("conflictRegionNumber", { number: root.focusedRegion + 1 })
+        MeridianIconButton {
+            objectName: "conflict-wrap"
+            iconName: "wrap"
+            text: L10n.t("diffWrap")
+            active: root.wrap
+            controlSize: MeridianButton.Small
+            onClicked: Store.app.updateAppearance({ diffWrap: !root.wrap })
+        }
         // The resolved regions roll as they change (NM-75).
         MeridianRollingNumber {
             visible: root.blocks.length > 0
@@ -167,7 +305,8 @@ Item {
         + GitLamaLayout.conflictLineColumnWidth + Theme.space.s5
     property real widestLine: 0
     readonly property real textWidth: Math.max(0, (width - Metrics.hairline) / 2 - cellFixedWidth)
-    readonly property real maxHorizontal: Math.max(0, widestLine - textWidth)
+    readonly property real maxHorizontal: wrap ? 0 : Math.max(0, widestLine - textWidth)
+    onMaxHorizontalChanged: horizontalOffset = Math.min(horizontalOffset, maxHorizontal)
 
     ListView {
         id: list
@@ -286,9 +425,10 @@ Item {
             }
 
             // The row: current, then incoming.
+            readonly property real lineHeight: root.lineHeightAt(row.index)
             Row {
                 width: parent.width
-                height: root.rowHeight
+                height: row.lineHeight
                 Repeater {
                     model: 2
                     delegate: Rectangle {
@@ -305,7 +445,7 @@ Item {
                         property real railProgress: chosen || hunkHovered ? 1 : 0
                         Behavior on railProgress { NumberAnimation { duration: Motion.select } }
                         width: (row.width - Metrics.hairline) / 2 + (index === 0 ? Metrics.hairline : 0)
-                        height: root.rowHeight
+                        height: row.lineHeight
                         color: !row.inRegion ? (row.different ? Theme.colors.attentionBg : Theme.colors.pane)
                             : Theme.blend(Theme.colors.pane, sideColor, hunkHovered ? GitLamaLayout.opacityConflictHover
                                 : chosen ? GitLamaLayout.opacityConflictChosen : GitLamaLayout.opacityConflictUnchosen)
@@ -321,7 +461,7 @@ Item {
                             id: number
                             x: GitLamaLayout.conflictChoiceRail + Theme.space.s3
                             width: GitLamaLayout.conflictLineColumnWidth
-                            height: parent.height
+                            height: root.rowHeight
                             horizontalAlignment: Text.AlignRight
                             role: MeridianText.CodeSm
                             color: Theme.colors.inkMuted
@@ -332,14 +472,20 @@ Item {
                             width: parent.width - x - Theme.space.s4 - (cell.index === 0 ? Metrics.hairline : 0)
                             height: parent.height
                             clip: true
+                            // A wrapped line starts level with its number.
                             MeridianText {
                                 id: lineText
-                                x: -root.horizontalOffset
-                                height: parent.height
+                                readonly property string styled: root.styledAt(row.index, cell.current, cell.cellText)
+                                x: root.wrap ? 0 : -root.horizontalOffset
+                                y: root.wrap ? (root.rowHeight - root.wrapLineHeight) / 2 : 0
+                                width: root.wrap ? parent.width : implicitWidth
+                                height: root.wrap ? implicitHeight : parent.height
                                 role: MeridianText.Code
                                 elide: Text.ElideNone
-                                text: cell.cellText
-                                onImplicitWidthChanged: if (implicitWidth > root.widestLine) root.widestLine = implicitWidth
+                                wrapMode: root.wrap ? Text.WrapAnywhere : Text.NoWrap
+                                textFormat: styled.length > 0 ? Text.StyledText : Text.PlainText
+                                text: styled.length > 0 ? styled : cell.cellText
+                                onImplicitWidthChanged: if (!root.wrap && implicitWidth > root.widestLine) root.widestLine = implicitWidth
                             }
                         }
                         // What a click does, next to the pointer.
@@ -389,4 +535,8 @@ Item {
         list.contentY = Math.max(0, Math.min(Math.max(0, list.contentHeight - list.height), extents[region].top - lead))
     }
     onFileChanged: widestLine = 0
+    Component.onCompleted: {
+        _measure()
+        colourLater.restart()
+    }
 }

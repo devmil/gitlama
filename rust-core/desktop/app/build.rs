@@ -122,7 +122,7 @@ fn build_native_items(manifest: &Path, out: &Path) {
     let qt = QtInstallation::new();
     let mut builder = cc::Build::new();
     builder.cpp(true).std("c++17");
-    for name in ["graph_row", "text_formatter"] {
+    for name in ["graph_row", "text_formatter", "syntax_highlighter"] {
         let header = manifest.join(format!("src/native/{name}.h"));
         let source = manifest.join(format!("src/native/{name}.cpp"));
         println!("cargo:rerun-if-changed={}", header.display());

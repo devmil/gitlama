@@ -1,5 +1,6 @@
 #include <QtGui/QGuiApplication>
 #include "graph_row.h"
+#include "syntax_highlighter.h"
 #include "text_formatter.h"
 
 #include <QPainter>
@@ -432,6 +433,7 @@ extern "C" void gitlama_register_native_types()
 {
     qmlRegisterType<gitlama::GraphRow>("GitLamaNative", 1, 0, "GraphRow");
     qmlRegisterType<gitlama::TextFormatter>("GitLamaNative", 1, 0, "TextFormatter");
+    qmlRegisterType<gitlama::SyntaxHighlighter>("GitLamaNative", 1, 0, "SyntaxHighlighter");
 }
 
 // The modifier keys held now (Qt::KeyboardModifiers): a command run from a
