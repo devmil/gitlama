@@ -41,6 +41,8 @@ Item {
     ListView {
         id: list
         objectName: "inspector-history"
+        Accessible.role: Accessible.List
+        Accessible.name: root.location && root.location.path ? L10n.tn("inspectorHistoryOf", { path: root.location.path }) : ""
         visible: root.entries.length > 0
         anchors.top: listHeader.bottom
         anchors.bottom: parent.bottom

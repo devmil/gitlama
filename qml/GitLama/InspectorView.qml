@@ -115,6 +115,31 @@ Rectangle {
     }
     Component.onCompleted: Store.inspectorView = inspector
     readonly property bool diffFocused: commitDiff.activeFocus || commitFind.searchField.activeFocus
+    // Screen readers hear where the inspector went (the Dart
+    // inspectorShowing announcement), once per location.
+    property string _announced: ""
+    function locationLabel(location) {
+        const commit = location.kind === "comparison"
+            ? Labels.shortObjectId(location.base) + "→" + Labels.shortObjectId(location.commit) : Labels.shortObjectId(location.commit)
+        if (!location.path)
+            return commit
+        const name = location.path.split("/").filter(part => part.length > 0).pop() ?? location.path
+        if (location.lens === "diff")
+            return commit + " · " + name
+        const lenses = { contents: L10n.t("inspectorLensContents"), blame: L10n.t("historyBlame"), history: L10n.t("inspectorLensHistory") }
+        return commit + " · " + name + " · " + (lenses[location.lens] ?? location.lens)
+    }
+    onPaneStateChanged: {
+        const location = paneState.location
+        if (!location || paneState.phase !== "ready" || paneState.contentLoading === true)
+            return
+        const key = [location.kind, location.base ?? "", location.commit, location.path ?? "", location.lens].join("\u0001")
+        if (key === _announced)
+            return
+        _announced = key
+        inspector.Accessible.announce(L10n.tn("inspectorShowing", { label: locationLabel(location) }))
+    }
+
     /// The commit diff's commands (the Dart CommitDiffPane.runCommand):
     /// false when no commit diff is shown.
     function runDiffCommand(id) {
@@ -754,8 +779,72 @@ Rectangle {
                                             + " · " + Labels.shortObjectId(historyHeader.entry.commit) : ""
                                     }
                                 }
+                                // The commit, or the path there (the Dart history detail's open).
+                                Flow {
+                                    width: parent.width
+                                    spacing: Theme.space.s2
+                                    readonly property bool folder: inspector.location !== null && inspector.location.directory === true
+                                    MeridianButton {
+                                        objectName: "inspector-history-show-commit"
+                                        text: L10n.t("inspectorShowCommit")
+                                        iconName: "git-commit-horizontal"
+                                        controlSize: MeridianButton.Small
+                                        onClicked: parent.folder ? Store.inspector.showCommit(historyHeader.entry.commit)
+                                            : Store.inspector.openFileLens(inspector.location.path, "diff", false, historyHeader.entry.commit)
+                                    }
+                                    MeridianButton {
+                                        objectName: "inspector-history-blame"
+                                        visible: !parent.folder
+                                        text: L10n.t("inspectorBlameAtCommit")
+                                        iconName: "blame"
+                                        controlSize: MeridianButton.Small
+                                        variant: MeridianButton.Quiet
+                                        onClicked: Store.inspector.openFileLens(inspector.location.path, "blame", false, historyHeader.entry.commit)
+                                    }
+                                    MeridianButton {
+                                        objectName: "inspector-history-contents"
+                                        visible: !parent.folder
+                                        text: L10n.t("inspectorLensContents")
+                                        iconName: "file-text"
+                                        controlSize: MeridianButton.Small
+                                        variant: MeridianButton.Quiet
+                                        onClicked: Store.inspector.openFileLens(inspector.location.path, "contents", false, historyHeader.entry.commit)
+                                    }
+                                }
                             }
                             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
+                        }
+                        // A folder's history shows the selected commit's changes in it.
+                        Item {
+                            objectName: "inspector-history-files"
+                            readonly property var files: inspector.historyLens && historyHeader.entry ? (historyHeader.entry.folderFiles ?? null) : null
+                            visible: files !== null
+                            anchors.top: historyHeader.bottom
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            MeridianText {
+                                id: folderFilesTitle
+                                x: Theme.space.s4
+                                y: Theme.space.s4
+                                role: MeridianText.Label
+                                color: Theme.colors.inkMuted
+                                text: L10n.tn("inspectorChangedFilesIn", { count: parent.files ? parent.files.length : 0 })
+                            }
+                            ListView {
+                                anchors.top: folderFilesTitle.bottom
+                                anchors.topMargin: Theme.space.s3
+                                anchors.bottom: parent.bottom
+                                width: parent.width
+                                clip: true
+                                model: parent.files ?? []
+                                delegate: FileRow {
+                                    required property var modelData
+                                    width: ListView.view.width
+                                    path: modelData.path
+                                    status: inspector.fileStatus(modelData.kind)
+                                    onClicked: Store.inspector.openFileLens(modelData.path, "diff", false, historyHeader.entry.commit)
+                                }
+                            }
                         }
                         InspectorContents {
                             id: contentsLens

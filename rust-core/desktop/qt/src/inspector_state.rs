@@ -272,12 +272,23 @@ pub fn project(
         "history": history,
         "historyEntry": state.history_entry.as_ref().map(|inspection| {
             let message = text(&inspection.detail.message);
+            // A folder's history lists the commit's changes inside it.
+            let folder = state
+                .location
+                .as_ref()
+                .filter(|location| location.directory)
+                .and_then(|location| location.path.clone())
+                .map(|path| format!("{}/", text(&path).trim_end_matches('/')));
             json!({
                 "commit": inspection.detail.commit,
                 "subject": message.trim().lines().next().unwrap_or_default(),
                 "author": text(&inspection.detail.author),
                 "authorTime": inspection.detail.author_time,
                 "files": inspection.files.len(),
+                "folderFiles": folder.map(|prefix| inspection.files.iter().filter_map(|file| {
+                    let path = text(if file.new_path.is_empty() { &file.old_path } else { &file.new_path });
+                    path.starts_with(&prefix).then(|| json!({"path": path, "kind": change_kind_name(file.kind)}))
+                }).collect::<Vec<_>>()),
             })
         }),
         "diffRows": state.diff.as_ref().map_or(0, |diff| diff.total()),

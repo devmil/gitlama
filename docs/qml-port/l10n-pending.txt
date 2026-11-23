@@ -6,14 +6,10 @@ extensionWorktreeChooseFolderFailure
 historyWindowFailed
 initializeLocation
 initializeLocationThisComputer
-inspectorBlameAtCommit
-inspectorChangedFilesIn
-inspectorHistoryOf
 inspectorRemoteHostNotConnected
 inspectorRemoteHostNotConnectedDetail
 inspectorRepositoryNotOpen
 inspectorShowInMainWindow
-inspectorShowing
 remoteAccess
 remoteAccessChanges
 remoteAccessChangesDetail
