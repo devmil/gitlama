@@ -278,6 +278,9 @@ mod workspace_state {
         pub fn entry_changed(&mut self);
         #[qsignal]
         pub fn recents_changed(&mut self);
+        /// A Refresh finished.
+        #[qsignal]
+        pub fn refreshed(&mut self);
         #[qsignal]
         pub fn active_changed(&mut self);
         /// A group was created for a tab; the strip asks for its name.
@@ -548,6 +551,36 @@ mod workspace_state {
             self.with_services(move |services| {
                 let workspace = std::rc::Rc::clone(&services.workspace);
                 rt::spawn_detached(async move { workspace.close_tab_group(group as u64).await });
+            });
+        }
+
+        /// Refresh: reads the active repository again, then its History; a
+        /// failure says so (workspaceRefreshFailed). `refreshed` follows.
+        #[qslot]
+        fn refresh(&self) {
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(|driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let workspace = std::rc::Rc::clone(&services.workspace);
+                let notices = std::rc::Rc::clone(&services.notices);
+                let shared = std::rc::Rc::clone(&driver.workspace);
+                rt::spawn_detached(async move {
+                    match workspace.refresh().await {
+                        Ok(()) => {
+                            if let Some(identity) =
+                                workspace.current().map(|session| session.identity)
+                            {
+                                workspace.history.load(identity, Vec::new()).await;
+                            }
+                        }
+                        Err(_) => notices.error("workspaceRefreshFailed", serde_json::Value::Null),
+                    }
+                    shared.borrow_mut().refreshed();
+                });
             });
         }
 

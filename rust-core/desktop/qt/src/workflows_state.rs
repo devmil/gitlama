@@ -229,6 +229,9 @@ mod workflows_state {
 
         #[qsignal]
         pub fn busy_changed(&mut self);
+        /// The answer of `worktree_menu`.
+        #[qsignal]
+        pub fn worktree_menu_ready(&mut self, rows: Value);
         /// The answer of `inspect_locks`: see `RepositoryLocks::inspect`.
         #[qsignal]
         pub fn locks_inspected(&mut self, inspection: Value);
@@ -538,6 +541,38 @@ mod workflows_state {
                 let rebases = Rc::clone(&services.rebases);
                 let root = (!root.is_empty()).then_some(root);
                 rt::spawn_detached(async move { rebases.restack(root).await });
+            });
+        }
+
+        /// Lists the worktrees the tab row's open menu offers
+        /// (`worktree_menu_ready`: [{label, icon}], or null when they could
+        /// not be listed).
+        #[qslot]
+        fn worktree_menu(&self) {
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(|driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let extensions = Rc::clone(&services.extensions);
+                let shared = Rc::clone(&driver.workflows);
+                rt::spawn_detached(async move {
+                    let rows = extensions.worktree_menu().await.unwrap_or(Value::Null);
+                    shared.borrow_mut().worktree_menu_ready(rows);
+                });
+            });
+        }
+
+        /// Opens worktree `index` of the last listed menu.
+        #[qslot]
+        fn open_menu_worktree(&self, index: i32) {
+            self.with_services(move |services| {
+                let extensions = Rc::clone(&services.extensions);
+                rt::spawn_detached(async move {
+                    extensions.open_menu_worktree(index.max(0) as usize).await
+                });
             });
         }
 

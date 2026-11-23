@@ -599,7 +599,9 @@ impl Driver {
         let state = crate::history_state::project(history);
         {
             let mut pane = self.history.borrow_mut();
-            pane.page = history.current().page;
+            if pane.history_service.is_none() {
+                pane.history_service = Some(Rc::clone(history));
+            }
             if pane.state != state {
                 pane.state = state;
                 pane.state_changed();

@@ -25,7 +25,10 @@ MeridianDialog {
 
     /// Opens the dialog for `source` ({kind, ...}, see patch_state.rs) in
     /// `mode` (create or apply).
+    /// What the patch is made from ({kind, ...}).
+    property var source: ({})
     function show(source, mode) {
+        dialog.source = source
         Store.patches.begin(source, mode ?? "create")
         open()
     }
@@ -185,7 +188,8 @@ MeridianDialog {
                         return []
                     const facts = [
                         { label: L10n.t("patchFile"), value: dialog.patchState.patchPath, monospace: true },
-                        { label: L10n.t("patchTarget"), value: dialog.patchState.repositoryLabel ?? "" },
+                        { label: L10n.t("patchTarget"), value: dialog.source.kind === "history" ? (dialog.patchState.repositoryLabel ?? "")
+                                                          : L10n.t("patchCurrentRepository") },
                     ]
                     if (dialog.applyPreview !== null) {
                         facts.push({ label: L10n.t("patchCheck"), value: L10n.t("patchCheckPassed"), selectable: false })

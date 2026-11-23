@@ -13,7 +13,29 @@ Item {
     readonly property bool hasRepository: active !== null && active !== undefined && active.hasSession === true
     readonly property bool compact: width <= GitLamaLayout.compactBreakpoint
     property var availability: ({})
+    // Refresh spins only when it takes a moment (the Dart NM-11 delay).
     property bool refreshing: false
+    property bool refreshRunning: false
+    Timer {
+        id: refreshSpin
+        interval: GitLamaLayout.refreshSpinDelay
+        onTriggered: toolbar.refreshing = toolbar.refreshRunning
+    }
+    Connections {
+        target: Store.workspace
+        function onRefreshed() {
+            toolbar.refreshRunning = false
+            toolbar.refreshing = false
+            refreshSpin.stop()
+        }
+    }
+    Connections {
+        target: Store.actions
+        function onRefreshStarted() {
+            toolbar.refreshRunning = true
+            refreshSpin.restart()
+        }
+    }
     property bool operationsVisible: false
     property bool activityVisible: false
     property bool paletteOpen: false
@@ -127,7 +149,16 @@ Item {
             width: Math.max(0, Math.min(implicitWidth, centre.available - 2 * centre.slot))
             opacity: toolbar.detailsOpen ? 0 : 1
             Behavior on opacity { NumberAnimation { duration: Motion.exit } }
-            repository: toolbar.active ? toolbar.active.label : L10n.t("appTitle")
+            // The name the person gave the repository, after its group's
+            // (the Dart repositoryTitle).
+            repository: {
+                if (!toolbar.active)
+                    return L10n.t("appTitle")
+                const tab = (Store.workspace.tabs ?? []).find(candidate => candidate.id === toolbar.active.tabId)
+                const name = tab && tab.customName ? tab.customName : toolbar.active.label
+                const group = toolbar.active.title ? toolbar.active.title.group : undefined
+                return group ? L10n.tn("repositoryTitleInGroup", { group: group, repository: name }) : name
+            }
             branch: !toolbar.active ? ""
                   : toolbar.active.branch ? toolbar.active.branch
                   : toolbar.active.headObjectId ? L10n.t("compassDetachedAt", [String(toolbar.active.headObjectId).slice(0, 8)]) : ""

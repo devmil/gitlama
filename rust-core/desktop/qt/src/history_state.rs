@@ -135,8 +135,8 @@ mod history_state {
         pub(crate) state: Value,
         /// The snapshot History shows, for the commit menu's references.
         pub(crate) snapshot: Option<std::rc::Rc<gitlama_contract::dto::NativeRepositorySnapshot>>,
-        /// The loaded History page, for the commits reference fields offer.
-        pub(crate) page: Option<std::rc::Rc<gitlama_contract::dto::NativeHistoryPage>>,
+        /// The History service, for the loaded commits reference fields offer.
+        pub(crate) history_service: Option<std::rc::Rc<gitlama_workbench::history::HistoryService>>,
     }
 
     impl HistoryState {
@@ -269,11 +269,15 @@ mod history_state {
         /// tags and the loaded commits.
         #[qslot]
         fn reference_choices(&self) -> Value {
-            let commits = self.page.as_ref().map_or(&[][..], |page| &page.rows[..]);
+            let commits = self
+                .history_service
+                .as_ref()
+                .map(|history| history.reference_picker_commits(history.identity()))
+                .unwrap_or_default();
             self.snapshot
                 .as_deref()
                 .map_or(Value::Array(Vec::new()), |snapshot| {
-                    gitlama_workbench::power_tools::reference_choice_values(snapshot, commits)
+                    gitlama_workbench::power_tools::reference_choice_values(snapshot, &commits)
                 })
         }
 

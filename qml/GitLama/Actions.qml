@@ -182,6 +182,8 @@ Item {
         licenseDialog.open()
     }
     function showAbout() { aboutDialog.open() }
+    /// A Refresh began (the toolbar spins if it lasts).
+    signal refreshStarted()
     /// Find (the Dart _findInRepository): the focused diff's find field,
     /// else the Changes diff's, else the history search.
     function findInRepository() {
@@ -435,7 +437,7 @@ Item {
         case "inspectorUp": Store.inspector.up(); return
         case "inspectorBack": Store.inspector.back(); return
         case "inspectorForward": Store.inspector.forward(); return
-        case "refreshRepository": Store.history.reload(); return
+        case "refreshRepository": refreshStarted(); Store.workspace.refresh(); return
         case "createPatch": showPatchWorkflow("create", options.initialTarget ?? ""); return
         case "applyPatch": showPatchWorkflow("apply", ""); return
         case "openInEditor": Store.workflows.openTool("editor", ""); return

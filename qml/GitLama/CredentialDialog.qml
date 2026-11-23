@@ -9,6 +9,8 @@ MeridianDialog {
     property int promptId: -1
     property string target
     property bool allowToken: true
+    readonly property string secretLabel: !allowToken ? L10n.t("clonePasswordOrToken")
+        : useToken ? L10n.t("transferToken") : L10n.t("transferPassword")
     property bool useToken: false
     signal answered(int id, var credentials)
 
@@ -48,12 +50,13 @@ MeridianDialog {
         Column {
             width: parent.width
             spacing: Theme.space.s2
-            MeridianText { role: MeridianText.Label; text: dialog.useToken ? L10n.t("transferToken") : L10n.t("transferPassword") }
+            // Without a token choice the one field takes either (the Dart clone credential).
+            MeridianText { role: MeridianText.Label; text: dialog.secretLabel }
             MeridianTextField {
                 id: secret
                 width: parent.width
                 echoMode: TextInput.Password
-                Accessible.name: dialog.useToken ? L10n.t("transferToken") : L10n.t("transferPassword")
+                Accessible.name: dialog.secretLabel
                 onAccepted: dialog.submit()
             }
         }

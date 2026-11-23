@@ -9,6 +9,7 @@ use crate::prompts::Prompts;
 use crate::session::{SessionIdentity, display_path, local_path};
 use crate::sidebar::{SidebarService, worktree_deletion_protected};
 use crate::workspace::WorkspaceService;
+use gitlama_contract::domain::path_identity::NativePathIdentity;
 use gitlama_contract::extensions::{
     NativeExtensionFailureKind, NativeExtensionInventory, NativeExtensionMutationKind,
     NativeExtensionMutationRequest, NativeExtensionMutationResult, NativeExtensionMutationState,
@@ -88,6 +89,8 @@ pub struct Extensions {
     notices: Rc<Notices>,
     notifier: Notifier,
     panel: RefCell<Panel>,
+    /// The worktrees the tab row's open menu last listed.
+    menu_worktrees: RefCell<Vec<gitlama_contract::extensions::NativeWorktreeEntry>>,
 }
 
 impl Extensions {
@@ -107,6 +110,7 @@ impl Extensions {
             notices,
             notifier,
             panel: RefCell::new(Panel::default()),
+            menu_worktrees: RefCell::new(Vec::new()),
         })
     }
 
@@ -179,6 +183,59 @@ impl Extensions {
                 Err(_) => panel.failure = Some(failure_key(NativeExtensionFailureKind::Stale)),
             }
         });
+    }
+
+    /// The worktree row's open menu (the Dart _showWorktreeMenu): the
+    /// repository's worktrees that are neither open nor prunable, as
+    /// [{label, icon}]; `None` when they could not be listed.
+    pub async fn worktree_menu(&self) -> Option<Value> {
+        let identity = self.workspace.current().map(|session| session.identity)?;
+        let result = self
+            .calls
+            .repository_session_extensions(identity.native_id, identity.generation)
+            .await
+            .ok()?;
+        let inventory = result.inventory.filter(|_| result.failure.is_none())?;
+        let workspace = self.workspace.workspace();
+        // Every worktree of the active repository that has a tab, even alone.
+        let open: Vec<NativePathIdentity> = workspace
+            .entry_of(workspace.active_tab_id)
+            .into_iter()
+            .filter_map(|tab| tab.canonical_identity().cloned())
+            .collect();
+        let closed: Vec<_> = inventory
+            .worktrees
+            .into_iter()
+            .filter(|entry| !entry.prunable && !open.contains(&entry.worktree_root))
+            .collect();
+        let rows = closed
+            .iter()
+            .map(|entry| {
+                json!({
+                    "label": entry.branch.as_ref().map_or_else(
+                        || crate::session::basename(&entry.worktree_root),
+                        |branch| crate::sidebar::display_reference(&String::from_utf8_lossy(branch)).to_owned(),
+                    ),
+                    "icon": if entry.git_dir == entry.common_git_dir { "house" } else { "git-branch" },
+                })
+            })
+            .collect();
+        *self.menu_worktrees.borrow_mut() = closed;
+        Some(Value::Array(rows))
+    }
+
+    /// Opens worktree `index` of the last open menu in a tab.
+    pub async fn open_menu_worktree(&self, index: usize) {
+        let Some(root) = self
+            .menu_worktrees
+            .borrow()
+            .get(index)
+            .map(|entry| entry.worktree_root.clone())
+        else {
+            return;
+        };
+        // A failed tab stays visible with its error.
+        let _ = self.workspace.open_recent(root).await;
     }
 
     /// The panel opened: it starts from a fresh inventory.
