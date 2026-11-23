@@ -113,6 +113,24 @@ impl EntryWorkflows {
         self.run(async move { workspace.open(path).await.map(Some) }).await;
     }
 
+    /// Opens the folders dropped on the window (the Dart
+    /// RepositoryDropService): each folder in turn; anything else is
+    /// rejected. Says how many opened, were rejected and failed.
+    pub async fn open_dropped(self: &Rc<Self>, paths: Vec<String>, notices: &crate::notices::Notices) {
+        let (mut opened, mut rejected, mut failed) = (0u64, 0u64, 0u64);
+        for path in paths {
+            if !std::path::Path::new(&path).is_dir() {
+                rejected += 1;
+                continue;
+            }
+            match self.workspace.open(path).await {
+                Ok(_) => opened += 1,
+                Err(_) => failed += 1,
+            }
+        }
+        notices.status("repositoryDropSummary", serde_json::json!({"opened": opened, "rejected": rejected, "failed": failed}));
+    }
+
     /// Opens the recent repository `identity` on this computer.
     pub async fn open_recent(self: &Rc<Self>, identity: NativePathIdentity) {
         let workspace = Rc::clone(&self.workspace);

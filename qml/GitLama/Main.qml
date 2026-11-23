@@ -184,6 +184,41 @@ Window {
         HomeScreen {}
     }
 
+    // Folders dropped on the window open as repositories (the Dart
+    // home screen's drop overlay); the prompt covers the window meanwhile.
+    DropArea {
+        id: repositoryDrop
+        anchors.fill: parent
+        enabled: appWindow.app.startup === "ready"
+        keys: ["text/uri-list"]
+        onEntered: drag => drag.accept(Qt.CopyAction)
+        onDropped: drop => {
+            const paths = drop.urls.map(url => url.toString())
+                .filter(url => url.startsWith("file://"))
+                .map(url => decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)))
+            appWindow.workspace.openDropped(paths.concat(drop.urls.length > paths.length ? new Array(drop.urls.length - paths.length).fill("") : []))
+            drop.accept(Qt.CopyAction)
+        }
+    }
+    Rectangle {
+        objectName: "repository-drop-overlay"
+        anchors.fill: parent
+        visible: opacity > 0
+        opacity: repositoryDrop.containsDrag ? 1 : 0
+        color: Theme.colors.ground
+        Behavior on opacity { NumberAnimation { duration: Motion.overlay } }
+        MeridianDropZone {
+            anchors.centerIn: parent
+            width: Math.min(GitLamaLayout.dropPromptWidth, parent.width - 2 * Theme.space.s6)
+            scale: repositoryDrop.containsDrag ? 1 : Motion.overlayEnterScale
+            Behavior on scale { NumberAnimation { duration: Motion.overlay; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.enter } }
+            dropState: MeridianDropZone.Active
+            message: L10n.t("repositoryDropPrompt")
+            iconName: "folder-open"
+            browsable: false
+        }
+    }
+
     Actions {
         id: actions
         window: appWindow

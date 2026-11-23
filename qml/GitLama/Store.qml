@@ -107,6 +107,9 @@ QtObject {
             // inspectorFileMenu:<file>[=<action>]
             const parts = argument.split("=")
             inspectorView.runFileAction(Number(parts[0]), parts[1] ?? "")
+        } else if (name === "drop" && workspace) {
+            // drop:<path>|<path>…: as if the paths were dropped on the window.
+            workspace.openDropped(argument.split("|"))
         } else if (name === "historySearch" && historyPane) {
             // historySearch:<text>: types and searches the query.
             historyPane.searchFor(argument)

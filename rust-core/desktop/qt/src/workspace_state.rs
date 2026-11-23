@@ -254,6 +254,17 @@ mod workspace_state {
             });
         }
 
+        /// Opens the local paths dropped on the window.
+        #[qslot]
+        fn open_dropped(&self, paths: Value) {
+            let paths: Vec<String> = paths.as_array().map(|paths| paths.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
+            self.with_services(move |services| {
+                let entry = std::rc::Rc::clone(&services.entry);
+                let notices = std::rc::Rc::clone(&services.notices);
+                rt::spawn_detached(async move { entry.open_dropped(paths, &notices).await });
+            });
+        }
+
         /// Opens recent repository number `index` of the settings' list.
         #[qslot]
         fn open_recent(&self, index: i32) {
