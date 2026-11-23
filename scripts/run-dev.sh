@@ -13,4 +13,11 @@ fi
 cargo build --manifest-path "$root/rust-core/Cargo.toml" -p gitlama --profile "$profile"
 export GITLAMA_QML_DIR="$root/qml"
 export QT_FORCE_STDERR_LOGGING=1
+# A separate profile runs as its own instance, not forwarded to an
+# installed GitLama.
+if [[ -n "${GITLAMA_PROFILE_ROOT:-}" && -z "${GITLAMA_RUNTIME_DIR:-}" ]]; then
+  # Short: the socket path inside must fit a Unix socket address.
+  export GITLAMA_RUNTIME_DIR="${TMPDIR:-/tmp}/gitlama-dev-$(printf '%s' "$GITLAMA_PROFILE_ROOT" | cksum | cut -d' ' -f1)"
+  mkdir -p "$GITLAMA_RUNTIME_DIR" && chmod 700 "$GITLAMA_RUNTIME_DIR"
+fi
 exec "$root/rust-core/target/$target_dir/gitlama" "$@"

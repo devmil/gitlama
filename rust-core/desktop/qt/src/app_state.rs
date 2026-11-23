@@ -18,6 +18,8 @@ mod app_state {
         pub platform: Value,
         pub command_registry: Value,
         pub(crate) shortcuts: Value,
+        /// Bumps when a forwarded command asks the window to come forward.
+        pub(crate) activation: i64,
     }
 
     impl Default for AppState {
@@ -29,6 +31,7 @@ mod app_state {
                 platform: Value::Null,
                 command_registry: Value::Null,
                 shortcuts: Value::Null,
+                activation: 0,
             }
         }
     }
@@ -39,6 +42,10 @@ mod app_state {
         qproperty!("platform", Member = platform, Notify = platform_changed);
         qproperty!("commands", Member = command_registry, Notify = platform_changed);
         qproperty!("shortcuts", Member = shortcuts, Notify = appearance_changed);
+
+        qproperty!("activation", Member = activation, Notify = activation_changed);
+        #[qsignal]
+        pub fn activation_changed(&mut self);
 
         #[qsignal]
         pub fn startup_changed(&mut self);

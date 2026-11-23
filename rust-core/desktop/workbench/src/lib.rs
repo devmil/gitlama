@@ -15,6 +15,7 @@ pub mod auto_fetch;
 pub mod backend;
 pub mod busy;
 pub mod changes;
+pub mod cli;
 pub mod clone;
 pub mod commit;
 pub mod conflict_draft;

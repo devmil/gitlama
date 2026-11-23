@@ -57,12 +57,46 @@ unsafe extern "C" {
     fn gitlama_register_native_types();
 }
 
+/// Hands `gitlama <path>` and `--command` invocations to the running
+/// window (the Dart prepareProcessInvocation): exits 0 once forwarded and 2
+/// with a message when refused; otherwise this process owns the instance.
+fn forward_or_continue() {
+    use gitlama_core::api::NativeCliStartupState;
+    let startup = gitlama_core::api::cli_forwarding_prepare_process();
+    match startup.state {
+        NativeCliStartupState::Owner => {}
+        NativeCliStartupState::Forwarded => std::process::exit(0),
+        NativeCliStartupState::Rejected => {
+            if std::env::var_os("GITLAMA_FORWARDING_DIAGNOSTICS").is_some_and(|value| value == "1") {
+                eprintln!("gitlama_forwarding_failure={:?}", startup.failure);
+            }
+            eprintln!("{}", forwarding_failed_message());
+            std::process::exit(2);
+        }
+    }
+}
+
+/// The refusal in the system language (English or German).
+fn forwarding_failed_message() -> String {
+    let german = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()))
+        .is_some_and(|value| value.to_lowercase().starts_with("de"));
+    let catalog = if german { include_str!("../../../../l10n/app_de.arb") } else { include_str!("../../../../l10n/app_en.arb") };
+    serde_json::from_str::<serde_json::Value>(catalog)
+        .ok()
+        .and_then(|value| value["cliForwardingFailed"].as_str().map(str::to_owned))
+        .unwrap_or_else(|| "GitLama could not forward the command safely.".to_owned())
+}
+
 fn main() {
     // macOS starts applications with launchd's PATH; restart with the login
     // shell's before any thread exists so Git finds its helpers.
     #[cfg(target_os = "macos")]
     gitlama_core::gitlama_prepare_desktop_environment();
 
+    // A command for the running window is handed to it; this process ends.
+    forward_or_continue();
     gitlama_workbench::diagnostics::info("Launcher", "process_start", &[]);
     set_desktop_file_name();
     let mut application = QApp::new();

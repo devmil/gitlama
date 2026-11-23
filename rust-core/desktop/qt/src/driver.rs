@@ -113,6 +113,11 @@ impl Driver {
                 state.startup = phase.to_owned();
                 state.startup_changed();
             }
+            let activation = self.app.services().map_or(0, |services| services.cli.activations() as i64);
+            if state.activation != activation {
+                state.activation = activation;
+                state.activation_changed();
+            }
         }
         if changed.intersects(Topics::EVENTS) {
             self.emit_events();

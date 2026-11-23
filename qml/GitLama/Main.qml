@@ -32,6 +32,17 @@ Window {
     required property var lineRows
     required property var inspectorBlame
 
+    // A command forwarded from the command line brings the window forward.
+    Connections {
+        target: appWindow.app
+        function onActivationChanged() {
+            if (appWindow.visibility === Window.Minimized)
+                appWindow.showNormal()
+            appWindow.raise()
+            appWindow.requestActivate()
+        }
+    }
+
     readonly property var appearance: app.appearance ?? ({})
 
     width: 1280

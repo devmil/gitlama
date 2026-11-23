@@ -137,6 +137,11 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   file action menus (context menu and the row's More button: copy path, open, reveal, blame,
   file history); the Continue pulse (MeridianPulse, added to meridian_ui) after the last
   conflict is resolved.
+- CLI forwarding: `gitlama <path>`, `--open`, `--command repository.refresh|fetch|pull` are
+  handed to the running window (exit 0) or refused with the localized message (exit 2); the
+  window owns the instance, polls forwarded commands, raises itself, opens, refreshes, and
+  starts fetch or pull with the requested strategy. Remote opens answer "precondition" until
+  remote workspaces are ported. `scripts/run-dev.sh` gives each profile its own instance.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
@@ -145,7 +150,7 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
 - History: selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.
 - Hosting (pull requests, checks, links), updates (Sparkle/AppImage and its settings page),
-  CLI forwarding, drag and drop, macOS window configuration.
+  drag and drop, macOS window configuration, macOS open-file events.
 - Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
   remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).
 - Inspector: changed-word marks on wrapped lines.

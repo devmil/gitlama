@@ -58,6 +58,7 @@ pub struct Services {
     pub tools: Rc<crate::tools::ToolsPage>,
     pub acceleration: Rc<crate::acceleration::Acceleration>,
     pub diff_renderers: Rc<crate::diff_renderer::DiffRenderers>,
+    pub cli: Rc<crate::cli::CliForwarding>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -266,6 +267,10 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        // Commands forwarded from the command line; this window owns the instance.
+        let cli = crate::cli::CliForwarding::start(Rc::clone(&workspace), Rc::clone(&transfers), notifier.clone())
+            .await
+            .map_err(|_| "cli_forwarding")?;
         let diff_renderers = crate::diff_renderer::DiffRenderers::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -304,6 +309,7 @@ impl Services {
             tools,
             acceleration,
             diff_renderers,
+            cli,
             operations,
             conflicts,
             rebases,
@@ -332,6 +338,7 @@ impl Services {
 
     async fn dispose(&self) {
         self.prompts.cancel_all();
+        self.cli.dispose().await;
         self.auto_fetch.dispose();
         self.operations.dispose();
         self.workspace.retire();
