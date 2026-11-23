@@ -175,7 +175,7 @@ fn main() {
         "version": VERSION,
         "build": BUILD,
         "hyprland": std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some(),
-        "remoteEnabled": false,
+        "remoteEnabled": true,
     });
 
     let workspace = Rc::new(RefCell::new(WorkspaceState::default()));
@@ -248,6 +248,9 @@ fn main() {
     gitlama_qt::PatchState::attach_qobject(&patches);
     patches.borrow_mut().commands = Some(commands.clone());
 
+    let remote = Rc::new(RefCell::new(gitlama_qt::RemoteState::default()));
+    gitlama_qt::RemoteState::attach_qobject(&remote);
+    remote.borrow_mut().commands = Some(commands.clone());
     let hosting = Rc::new(RefCell::new(gitlama_qt::HostingState::default()));
     gitlama_qt::HostingState::attach_qobject(&hosting);
     hosting.borrow_mut().commands = Some(commands.clone());
@@ -275,6 +278,7 @@ fn main() {
         operations: Rc::clone(&operations),
         patches: Rc::clone(&patches),
         hosting: Rc::clone(&hosting),
+        remote: Rc::clone(&remote),
         line_selection: Rc::clone(&line_selection),
         line_rows: Rc::clone(&line_rows),
         conflicts: Rc::clone(&conflicts),
@@ -355,6 +359,7 @@ fn main() {
         ),
         ("patches", patches.borrow().as_qvariant()),
         ("hosting", hosting.borrow().as_qvariant()),
+        ("remote", remote.borrow().as_qvariant()),
         ("lineSelection", line_selection.borrow().as_qvariant()),
         ("lineRows", line_rows.borrow().as_qvariant()),
     ];

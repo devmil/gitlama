@@ -193,6 +193,12 @@ impl RemoteSessions {
         }
     }
 
+    /// Whether any session of this connection is still open here.
+    #[must_use]
+    pub fn has_sessions(&self) -> bool {
+        !self.inner.borrow().sessions.is_empty()
+    }
+
     /// Whether `session_id` is one of this connection's sessions.
     #[must_use]
     pub fn owns(&self, session_id: u64) -> bool {

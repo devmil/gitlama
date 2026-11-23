@@ -31,6 +31,8 @@ pub struct CliForwarding {
     activations: Cell<u64>,
     polling: Cell<bool>,
     disposed: Cell<bool>,
+    /// The window's remote workspace workflows, once composed.
+    pub remote: std::cell::RefCell<Option<Rc<crate::remote::workflows::RemoteWorkflows>>>,
 }
 
 /// The path a forwarded command names.
@@ -79,6 +81,7 @@ impl CliForwarding {
             activations: Cell::new(0),
             polling: Cell::new(false),
             disposed: Cell::new(false),
+            remote: std::cell::RefCell::new(None),
         });
         let weak = Rc::downgrade(&this);
         rt::spawn_detached(async move { Self::serve(weak).await });
@@ -151,10 +154,30 @@ impl CliForwarding {
                 // A failure shows in the repository's own state.
                 let _ = self.workspace.open_recent(path).await;
             }
-            // Remote workspaces are not available in this window.
+            // The window connects the host, with its dialogs.
             NativeCliCommandKind::OpenRemoteRepository => {
-                self.respond(&command, NativeCliResponseKind::Precondition)
-                    .await
+                let remote = self.remote.borrow().clone();
+                let path: Option<Vec<u8>> = command
+                    .path_units
+                    .iter()
+                    .map(|unit| u8::try_from(*unit).ok())
+                    .collect();
+                let (Some(remote), Some(alias), Some(path)) =
+                    (remote, command.remote_alias.clone(), path)
+                else {
+                    return self
+                        .respond(&command, NativeCliResponseKind::Precondition)
+                        .await;
+                };
+                if !crate::remote::model::is_valid_path(&path) {
+                    return self
+                        .respond(&command, NativeCliResponseKind::Precondition)
+                        .await;
+                }
+                self.respond(&command, NativeCliResponseKind::Accepted)
+                    .await;
+                self.activate();
+                remote.open_on_host(&alias, path).await;
             }
             NativeCliCommandKind::Refresh => {
                 if !has_session {

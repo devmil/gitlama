@@ -47,6 +47,8 @@ QtObject {
     property var patches: null
     /// Hosting: accounts, the active repository's binding and resources.
     property var hosting: null
+    /// Remote workspaces: hosts, connections, pending remote writes (RemoteState).
+    property var remote: null
     /// The accounts page (development screenshots drive its form).
     property var hostingSettings: null
     property var lineSelection: null
@@ -152,6 +154,29 @@ QtObject {
             }
         } else if (name === "stageSelected" && changes) {
             changes.stageSelection(argument)
+        } else if (name === "remoteAdd" && remote) {
+            // remoteAdd:<label>=<alias>: saves a host profile.
+            const parts = argument.split("=")
+            remote.saveProfile(0, "", parts[0], parts[1] ?? parts[0], "", "server")
+        } else if (name === "remoteOpen" && remote) {
+            // remoteOpen:<alias>=<path>: opens a repository on a saved host.
+            const parts = argument.split("=")
+            remote.openOnHost(parts[0], parts.slice(1).join("="))
+        } else if (name === "remoteHosts" && actions) {
+            actions.showRemoteHosts("")
+        } else if (name === "remoteOperations" && actions) {
+            actions.showRemoteOperations()
+        } else if (name === "remoteAccess" && remote) {
+            // remoteAccess:<alias>=changes|read: what GitLama may do on the host.
+            const parts = argument.split("=")
+            const host = (remote.hosts ?? []).find(item => item.alias === parts[0])
+            if (host)
+                remote.setAccess(host.id, parts[1] === "changes")
+        } else if (name === "remoteDisconnect" && remote) {
+            // remoteDisconnect:<alias>: closes the host's connection.
+            const host = (remote.hosts ?? []).find(item => item.alias === argument)
+            if (host)
+                remote.disconnect(host.id)
         } else if (name === "command" && actions) {
             actions.runCommand(argument, ({}))
         } else if (name === "commit" && commit) {

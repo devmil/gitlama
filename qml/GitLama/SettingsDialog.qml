@@ -24,6 +24,7 @@ MeridianSettingsDialog {
         ["git", "branch", "settingsGit", "settingsGitDetail"],
         ["integrations", "cloud", "settingsIntegrations", "settingsIntegrationsDetail"],
         ["repositoryBinding", "link", "settingsRepositoryBinding", "settingsRepositoryBindingDetail"],
+        ["remoteHosts", "server", "settingsRemoteHosts", "settingsRemoteHostsDetail"],
         ["customCommands", "command", "settingsCustomCommands", "settingsCustomCommandsDetail"],
         ["diffView", "side-by-side", "settingsDiffView", "settingsDiffViewDetail"],
         ["diffRenderer", "file-diff", "settingsDiffRenderer", "settingsDiffRendererDetail"],
@@ -260,6 +261,13 @@ MeridianSettingsDialog {
             width: parent.width
             section: "binding"
             onOpenAccounts: dialog.currentPage = dialog.categories.findIndex(c => c[0] === "integrations")
+        }
+    }
+
+    // Remote hosts -------------------------------------------------------------
+    MeridianSettingsGroup {
+        RemoteHostsSettings {
+            width: parent.width
         }
     }
 

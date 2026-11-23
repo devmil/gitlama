@@ -58,11 +58,12 @@ const OPERATIONS_AFTER_WRITE_MS: u64 = 10_000;
 type Attempt = Shared<LocalBoxFuture<'static, Result<ConnectionState, Failure>>>;
 
 /// Why a profile change could not be saved.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProfileError {
     Invalid,
     Capacity,
-    Save,
+    /// The settings store refused the change.
+    Save(crate::settings::SettingsError),
 }
 
 pub struct RemoteService {
@@ -72,6 +73,9 @@ pub struct RemoteService {
     workspace: RefCell<Weak<WorkspaceService>>,
     reconnector: RefCell<Option<Rc<Reconnector>>>,
     live: RefCell<HashMap<String, Rc<Connection>>>,
+    /// Closed connections whose sessions tabs still hold: their events drain from what
+    /// arrived, and every other call fails as disconnected, until the tabs reopen.
+    retired: RefCell<Vec<Rc<Connection>>>,
     attempts: RefCell<HashMap<String, Attempt>>,
     cancels: RefCell<HashMap<String, Rc<Cancel>>>,
     states: RefCell<HashMap<String, ConnectionState>>,
@@ -124,6 +128,7 @@ impl RemoteService {
             workspace: RefCell::new(Weak::new()),
             reconnector: RefCell::new(None),
             live: RefCell::new(HashMap::new()),
+            retired: RefCell::new(Vec::new()),
             attempts: RefCell::new(HashMap::new()),
             cancels: RefCell::new(HashMap::new()),
             states: RefCell::new(HashMap::new()),
@@ -302,13 +307,13 @@ impl RemoteService {
                 |current, previous| current.remote_profiles = previous.remote_profiles.clone(),
             )
             .await
-            .map_err(|_| {
+            .map_err(|error| {
                 super::note(
                     crate::diagnostics::Level::Warning,
                     "remote_profiles_save_failed",
-                    &[],
+                    &[("failure_code", error.code().as_str().into())],
                 );
-                ProfileError::Save
+                ProfileError::Save(error)
             })
     }
 
@@ -763,6 +768,12 @@ impl RemoteService {
                 return;
             }
             service.live.borrow_mut().remove(&closed_profile);
+            {
+                // Keep it routable while tabs hold its sessions; forget emptied ones.
+                let mut retired = service.retired.borrow_mut();
+                retired.retain(|connection| connection.sessions.has_sessions());
+                retired.push(Rc::clone(&current));
+            }
             if service.disposed.get() {
                 return;
             }
@@ -1142,9 +1153,18 @@ impl CallRouter for Router {
         }
         let service = self.remote.borrow().upgrade()?;
         let live = service.live.borrow();
-        live.values()
+        let found = live
+            .values()
             .find(|connection| connection.sessions.owns(session_id))
-            .map(|connection| Rc::clone(&connection.calls))
+            .map(|connection| Rc::clone(&connection.calls));
+        found.or_else(|| {
+            service
+                .retired
+                .borrow()
+                .iter()
+                .find(|connection| connection.sessions.owns(session_id))
+                .map(|connection| Rc::clone(&connection.calls))
+        })
     }
 
     fn for_identity(&self, identity: &NativePathIdentity) -> Option<Rc<dyn SessionCalls>> {

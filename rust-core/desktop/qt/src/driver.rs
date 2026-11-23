@@ -62,6 +62,7 @@ pub struct Driver {
     pub operations: Rc<RefCell<crate::operations_state::OperationsState>>,
     pub patches: Rc<RefCell<crate::patch_state::PatchState>>,
     pub hosting: Rc<RefCell<crate::hosting_state::HostingState>>,
+    pub remote: Rc<RefCell<crate::remote_state::RemoteState>>,
     pub line_selection: Rc<RefCell<crate::line_selection_state::LineSelectionState>>,
     pub line_rows: Rc<RefCell<RowModel>>,
     /// The history reference scope last seen in the settings; a change
@@ -214,6 +215,34 @@ impl Driver {
             if workflows.power_tools != power_tools {
                 workflows.power_tools = power_tools;
                 workflows.power_tools_changed();
+            }
+        }
+        if changed.intersects(Topics::REMOTE | Topics::SETTINGS | Topics::STARTUP)
+            && let Some(services) = self.app.services()
+        {
+            for profile in services.remote.take_reconnected() {
+                let host = services
+                    .remote
+                    .profile(&profile)
+                    .map(|profile| profile.label)
+                    .unwrap_or_default();
+                services
+                    .notices
+                    .status("remoteReconnected", serde_json::json!({ "host": host }));
+            }
+            let (hosts, operations, helper) = crate::remote_state::project(&services);
+            let mut remote = self.remote.borrow_mut();
+            if remote.hosts != hosts {
+                remote.hosts = hosts;
+                remote.hosts_changed();
+            }
+            if remote.operations != operations {
+                remote.operations = operations;
+                remote.operations_changed();
+            }
+            if remote.helper != helper {
+                remote.helper = helper;
+                remote.helper_changed();
             }
         }
         if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
@@ -529,7 +558,13 @@ impl Driver {
                 (
                     Value::Array(
                         tabs.iter()
-                            .map(|tab| projection::tab(tab, &services.appearances))
+                            .map(|tab| {
+                                projection::tab(
+                                    tab,
+                                    &services.appearances,
+                                    services.workspace.is_remote_tab_stale(tab),
+                                )
+                            })
                             .collect(),
                     ),
                     active.map_or(-1, |id| id as i64),
@@ -549,7 +584,27 @@ impl Driver {
                     .and_then(|tab| tab.group_id)
                     .and_then(|id| groups.iter().find(|group| group.id == id))
                     .map(|group| group.name.as_str());
-                projection::active(tab, group)
+                let mut value = projection::active(tab, group);
+                if let Some(tab) = tab
+                    && let Some(profile) = tab
+                        .canonical_identity()
+                        .or(tab.requested_identity.as_ref())
+                        .and_then(|identity| identity.remote.as_ref())
+                {
+                    value["remoteProfile"] = serde_json::Value::String(profile.profile_id.clone());
+                    value["remoteStale"] =
+                        serde_json::Value::Bool(services.workspace.is_remote_tab_stale(tab));
+                    value["failure"] = tab
+                        .failure
+                        .map_or(serde_json::Value::Null, |failure| failure.name().into());
+                    value["path"] = tab
+                        .canonical_identity()
+                        .or(tab.requested_identity.as_ref())
+                        .map_or(serde_json::Value::Null, |identity| {
+                            gitlama_workbench::session::display_path(identity).into()
+                        });
+                }
+                value
             });
             let mut workspace = self.workspace.borrow_mut();
             if workspace.active != active_projection {

@@ -147,7 +147,7 @@ Rectangle {
                     objectName: "commit-failure-panel"
                     width: parent.width
                     tone: MeridianBanner.Error
-                    title: editor.commitState.outcomeUnknown === true ? ""
+                    title: editor.commitState.outcomeUnknown === true ? L10n.t("remoteOutcomeUnknownTitle")
                         : !editor.failure ? ""
                         : (editor.failure.kind === "hook" ? L10n.t("commitHookFailure")
                            : editor.failure.kind === "signing" ? L10n.t("commitSigningFailure") : L10n.t("commitOtherFailure"))

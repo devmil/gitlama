@@ -132,7 +132,7 @@ fn contrast(a: Rgb, b: Rgb) -> f64 {
 
 /// Syntax colours checked against the surfaces of each row kind (the Dart
 /// MeridianSyntaxPalette): a colour that does not read on one keeps `ink`.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct SyntaxPalette {
     ink: String,
     /// Row kind → token → colour.
@@ -495,7 +495,12 @@ mod diff_model {
         /// Sets the syntax colours and the surfaces they are checked on.
         #[qslot]
         fn set_palette(&mut self, palette: Value) {
-            self.palette = SyntaxPalette::from_value(&palette);
+            let palette = SyntaxPalette::from_value(&palette);
+            // The same palette changes nothing: no refresh while the model publishes.
+            if palette == self.palette {
+                return;
+            }
+            self.palette = palette;
             self.refresh();
         }
 

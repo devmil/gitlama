@@ -13,7 +13,13 @@ MeridianDialog {
     /// "" is this computer; hosts use their profile IDs.
     property string location: ""
     readonly property bool local: location === ""
-    readonly property string blocked: ""
+    readonly property var hosts: Store.remote && Store.remoteEnabled ? (Store.remote.hosts ?? []) : []
+    readonly property var host: local ? null : hosts.find(item => item.id === location) ?? null
+    /// Why repositories cannot be created on the chosen host before connecting to it.
+    readonly property string blocked: local ? "" : host === null ? L10n.t("remoteRecentHostMissing")
+        : host.initializeBlock ? L10n.t(host.initializeBlock) : ""
+    // A host removed while the dialog is open is no longer a choice.
+    onHostsChanged: if (!local && !hosts.some(item => item.id === location)) location = ""
     property bool _answered: false
 
     signal chosen(int id, var choice)
@@ -47,6 +53,26 @@ MeridianDialog {
     ColumnLayout {
         width: parent.width
         spacing: Theme.space.s6
+        MeridianSelect {
+            objectName: "initialize-location"
+            visible: dialog.hosts.length > 0
+            Layout.fillWidth: true
+            fixedWidth: parent.width
+            label: L10n.t("initializeLocation")
+            showLabel: true
+            values: [""].concat(dialog.hosts.map(item => item.id))
+            value: dialog.location
+            valueLabel: value => value === "" ? L10n.t("initializeLocationThisComputer")
+                : (dialog.hosts.find(item => item.id === value) ?? ({ label: "" })).label
+            onActivated: value => dialog.location = value
+        }
+        MeridianBanner {
+            objectName: "initialize-blocked"
+            visible: dialog.blocked.length > 0
+            Layout.fillWidth: true
+            tone: MeridianBanner.Info
+            message: dialog.blocked
+        }
         MeridianCheckbox {
             objectName: "initialize-bare"
             Layout.fillWidth: true

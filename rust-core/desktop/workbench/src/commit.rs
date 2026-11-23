@@ -263,6 +263,9 @@ impl CommitService {
             Err(error) => {
                 return match error {
                     crate::backend::CallError::Transport(_) => Outcome::OutcomeUnknown,
+                    crate::backend::CallError::Remote(code) if code == "outcomeUnknown" => {
+                        Outcome::OutcomeUnknown
+                    }
                     other => Outcome::Failed(SessionError::from(other).code()),
                 };
             }

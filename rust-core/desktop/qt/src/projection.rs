@@ -69,7 +69,13 @@ pub fn mark(
 pub fn tab(
     tab: &Tab,
     appearances: &std::rc::Rc<gitlama_workbench::appearances::AppearanceService>,
+    remote_stale: bool,
 ) -> Value {
+    let remote_profile = tab
+        .canonical_identity()
+        .or(tab.requested_identity.as_ref())
+        .and_then(|identity| identity.remote.as_ref())
+        .map(|remote| remote.profile_id.clone());
     let custom_name = appearances.name_for(tab.canonical_identity());
     let appearance = appearances.appearance_for(tab.canonical_identity());
     let snapshot = tab.session.as_ref().map(|session| &session.snapshot);
@@ -82,6 +88,8 @@ pub fn tab(
         "failure": tab.failure.map(|failure| failure.name()),
         "groupId": tab.group_id,
         "remote": tab.canonical_identity().is_some_and(|identity| identity.remote.is_some()),
+        "remoteProfile": remote_profile,
+        "remoteStale": remote_stale,
         "path": tab.canonical_identity().map(display_path),
         "repositoryKey": tab.repository().map(display_path),
         "mainWorktree": tab.is_main_worktree(),

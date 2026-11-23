@@ -73,6 +73,9 @@ pub fn details(services: &gitlama_workbench::app::Services) -> Value {
         "name": services.appearances.name_for(tab.canonical_identity()).unwrap_or_else(|| tab.label.clone()),
         "group": group,
         "remote": tab.canonical_identity().is_some_and(|identity| identity.remote.is_some()),
+        "remoteProfile": tab.canonical_identity().or(tab.requested_identity.as_ref())
+            .and_then(|identity| identity.remote.as_ref()).map(|remote| remote.profile_id.clone()),
+        "hostDisconnected": services.workspace.is_remote_tab_stale(tab),
         "path": path,
         "bare": identity.as_ref().is_some_and(|identity| identity.kind == NativeRepositoryKind::Bare),
         "hasKind": identity.is_some(),

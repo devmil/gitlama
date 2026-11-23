@@ -28,6 +28,18 @@ Item {
         case "initializeRepository":
             initializeDialog.ask(id, payload.initiallyBare === true)
             return
+        case "remoteHosts":
+            remoteHostsDialog.show(payload.profileId ?? "", payload.choosing === true, id, actionsRoot.answer)
+            return
+        case "remoteChooseFolder":
+            remoteDirectoryPicker.ask(id, payload, actionsRoot.answer)
+            return
+        case "remoteInstallHelper":
+            remoteInstallDialog.ask(id, payload, actionsRoot.answer)
+            return
+        case "remoteAddHost":
+            remoteAddHost.ask(id, payload.alias ?? "")
+            return
         case "confirmDiscard":
             discardConfirm.ask(id, payload)
             return
@@ -400,6 +412,7 @@ Item {
         }
         switch (id) {
         case "openRepository": Store.workspace.openRepository(); return
+        case "openRemoteRepository": openRemoteRepository(); return
         case "initializeRepository": Store.workspace.initializeRepository(false); return
         case "closeRepositoryTab": Store.workspace.closeTab(Store.workspace.activeTabId); return
         case "showSettings": showSettings(); return
@@ -595,15 +608,64 @@ Item {
             hasActivity: false,
             canRetryActivity: false,
             canCancelActivity: false,
-            remote: null,
+            remote: remoteAccess(active),
         }
     }
-    function openRemoteRepository() {}
+    /// What the active remote tab may do on its host ({connected, capabilities, writeBlock});
+    /// null for a local tab (the Dart RemoteTabAccess).
+    function remoteAccess(tab) {
+        if (!tab || !tab.remoteProfile)
+            return null
+        const host = Labels.remoteHost(tab.remoteProfile)
+        const connected = tab.remoteStale !== true && host !== null && host.ready === true
+        return {
+            connected: connected,
+            capabilities: connected ? (host.capabilities ?? []) : [],
+            writeBlock: host ? (host.writeBlock ?? null) : "notAllowed",
+        }
+    }
+    /// Chooses a host and a folder there and opens the repository (`tab` replaces a chooser).
+    function openRemoteRepository(tab) {
+        if (Store.remote)
+            Store.remote.openRemoteRepository(tab === undefined ? -1 : tab)
+    }
     function cloneRepository() { Store.workspace.cloneRepository() }
-    function openRecent(recent) {
-        if (recent.remote)
+    function openRecent(recent, tab) {
+        if (recent.remote) {
+            if (Store.remote)
+                Store.remote.openRecent(recent.index, tab === undefined ? -1 : tab)
             return
+        }
         Store.workspace.openRecent(recent.index)
+    }
+    /// The host profiles, with `profileId` selected.
+    function showRemoteHosts(profileId) { remoteHostsDialog.show(profileId ?? "", false) }
+    /// The record of remote changes.
+    function showRemoteOperations() { remoteOperationsDialog.open() }
+
+    RemoteHostsDialog { id: remoteHostsDialog }
+    RemoteDirectoryPicker { id: remoteDirectoryPicker }
+    RemoteInstallHelperDialog { id: remoteInstallDialog }
+    RemoteOperationsDialog { id: remoteOperationsDialog }
+    RemoteHostEditor {
+        id: remoteAddHost
+        property int promptId: -1
+        function ask(id, alias) {
+            promptId = id
+            add(alias)
+        }
+        onSaved: profileId => {
+            const id = promptId
+            promptId = -1
+            if (id >= 0)
+                actionsRoot.answer(id, profileId)
+        }
+        onDeclined: {
+            const id = promptId
+            promptId = -1
+            if (id >= 0)
+                actionsRoot.answer(id, null)
+        }
     }
 
     FolderDialog {

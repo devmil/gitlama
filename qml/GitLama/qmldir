@@ -133,3 +133,15 @@ RestackRootDialog 1.0 RestackRootDialog.qml
 RestackPreviewDialog 1.0 RestackPreviewDialog.qml
 HistoryMutationPreviewDialog 1.0 HistoryMutationPreviewDialog.qml
 SettingsDialog 1.0 SettingsDialog.qml
+RemoteDirectoryPicker 1.0 RemoteDirectoryPicker.qml
+RemoteField 1.0 RemoteField.qml
+RemoteHelperLocation 1.0 RemoteHelperLocation.qml
+RemoteHostEditor 1.0 RemoteHostEditor.qml
+RemoteHostsDialog 1.0 RemoteHostsDialog.qml
+RemoteHostsSettings 1.0 RemoteHostsSettings.qml
+RemoteHostStatus 1.0 RemoteHostStatus.qml
+RemoteInstallHelperDialog 1.0 RemoteInstallHelperDialog.qml
+RemoteOperationsDialog 1.0 RemoteOperationsDialog.qml
+RemoteReconnect 1.0 RemoteReconnect.qml
+RemoteTabBanner 1.0 RemoteTabBanner.qml
+RemoteTabFailure 1.0 RemoteTabFailure.qml

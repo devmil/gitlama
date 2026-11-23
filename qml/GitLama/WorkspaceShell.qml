@@ -116,9 +116,33 @@ Rectangle {
             height: shell.height - toolbar.height - tabs.height - statusBar.height - (activity.visible ? activity.height + Theme.space.s3 : 0)
             readonly property bool choosing: Store.workspace !== null && Store.workspace.active !== null
                 && Store.workspace.active.phase === "choosing"
-            WorkspaceBody {
+            readonly property var activeTab: Store.workspace ? Store.workspace.active : null
+            // A remote tab that could not open: reconnect, review the host or trust the
+            // repository (the Dart remoteTabFailure).
+            readonly property bool remoteFailed: activeTab !== null && activeTab.phase === "failed" && !!activeTab.remoteProfile
+                && (activeTab.failure === "remoteDisconnected" || activeTab.failure === "remoteIdentityChanged")
+            // An open remote tab whose connection is gone shows its last state under a banner.
+            readonly property bool remoteStale: activeTab !== null && activeTab.phase === "open" && !!activeTab.remoteProfile
+                && activeTab.remoteStale === true
+            Loader {
+                id: staleBanner
+                active: body.remoteStale
+                visible: active
+                x: Theme.space.s3
+                width: parent.width - 2 * Theme.space.s3
+                sourceComponent: RemoteTabBanner { tab: body.activeTab }
+            }
+            Loader {
                 anchors.fill: parent
-                visible: !body.choosing
+                active: body.remoteFailed
+                sourceComponent: RemoteTabFailure { tab: body.activeTab }
+            }
+            WorkspaceBody {
+                x: 0
+                y: staleBanner.active ? staleBanner.height + Theme.space.s3 : 0
+                width: parent.width
+                height: parent.height - y
+                visible: !body.choosing && !body.remoteFailed
                 // Keyboard focus stays out while an operation holds the tab.
                 enabled: busyLoader.active === false
                 onCommand: (id, options) => shell.command(id, options)
@@ -165,6 +189,30 @@ Rectangle {
             id: statusBar
             width: parent.width
             height: Metrics.statusBarHeight
+            readonly property var tab: Store.workspace ? Store.workspace.active : null
+            readonly property var reviews: Store.remote ? (Store.remote.operations ?? []).filter(operation => Labels.remoteOperationNeedsReview(operation)) : []
+            // The active remote tab's host.
+            host: tab && tab.remoteProfile ? hostComponent : null
+            // Remote writes that need review.
+            trailingItem: reviews.length > 0 ? reviewComponent : null
+            Component {
+                id: hostComponent
+                RemoteHostStatus {
+                    profileId: statusBar.tab ? (statusBar.tab.remoteProfile ?? "") : ""
+                    disconnected: statusBar.tab !== null && statusBar.tab.remoteStale === true
+                }
+            }
+            Component {
+                id: reviewComponent
+                MeridianButton {
+                    objectName: "remote-operations-indicator"
+                    text: L10n.tn("remoteOperationsIndicator", { count: statusBar.reviews.length })
+                    iconName: "circle-alert"
+                    controlSize: MeridianButton.Small
+                    variant: MeridianButton.Quiet
+                    onClicked: Store.actions.showRemoteOperations()
+                }
+            }
         }
     }
 

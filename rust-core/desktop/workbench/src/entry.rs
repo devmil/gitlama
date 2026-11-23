@@ -28,6 +28,8 @@ pub struct EntryWorkflows {
     prompts: Rc<Prompts>,
     notifier: Notifier,
     state: Cell<EntryState>,
+    /// The window's remote workspace workflows, once composed.
+    pub remote: std::cell::RefCell<Option<Rc<crate::remote::workflows::RemoteWorkflows>>>,
 }
 
 impl EntryWorkflows {
@@ -37,6 +39,7 @@ impl EntryWorkflows {
         notifier: Notifier,
     ) -> Rc<Self> {
         Rc::new(Self {
+            remote: std::cell::RefCell::new(None),
             clones: crate::clone::CloneService::new(notifier.clone()),
             workspace,
             prompts,
@@ -148,6 +151,14 @@ impl EntryWorkflows {
 
     /// Opens the recent repository `identity` on this computer.
     pub async fn open_recent(self: &Rc<Self>, identity: NativePathIdentity) {
+        // A remote recent connects its host first (remote workspace workflows).
+        if identity.remote.is_some() {
+            let remote = self.remote.borrow().clone();
+            if let Some(remote) = remote {
+                remote.open_recent(identity, None).await;
+            }
+            return;
+        }
         let workspace = Rc::clone(&self.workspace);
         self.run(async move { workspace.open_recent(identity).await.map(Some) })
             .await;
@@ -303,8 +314,13 @@ impl EntryWorkflows {
             .get("profileId")
             .and_then(|value| value.as_str())
             .map(str::to_owned);
-        if profile.is_some() {
+        if let Some(profile) = profile {
             // Remote creation runs through the remote workspace workflows.
+            let Some(remote) = self.remote.borrow().clone() else {
+                return;
+            };
+            self.run(async move { remote.initialize_remote_repository(&profile, bare).await })
+                .await;
             return;
         }
         let this = Rc::clone(self);

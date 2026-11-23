@@ -27,6 +27,9 @@ Column {
 
     onTabsChanged: _rebuild()
     onActiveTabIdChanged: _rebuild()
+    // A host's name, colour or icon shows in its tabs.
+    readonly property var remoteHosts: Store.remote ? Store.remote.hosts : null
+    onRemoteHostsChanged: _rebuild()
     Component.onCompleted: _rebuild()
 
     function tabById(id) {
@@ -132,22 +135,46 @@ Column {
         return tab.hasStatus ? L10n.t("syncAheadBehind", [tab.ahead, tab.behind]) : ""
     }
 
+    /// How a remote tab shows its host: {name, disconnected, color, icon}; null for a local
+    /// tab (the Dart remoteTabHost).
+    function _host(tab) {
+        if (!tab.remoteProfile || tab.phase === "choosing")
+            return null
+        const profile = Labels.remoteHost(tab.remoteProfile)
+        const color = profile && profile.color ? AppearanceColors.color(profile.color) : null
+        const icon = profile && AppearanceColors.icons.indexOf(profile.icon ?? "") >= 0 ? profile.icon : null
+        return { name: Labels.remoteHostName(tab.remoteProfile), disconnected: tab.remoteStale === true, color: color, icon: icon }
+    }
+
     function _tab(tab, overrides) {
         overrides = overrides ?? ({})
         const name = overrides.label ?? label(tab)
-        const tooltip = [overrides.tooltip ?? name, _syncTooltip(tab)].filter(part => part.length > 0).join(" · ")
+        const host = _host(tab)
+        const marked = host !== null && (host.color !== null || host.icon !== null)
+        // A marked host is told by its icon; its name would crowd the label.
+        const shown = host === null || marked || overrides.label !== undefined ? name
+            : L10n.tn("remoteTabLabel", { repository: name, host: host.name })
+        const hostNote = host === null ? "" : host.disconnected ? L10n.tn("remoteHostBadgeDisconnected", { host: host.name })
+            : L10n.tn("remoteHostBadge", { host: host.name })
+        const tooltip = [overrides.tooltip ?? (hostNote.length > 0 ? name + " · " + hostNote : shown), _syncTooltip(tab)]
+            .filter(part => part.length > 0).join(" · ")
+        const hostIcon = host !== null && tab.phase === "open"
         return {
             id: overrides.id ?? tab.id,
-            label: name,
+            label: shown,
             group: overrides.noGroup ? null : (tab.groupId ?? null),
             tooltip: tooltip,
+            semanticLabel: hostNote.length > 0 ? name + ", " + hostNote : "",
             dirty: overrides.dirty ?? (tab.hasStatus && tab.changes > 0),
-            renamable: overrides.renamable ?? tab.phase === "open",
+            // The label carries the host; renaming edits only local names.
+            renamable: overrides.renamable ?? (host === null && tab.phase === "open"),
             renamePlaceholder: tab.label,
             spinner: tab.phase === "opening",
-            iconName: tab.phase === "failed" ? "circle-alert" : (overrides.iconName ?? ""),
-            iconColor: tab.phase === "failed" ? Theme.colors.danger : (overrides.iconColor ?? Theme.colors.inkMuted),
-            mark: tab.phase === "open" || tab.phase === "failed" ? (overrides.mark ?? tab.mark) : null,
+            iconName: tab.phase === "failed" ? "circle-alert"
+                : hostIcon ? (host.disconnected ? "wifi-off" : host.icon ?? "server") : (overrides.iconName ?? ""),
+            iconColor: tab.phase === "failed" ? Theme.colors.danger
+                : hostIcon ? (host.color ?? Theme.colors.inkMuted) : (overrides.iconColor ?? Theme.colors.inkMuted),
+            mark: hostIcon ? null : tab.phase === "open" || tab.phase === "failed" ? (overrides.mark ?? tab.mark) : null,
             worktreeCount: overrides.worktreeCount ?? 0,
             tabId: tab.id,
         }

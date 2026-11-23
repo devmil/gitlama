@@ -1051,6 +1051,16 @@ impl ChangesService {
 
     /// The message every workflow shows for a session failure.
     pub fn report_failure(&self, code: FailureCode, operation: &str) {
+        // A remote write whose outcome is unknown waits for review under Remote changes.
+        if code == FailureCode::RemoteOutcomeUnknown {
+            let key = if operation == "stagingFailed" {
+                "remoteOutcomeUnknownStage"
+            } else {
+                "remoteOutcomeUnknownChange"
+            };
+            self.notices.error(key, Value::Null);
+            return;
+        }
         self.notices.error(
             "operationFailureWithReason",
             json!({"operation": {"l10n": operation}, "reason": {"l10n": failure_reason_key(code)}}),
@@ -1307,6 +1317,9 @@ pub fn failure_reason_key(code: FailureCode) -> &'static str {
             "operationFailureInvalidRequest"
         }
         FailureCode::Capacity => "operationFailureBusy",
+        FailureCode::RemoteDisconnected => "remoteCommandDisconnected",
+        FailureCode::RemoteNotOffered => "remoteCommandUnsupported",
+        FailureCode::RemoteWriteNotPermitted => "remoteCommandWritesUnavailable",
         _ => "operationFailureRead",
     }
 }

@@ -29,6 +29,7 @@ Window {
     required property var operations
     required property var patches
     required property var hosting
+    required property var remote
     required property var lineSelection
     required property var lineRows
     required property var inspectorBlame
@@ -114,6 +115,7 @@ Window {
         Store.operations = operations
         Store.patches = patches
         Store.hosting = hosting
+        Store.remote = remote
         Store.lineSelection = lineSelection
         Store.lineRows = lineRows
         Store.inspectorBlame = inspectorBlame

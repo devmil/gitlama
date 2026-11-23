@@ -85,7 +85,7 @@ QtObject {
 
     /// A remote recent's secondary line: its host and path.
     function remoteRecentSubtitle(recent) {
-        return L10n.t("remoteRecentSubtitle", [recent.hostName ?? "", recent.path])
+        return L10n.tn("remoteRecentSubtitle", { host: remoteHostName(recent.profileId ?? ""), path: recent.path })
     }
 
     /// A commit date in History's date column: `iso` (2026-11-22), `local`
@@ -158,5 +158,117 @@ QtObject {
     function worktreeSubject(conflict, changed, staged) {
         return conflict ? L10n.tn("historyWorkingTreeConflicts", { count: changed })
                         : L10n.tn("historyWorkingTreeChanges", { count: changed, staged: staged })
+    }
+
+    // Remote workspaces ---------------------------------------------------------
+
+    /// A connection phase's name (the Dart remotePhaseLabel).
+    function remotePhase(phase) {
+        switch (phase) {
+        case "installing": return L10n.t("remotePhaseInstalling")
+        case "connecting": return L10n.t("remotePhaseConnecting")
+        case "handshaking": return L10n.t("remotePhaseHandshaking")
+        case "ready": return L10n.t("remotePhaseReady")
+        case "disconnecting": return L10n.t("remotePhaseDisconnecting")
+        case "disconnected": return L10n.t("remotePhaseDisconnected")
+        case "failed": return L10n.t("remotePhaseFailed")
+        case "identityChanged": return L10n.t("remotePhaseIdentityChanged")
+        default: return L10n.t("remotePhaseIdle")
+        }
+    }
+
+    /// The status dot tone of a connection phase (MeridianStatusDot tones).
+    function remotePhaseTone(phase) {
+        switch (phase) {
+        case "ready": return 2
+        case "installing": case "connecting": case "handshaking": case "disconnecting": return 1
+        case "failed": return 4
+        case "identityChanged": case "disconnected": return 3
+        default: return 0
+        }
+    }
+
+    /// Whether a connection phase is busy connecting.
+    function remoteBusy(phase) {
+        return phase === "installing" || phase === "connecting" || phase === "handshaking"
+    }
+
+    /// The localized text of a remote failure {code, key, args}.
+    function remoteFailure(failure) {
+        if (!failure)
+            return ""
+        if (failure.args && failure.args.alias === null)
+            return L10n.tn(failure.key, { alias: L10n.t("remoteAliasExample") })
+        return failure.args ? L10n.tn(failure.key, failure.args) : L10n.t(failure.key)
+    }
+
+    /// Whether a (re)installation of the helper resolves a failure code.
+    function remoteInstallResolves(code) {
+        return ["helperNotInstalled", "installDirectory", "installWrite", "installDigest", "installExecute", "installFailed"].indexOf(code) >= 0
+    }
+
+    /// A host profile's name, or a generic one once the profile was deleted.
+    function remoteHostName(profileId) {
+        const host = remoteHost(profileId)
+        return host ? host.label : L10n.t("remoteHostUnknown")
+    }
+
+    /// The host profile `profileId`, or null.
+    function remoteHost(profileId) {
+        const hosts = Store.remote ? (Store.remote.hosts ?? []) : []
+        for (let index = 0; index < hosts.length; index += 1) {
+            if (hosts[index].id === profileId)
+                return hosts[index]
+        }
+        return null
+    }
+
+    /// What a remote write family is called.
+    function remoteFamily(family) {
+        const name = family.length > 0 ? family[0].toUpperCase() + family.slice(1) : family
+        return L10n.t("remoteOperation" + name)
+    }
+
+    /// Whether a recorded remote write needs the user's review.
+    function remoteOperationNeedsReview(operation) {
+        return operation.pending || ["succeeded", "failed", "notApplied"].indexOf(operation.outcome) < 0
+    }
+
+    /// A recorded remote write's state.
+    function remoteOperationState(operation) {
+        if (operation.pending && !operation.outcome)
+            return L10n.t("remoteOperationRunning")
+        switch (operation.outcome) {
+        case "succeeded": return L10n.t("remoteOperationSucceeded")
+        case "failed": return L10n.t("remoteOperationFailed")
+        case "notApplied": return L10n.t("remoteOperationNotApplied")
+        case "desiredStateObserved": return L10n.t("remoteOperationDesiredState")
+        case "partial": return L10n.t("remoteOperationPartial")
+        default: return L10n.t("remoteOperationUnknown")
+        }
+    }
+
+    /// What automatic reconnection of a host says: {title, reason, detail}.
+    function remoteReconnectStatus(host, seconds) {
+        const reconnect = host.reconnect
+        const name = host.label
+        const reason = reconnect.failure ? remoteFailure(reconnect.failure) : ""
+        const detail = reason.length > 0 ? reason + " " + L10n.t("remoteReconnectStale") : L10n.t("remoteReconnectStale")
+        switch (reconnect.phase) {
+        case "waiting": return { title: L10n.tn("remoteReconnectIn", { host: name, seconds: seconds }), reason: reason, detail: detail }
+        case "connecting": return { title: L10n.tn("remoteReconnecting", { host: name }), reason: reason, detail: detail }
+        default: return {
+            title: reconnect.gaveUp ? L10n.tn("remoteReconnectGaveUp", { host: name }) : L10n.tn("remoteReconnectStopped", { host: name }),
+            reason: reason,
+            detail: detail
+        }
+        }
+    }
+
+    /// The last path segment of a remote path for display.
+    function remotePathName(path) {
+        const trimmed = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path
+        const separator = trimmed.lastIndexOf("/")
+        return separator < 0 || separator === trimmed.length - 1 ? trimmed : trimmed.slice(separator + 1)
     }
 }

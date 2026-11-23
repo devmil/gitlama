@@ -160,6 +160,57 @@ mod inspection_windows {
                 .cloned()
         }
 
+        /// The host profile window `id`'s repository is on; "" on this computer.
+        #[qslot]
+        fn host_of(&self, id: i32) -> String {
+            self.window(id)
+                .and_then(|window| {
+                    window
+                        .repository
+                        .borrow()
+                        .as_ref()
+                        .and_then(|identity| identity.remote.clone())
+                })
+                .map(|remote| remote.profile_id)
+                .unwrap_or_default()
+        }
+
+        /// Shows window `id`'s location again on the session its repository's tab has now
+        /// (after a host reconnected).
+        #[qslot]
+        fn retry(&self, id: i32) {
+            let Some(window) = self.window(id) else {
+                return;
+            };
+            let Some(commands) = &self.commands else {
+                return;
+            };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(repository) = window.repository.borrow().clone() else {
+                    return;
+                };
+                let session = services.workspace.with_tabs(|tabs, _, _| {
+                    tabs.iter()
+                        .find(|tab| tab.canonical_identity() == Some(&repository))
+                        .and_then(|tab| tab.session.as_ref().map(|session| session.identity))
+                });
+                let Some(session) = session else { return };
+                let Some(service) = window.state.borrow().service.clone() else {
+                    return;
+                };
+                let location = service.current().location.clone();
+                service.attach(session);
+                if let Some(location) = location {
+                    rt::spawn_detached(async move {
+                        service.navigate(location, false, false, None).await
+                    });
+                }
+            });
+        }
+
         /// The window `id` closed; its objects go with the next turn.
         #[qslot]
         fn close(&self, id: i32) {

@@ -65,6 +65,15 @@ Item {
                 enabled: !chooser.busy
                 onClicked: chooser.open(-1)
             }
+            Item { visible: Store.remoteEnabled; width: 1; height: Theme.space.s4 }
+            MeridianButton {
+                objectName: "repository-chooser-remote"
+                visible: Store.remoteEnabled
+                text: L10n.t("openRemoteRepository")
+                iconName: "server"
+                enabled: !chooser.busy
+                onClicked: Store.actions.openRemoteRepository(chooser.tab.id)
+            }
             Item { width: 1; height: (chooser.tab.failure ?? null) !== null ? Theme.space.s6 : 0 }
             MeridianBanner {
                 visible: (chooser.tab.failure ?? null) !== null
@@ -89,7 +98,9 @@ Item {
                 recents: chooser.recents
                 busy: chooser.busy
                 onOpen: recent => {
-                    if (!recent.remote)
+                    if (recent.remote)
+                        Store.actions.openRecent(recent, chooser.tab.id)
+                    else
                         chooser.open(recent.index)
                 }
             }

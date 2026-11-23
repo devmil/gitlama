@@ -31,6 +31,7 @@ pub enum StartupPhase {
 pub struct Services {
     pub settings: Rc<SettingsService>,
     pub remote: Rc<crate::remote::service::RemoteService>,
+    pub remote_workflows: Rc<crate::remote::workflows::RemoteWorkflows>,
     pub calls: Rc<dyn SessionCalls>,
     pub history: Rc<HistoryService>,
     pub workspace: Rc<WorkspaceService>,
@@ -179,6 +180,14 @@ impl Services {
             .await
             .map_err(|_| "workspace")?;
         remote.connect_restored_tabs();
+        let remote_workflows = crate::remote::workflows::RemoteWorkflows::new(
+            Rc::clone(&remote),
+            Rc::clone(&workspace),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
+        *entry.remote.borrow_mut() = Some(Rc::clone(&remote_workflows));
         let navigator = crate::navigator::Navigator::new(Rc::clone(&workspace), notifier.clone());
         let sidebar = crate::sidebar::SidebarService::new(
             Rc::clone(&workspace),
@@ -383,9 +392,11 @@ impl Services {
         let operations =
             crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
         operations.set_remote(&remote);
+        *cli.remote.borrow_mut() = Some(Rc::clone(&remote_workflows));
         operations.start();
         Ok(Self {
             remote,
+            remote_workflows,
             integrations,
             extensions,
             inspector_actions,

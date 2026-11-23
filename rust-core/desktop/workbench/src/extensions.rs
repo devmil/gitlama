@@ -302,15 +302,35 @@ impl Extensions {
         }
     }
 
-    /// Adds a worktree at `path` (a folder on this computer) checked out at
-    /// `reference`.
+    /// Adds a worktree at `path` (a folder on this computer, or on the host for a repository
+    /// on another computer) checked out at `reference`.
     pub async fn create_worktree(&self, path: String, reference: String) {
         let (path, reference) = (path.trim().to_owned(), reference.trim().to_owned());
         if path.is_empty() || reference.is_empty() || self.panel.borrow().inventory.is_none() {
             return;
         }
+        let remote = self
+            .panel
+            .borrow()
+            .inventory
+            .as_ref()
+            .is_some_and(|inventory| {
+                inventory
+                    .worktrees
+                    .iter()
+                    .any(|entry| entry.current && entry.worktree_root.remote.is_some())
+            });
         let mut request = Self::request(NativeExtensionMutationKind::WorktreeCreate);
-        request.worktree_root = Some(local_path(&path));
+        request.worktree_root = Some(if remote {
+            // A host path: its UTF-8 bytes; the connection sends no authority.
+            gitlama_contract::dto::NativePathIdentity {
+                platform: gitlama_contract::dto::NativePathPlatform::Unix,
+                units: path.bytes().map(u16::from).collect(),
+                remote: None,
+            }
+        } else {
+            local_path(&path)
+        });
         request.reference = Some(reference);
         self.run(request).await;
     }

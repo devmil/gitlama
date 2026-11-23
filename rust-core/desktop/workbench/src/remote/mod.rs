@@ -11,6 +11,10 @@ pub mod protocol;
 pub mod reconnect;
 pub mod service;
 pub mod ssh;
+pub mod workflows;
+
+pub use gitlama_application::wire::contract::RemoteCapability;
+pub use gitlama_application::wire::runtime::{base64_decode, base64_encode};
 
 use crate::diagnostics::{self, Field, Level};
 

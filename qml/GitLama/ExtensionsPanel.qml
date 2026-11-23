@@ -346,8 +346,18 @@ MeridianPanel {
                         id: pathField
                         objectName: "extension-worktree-path"
                         width: parent.width
+                        error: panel.pickerFailed
                         Accessible.name: L10n.t("extensionWorktreePath")
+                        onTextEdited: panel.pickerFailed = false
                         onAccepted: createWorktree.finish()
+                    }
+                    MeridianText {
+                        visible: panel.pickerFailed
+                        width: parent.width
+                        role: MeridianText.Caption
+                        wrapMode: Text.Wrap
+                        color: Theme.colors.danger
+                        text: L10n.t("extensionWorktreeChooseFolderFailure")
                     }
                 }
                 MeridianButton {
@@ -355,7 +365,7 @@ MeridianPanel {
                     text: L10n.t("extensionWorktreeChooseFolder")
                     iconName: "folder-open"
                     variant: MeridianButton.Quiet
-                    onClicked: folderPicker.open()
+                    onClicked: panel.chooseWorktreeFolder()
                 }
             }
         }
@@ -378,4 +388,25 @@ MeridianPanel {
     }
 
     function showCreateWorktree() { createWorktree.show() }
+
+    /// Whether the folder chooser could not open (a host whose profile was deleted).
+    property bool pickerFailed: false
+    /// A folder on this computer, or on the host for a repository on another computer.
+    function chooseWorktreeFolder() {
+        pickerFailed = false
+        const tab = Store.workspace ? Store.workspace.active : null
+        if (!tab || !tab.remoteProfile) {
+            folderPicker.open()
+            return
+        }
+        if (Labels.remoteHost(tab.remoteProfile) === null) {
+            pickerFailed = true
+            return
+        }
+        remoteFolderPicker.ask(0, { profileId: tab.remoteProfile, purpose: "open" }, (id, bytes) => {
+            if (bytes)
+                pathField.text = remoteFolderPicker.decode(bytes) ?? ""
+        })
+    }
+    RemoteDirectoryPicker { id: remoteFolderPicker }
 }

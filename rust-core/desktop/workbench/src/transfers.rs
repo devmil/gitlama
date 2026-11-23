@@ -335,6 +335,23 @@ impl TransferService {
         let failure = |result: &NativeTransferExecutionResult| {
             result.failure.as_ref().map(|failure| failure.kind)
         };
+        // A host transfers with its own keys and credentials, which GitLama never handles
+        // from here: the user fixes them on the host.
+        if identity.backend == crate::session::BackendKind::Remote && !needs_stash_recovery(&result)
+        {
+            match failure(&result) {
+                Some(NativeTransferFailureKind::HostKey) => {
+                    self.notices.error("remoteTransferHostKey", Value::Null);
+                    return false;
+                }
+                Some(NativeTransferFailureKind::Authentication) => {
+                    self.notices
+                        .error("remoteTransferAuthentication", Value::Null);
+                    return false;
+                }
+                _ => {}
+            }
+        }
         if !needs_stash_recovery(&result)
             && failure(&result) == Some(NativeTransferFailureKind::HostKey)
         {

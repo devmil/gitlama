@@ -199,8 +199,14 @@ T.Popup {
                             spacing: Theme.space.s3
                             MeridianChip {
                                 objectName: "repository-details-location"
-                                text: popup.d.remote ? L10n.t("remoteHostUnknown") : L10n.t("repositoryDetailsThisComputer")
-                                iconName: popup.d.remote ? "server" : "monitor"
+                                readonly property var host: popup.d.remote ? Labels.remoteHost(popup.d.remoteProfile ?? "") : null
+                                readonly property string location: !popup.d.remote ? L10n.t("repositoryDetailsThisComputer")
+                                    : host === null ? L10n.t("remoteHostUnknown")
+                                    : host.alias !== host.label ? L10n.tn("repositoryDetailsHostWithAlias", { host: host.label, alias: host.alias })
+                                    : host.label
+                                text: popup.d.hostDisconnected === true ? location + " · " + L10n.t("repositoryDetailsDisconnected") : location
+                                iconName: popup.d.remote ? (popup.d.hostDisconnected === true ? "wifi-off" : "server") : "monitor"
+                                tone: popup.d.hostDisconnected === true ? MeridianChip.Warning : MeridianChip.Neutral
                                 maxWidth: GitLamaLayout.repositoryDetailsWidth
                                 Accessible.description: L10n.t("repositoryDetailsLocation")
                             }

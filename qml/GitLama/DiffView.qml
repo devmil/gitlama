@@ -204,11 +204,13 @@ Item {
             deletion: [String(GitColors.deletedBg), String(Theme.blend(GitColors.deletedBg, GitColors.deletedStrong, 1))],
         },
     })
+    function applyPalette() { if (model) model.setPalette(syntaxPalette) }
     onSyntaxPaletteChanged: if (model) model.setPalette(syntaxPalette)
     Component.onCompleted: if (model) model.setPalette(syntaxPalette)
     Connections {
         target: view.model
-        function onCountChanged() { view.model.setPalette(view.syntaxPalette); syntaxTimer.restart(); view.hunkRows = []; view.hunkIndex = -1 }
+        // The model is still publishing: its colours follow on the next turn.
+        function onCountChanged() { Qt.callLater(view.applyPalette); syntaxTimer.restart(); view.hunkRows = []; view.hunkIndex = -1 }
         function onModelReset() { view.hunkRows = []; view.hunkIndex = -1 }
     }
 
