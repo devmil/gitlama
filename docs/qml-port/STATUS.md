@@ -113,10 +113,15 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   closed first and reopened when the deletion does not happen, create from a reference into
   a chosen folder), submodules (initialize, update, open) and Git LFS (pull, track, untrack,
   pointer details); Track LFS pattern opens it with the pattern field focused.
+- Settings › Tools and commands (Custom commands): tools found on this computer, configured
+  tools (run after a command preview, delete), and the add form validated by the core before
+  it is stored; Add integration opens it with the name field focused.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
-- Integrations panel and settings page, status acceleration settings.
+- Integrations panel (the hosting resources view) and the Integrations/Repository binding
+  settings pages (with hosting), diff renderer (settings card and inspector rendering),
+  status acceleration settings.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.

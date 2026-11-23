@@ -51,5 +51,6 @@ pub mod snapshots;
 pub mod settings;
 pub mod view_cache;
 pub mod working_detail;
+pub mod tools;
 pub mod transfers;
 pub mod workspace;

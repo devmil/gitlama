@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import Meridian
 
-// The settings (the Dart SettingsDialog): appearance, Git, diff view,
+// The settings (the Dart SettingsDialog): appearance, Git, custom commands, diff view,
 // shortcuts, accessibility, diagnostics and licenses. Every change applies
 // at once; a refused write shows in the footer.
 MeridianSettingsDialog {
@@ -22,6 +22,7 @@ MeridianSettingsDialog {
     readonly property var categories: [
         ["appearance", "palette", "settingsAppearance", "settingsAppearanceDetail"],
         ["git", "branch", "settingsGit", "settingsGitDetail"],
+        ["customCommands", "command", "settingsCustomCommands", "settingsCustomCommandsDetail"],
         ["diffView", "side-by-side", "settingsDiffView", "settingsDiffViewDetail"],
         ["shortcuts", "shortcuts", "settingsShortcuts", "settingsShortcutsDetail"],
         ["accessibility", "accessibility", "settingsAccessibility", "settingsAccessibilityDetail"],
@@ -32,12 +33,25 @@ MeridianSettingsDialog {
 
     function show(category) {
         const index = categories.findIndex(c => c[0] === category)
+        customCommands.focusForm = category === "customCommands"
         currentPage = Math.max(0, index)
+        if (category === "customCommands")
+            customCommands.start()
         recordingCommand = ""
         if (Store.settings)
             Store.settings.showFailure("")
         open()
     }
+    // Each visit to Custom commands looks for installed tools again.
+    property int _shownPage: -1
+    onCurrentPageChanged: {
+        if (currentPage === _shownPage)
+            return
+        _shownPage = currentPage
+        if (categories[currentPage] && categories[currentPage][0] === "customCommands" && opened)
+            customCommands.start()
+    }
+    onClosed: _shownPage = -1
     function updateAppearance(patch) {
         Store.app.updateAppearance(patch)
         Store.settings.showFailure("")
@@ -218,6 +232,14 @@ MeridianSettingsDialog {
             color: Theme.colors.inkMuted
             wrapMode: Text.Wrap
             elide: Text.ElideNone
+        }
+    }
+
+    // Custom commands ----------------------------------------------------------
+    MeridianSettingsGroup {
+        CustomCommandsPage {
+            id: customCommands
+            width: parent.width
         }
     }
 

@@ -55,6 +55,7 @@ pub struct Services {
     pub archives: Rc<crate::archive::ArchiveService>,
     pub snapshots: Rc<crate::snapshots::SnapshotService>,
     pub power_tools: Rc<crate::power_tools::PowerTools>,
+    pub tools: Rc<crate::tools::ToolsPage>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -263,6 +264,13 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let tools = crate::tools::ToolsPage::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&settings),
+            Rc::clone(&prompts),
+            notifier.clone(),
+        );
         let extensions =
             crate::extensions::Extensions::new(
                 Rc::clone(&calls),
@@ -282,6 +290,7 @@ impl Services {
             archives,
             snapshots,
             power_tools,
+            tools,
             operations,
             conflicts,
             rebases,

@@ -90,6 +90,8 @@ mod settings_state {
         /// The l10n key of the last refused write; "" when the last write
         /// succeeded.
         pub(crate) failure: String,
+        /// The Custom commands page (tools.rs page_value).
+        pub(crate) tools: Value,
     }
 
     impl SettingsState {
@@ -100,6 +102,51 @@ mod settings_state {
         pub fn page_changed(&mut self);
         #[qsignal]
         pub fn failure_changed(&mut self);
+
+        qproperty!("tools", Member = tools, Notify = tools_changed);
+        #[qsignal]
+        pub fn tools_changed(&mut self);
+
+        /// The Custom commands page: `action` is open, runDiscovered
+        /// (index), run or remove (id), or save (the form: id, kind,
+        /// executable, arguments, explicitShell, wait, confirmation, timeout).
+        #[qslot]
+        fn tool(&self, action: String, options: Value) {
+            self.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let tools = Rc::clone(&services.tools);
+                let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
+                match action.as_str() {
+                    "open" => rt::spawn_detached(async move { tools.open().await }),
+                    "runDiscovered" => {
+                        let index = options["index"].as_u64().unwrap_or(u64::MAX) as usize;
+                        rt::spawn_detached(async move { tools.run_discovered(index).await })
+                    }
+                    "run" => {
+                        let id = text("id");
+                        rt::spawn_detached(async move { tools.run_configured(&id).await })
+                    }
+                    "remove" => {
+                        let id = text("id");
+                        rt::spawn_detached(async move { tools.remove(id).await })
+                    }
+                    "save" => {
+                        let form = gitlama_workbench::tools::Form {
+                            id: text("id"),
+                            kind: text("kind"),
+                            executable: text("executable"),
+                            arguments: text("arguments"),
+                            explicit_shell: options["explicitShell"].as_bool() == Some(true),
+                            wait: options["wait"].as_bool() != Some(false),
+                            confirmation: options["confirmation"].as_bool() != Some(false),
+                            timeout: text("timeout"),
+                        };
+                        rt::spawn_detached(async move { tools.save(form).await })
+                    }
+                    _ => {}
+                }
+            });
+        }
 
         /// `value` is {enabled?, intervalMinutes?}.
         #[qslot]

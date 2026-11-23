@@ -26,7 +26,11 @@ QtObject {
         return detail.length > 0 ? detail : L10n.t("repositoryOpenFailed")
     }
 
-    /// The platform's file browser: Finder, Explorer or Files.
+    /// A tool kind's name (the Dart integrationKindLabel).
+    function integrationKind(kind) {
+        return L10n.t("integration" + kind.charAt(0).toUpperCase() + kind.slice(1))
+    }
+
     /// `bytes` for people: "512 bytes", "47 KB", "1.5 MB" (binary units,
     /// one decimal below 10, the locale's number format; the Dart
     /// formatByteSize).

@@ -291,6 +291,7 @@ Item {
         case "showShortcutReference": shortcutReference.show(); return
         case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
         case "showPowerTools": if (Store.shell) Store.shell.togglePanel("powerTools"); return
+        case "addIntegration": showSettings("customCommands"); return
         case "addWorktree": if (Store.shell) Store.shell.togglePanel("extensions"); return
         case "trackLfsPattern": if (Store.shell) Store.shell.showExtensions(true); return
         case "showRepositoryDetails": if (Store.shell) Store.shell.showRepositoryDetails(); return
@@ -1038,6 +1039,11 @@ Item {
                 // extension:<action>=<options json>
                 const split = argument.indexOf("=")
                 Store.workflows.extension(split < 0 ? argument : argument.slice(0, split), split < 0 ? ({}) : JSON.parse(argument.slice(split + 1)))
+            }
+            else if (name === "settingsTool") {
+                // settingsTool:<action>=<options json>
+                const split = argument.indexOf("=")
+                Store.settings.tool(split < 0 ? argument : argument.slice(0, split), split < 0 ? ({}) : JSON.parse(argument.slice(split + 1)))
             }
             else if (name === "createWorktreeDialog") {
                 if (Store.shell && Store.shell.extensionsPanel)
