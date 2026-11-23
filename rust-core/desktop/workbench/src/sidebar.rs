@@ -63,6 +63,11 @@ pub struct Entry {
     pub worktree_protected: bool,
     /// A pull request row: its page and the branch and commit to check out.
     pub pull_request: Option<PullRequestRow>,
+    /// The CI state shown after the name (a branch with pull requests, the
+    /// bound integration's main branch).
+    pub hosting_check: Option<&'static str>,
+    /// The branch `hosting_check` belongs to, when not the row's own.
+    pub hosting_check_branch: Option<String>,
 }
 
 /// What a pull request row carries (the Dart _pullRequestEntries).
@@ -626,6 +631,8 @@ impl Flatten<'_> {
                     "checkoutBranch": pull.checkout.as_ref().map(|checkout| checkout.0.clone()),
                     "checkoutTarget": pull.checkout.as_ref().map(|checkout| checkout.1.clone()),
                 })),
+                "hostingCheck": entry.hosting_check,
+                "hostingCheckBranch": entry.hosting_check_branch,
                 "hasMenu": !entry.commands.is_empty() || entry.worktree.is_some() || entry.activate.is_some() || entry.pull_request.is_some(),
             }));
             if expanded {
@@ -668,6 +675,8 @@ struct Inner {
     worktrees: Option<Worktrees>,
     worktree_failure: Option<&'static str>,
     pull_requests: Vec<Entry>,
+    /// Hosting's CI state per local branch, and the bound integration's row.
+    hosting: (HashMap<String, &'static str>, Option<Entry>),
 }
 
 /// The sidebar's state: expansion, the reference filter and the worktree
@@ -743,6 +752,21 @@ impl SidebarService {
     }
 
     /// The pull request rows (linked pull requests of the active repository).
+    /// Hosting's CI decorations: the state of each local branch with pull
+    /// requests and the bound integration's row (the Dart branch
+    /// decorations and _integrationEntries).
+    pub fn set_hosting(
+        self: &Rc<Self>,
+        decorations: HashMap<String, &'static str>,
+        bound: Option<Entry>,
+    ) {
+        let next = (decorations, bound);
+        if self.inner.borrow().hosting != next {
+            self.inner.borrow_mut().hosting = next;
+            self.changed();
+        }
+    }
+
     pub fn set_pull_requests(self: &Rc<Self>, entries: Vec<Entry>) {
         if self.inner.borrow().pull_requests != entries {
             self.inner.borrow_mut().pull_requests = entries;
@@ -899,20 +923,40 @@ impl SidebarService {
             .worktrees
             .as_ref()
             .and_then(|worktrees| worktrees.inventory.clone());
-        let integrations: Vec<Entry> = self.settings.with(|document| {
-            document
-                .integrations
-                .iter()
-                .map(|integration| Entry {
-                    name: integration.id.clone(),
-                    subtitle: integration.kind.clone(),
-                    commands: vec!["addIntegration"],
-                    activate: Some(Activate::Command("addIntegration")),
-                    icon: None,
-                    ..Entry::default()
-                })
-                .collect()
-        });
+        let (decorations, bound) = inner.hosting.clone();
+        fn decorate(entries: &mut [Entry], decorations: &HashMap<String, &'static str>) {
+            for entry in entries {
+                if let Some(branch) = entry
+                    .filter_reference
+                    .as_deref()
+                    .and_then(|reference| reference.strip_prefix("refs/heads/"))
+                {
+                    entry.hosting_check = decorations.get(branch).copied();
+                }
+                decorate(&mut entry.children, decorations);
+            }
+        }
+        let mut branches = branches;
+        if !decorations.is_empty() {
+            decorate(&mut branches, &decorations);
+        }
+        let integrations: Vec<Entry> = bound
+            .into_iter()
+            .chain(self.settings.with(|document| {
+                document
+                    .integrations
+                    .iter()
+                    .map(|integration| Entry {
+                        name: integration.id.clone(),
+                        subtitle: integration.kind.clone(),
+                        commands: vec!["addIntegration"],
+                        activate: Some(Activate::Command("addIntegration")),
+                        icon: None,
+                        ..Entry::default()
+                    })
+                    .collect::<Vec<_>>()
+            }))
+            .collect();
         let sections = vec![
             Section {
                 command: "createBranch",

@@ -10,7 +10,7 @@
 use crate::notify::{Notifier, Topics};
 use crate::rt;
 use crate::settings::SettingsService;
-use gitlama_contract::dto::NativePathIdentity;
+use gitlama_contract::dto::{NativePathIdentity, NativeRepositoryRefs};
 use gitlama_contract::hosting::{
     NativeHostingAuthentication, NativeHostingBindingResult, NativeHostingBindingState,
     NativeHostingCapability, NativeHostingChangeRequest, NativeHostingChangeRequestState,
@@ -942,6 +942,131 @@ impl RepositoryHosting {
         self.state.borrow().binding.clone()
     }
 
+    /// The issue and pull request references `text` asks for at its
+    /// selection (the Dart HostingReferenceTextField): typing `#` and a
+    /// query offers the bound repository's resources. Positions are UTF-16
+    /// offsets, as text fields count them.
+    pub fn project_reference(
+        &self,
+        text: &str,
+        selection_base: u32,
+        selection_extent: u32,
+        revision: u64,
+    ) -> Option<gitlama_contract::hosting_reference::NativeHostingReferenceProjection> {
+        let (references, stale) = {
+            let state = self.state.borrow();
+            (
+                state.resources.remote_references.clone(),
+                state
+                    .snapshot
+                    .as_ref()
+                    .is_some_and(|snapshot| snapshot.stale),
+            )
+        };
+        if references.is_empty() {
+            return None;
+        }
+        let result = gitlama_core::api::hosting_reference_project(
+            text.encode_utf16().collect(),
+            selection_base,
+            selection_extent,
+            revision,
+            references,
+            stale,
+        );
+        result.projection.filter(|_| result.failure.is_none())
+    }
+
+    /// Replaces the projection's query with `insertion`: the new text and
+    /// caret, or `None` when the text changed since the projection.
+    pub fn apply_reference(
+        text: &str,
+        current_revision: u64,
+        projection: &gitlama_contract::hosting_reference::NativeHostingReferenceProjection,
+        insertion: String,
+    ) -> Option<(String, u32)> {
+        let result = gitlama_core::api::hosting_reference_apply(
+            text.encode_utf16().collect(),
+            current_revision,
+            projection.revision,
+            projection.text_hash,
+            projection.replace_start,
+            projection.replace_end,
+            insertion,
+        );
+        if result.failure.is_some() {
+            return None;
+        }
+        Some((String::from_utf16_lossy(&result.text), result.caret))
+    }
+
+    /// The CI state of each local branch that has pull requests from the
+    /// bound repository, the worst first (the Dart hostingBranchDecorations).
+    pub fn branch_decorations(&self) -> std::collections::HashMap<String, NativeHostingCheckState> {
+        let state = self.state.borrow();
+        let mut decorations = std::collections::HashMap::new();
+        let Some(repository) = state
+            .binding
+            .as_ref()
+            .and_then(|binding| binding.provider_repository.clone())
+        else {
+            return decorations;
+        };
+        for pull in &state.resources.change_requests {
+            if pull.source_repository != repository {
+                continue;
+            }
+            decorations
+                .entry(pull.source_branch.clone())
+                .and_modify(|current| *current = worse_check_state(*current, pull.checks.state))
+                .or_insert(pull.checks.state);
+        }
+        decorations
+    }
+
+    /// The bound remote's main branch as {branch, ref, target} (the Dart
+    /// HostingLinks._defaultBranch).
+    pub fn default_branch(&self, refs: &NativeRepositoryRefs) -> Option<(String, String, String)> {
+        let state = self.state.borrow();
+        let binding = state
+            .binding
+            .as_ref()
+            .filter(|binding| binding.state == NativeHostingBindingState::Bound)?;
+        if binding.remote.is_empty() {
+            return None;
+        }
+        let remote = refs
+            .remotes
+            .iter()
+            .find(|remote| remote.name == binding.remote)?;
+        let main = crate::sidebar::MAIN_BRANCH_NAMES.iter().find_map(|name| {
+            remote
+                .branches
+                .iter()
+                .find(|branch| branch.name == name.as_bytes())
+        })?;
+        let branch = String::from_utf8_lossy(&main.name).into_owned();
+        let reference = format!(
+            "refs/remotes/{}/{branch}",
+            String::from_utf8_lossy(&remote.name)
+        );
+        Some((branch, reference, main.target.clone()))
+    }
+
+    /// The main branch's CI result, looked up on demand (the Dart
+    /// defaultBranchChecks): (branch, state), state unknown until answered.
+    pub fn default_branch_checks(
+        self: &Rc<Self>,
+        refs: &NativeRepositoryRefs,
+    ) -> Option<(String, NativeHostingCheckState)> {
+        let (branch, _, target) = self.default_branch(refs)?;
+        Some((
+            branch,
+            self.request_head_checks(&target)
+                .unwrap_or(NativeHostingCheckState::Unknown),
+        ))
+    }
+
     fn bound(&self) -> Option<(String, String)> {
         let state = self.state.borrow();
         let binding = state
@@ -1759,6 +1884,26 @@ pub fn check_state_name(state: NativeHostingCheckState) -> &'static str {
     }
 }
 
+/// The worse of two CI states (the Dart _worseCheckState).
+pub fn worse_check_state(
+    left: NativeHostingCheckState,
+    right: NativeHostingCheckState,
+) -> NativeHostingCheckState {
+    let priority = |state: NativeHostingCheckState| match state {
+        NativeHostingCheckState::Failing => 6,
+        NativeHostingCheckState::Canceled => 5,
+        NativeHostingCheckState::Pending => 4,
+        NativeHostingCheckState::Unknown => 3,
+        NativeHostingCheckState::Skipped => 2,
+        NativeHostingCheckState::Passing => 1,
+    };
+    if priority(left) >= priority(right) {
+        left
+    } else {
+        right
+    }
+}
+
 pub fn pull_value(pull: &NativeHostingChangeRequest) -> serde_json::Value {
     serde_json::json!({
         "stableId": pull.stable_id,
@@ -1796,6 +1941,15 @@ pub fn pull_value(pull: &NativeHostingChangeRequest) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_failing_pull_request_outweighs_the_others() {
+        use NativeHostingCheckState as S;
+        assert_eq!(worse_check_state(S::Passing, S::Failing), S::Failing);
+        assert_eq!(worse_check_state(S::Pending, S::Skipped), S::Pending);
+        assert_eq!(worse_check_state(S::Unknown, S::Passing), S::Unknown);
+        assert_eq!(worse_check_state(S::Canceled, S::Pending), S::Canceled);
+    }
 
     #[test]
     fn storage_names_round_trip() {

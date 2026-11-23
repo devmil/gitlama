@@ -46,6 +46,9 @@ pub struct HistorySource {
     pub head: Option<String>,
     /// The bound repository's pull requests, for the branch chips.
     pub hosting: Option<Rc<gitlama_workbench::hosting::RepositoryHosting>>,
+    /// The bound remote's main branch as (ref, target), whose chip shows
+    /// its CI result (the Dart defaultBranchChecksForRefs).
+    pub default_branch: Option<(String, String)>,
 }
 
 /// `chips` with each branch's pull request (the Dart _withPullRequest): a
@@ -89,6 +92,33 @@ fn chips_with_pulls(
         hosting.request_branches(branches);
     }
     Value::Array(out)
+}
+
+/// Marks the main branch's remote-tracking chip at its commit with the CI
+/// result, once known, unless a pull request stands there.
+fn with_default_branch_checks(
+    chips: &mut Value,
+    object_id: &str,
+    default_branch: Option<&(String, String)>,
+    hosting: &Rc<gitlama_workbench::hosting::RepositoryHosting>,
+) {
+    let Some((reference, target)) = default_branch.filter(|(_, target)| target == object_id) else {
+        return;
+    };
+    let Some(list) = chips.as_array_mut() else {
+        return;
+    };
+    for chip in list {
+        if chip["raw"].as_str() != Some(reference.as_str()) || !chip["pull"].is_null() {
+            continue;
+        }
+        match hosting.request_head_checks(target) {
+            Some(state) if state != gitlama_contract::hosting::NativeHostingCheckState::Unknown => {
+                chip["checks"] = Value::from(gitlama_workbench::hosting::check_state_name(state));
+            }
+            _ => {}
+        }
+    }
 }
 
 #[qtbridge::qobject(Base = QAbstractItemModel, ConvertToCamelCase)]
@@ -186,7 +216,14 @@ mod history_model {
                     .unwrap_or_default(),
                 "chips" => match &self.source.hosting {
                     Some(hosting) => {
-                        to_qvariant(&chips_with_pulls(&view.chips, &view.object_id, hosting))
+                        let mut chips = chips_with_pulls(&view.chips, &view.object_id, hosting);
+                        with_default_branch_checks(
+                            &mut chips,
+                            &view.object_id,
+                            self.source.default_branch.as_ref(),
+                            hosting,
+                        );
+                        to_qvariant(&chips)
                     }
                     None => to_qvariant(&view.chips),
                 },

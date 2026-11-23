@@ -30,6 +30,9 @@ T.TextField {
     property int rejectCount: 0
     /// Items after the clear button (a search-options menu button).
     property alias trailingContent: trailingSlot.data
+    /// Sees every key press first; returning true consumes it (a
+    /// suggestion list under the caret).
+    property var keyFilter: null
 
     readonly property real extent: controlSize === MeridianButton.Small ? Theme.size.controlSmall : Theme.size.control
     readonly property bool plain: variant === MeridianTextField.Plain
@@ -56,6 +59,10 @@ T.TextField {
 
     Accessible.role: Accessible.EditableText
     Keys.onPressed: event => {
+        if (control.keyFilter && control.keyFilter(event)) {
+            event.accepted = true
+            return
+        }
         if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
             textMenu.openAtCursor()
             event.accepted = true

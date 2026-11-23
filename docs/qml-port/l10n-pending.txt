@@ -4,9 +4,6 @@
 diagnosticsShare
 extensionWorktreeChooseFolderFailure
 historyWindowFailed
-hostingBranchChecks
-hostingReferenceEmpty
-hostingStale
 initializeLocation
 initializeLocationThisComputer
 inspectorBlameAtCommit

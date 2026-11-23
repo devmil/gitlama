@@ -14,6 +14,9 @@ Item {
     property alias placeholderText: area.placeholderText
     property alias readOnly: area.readOnly
     property alias textArea: area
+    /// Sees every key press first; returning true consumes it (a
+    /// suggestion list under the caret).
+    property var keyFilter: null
     /// The text editing menu (open from code with `openAtCursor()`).
     property alias textMenu: areaMenu
     property bool error: false
@@ -86,6 +89,10 @@ Item {
             Accessible.name: root.Accessible.name
             onEditingFinished: root.editingFinished()
             Keys.onPressed: event => {
+                if (root.keyFilter && root.keyFilter(event)) {
+                    event.accepted = true
+                    return
+                }
                 if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
                     areaMenu.openAtCursor()
                     event.accepted = true

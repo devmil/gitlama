@@ -196,6 +196,8 @@ Rectangle {
                 error: editor.subjectError.length > 0
                 onTextChanged: editor.draftEdited()
                 onAccepted: descriptionField.forceActiveFocus()
+                // `#` lists the bound repository's issues and pull requests.
+                keyFilter: event => subjectReferences.handleKey(event)
                 trailingContent: [
                     MeridianText {
                         objectName: "commit-subject-counter"
@@ -228,6 +230,7 @@ Rectangle {
                 Accessible.name: L10n.t("commitDescription")
                 enabled: !editor.busy
                 onTextChanged: editor.draftEdited()
+                keyFilter: event => descriptionReferences.handleKey(event)
             }
 
             // Amend, the staged count and the options.
@@ -373,6 +376,9 @@ Rectangle {
                 editor.suggestFixup(argument === "squash")
         }
     }
+    // `#` references in the subject and description.
+    HostingReferenceAssist { id: subjectReferences; target: subjectField }
+    HostingReferenceAssist { id: descriptionReferences; target: descriptionField.textArea }
     CommitOptionsDialog {
         id: optionsDialog
         commitEditor: editor

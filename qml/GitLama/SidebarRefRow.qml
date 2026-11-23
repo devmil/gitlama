@@ -258,6 +258,22 @@ FocusScope {
                         text: L10n.tn("transferAheadBehind", { ahead: String(trailingRow.item.ahead), behind: String(trailingRow.item.behind) })
                     }
                 }
+                // A branch's CI state, or the bound integration's main
+                // branch's (the Dart sidebar hosting decorations).
+                HostingStatus {
+                    id: branchChecks
+                    readonly property string checkState: trailingRow.item.hostingCheck ?? ""
+                    visible: checkState.length > 0 && !(trailingRow.item.pullRequest)
+                    anchors.verticalCenter: parent.verticalCenter
+                    checks: checkState
+                    HoverHandler { id: branchChecksHover }
+                    MeridianTooltip {
+                        shown: branchChecksHover.hovered
+                        text: trailingRow.item.hostingCheckBranch
+                            ? L10n.tn("hostingBranchChecks", { branch: trailingRow.item.hostingCheckBranch, checks: branchChecks.label(branchChecks.checkState) })
+                            : branchChecks.label(branchChecks.checkState)
+                    }
+                }
                 // A pull request's checks and conflicts.
                 HostingStatus {
                     visible: trailingRow.item.pullRequest !== null && trailingRow.item.pullRequest !== undefined

@@ -659,6 +659,12 @@ impl Driver {
                 context,
                 head,
                 hosting: Some(Rc::clone(&services.repository_hosting)),
+                default_branch: session.as_ref().and_then(|session| {
+                    services
+                        .repository_hosting
+                        .default_branch(&session.snapshot.refs)
+                        .map(|(_, reference, target)| (reference, target))
+                }),
             },
             total,
         );
@@ -702,6 +708,7 @@ impl Driver {
             .repository_hosting
             .update(services.workspace.active_canonical(), remotes);
         self.publish_pull_request_rows(&services);
+        self.publish_hosting_decorations(&services);
         let accounts = crate::hosting_state::accounts_value(
             &services.hosting,
             &services.hosting.credentials(),
@@ -740,6 +747,49 @@ impl Driver {
     /// The sidebar's pull request rows (the Dart _pullRequestEntries): the
     /// account's own first, then the open and the merged ones of branches
     /// this repository still has.
+    /// Hosting's CI states on the sidebar: local branches with pull
+    /// requests and the bound integration with its main branch's checks.
+    fn publish_hosting_decorations(&self, services: &gitlama_workbench::app::Services) {
+        use gitlama_contract::hosting::{NativeHostingBindingState, NativeHostingCheckState};
+        use gitlama_workbench::hosting::check_state_name;
+        use gitlama_workbench::sidebar::{Activate, Entry};
+        let decorations = services
+            .repository_hosting
+            .branch_decorations()
+            .into_iter()
+            .map(|(branch, state)| (branch, check_state_name(state)))
+            .collect();
+        let refs = services
+            .workspace
+            .current()
+            .map(|session| Rc::clone(&session.snapshot));
+        let bound = services
+            .repository_hosting
+            .binding()
+            .filter(|binding| binding.state == NativeHostingBindingState::Bound)
+            .and_then(|binding| {
+                let main = refs.as_ref().and_then(|snapshot| {
+                    services
+                        .repository_hosting
+                        .default_branch_checks(&snapshot.refs)
+                });
+                Some(Entry {
+                    name: binding.connection_id?,
+                    subtitle: binding.provider_repository.unwrap_or_default(),
+                    hosting_check: main
+                        .as_ref()
+                        .filter(|(_, state)| *state != NativeHostingCheckState::Unknown)
+                        .map(|(_, state)| check_state_name(*state)),
+                    hosting_check_branch: main.map(|(branch, _)| branch),
+                    icon: Some("cloud"),
+                    commands: vec!["showIntegrations"],
+                    activate: Some(Activate::Command("showIntegrations")),
+                    ..Entry::default()
+                })
+            });
+        services.sidebar.set_hosting(decorations, bound);
+    }
+
     fn publish_pull_request_rows(&self, services: &gitlama_workbench::app::Services) {
         use gitlama_contract::hosting::NativeHostingChangeRequestState as State;
         use gitlama_workbench::sidebar::{Entry, PullRequestRow};

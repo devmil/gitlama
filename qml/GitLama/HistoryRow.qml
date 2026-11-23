@@ -177,6 +177,7 @@ Item {
                     lane: entry.graph ? entry.graph.lane : 0
                     ahead: chipRow.modelData.ahead
                     behind: chipRow.modelData.behind
+                    checks: chipRow.modelData.checks ?? ""
                     TapHandler {
                         onTapped: entry.activated(entry.objectId, false)
                     }

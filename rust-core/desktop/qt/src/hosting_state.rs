@@ -87,6 +87,10 @@ mod hosting_state {
         pub(crate) credential_revision: Option<u64>,
         /// The open pull request review (see `HostingReview::value`), or null.
         pub(crate) review: Value,
+        /// The reference suggestion last offered, for `apply_reference`.
+        pub(crate) reference_projection: std::cell::RefCell<
+            Option<gitlama_contract::hosting_reference::NativeHostingReferenceProjection>,
+        >,
     }
 
     impl HostingState {
@@ -400,6 +404,52 @@ mod hosting_state {
                 .map_or(Value::Null, |pulls| {
                     Value::Array(pulls.iter().map(pull_value).collect())
                 })
+        }
+
+        /// The `#` references `text` asks for at its selection: {candidates:
+        /// [{stableId, insertion, title, stale}]}, or null when it asks for
+        /// none. Offsets are UTF-16 positions; `revision` counts the edits.
+        #[qslot]
+        fn project_reference(&self, text: String, base: i32, extent: i32, revision: i64) -> Value {
+            let projection = self.repository_hosting.as_ref().and_then(|hosting| {
+                hosting.project_reference(
+                    &text,
+                    base.max(0) as u32,
+                    extent.max(0) as u32,
+                    revision.max(0) as u64,
+                )
+            });
+            let value = projection.as_ref().map_or(Value::Null, |projection| {
+                serde_json::json!({
+                    "candidates": projection.candidates.iter().map(|candidate| serde_json::json!({
+                        "stableId": candidate.stable_id,
+                        "insertion": candidate.insertion,
+                        "title": candidate.title,
+                        "stale": candidate.stale,
+                    })).collect::<Vec<_>>(),
+                })
+            });
+            *self.reference_projection.borrow_mut() = projection;
+            value
+        }
+
+        /// Puts `insertion` in place of the offered query: {text, caret}, or
+        /// null when the text changed since.
+        #[qslot]
+        fn apply_reference(&self, text: String, revision: i64, insertion: String) -> Value {
+            let Some(projection) = self.reference_projection.borrow_mut().take() else {
+                return Value::Null;
+            };
+            gitlama_workbench::hosting::RepositoryHosting::apply_reference(
+                &text,
+                revision.max(0) as u64,
+                &projection,
+                insertion,
+            )
+            .map_or(
+                Value::Null,
+                |(text, caret)| serde_json::json!({"text": text, "caret": caret}),
+            )
         }
 
         /// The CI result of commit `head` (looked up on demand), or "".

@@ -17,6 +17,8 @@ Item {
     property bool detached: false
     property int ahead: 0
     property int behind: 0
+    /// The branch's CI state ("" while unknown): the main branch's chip.
+    property string checks
 
     readonly property bool selectedOverride: onAccent && (kind === "local" || kind === "remote" || kind === "tag")
     readonly property color fill: selectedOverride ? Theme.colors.inkOnAccentMuted
@@ -41,6 +43,7 @@ Item {
         + (hasIcon ? GitLamaLayout.refIconSize + Theme.space.s2 : hasDot ? GitLamaLayout.refDotSize + Theme.space.s2 : 0)
         + (upstream.length > 0 ? Theme.space.s2 + upstreamRow.implicitWidth : 0)
         + (sync.visible ? Theme.space.s2 + sync.implicitWidth : 0)
+        + (checkStatus.visible ? Theme.space.s2 + checkStatus.implicitWidth : 0)
 
     implicitWidth: Math.min(GitLamaLayout.refChipMaxWidth, fixedWidth + label.implicitWidth)
     implicitHeight: GitLamaLayout.refChipHeight
@@ -146,6 +149,20 @@ Item {
             ahead: chip.ahead
             behind: chip.behind
             onAccent: chip.onAccent
+        }
+        HostingStatus {
+            id: checkStatus
+            objectName: "history-branch-checks"
+            visible: chip.checks.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            checks: chip.checks
+            // Filled chips use their own surface, not the selected row's ink.
+            onAccent: chip.onAccent && !chip.selectedOverride && chip.kind !== "head"
+            HoverHandler { id: checksHover }
+            MeridianTooltip {
+                shown: checksHover.hovered
+                text: checkStatus.label(chip.checks)
+            }
         }
     }
 
