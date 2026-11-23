@@ -7,6 +7,7 @@
 //! through [`notify::Notifier`]; the Qt layer projects their state.
 
 pub mod app;
+pub mod archive;
 pub mod appearance;
 pub mod appearances;
 pub mod auto_fetch;

@@ -20,11 +20,39 @@ mod workflows_state {
         pub(crate) busy: Value,
         /// The file manager's name for "Open in …".
         pub(crate) file_browser: String,
+        /// A snapshot being saved: {running, started, files, total, writing}.
+        pub(crate) archive: Value,
     }
 
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
         qproperty!("fileBrowser", Member = file_browser, Notify = file_browser_changed);
+        qproperty!("archive", Member = archive, Notify = archive_changed);
+
+        #[qsignal]
+        pub fn archive_changed(&mut self);
+
+        /// The snapshot's file and folder name for `commit` of the repository
+        /// `label`.
+        #[qslot]
+        fn archive_name(&self, label: String, commit: String) -> String {
+            gitlama_workbench::archive::archive_name(&label, &commit)
+        }
+
+        /// Saves the zip snapshot of `commit` to `destination`.
+        #[qslot]
+        fn save_commit_archive(&self, commit: String, prefix: String, destination: String) {
+            self.with_services(move |services| {
+                let archives = Rc::clone(&services.archives);
+                rt::spawn_detached(async move { archives.save(commit, prefix, destination).await });
+            });
+        }
+
+        /// Stops the snapshot being saved.
+        #[qslot]
+        fn cancel_commit_archive(&self) {
+            self.with_services(|services| services.archives.cancel());
+        }
 
         #[qsignal]
         pub fn busy_changed(&mut self);

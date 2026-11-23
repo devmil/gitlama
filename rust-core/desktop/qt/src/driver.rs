@@ -126,6 +126,23 @@ impl Driver {
         if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS | Topics::SETTINGS) {
             self.project_changes();
         }
+        if changed.intersects(Topics::OPERATIONS)
+            && let Some(services) = self.app.services()
+        {
+            let progress = services.archives.progress();
+            let value = serde_json::json!({
+                "running": progress.running,
+                "started": progress.started,
+                "files": progress.files,
+                "total": progress.total,
+                "writing": progress.writing,
+            });
+            let mut workflows = self.workflows.borrow_mut();
+            if workflows.archive != value {
+                workflows.archive = value;
+                workflows.archive_changed();
+            }
+        }
         if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
             && let Some(services) = self.app.services()
         {

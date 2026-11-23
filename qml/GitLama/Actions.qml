@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Controls.Basic as C
+import QtCore
 import Meridian
 
 // The window's dialogs: questions the core's workflows ask (prompts), and
@@ -140,6 +142,64 @@ Item {
     }
     function showAbout() { aboutDialog.open() }
     ShortcutReferenceDialog { id: shortcutReference }
+    // Where a zip snapshot goes, then its progress (the Dart saveCommitArchive).
+    FileDialog {
+        id: archiveDestination
+        property string commit
+        property string prefix
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["*.zip"]
+        defaultSuffix: "zip"
+        onAccepted: {
+            const url = selectedFile.toString()
+            Store.workflows.saveCommitArchive(commit, prefix,
+                url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url)
+        }
+    }
+    MeridianDialog {
+        id: archiveProgress
+        readonly property var archive: Store.workflows ? (Store.workflows.archive ?? ({})) : ({})
+        readonly property bool running: archive.running === true
+        property bool canceled: false
+        onRunningChanged: {
+            if (running) {
+                canceled = false
+                open()
+            } else {
+                close()
+            }
+        }
+        closePolicy: C.Popup.NoAutoClose
+        title: L10n.t("archiveProgressTitle")
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s4
+            MeridianProgressBar {
+                width: parent.width
+                track: true
+                persistent: true
+                value: archiveProgress.archive.started === true && archiveProgress.archive.writing !== true && (archiveProgress.archive.total ?? 0) > 0
+                    ? Math.min(1, archiveProgress.archive.files / archiveProgress.archive.total) : -1
+            }
+            MeridianText {
+                objectName: "commit-archive-progress"
+                width: parent.width
+                color: Theme.colors.inkMuted
+                text: archiveProgress.archive.started !== true ? L10n.t("archiveProgressPreparing")
+                    : archiveProgress.archive.writing === true ? L10n.t("archiveProgressWriting")
+                    : L10n.tn("archiveProgressFiles", { files: archiveProgress.archive.files ?? 0, total: archiveProgress.archive.total ?? 0 })
+            }
+        }
+        actions: [
+            MeridianButton {
+                objectName: "commit-archive-cancel"
+                text: L10n.t("cancel")
+                variant: MeridianButton.Quiet
+                enabled: !archiveProgress.canceled
+                onClicked: { archiveProgress.canceled = true; Store.workflows.cancelCommitArchive() }
+            }
+        ]
+    }
     AboutDialog { id: aboutDialog; onOpenLicenses: actions.showLicenses() }
     /// Opens the patch dialog in `mode` for what the active pane shows: the
     /// Changes selection, else History's (or `commit`).
@@ -203,6 +263,19 @@ Item {
         case "cloneRepository": cloneRepository(); return
         case "showLicenses": showLicenses(); return
         case "showShortcutReference": shortcutReference.show(); return
+        case "saveCommitArchive": {
+            const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
+            const commit = options.initialTarget ?? (selected.length === 1 ? selected[0] : "")
+            const active = Store.workspace ? Store.workspace.active : null
+            if (commit.length === 0 || !active)
+                return
+            archiveDestination.commit = commit
+            archiveDestination.prefix = Store.workflows.archiveName(active.label ?? "", commit)
+            archiveDestination.currentFile = "file://" + StandardPaths.writableLocation(StandardPaths.DownloadLocation).toString().replace("file://", "")
+                + "/" + archiveDestination.prefix + ".zip"
+            archiveDestination.open()
+            return
+        }
         case "showCommandPalette": commandPalette.show(); return
         case "fetch":
         case "remoteFetch":
@@ -736,6 +809,11 @@ Item {
                         if (well) well.clicked()
                     }
             }
+            else if (name === "archiveTo") {
+                // archiveTo:<path>: saves the selected commit's snapshot there.
+                const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
+                Store.workflows.saveCommitArchive(selected[0], Store.workflows.archiveName(Store.workspace.active.label ?? "", selected[0]), argument)
+            }
             else if (name === "about")
                 showAbout()
             else if (name === "submitIgnore")
@@ -790,6 +868,11 @@ Item {
         }
         function onNotice(key, args, error) {
             const values = args.length > 0 ? JSON.parse(args) : []
+            // Several localized sentences shown as one message.
+            if (key === "@join") {
+                Notifications.show((values.parts ?? []).map(part => part.args ? L10n.tn(part.l10n, part.args) : L10n.t(part.l10n)).join(" "), error)
+                return
+            }
             if (values !== null && !Array.isArray(values)) {
                 // An argument {l10n: key} is itself a localized text.
                 for (const name in values) {
