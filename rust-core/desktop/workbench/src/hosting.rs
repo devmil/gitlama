@@ -673,6 +673,8 @@ pub struct RepositoryHosting {
     generation: Cell<u64>,
     epoch: Cell<u64>,
     seen_revision: Cell<u64>,
+    /// Bumps whenever what views show may have changed.
+    revision: Cell<u64>,
 }
 
 fn same_pulls(left: Option<&Vec<NativeHostingChangeRequest>>, right: Option<&Vec<NativeHostingChangeRequest>>) -> bool {
@@ -712,11 +714,47 @@ impl RepositoryHosting {
             generation: Cell::new(0),
             epoch: Cell::new(0),
             seen_revision: Cell::new(0),
+            revision: Cell::new(0),
         })
     }
 
     fn changed(&self) {
+        self.revision.set(self.revision.get() + 1);
         self.notifier.notify(Topics::HOSTING);
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision.get()
+    }
+
+    /// The provider branch a history reference stands for, under the bound
+    /// remote (the Dart HostingBranchNames.branchFor): a local branch's
+    /// upstream on that remote, or a remote-tracking branch of it.
+    pub fn branch_for(&self, reference: &str, tracking: Option<&str>) -> Option<String> {
+        let remote = {
+            let state = self.state.borrow();
+            let binding = state.binding.as_ref().filter(|binding| binding.state == NativeHostingBindingState::Bound)?;
+            String::from_utf8_lossy(&binding.remote).into_owned()
+        };
+        let prefix = format!("refs/remotes/{remote}/");
+        if let Some(branch) = reference.strip_prefix(&prefix) {
+            return (branch != "HEAD").then(|| branch.to_owned());
+        }
+        if reference.starts_with("refs/heads/") {
+            return tracking.and_then(|tracking| tracking.strip_prefix(&prefix)).map(str::to_owned);
+        }
+        None
+    }
+
+    /// The pull request a history chip shows: the open one of `branch`, or
+    /// its merged one.
+    pub fn shown_pull(&self, branch: &str) -> Option<NativeHostingChangeRequest> {
+        let pulls = self.pull_requests_for_branch(branch)?;
+        pulls
+            .iter()
+            .find(|pull| pull.state == NativeHostingChangeRequestState::Open)
+            .or_else(|| pulls.iter().find(|pull| pull.state == NativeHostingChangeRequestState::Merged))
+            .cloned()
     }
 
     fn current(&self, generation: u64) -> bool {

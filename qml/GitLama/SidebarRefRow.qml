@@ -84,6 +84,18 @@ FocusScope {
         return actions
     }
 
+    /// A pull request's actions: its page and, while open, checking it out.
+    function pullRequestActions() {
+        const pull = row.pullRequest
+        if (!pull)
+            return []
+        const actions = [{ title: L10n.t("hostingOpenBrowser"), run: () => { if (Store.hosting.openable(pull.webUrl)) Qt.openUrlExternally(pull.webUrl) } }]
+        if (pull.checkoutBranch)
+            actions.push({ title: L10n.t("hostingCheckout"),
+                           run: () => root.command("createBranch", { initialName: pull.checkoutBranch, initialTarget: pull.checkoutTarget }) })
+        return actions
+    }
+
     function showMenu(x, y) {
         if (row.hasMenu !== true)
             return
@@ -96,7 +108,7 @@ FocusScope {
             filterUpstream: row.filterUpstream ?? null,
             commands: commands,
             current: row.current === true,
-        }, worktreeActions(), (id, options) => root.command(id, options))
+        }, worktreeActions().concat(pullRequestActions()), (id, options) => root.command(id, options))
         menu.show(listRow, x, y)
     }
 
@@ -246,18 +258,32 @@ FocusScope {
                         text: L10n.tn("transferAheadBehind", { ahead: String(trailingRow.item.ahead), behind: String(trailingRow.item.behind) })
                     }
                 }
+                // A pull request's checks and conflicts.
+                HostingStatus {
+                    visible: trailingRow.item.pullRequest !== null && trailingRow.item.pullRequest !== undefined
+                    anchors.verticalCenter: parent.verticalCenter
+                    checks: trailingRow.item.pullRequest ? (trailingRow.item.pullRequest.checks ?? "") : ""
+                    conflicting: trailingRow.item.pullRequest ? trailingRow.item.pullRequest.conflicting === true : false
+                }
                 MeridianText {
-                    visible: (trailingRow.item.subtitle ?? "").length > 0
+                    id: subtitleText
+                    readonly property string shown: {
+                        const value = trailingRow.item.subtitle ?? ""
+                        return value.startsWith("@") ? L10n.t(value.slice(1)) : value
+                    }
+                    visible: shown.length > 0
                     width: Math.min(implicitWidth, GitLamaLayout.trackingLabelMaxWidth)
                     anchors.verticalCenter: parent.verticalCenter
                     role: MeridianText.Caption
-                    text: trailingRow.item.subtitle ?? ""
+                    text: shown
                     color: Theme.colors.inkMuted
                     elide: Text.ElideRight
                     HoverHandler { id: subtitleHover }
                     MeridianTooltip {
                         shown: subtitleHover.hovered
-                        text: trailingRow.item.subtitle ?? ""
+                        text: trailingRow.item.pullRequest
+                            ? L10n.tn("hostingPullRequestBranches", { source: trailingRow.item.pullRequest.source, target: trailingRow.item.pullRequest.target })
+                            : subtitleText.shown
                     }
                 }
             }

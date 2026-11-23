@@ -58,6 +58,8 @@ ShortcutReferenceDialog 1.0 ShortcutReferenceDialog.qml
 SidebarRail 1.0 SidebarRail.qml
 SnapshotsPanel 1.0 SnapshotsPanel.qml
 PowerTools 1.0 PowerTools.qml
+PullRequestChip 1.0 PullRequestChip.qml
+HostingStatus 1.0 HostingStatus.qml
 IntegrationsPanel 1.0 IntegrationsPanel.qml
 HostingSettings 1.0 HostingSettings.qml
 HostingField 1.0 HostingField.qml

@@ -160,14 +160,20 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   detection, setup guide; sign-in progress with the device code) and Repository link. Not
   signed in against a real provider here. The persistent link cache is not ported (links are
   looked up again each run).
+- Hosting (part 2): the Integrations panel (provider resources: refresh, Create pull request,
+  filter, remembered groups, check out, open, load more; Review opens the page in the browser
+  until the review workspace is ported), the Show integrations and Create pull request
+  commands, the sidebar's pull request rows (yours first, merged, checks and conflicts,
+  open/check out), and pull request chips after History's branch chips (at the head, or
+  outdated on the remote-tracking chip with a recheck). Rendered without a provider only.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
 - Integrations panel (the hosting resources view) and the Integrations/Repository binding
   settings pages (with hosting).
-- History: selection glide, lane lighting/draw/landing
-  motion, sync entrance, hosting chips, Gravatar.
-- Hosting (pull requests, checks, links), macOS window configuration, macOS open-file events.
+- History: selection glide, lane lighting/draw/landing motion, sync entrance.
+- Hosting: review workspace and check retry, branch CI decorations, Gravatar avatars;
+  macOS window configuration, macOS open-file events.
 - Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
   remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).
 - Inspector: changed-word marks on wrapped lines.

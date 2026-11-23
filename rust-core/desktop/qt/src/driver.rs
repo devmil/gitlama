@@ -129,7 +129,7 @@ impl Driver {
         if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS | Topics::OPERATIONS) {
             self.project_workspace(changed);
         }
-        if changed.intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION) {
+        if changed.intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION | Topics::HOSTING) {
             self.project_history();
         }
         if changed.intersects(Topics::INSPECTOR) {
@@ -530,7 +530,8 @@ impl Driver {
         let total = current.page.as_ref().map_or(0, |page| page.total_rows);
         let key = (
             history.pages_generation(),
-            history.revision(),
+            // Pull requests learned for the branch chips refresh the rows too.
+            history.revision().wrapping_add(services.repository_hosting.revision() << 32),
             total,
             head.clone(),
             Rc::as_ptr(&context) as usize,
@@ -541,7 +542,7 @@ impl Driver {
         *self.history_published.borrow_mut() = Some(key);
         let total = i32::try_from(total).unwrap_or(i32::MAX);
         self.history_rows.borrow_mut().publish(
-            HistorySource { history: Some(Rc::clone(history)), context, head },
+            HistorySource { history: Some(Rc::clone(history)), context, head, hosting: Some(Rc::clone(&services.repository_hosting)) },
             total,
         );
     }
@@ -579,6 +580,7 @@ impl Driver {
             })
             .unwrap_or_default();
         services.repository_hosting.update(services.workspace.active_canonical(), remotes);
+        self.publish_pull_request_rows(&services);
         let accounts = crate::hosting_state::accounts_value(&services.hosting, &services.hosting.credentials());
         let repository = services.repository_hosting.state_value();
         let linked = serde_json::Value::Array(
@@ -604,6 +606,65 @@ impl Driver {
             state.linked = linked;
             state.repository_changed();
         }
+    }
+
+    /// The sidebar's pull request rows (the Dart _pullRequestEntries): the
+    /// account's own first, then the open and the merged ones of branches
+    /// this repository still has.
+    fn publish_pull_request_rows(&self, services: &gitlama_workbench::app::Services) {
+        use gitlama_contract::hosting::NativeHostingChangeRequestState as State;
+        use gitlama_workbench::sidebar::{Entry, PullRequestRow};
+        let session = services.workspace.current();
+        let binding = services.repository_hosting.binding();
+        let remote = binding.as_ref().map(|binding| binding.remote.clone()).unwrap_or_default();
+        let (branches, local_heads): (std::collections::HashSet<String>, std::collections::HashMap<String, String>) = session
+            .as_ref()
+            .map(|session| {
+                let refs = &session.snapshot.refs;
+                let mut names: std::collections::HashSet<String> =
+                    refs.branches.iter().map(|branch| String::from_utf8_lossy(&branch.name).into_owned()).collect();
+                for remote_refs in refs.remotes.iter().filter(|candidate| candidate.name == remote) {
+                    names.extend(remote_refs.branches.iter().map(|branch| String::from_utf8_lossy(&branch.name).into_owned()));
+                }
+                let heads = refs.branches.iter().map(|branch| (String::from_utf8_lossy(&branch.name).into_owned(), branch.target.clone())).collect();
+                (names, heads)
+            })
+            .unwrap_or_default();
+        let entries: Vec<Entry> = services
+            .repository_hosting
+            .linked_pull_requests()
+            .into_iter()
+            .filter(|linked| !linked.via_branch || branches.contains(&linked.pull.source_branch))
+            .map(|linked| {
+                let pull = &linked.pull;
+                let merged = pull.state == State::Merged;
+                Entry {
+                    name: format!("#{} {}", pull.number, pull.title),
+                    tree_path: Some(format!("pull-request:{}", pull.number)),
+                    command_name: Some(pull.web_url.clone()),
+                    subtitle: if merged {
+                        "@hostingPullRequestMerged".to_owned()
+                    } else if linked.authored {
+                        "@hostingPullRequestYours".to_owned()
+                    } else {
+                        pull.source_branch.clone()
+                    },
+                    icon: Some(if merged { "git-merge" } else if linked.authored { "user" } else { "git-pull-request" }),
+                    target: local_heads.get(&pull.source_branch).cloned(),
+                    pull_request: Some(PullRequestRow {
+                        web_url: pull.web_url.clone(),
+                        checks: (pull.checks.state != gitlama_contract::hosting::NativeHostingCheckState::Unknown)
+                            .then(|| gitlama_workbench::hosting::check_state_name(pull.checks.state)),
+                        conflicting: pull.mergeability == gitlama_contract::hosting::NativeHostingMergeability::Conflicting,
+                        branches: (pull.source_branch.clone(), pull.target_branch.clone()),
+                        checkout: (pull.state == State::Open && !pull.source_branch.is_empty() && !pull.head_sha.is_empty())
+                            .then(|| (pull.source_branch.clone(), pull.head_sha.clone())),
+                    }),
+                    ..Entry::default()
+                }
+            })
+            .collect();
+        services.sidebar.set_pull_requests(entries);
     }
 
     /// Shows the outcome of a hosting accounts action ("" when it succeeded).

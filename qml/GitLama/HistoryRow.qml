@@ -149,17 +149,29 @@ Item {
         }
         Repeater {
             model: entry.chips
-            delegate: RefChip {
+            delegate: Row {
+                id: chipRow
                 required property var modelData
                 anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-                name: modelData.label
-                kind: modelData.kind
-                upstream: modelData.upstream ?? ""
-                lane: entry.graph ? entry.graph.lane : 0
-                ahead: modelData.ahead
-                behind: modelData.behind
-                TapHandler {
-                    onTapped: entry.activated(entry.objectId, false)
+                spacing: Theme.space.s1
+                RefChip {
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: chipRow.modelData.label
+                    kind: chipRow.modelData.kind
+                    upstream: chipRow.modelData.upstream ?? ""
+                    lane: entry.graph ? entry.graph.lane : 0
+                    ahead: chipRow.modelData.ahead
+                    behind: chipRow.modelData.behind
+                    TapHandler {
+                        onTapped: entry.activated(entry.objectId, false)
+                    }
+                }
+                // A branch's pull request follows its chip.
+                Loader {
+                    active: !!chipRow.modelData.pull
+                    visible: active
+                    anchors.verticalCenter: parent.verticalCenter
+                    sourceComponent: PullRequestChip { pull: chipRow.modelData.pull }
                 }
             }
         }

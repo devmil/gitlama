@@ -44,6 +44,41 @@ pub struct HistorySource {
     pub history: Option<Rc<HistoryService>>,
     pub context: Rc<ReferenceContext>,
     pub head: Option<String>,
+    /// The bound repository's pull requests, for the branch chips.
+    pub hosting: Option<Rc<gitlama_workbench::hosting::RepositoryHosting>>,
+}
+
+/// `chips` with each branch's pull request (the Dart _withPullRequest): a
+/// pull request stands at its head commit; when no chip of the branch is
+/// there it stands on the remote-tracking chip, marked outdated, and the
+/// branch is looked up again. Branches not looked up yet are asked for.
+fn chips_with_pulls(chips: &Value, object_id: &str, hosting: &Rc<gitlama_workbench::hosting::RepositoryHosting>) -> Value {
+    let Some(list) = chips.as_array() else { return chips.clone() };
+    let mut branches = Vec::new();
+    let mut out: Vec<Value> = list.clone();
+    for chip in &mut out {
+        let raw = chip["raw"].as_str().unwrap_or_default().to_owned();
+        let tracking = chip["tracking"].as_str().map(str::to_owned);
+        let Some(branch) = hosting.branch_for(&raw, tracking.as_deref()) else { continue };
+        branches.push(branch.clone());
+        let Some(pull) = hosting.shown_pull(&branch) else { continue };
+        let at_head = !pull.head_sha.is_empty() && pull.head_sha == object_id;
+        let remote_tracking = raw.starts_with("refs/remotes/");
+        if !at_head && !(remote_tracking && !pull.head_sha.is_empty()) {
+            continue;
+        }
+        let mut value = gitlama_workbench::hosting::pull_value(&pull);
+        value["outdated"] = Value::Bool(!at_head);
+        if !at_head {
+            hosting.recheck_branch(&branch, object_id);
+        }
+        chip["pull"] = value;
+    }
+    // Rows report their branches while they build.
+    if !branches.is_empty() {
+        hosting.request_branches(branches);
+    }
+    Value::Array(out)
 }
 
 #[qtbridge::qobject(Base = QAbstractItemModel, ConvertToCamelCase)]
@@ -124,7 +159,10 @@ mod history_model {
                 "avatarHash" => QVariant::from(&view.avatar_hash),
                 "authorTime" => QVariant::from(view.author_time as f64),
                 "metadataFailure" => view.metadata_failure.map(QVariant::from).unwrap_or_default(),
-                "chips" => to_qvariant(&view.chips),
+                "chips" => match &self.source.hosting {
+                    Some(hosting) => to_qvariant(&chips_with_pulls(&view.chips, &view.object_id, hosting)),
+                    None => to_qvariant(&view.chips),
+                },
                 "overflow" => to_qvariant(&view.overflow),
                 "detached" => QVariant::from(view.detached),
                 "current" => QVariant::from(view.current),

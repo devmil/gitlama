@@ -58,6 +58,21 @@ pub struct Entry {
     pub worktree_path: Option<String>,
     /// A worktree row: deleting it is refused up front.
     pub worktree_protected: bool,
+    /// A pull request row: its page and the branch and commit to check out.
+    pub pull_request: Option<PullRequestRow>,
+}
+
+/// What a pull request row carries (the Dart _pullRequestEntries).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PullRequestRow {
+    pub web_url: String,
+    /// The checks state when the provider reported one.
+    pub checks: Option<&'static str>,
+    pub conflicting: bool,
+    /// "source into target" for the tooltip.
+    pub branches: (String, String),
+    /// An open pull request can be checked out: its branch and head.
+    pub checkout: Option<(String, String)>,
 }
 
 impl Entry {
@@ -497,7 +512,16 @@ impl Flatten<'_> {
                 "worktree": entry.worktree,
                 "worktreePath": entry.worktree_path,
                 "worktreeProtected": entry.worktree_protected,
-                "hasMenu": !entry.commands.is_empty() || entry.worktree.is_some() || entry.activate.is_some(),
+                "pullRequest": entry.pull_request.as_ref().map(|pull| json!({
+                    "webUrl": pull.web_url,
+                    "checks": pull.checks,
+                    "conflicting": pull.conflicting,
+                    "source": pull.branches.0,
+                    "target": pull.branches.1,
+                    "checkoutBranch": pull.checkout.as_ref().map(|checkout| checkout.0.clone()),
+                    "checkoutTarget": pull.checkout.as_ref().map(|checkout| checkout.1.clone()),
+                })),
+                "hasMenu": !entry.commands.is_empty() || entry.worktree.is_some() || entry.activate.is_some() || entry.pull_request.is_some(),
             }));
             if expanded {
                 self.flatten(rows, section, &entry.children, &entry_path, depth + 1);
@@ -534,6 +558,7 @@ struct Inner {
     references: Option<(Rc<NativeRepositorySnapshot>, Rc<References>)>,
     worktrees: Option<Worktrees>,
     worktree_failure: Option<&'static str>,
+    pull_requests: Vec<Entry>,
 }
 
 /// The sidebar's state: expansion, the reference filter and the worktree
@@ -596,6 +621,14 @@ impl SidebarService {
             }
         }
         self.changed();
+    }
+
+    /// The pull request rows (linked pull requests of the active repository).
+    pub fn set_pull_requests(self: &Rc<Self>, entries: Vec<Entry>) {
+        if self.inner.borrow().pull_requests != entries {
+            self.inner.borrow_mut().pull_requests = entries;
+            self.changed();
+        }
     }
 
     /// The worktree inventory, when loaded.
@@ -740,7 +773,14 @@ impl SidebarService {
                 entries: integrations,
                 expandable: false,
             },
-            Section { command: "hostingCreatePullRequest", label: "hostingChangeRequests", icon: "git-pull-request", count: 0, entries: vec![], expandable: false },
+            Section {
+                command: "hostingCreatePullRequest",
+                label: "hostingChangeRequests",
+                icon: "git-pull-request",
+                count: inner.pull_requests.len() as u64,
+                entries: inner.pull_requests.clone(),
+                expandable: false,
+            },
         ];
         let empty_choices = HashMap::new();
         let durable = inner.expansion.get(&repository).unwrap_or(&empty_choices);

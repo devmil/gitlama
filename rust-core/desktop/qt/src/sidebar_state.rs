@@ -42,6 +42,7 @@ pub const SIDEBAR_ROLES: &[&str] = &[
     "worktree",
     "worktreePath",
     "worktreeProtected",
+    "pullRequest",
     "hasMenu",
 ];
 
