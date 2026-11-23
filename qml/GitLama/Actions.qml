@@ -754,6 +754,15 @@ Item {
                 function ask(id) {
                     promptId = id
                     open()
+                    // Without a platform picker and without Qt's own (a missing module), open()
+                    // shows nothing: answer as canceled instead of waiting forever.
+                    Qt.callLater(() => {
+                        if (promptId === id && !visible) {
+                            actionsRoot.answer(id, null)
+                            promptId = -1
+                            Notifications.show(L10n.t("folderPickerUnavailable"), true)
+                        }
+                    })
                 }
                 onAccepted: {
                     const url = selectedFolder.toString()

@@ -87,6 +87,21 @@ def scan_imports(qml_sources: Path, qt_qml: Path) -> set[str]:
     return uris
 
 
+def module_imports(module: Path, qt_qml: Path) -> set[str]:
+    """The Qt modules a module's own QML files import (not its child modules')."""
+    uris = set()
+    pattern = re.compile(r"^\s*import\s+([A-Za-z][\w.]*)", re.MULTILINE)
+    for source in module.rglob("*.qml"):
+        inside_child = any((parent / "qmldir").exists() for parent in source.parents
+                           if parent != module and module in parent.parents)
+        if inside_child:
+            continue
+        for uri in pattern.findall(source.read_text(encoding="utf-8", errors="replace")):
+            if module_dir(qt_qml, uri):
+                uris.add(uri)
+    return uris
+
+
 def copy_module(source: Path, destination: Path) -> None:
     """A module's own files and non-module subfolders; child modules stay out."""
     destination.mkdir(parents=True, exist_ok=True)
@@ -150,6 +165,9 @@ def main() -> int:
             continue
         modules[uri] = path
         pending.extend(qmldir_dependencies(path / "qmldir"))
+        # The module's own QML files import more than its qmldir declares (Qt's
+        # fallback FolderDialog imports Qt.labs.folderlistmodel and QtQuick.Layouts).
+        pending.extend(sorted(module_imports(path, qt_qml)))
         # A module's parent URI may hold its plugin (QtQuick for QtQuick.Window).
         parent = uri.rsplit(".", 1)[0]
         if parent != uri and module_dir(qt_qml, parent):

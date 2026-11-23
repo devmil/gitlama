@@ -2518,5 +2518,6 @@
   "textMenuCut": "Ausschneiden",
   "textMenuCopy": "Kopieren",
   "textMenuPaste": "Einfügen",
-  "textMenuSelectAll": "Alles auswählen"
+  "textMenuSelectAll": "Alles auswählen",
+  "folderPickerUnavailable": "Es konnte keine Ordnerauswahl geöffnet werden. Installiere ein Desktop-Portal (xdg-desktop-portal mit einem Dateiauswahl-Backend) oder ziehe den Repository-Ordner ins Fenster."
 }

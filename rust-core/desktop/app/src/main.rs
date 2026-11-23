@@ -149,6 +149,17 @@ extern "C" fn gitlama_file_open_requested(path: *const std::ffi::c_char, length:
     let _ = gitlama_workbench::cli::queue_open_request(bytes);
 }
 
+/// File and folder pickers use the desktop portal (the platform's own chooser, also on
+/// Hyprland and other compositors without a Qt platform theme) unless a theme is configured.
+/// Without one, Qt falls back to its own QML picker.
+#[cfg(target_os = "linux")]
+fn prefer_portal_dialogs() {
+    if std::env::var_os("QT_QPA_PLATFORMTHEME").is_none_or(|value| value.is_empty()) {
+        // SAFETY: runs first in main, before any thread exists.
+        unsafe { std::env::set_var("QT_QPA_PLATFORMTHEME", "xdgdesktopportal") };
+    }
+}
+
 fn main() {
     // Command-line output reaches the terminal that started GitLama.
     #[cfg(windows)]
@@ -161,6 +172,8 @@ fn main() {
     #[cfg(target_os = "macos")]
     gitlama_core::gitlama_prepare_desktop_environment();
 
+    #[cfg(target_os = "linux")]
+    prefer_portal_dialogs();
     // A command for the running window is handed to it; this process ends.
     forward_or_continue();
     #[cfg(target_os = "macos")]

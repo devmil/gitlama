@@ -9416,5 +9416,9 @@
   "textMenuSelectAll": "Select All",
   "@textMenuSelectAll": {
     "description": "The text editing menu of fields and selectable text: textMenuSelectAll"
+  },
+  "folderPickerUnavailable": "No folder picker could open. Install a desktop portal (xdg-desktop-portal with a file chooser backend) or drop the repository folder onto the window.",
+  "@folderPickerUnavailable": {
+    "description": "Shown when neither the platform's folder picker nor Qt's own could open."
   }
 }
