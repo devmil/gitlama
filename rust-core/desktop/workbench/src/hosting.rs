@@ -1589,6 +1589,8 @@ impl RepositoryHosting {
             return;
         }
         let lookups = self.lookups_enabled();
+        // Read before the state is borrowed: it reads the binding itself.
+        let head_checks = self.head_checks_enabled();
         let login = self.authored_login();
         let Some((connection_id, provider_repository)) = self.bound() else {
             return;
@@ -1598,7 +1600,7 @@ impl RepositoryHosting {
         };
         let (batch, head, authored) = {
             let mut state = self.state.borrow_mut();
-            let head = if state.head_queued && self.head_checks_enabled() {
+            let head = if state.head_queued && head_checks {
                 state.head.clone()
             } else {
                 None

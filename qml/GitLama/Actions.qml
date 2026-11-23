@@ -751,6 +751,9 @@ Item {
             FolderDialog {
                 id: folderDialog
                 property int promptId: -1
+                // A portal can place its picker behind the window or never show it; the window
+                // stays usable meanwhile instead of blocking every click.
+                modality: Qt.NonModal
                 function ask(id) {
                     promptId = id
                     open()

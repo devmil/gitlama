@@ -90,9 +90,7 @@ Item {
             visible: chip.hasIcon
             anchors.verticalCenter: parent.verticalCenter
             name: chip.detached ? "circle-dot" : chip.kind === "stash" ? "stash" : "cloud"
-            iconSize: MeridianIcon.Small
-            width: GitLamaLayout.refIconSize
-            height: GitLamaLayout.refIconSize
+            extent: GitLamaLayout.refIconSize
             color: chip.ink
         }
         Rectangle {
@@ -128,9 +126,7 @@ Item {
             MeridianIcon {
                 anchors.verticalCenter: parent.verticalCenter
                 name: "cloud"
-                iconSize: MeridianIcon.Small
-                width: GitLamaLayout.refIconSize
-                height: GitLamaLayout.refIconSize
+                extent: GitLamaLayout.refIconSize
                 color: chip.kind === "head" ? Qt.alpha(chip.ink, GitLamaLayout.opacityHeadChipUpstream) : Theme.colors.inkMuted
             }
             MeridianText {

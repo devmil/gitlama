@@ -213,6 +213,11 @@ QtObject {
             workspace.openPath(argument)
         else if (name === "newTab" && workspace)
             workspace.addRepositoryChooser()
+        else if (name === "tab" && workspace) {
+            const tab = (workspace.tabs ?? [])[Number(argument)]
+            if (tab)
+                workspace.activateTab(tab.id)
+        }
         screenshotStepRequested(name, argument)
     }
     /// Overrides the theme for a development screenshot.
