@@ -1066,6 +1066,10 @@ Item {
             }
             else if (name === "rendererSave")
                 Store.settings.diffRenderer("save", JSON.parse(argument))
+            else if (name === "conflictTree" && conflictResolver)
+                conflictResolver.treeMode = argument !== "off"
+            else if (name === "conflictFileMenu" && conflictResolver)
+                conflictResolver.showFileMenu(conflictResolver.files[Number(argument)], conflictResolver, 10, 10)
             else if (name === "conflictExternal")
                 Store.conflicts.mergeExternally(argument)
             else if (name === "confirmIntegrationRun") {

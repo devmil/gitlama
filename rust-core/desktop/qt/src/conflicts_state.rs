@@ -349,6 +349,36 @@ mod conflicts_state {
             });
         }
 
+        /// The conflicted files as a tree (the Dart GitFileList tree mode):
+        /// `paths` in queue order, `collapsed` the folded folder identities;
+        /// rows are {directory, identity, label, depth, index} with the
+        /// file's queue index, or -1 for a folder.
+        #[qslot]
+        fn tree_rows(&self, paths: Value, collapsed: Value) -> Value {
+            let paths: Vec<(usize, String)> = paths
+                .as_array()
+                .map(|paths| paths.iter().enumerate().filter_map(|(index, path)| Some((index, path.as_str()?.to_owned()))).collect())
+                .unwrap_or_default();
+            let collapsed: std::collections::HashSet<String> = collapsed
+                .as_array()
+                .map(|names| names.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+                .unwrap_or_default();
+            let rows = gitlama_workbench::path_tree::flatten(paths, |(_, path)| path.clone(), &collapsed, true, None);
+            Value::Array(
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "directory": row.directory,
+                            "identity": row.identity,
+                            "label": row.label,
+                            "depth": row.depth,
+                            "index": row.item.map_or(-1, |(index, _)| index as i64),
+                        })
+                    })
+                    .collect(),
+            )
+        }
+
         /// Puts the conflict of the file `key` back.
         #[qslot]
         fn undo(&self, key: String) {

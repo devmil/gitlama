@@ -58,6 +58,7 @@ MeridianResizeHandle 1.0 MeridianResizeHandle.qml
 MeridianScrollBar 1.0 MeridianScrollBar.qml
 MeridianHairline 1.0 MeridianHairline.qml
 MeridianStatusDot 1.0 MeridianStatusDot.qml
+MeridianPulse 1.0 MeridianPulse.qml
 MeridianAvatar 1.0 MeridianAvatar.qml
 MeridianSwapText 1.0 MeridianSwapText.qml
 MeridianCount 1.0 MeridianCount.qml

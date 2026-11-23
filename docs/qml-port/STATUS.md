@@ -133,6 +133,10 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   renderer command).
 - Conflict resolver: external merge tools (one configured tool runs directly, several offer a
   native menu; exact command confirmed; the file counts as merged externally).
+- Conflict resolver: list/tree file list (tree from the shared path tree, foldable folders),
+  file action menus (context menu and the row's More button: copy path, open, reveal, blame,
+  file history); the Continue pulse (MeridianPulse, added to meridian_ui) after the last
+  conflict is resolved.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
@@ -147,8 +151,7 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
 - Inspector: changed-word marks on wrapped lines.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry from the logbook; row entrance/exit stagger.
-- Conflict resolver: wrapped comparison lines, syntax colours, tree mode
-  of its file list, the Continue pulse, file action menus.
+- Conflict resolver: wrapped comparison lines, syntax colours.
 - Settings pages: integrations, repository binding, remote hosts, updates; diagnostics Share on macOS/Windows.
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;

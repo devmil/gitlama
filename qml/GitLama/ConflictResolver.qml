@@ -18,6 +18,27 @@ FocusScope {
     readonly property var file: conflictState.file ?? null
     readonly property int selected: conflictState.selected ?? 0
     readonly property bool standalone: conflictState.operation === "standalone"
+    /// The file list as a tree of folders (the Dart GitFileList modes).
+    property bool treeMode: false
+    property var collapsedFolders: []
+    readonly property var fileRows: treeMode
+        ? Store.conflicts.treeRows(files.map(file => file.path), collapsedFolders)
+        : files.map((file, index) => ({ directory: false, identity: file.path, label: file.path, depth: 0, index: index }))
+    function toggleFolder(identity) {
+        const index = collapsedFolders.indexOf(identity)
+        collapsedFolders = index < 0 ? collapsedFolders.concat([identity]) : collapsedFolders.filter(name => name !== identity)
+    }
+    /// The file actions of a conflicted file (the Dart _ConflictActionHost).
+    function showFileMenu(file, item, x, y) {
+        conflictFileMenu.path = file.path
+        conflictFileMenu.showFor({ source: "conflictFile", path: file.path, exists: true }, null, {
+            capabilities: ["copyPath", "openExternally", "revealInFileBrowser", "blame", "fileHistory"],
+            reasons: ({}),
+            inspectionReason: null,
+            busy: busy,
+            allowStagingWhileBusy: false,
+        }, item, x, y)
+    }
     /// Ticked files, by key, for resolving together.
     property var checked: []
     property string checkAnchor: ""
@@ -299,6 +320,16 @@ FocusScope {
                         width: parent.width
                         title: L10n.t("conflictFilesTitle")
                         count: resolver.files.length
+                        MeridianSegmented {
+                            objectName: "conflict-files-mode"
+                            anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+                            label: L10n.t("conflictFilesTitle")
+                            controlSize: MeridianButton.Small
+                            segments: [{ value: "list", icon: "list-view", tooltip: L10n.t("changesListView") },
+                                       { value: "tree", icon: "tree-view", tooltip: L10n.t("changesTreeView") }]
+                            value: resolver.treeMode ? "tree" : "list"
+                            onActivated: value => resolver.treeMode = value === "tree"
+                        }
                     }
                     Item {
                         id: selectAllRow
@@ -327,52 +358,71 @@ FocusScope {
                         height: parent.height - y - bulk.height
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
-                        model: resolver.files
+                        model: resolver.fileRows
                         MeridianWheelScroll { flickable: fileList }
                         C.ScrollBar.vertical: MeridianScrollBar {}
                         delegate: FileRow {
                             id: fileRow
                             required property var modelData
-                            required property int index
+                            readonly property var row: modelData
+                            readonly property int index: row.index
+                            readonly property var file: index >= 0 ? (resolver.files[index] ?? ({})) : ({})
                             width: ListView.view.width
-                            path: modelData.path
-                            status: "U"
-                            selected: index === resolver.selected
-                            onClicked: resolver.selectFile(index)
-                            leading: Component {
+                            path: row.label
+                            depth: row.depth
+                            folder: row.directory
+                            folderIcon: true
+                            expanded: row.directory && resolver.collapsedFolders.indexOf(row.identity) < 0
+                            showDirectory: !resolver.treeMode
+                            status: row.directory ? "" : "U"
+                            selected: !row.directory && index === resolver.selected
+                            onClicked: if (!row.directory) resolver.selectFile(index)
+                            onFolderToggled: resolver.toggleFolder(row.identity)
+                            onContextMenuRequested: (x, y) => { if (!row.directory) resolver.showFileMenu(fileRow.file, fileRow, x, y) }
+                            leading: fileRow.folder ? null : fileCheck
+                            readonly property Component fileCheck: Component {
                                 MeridianCheckbox {
-                                    checked: resolver.checked.indexOf(fileRow.modelData.key) >= 0
+                                    checked: resolver.checked.indexOf(fileRow.file.key) >= 0
                                     enabled: !resolver.busy
-                                    Accessible.name: fileRow.modelData.path
-                                    onClicked: resolver.toggleChecked(fileRow.modelData.key, checked, false)
+                                    Accessible.name: fileRow.file.path
+                                    onClicked: resolver.toggleChecked(fileRow.file.key, checked, false)
                                     TapHandler {
                                         acceptedModifiers: Qt.ShiftModifier
-                                        onTapped: resolver.toggleChecked(fileRow.modelData.key, !parent.checked, true)
+                                        onTapped: resolver.toggleChecked(fileRow.file.key, !parent.checked, true)
                                     }
                                 }
                             }
                             trailing: Component {
                                 Row {
+                                    visible: !fileRow.folder
                                     spacing: Theme.space.s2
                                     MeridianIcon {
-                                        visible: fileRow.modelData.deletion !== null && fileRow.modelData.deletion !== undefined
+                                        visible: fileRow.file.deletion !== null && fileRow.file.deletion !== undefined
                                         anchors.verticalCenter: parent.verticalCenter
                                         name: "trash-2"
                                         iconSize: MeridianIcon.Small
                                         color: Theme.colors.danger
                                     }
                                     MeridianIcon {
-                                        visible: fileRow.modelData.remaining === null || fileRow.modelData.remaining === 0
+                                        visible: fileRow.file.remaining === null || fileRow.file.remaining === 0
                                         anchors.verticalCenter: parent.verticalCenter
                                         name: "circle-alert"
                                         iconSize: MeridianIcon.Small
                                         color: Theme.colors.attention
                                     }
                                     MeridianCount {
-                                        visible: (fileRow.modelData.remaining ?? 0) > 0
+                                        visible: (fileRow.file.remaining ?? 0) > 0
                                         anchors.verticalCenter: parent.verticalCenter
-                                        label: String(fileRow.modelData.remaining ?? 0)
+                                        label: String(fileRow.file.remaining ?? 0)
                                         tone: MeridianCount.Attention
+                                    }
+                                    MeridianIconButton {
+                                        id: fileActions
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: L10n.t("historyFileActions")
+                                        iconName: "more"
+                                        controlSize: MeridianButton.Small
+                                        onClicked: resolver.showFileMenu(fileRow.file, fileActions, 0, fileActions.height)
                                     }
                                 }
                             }
@@ -711,6 +761,19 @@ FocusScope {
                 region = extents.length - 1
             if (region >= 0 && resolver.file && region !== resolver.file.focusedRegion)
                 Store.conflicts.focusRegion(region)
+        }
+    }
+    FileActionMenu {
+        id: conflictFileMenu
+        property string path
+        run: (action, selection) => {
+            switch (action) {
+            case "copyPath": Store.actions.copyText(path, L10n.t("filePathCopied")); return
+            case "openExternally": Store.workflows.openTool("editor", path); return
+            case "revealInFileBrowser": Store.workflows.openTool("fileManager", path); return
+            case "blame": Store.inspector.inspectWorkingFile(path, "blame", false); return
+            case "fileHistory": Store.inspector.inspectWorkingFile(path, "history", false); return
+            }
         }
     }
 }

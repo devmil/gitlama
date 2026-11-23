@@ -15,6 +15,8 @@ Column {
     /// The first paused operation that is not a bisect.
     readonly property var paused: operations.find(operation => operation.kind !== "bisect") ?? null
     property bool recentlyResolved: false
+    /// Continue pulses once shortly after the last conflict is resolved.
+    property bool pulseContinue: false
     property int _previousConflicts: 0
     readonly property var availability: Store.actions ? Store.actions.availability : ({})
     readonly property string continueReason: Commands.reason("rebaseContinue", availability)
@@ -51,14 +53,30 @@ Column {
     onConflictCountChanged: {
         if (conflictCount > 0) {
             resolvedTimer.stop()
+            pulseTimer.stop()
             recentlyResolved = false
+            pulseContinue = false
         } else if (_previousConflicts > 0) {
             recentlyResolved = true
+            pulseContinue = false
+            pulseTimer.restart()
             resolvedTimer.restart()
         }
         _previousConflicts = conflictCount
     }
-    Timer { id: resolvedTimer; interval: 1200; onTriggered: conditions.recentlyResolved = false }
+    Timer {
+        id: resolvedTimer
+        interval: 1200
+        onTriggered: {
+            conditions.recentlyResolved = false
+            conditions.pulseContinue = false
+        }
+    }
+    Timer {
+        id: pulseTimer
+        interval: 200
+        onTriggered: if (conditions.conflictCount === 0) conditions.pulseContinue = true
+    }
 
     /// The slow-status offer of the active session, or null.
     readonly property var acceleration: Store.settings && Store.settings.acceleration ? (Store.settings.acceleration.offer ?? null) : null
@@ -76,15 +94,22 @@ Column {
             tone: modelData.tone
             iconName: modelData.icon ?? ["info", "circle-check", "triangle-alert", "circle-alert", "circle-x"][modelData.tone]
             message: modelData.message
-            MeridianButton {
+            MeridianPulse {
                 visible: banner.modelData.operation === true
-                text: L10n.t("conflictContinue")
-                variant: MeridianButton.Primary
-                controlSize: MeridianButton.Small
-                enabled: conditions.conflictCount === 0 && conditions.continueReason.length === 0
-                disabledReason: conditions.conflictCount > 0 ? L10n.tn("workspaceConflictCount", { count: conditions.conflictCount })
-                    : conditions.continueReason.length > 0 ? Commands.reasonText(conditions.continueReason) : ""
-                onClicked: conditions.command("rebaseContinue")
+                active: conditions.pulseContinue
+                once: true
+                color: Theme.colors.accent
+                spread: Theme.space.s4
+                radius: Theme.radius.md
+                MeridianButton {
+                    text: L10n.t("conflictContinue")
+                    variant: MeridianButton.Primary
+                    controlSize: MeridianButton.Small
+                    enabled: conditions.conflictCount === 0 && conditions.continueReason.length === 0
+                    disabledReason: conditions.conflictCount > 0 ? L10n.tn("workspaceConflictCount", { count: conditions.conflictCount })
+                        : conditions.continueReason.length > 0 ? Commands.reasonText(conditions.continueReason) : ""
+                    onClicked: conditions.command("rebaseContinue")
+                }
             }
             MeridianButton {
                 visible: banner.modelData.operation === true && conditions.paused !== null && conditions.paused.kind !== "merge"
