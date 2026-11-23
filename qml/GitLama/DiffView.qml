@@ -77,11 +77,44 @@ Item {
     function positionAt(index) {
         list.positionViewAtIndex(index, ListView.Beginning)
     }
+    /// The bridge that lists every hunk of the diff (loadHunks,
+    /// hunksLoaded); without one only loaded hunks are stepped through.
+    property var hunkSource: null
+    property var hunkRows: []
+    property int hunkIndex: -1
+    property int pendingHunkStep: 0
+    function stepHunk(delta) {
+        if (hunkRows.length === 0)
+            return
+        hunkIndex = hunkIndex < 0 ? (delta > 0 ? 0 : hunkRows.length - 1)
+            : (hunkIndex + delta + hunkRows.length) % hunkRows.length
+        positionAt(hunkRows[hunkIndex])
+    }
     function nextHunk(forward) {
+        if (hunkSource) {
+            if (hunkRows.length === 0) {
+                pendingHunkStep = forward ? 1 : -1
+                hunkSource.loadHunks()
+            } else {
+                stepHunk(forward ? 1 : -1)
+            }
+            return
+        }
         const at = list.indexAt(0, list.contentY + 1)
         const target = model ? model.hunkFrom(at < 0 ? 0 : at, forward) : -1
         if (target >= 0)
             positionAt(target)
+    }
+    Connections {
+        target: view.hunkSource
+        function onHunksLoaded(rows) {
+            if (view.pendingHunkStep === 0)
+                return
+            view.hunkRows = rows ?? []
+            const step = view.pendingHunkStep
+            view.pendingHunkStep = 0
+            view.stepHunk(step)
+        }
     }
 
     onModelChanged: { textOffset = 0; widestText = 0; if (model) model.setLatin1(encoding === "latin1") }
@@ -108,7 +141,8 @@ Item {
     Component.onCompleted: if (model) model.setPalette(syntaxPalette)
     Connections {
         target: view.model
-        function onCountChanged() { view.model.setPalette(view.syntaxPalette); syntaxTimer.restart() }
+        function onCountChanged() { view.model.setPalette(view.syntaxPalette); syntaxTimer.restart(); view.hunkRows = []; view.hunkIndex = -1 }
+        function onModelReset() { view.hunkRows = []; view.hunkIndex = -1 }
     }
 
     FontMetrics { id: code; font: Theme.type.code }

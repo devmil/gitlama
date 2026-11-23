@@ -636,6 +636,7 @@ Rectangle {
                         }
                         DiffView {
                             id: commitDiff
+                            hunkSource: Store.inspector
                             visible: inspector.paneState.hasDiff === true && (inspector.location.lens === "diff" || inspector.historyLens)
                                 && !inspector.paneState.contentFailure
                             wrap: Store.appearance.diffWrap === true

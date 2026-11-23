@@ -105,7 +105,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   merge/cherry-pick/revert/integrate/rebase/interactive rebase/restack; clone; repository
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
-  image diff, changed-word marks on wrapped lines, whole-diff hunk navigation (loaded hunks only).
+  image diff, changed-word marks on wrapped lines.
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.

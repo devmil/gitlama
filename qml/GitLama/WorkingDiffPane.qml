@@ -180,6 +180,7 @@ Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width
             model: Store.workingDiff
+            hunkSource: Store.changes
             layout: pane.detail.options ? pane.detail.options.layout : "unified"
             wrap: Store.appearance.diffWrap === true
             showIndicators: Store.appearance.diffIndicators !== false
