@@ -78,6 +78,9 @@ Item {
         height: parent.height - Theme.space.s3
 
         readonly property bool history: body.active !== null && body.active.pane === "history"
+        // The graph stays mounted while the inspector is maximized, so its
+        // scroll position and selection survive.
+        readonly property bool maximized: history && Store.inspectorMaximized
         readonly property real detailHeight: Math.max(180, Math.min(height - GitLamaLayout.primaryIslandMinHeight - Theme.space.s3,
             body.draggedDetailHeight >= 0 ? body.draggedDetailHeight
                 : body.detailHeight >= 0 ? body.detailHeight : (height - Theme.space.s3) / 2))
@@ -104,9 +107,9 @@ Item {
         // History keeps the full width above; details and the diff below.
         MeridianIsland {
             id: primary
-            visible: workspace.history || body.active === null || !body.active.hasStatus
+            visible: (workspace.history && !workspace.maximized) || body.active === null || !body.active.hasStatus
             width: parent.width
-            height: workspace.history ? parent.height - workspace.detailHeight - Theme.space.s3 : parent.height
+            height: workspace.history ? Math.max(0, parent.height - workspace.detailHeight - Theme.space.s3) : parent.height
             HistoryPane {
                 anchors.fill: parent
                 visible: workspace.history
@@ -122,7 +125,7 @@ Item {
         }
         MeridianResizeHandle {
             objectName: "detail-pane-splitter"
-            visible: workspace.history
+            visible: workspace.history && !workspace.maximized
             y: primary.height
             width: parent.width
             orientation: Qt.Vertical
@@ -149,7 +152,7 @@ Item {
             visible: workspace.history
             y: parent.height - height
             width: parent.width
-            height: workspace.detailHeight
+            height: workspace.maximized ? parent.height : workspace.detailHeight
             InspectorView {
                 anchors.fill: parent
             }

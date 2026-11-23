@@ -56,6 +56,10 @@ QtObject {
     /// The inspector view (development screenshots open its file menus).
     property var inspectorView: null
     property var workingDiffPane: null
+    /// The commit editor of the Changes pane (commit and amend commands).
+    property var commitEditor: null
+    /// The History inspector fills the workspace (Maximize).
+    property bool inspectorMaximized: false
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).

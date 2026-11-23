@@ -428,6 +428,34 @@ Item {
         case "pushTag":
             Store.workflows.transfer("pushTag", { initialBranch: options.initialName ?? null }); return
         case "find": findInRepository(); return
+        case "commitCreate": case "commitAmend":
+            Store.sidebar.selectPane("changes")
+            Qt.callLater(() => {
+                if (!Store.commitEditor)
+                    return
+                if (id === "commitCreate")
+                    Store.commitEditor.submit(false)
+                else
+                    Store.commitEditor.prepareAmend()
+            })
+            return
+        case "diffToggleLayout": case "diffToggleWrap": case "diffNextHunk": case "diffPreviousHunk":
+            // Commands act on the commit diff (the Dart _runDiffCommand).
+            if (!Store.inspectorView || !Store.inspectorView.runDiffCommand(id))
+                Notifications.show(Commands.reasonText("contextRequired"), false)
+            return
+        case "conflictOpenExternal":
+            if (!actionsRoot.conflictResolver || !actionsRoot.conflictResolver.openExternal())
+                Notifications.show(Commands.reasonText("contextRequired"), false)
+            return
+        case "rebaseSquash": case "rebaseFixup": case "rebaseReword": case "rebaseDrop":
+            if (rebaseEditor.opened)
+                rebaseEditor.runCommand(id.slice("rebase".length).toLowerCase())
+            return
+        case "historyCompare": Store.history.compareSelected(); return
+        case "inspectorToggleMaximize": Store.inspectorMaximized = !Store.inspectorMaximized; return
+        case "inspectorToggleFiles": if (Store.inspectorView) Store.inspectorView.toggleFiles(); return
+        case "inspectorAllFiles": Store.inspector.setAllFiles(true); return
         case "reportIssue":
             if (!Qt.openUrlExternally("https://github.com/devmil/gitlama/issues"))
                 Notifications.show(L10n.t("reportIssueOpenFailed"), true)

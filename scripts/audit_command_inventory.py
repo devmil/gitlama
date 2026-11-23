@@ -42,7 +42,13 @@ def main() -> int:
         for locale in ("en", "de")
     }
     icons = icon_names()
-    qml = "\n".join(path.read_text(encoding="utf-8") for path in sorted((ROOT / "qml/GitLama").glob("*.qml")))
+    # Commands.qml and CommandMenus.qml name every command for availability
+    # and menus; they run none.
+    qml = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "qml/GitLama").glob("*.qml"))
+        if path.name not in ("Commands.qml", "CommandMenus.qml")
+    )
     errors: list[str] = []
     seen: set[str] = set()
     for command in commands:

@@ -72,7 +72,21 @@ Rectangle {
     }
     property bool _loading: false
     property alias subject: subjectField
-    Component.onCompleted: loadDraft()
+    Component.onCompleted: {
+        loadDraft()
+        Store.commitEditor = editor
+    }
+    Component.onDestruction: if (Store.commitEditor === editor) Store.commitEditor = null
+    /// Amend from a command: checks Amend and fills the editor like the box.
+    function prepareAmend() {
+        if (busy || amend)
+            return
+        amend = true
+        if (subjectField.text.length === 0 && descriptionField.text.length === 0) {
+            _fillAmend = true
+            Store.commit.loadTools()
+        }
+    }
     Timer {
         id: draftTimer
         interval: 300

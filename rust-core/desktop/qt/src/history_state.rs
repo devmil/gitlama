@@ -354,6 +354,21 @@ mod history_state {
             });
         }
 
+        /// Compares the two selected commits in the inspector; one or more
+        /// than two selected says the command needs another context.
+        #[qslot]
+        fn compare_selected(&self) {
+            self.with_services(|services| {
+                let navigator = Rc::clone(&services.navigator);
+                let notices = Rc::clone(&services.notices);
+                rt::spawn_detached(async move {
+                    if !navigator.compare_selected().await {
+                        notices.status("commandContextUnavailable", serde_json::Value::Null);
+                    }
+                });
+            });
+        }
+
         fn with_services(&self, action: impl FnOnce(&gitlama_workbench::app::Services) + 'static) {
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {

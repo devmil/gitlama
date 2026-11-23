@@ -115,6 +115,68 @@ Rectangle {
     }
     Component.onCompleted: Store.inspectorView = inspector
     readonly property bool diffFocused: commitDiff.activeFocus || commitFind.searchField.activeFocus
+    /// The commit diff's commands (the Dart CommitDiffPane.runCommand):
+    /// false when no commit diff is shown.
+    function runDiffCommand(id) {
+        if (!commitDiff.visible)
+            return false
+        const options = paneState.options ?? ({})
+        switch (id) {
+        case "diffToggleLayout":
+            Store.inspector.setDiffOptions(options.contextLines ?? 3, options.whitespace ?? "preserve",
+                                           options.layout === "sideBySide" ? "unified" : "sideBySide")
+            return true
+        case "diffToggleWrap":
+            Store.app.updateAppearance({ diffWrap: Store.appearance.diffWrap !== true })
+            return true
+        case "diffNextHunk": commitDiff.nextHunk(true); return true
+        case "diffPreviousHunk": commitDiff.nextHunk(false); return true
+        }
+        return false
+    }
+    /// Shows or hides the changed files beside the diff.
+    function toggleFiles() { filesHidden = !filesHidden }
+    readonly property bool canBrowseAllFiles: location !== null && location.kind !== "comparison" && location.scope !== "all"
+    /// The location bar's More actions (the Dart _OverflowAction menu).
+    function showMoreMenu(item) {
+        const items = []
+        if (canBrowseAllFiles)
+            items.push({ title: L10n.t("inspectorBrowseAllFiles"), icon: "tree-view", value: "allFiles" })
+        items.push({ title: filesHidden ? L10n.t("inspectorShowFiles") : L10n.t("inspectorHideFiles"), icon: "panel-left", value: "toggleFiles" })
+        items.push({ title: L10n.t("fileActionCopyCommitHash"), icon: "copy", value: "copyHash" })
+        moreMenu.items = items
+        moreMenu.show(item, 0, item.height)
+    }
+    /// The commit crumb's menu: copy, show in History.
+    function showTargetMenu(item, x, y) {
+        targetMenu.items = [
+            { title: L10n.t("fileActionCopyCommitHash"), icon: "copy", value: "copy" },
+            { title: L10n.t("inspectorShowInGraph"), icon: "locate", value: "graph" },
+        ]
+        targetMenu.show(item, x, y)
+    }
+    CommandMenu {
+        id: moreMenu
+        onSelected: value => {
+            if (value === "allFiles")
+                Store.inspector.setAllFiles(true)
+            else if (value === "toggleFiles")
+                inspector.toggleFiles()
+            else if (value === "copyHash" && inspector.location)
+                Store.actions.copyText(inspector.location.commit, L10n.t("menuCommitHashCopied"))
+        }
+    }
+    CommandMenu {
+        id: targetMenu
+        onSelected: value => {
+            if (!inspector.location)
+                return
+            if (value === "copy")
+                Store.actions.copyText(inspector.location.commit, L10n.t("menuCommitHashCopied"))
+            else if (value === "graph")
+                Store.history.reveal(inspector.location.commit)
+        }
+    }
     /// Focuses the commit diff's find field (Find); false without one.
     function focusFind() {
         if (!commitFind.visible || !commitDiff.visible)
@@ -188,10 +250,10 @@ Rectangle {
                 }
             }
             MeridianBreadcrumbs {
-                id: crumbs
+                id: crumbBar
                 objectName: "inspector-breadcrumbs"
                 x: navigation.x + navigation.width + Theme.space.s2
-                width: lenses.x - x - Theme.space.s3
+                width: barActions.x - x - Theme.space.s3
                 anchors.verticalCenter: parent.verticalCenter
                 semanticLabel: L10n.t("inspectorLocation")
                 crumbs: {
@@ -217,13 +279,21 @@ Rectangle {
                     if (index === 0)
                         Store.inspector.selectFile("")
                 }
+                onContextMenuRequested: (index, x, y) => {
+                    if (index === 0)
+                        inspector.showTargetMenu(crumbBar, x, y)
+                }
             }
+            Row {
+                id: barActions
+                anchors.right: parent.right
+                anchors.rightMargin: Theme.space.s3
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Theme.space.s2
             MeridianSegmented {
                 id: lenses
                 objectName: "inspector-lens"
                 visible: inspector.location !== null && inspector.location.path !== null
-                anchors.right: parent.right
-                anchors.rightMargin: Theme.space.s3
                 anchors.verticalCenter: parent.verticalCenter
                 width: visible ? implicitWidth : 0
                 label: L10n.t("inspectorLenses")
@@ -245,6 +315,25 @@ Rectangle {
                     })
                 }
                 onActivated: lens => Store.inspector.selectLens(lens)
+            }
+            MeridianIconButton {
+                objectName: "inspector-maximize"
+                visible: inspector.location !== null
+                anchors.verticalCenter: parent.verticalCenter
+                text: Store.inspectorMaximized ? L10n.t("inspectorRestoreLayout") : L10n.t("inspectorMaximize")
+                iconName: Store.inspectorMaximized ? "minimize-2" : "maximize-2"
+                active: Store.inspectorMaximized
+                onClicked: Store.inspectorMaximized = !Store.inspectorMaximized
+            }
+            MeridianIconButton {
+                id: moreButton
+                objectName: "inspector-more"
+                visible: inspector.location !== null
+                anchors.verticalCenter: parent.verticalCenter
+                text: L10n.t("inspectorMoreActions")
+                iconName: "more"
+                onClicked: inspector.showMoreMenu(moreButton)
+            }
             }
             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
         }

@@ -97,6 +97,14 @@ FocusScope {
         selectFile(selected + delta, delta < 0)
     }
     /// Commands from menus and shortcuts reach the shown resolver.
+    /// Open in merge tool (the Dart conflictOpenExternal): false without a tool.
+    function openExternal() {
+        const tools = conflictState.mergeTools ?? []
+        if (tools.length === 0)
+            return false
+        Store.conflicts.mergeExternally(tools[0])
+        return true
+    }
     function runCommand(id) {
         switch (id) {
         case "conflictNext": stepConflict(1); return true

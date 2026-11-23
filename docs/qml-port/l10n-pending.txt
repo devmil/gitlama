@@ -7,16 +7,11 @@ historyWindowFailed
 initializeLocation
 initializeLocationThisComputer
 inspectorBlameAtCommit
-inspectorBrowseAllFiles
 inspectorChangedFilesIn
 inspectorHistoryOf
-inspectorMaximize
-inspectorMoreActions
 inspectorRemoteHostNotConnected
 inspectorRemoteHostNotConnectedDetail
 inspectorRepositoryNotOpen
-inspectorRestoreLayout
-inspectorShowInGraph
 inspectorShowInMainWindow
 inspectorShowing
 remoteAccess
