@@ -61,6 +61,19 @@ Rectangle {
         mounted = next
     }
     function toggleOperations() { togglePanel("operations") }
+    /// Shows the extensions panel; with `focusLfs` its LFS pattern field.
+    property bool extensionsFocusLfs: false
+    readonly property var extensionsPanel: extensionsLoader.item
+    function showExtensions(focusLfs) {
+        if (panel === "extensions" && extensionsFocusLfs === focusLfs)
+            return
+        // The panel starts over for the other entry point.
+        extensionsFocusLfs = focusLfs
+        if (panel === "extensions")
+            panel = ""
+        unmountPanel("extensions")
+        togglePanel("extensions")
+    }
     Component.onCompleted: Store.shell = shell
 
     function command(id, options) {
@@ -186,6 +199,21 @@ Rectangle {
             maximumWidth: shell.width - 2 * Theme.space.s3
             onCloseRequested: shell.closePanel("powerTools")
             onHidden: shell.unmountPanel("powerTools")
+        }
+    }
+    // Worktrees, submodules and LFS, in the same place.
+    Loader {
+        id: extensionsLoader
+        active: shell.mounted.extensions === true
+        x: shell.width - width - Theme.space.s3
+        y: toolbar.height + tabs.height + Theme.space.s2
+        z: 10
+        sourceComponent: ExtensionsPanel {
+            shown: shell.panel === "extensions"
+            focusLfs: shell.extensionsFocusLfs
+            availableHeight: shell.height - y - Metrics.statusBarHeight - Theme.space.s4
+            onCloseRequested: { shell.closePanel("extensions"); shell.extensionsFocusLfs = false }
+            onHidden: shell.unmountPanel("extensions")
         }
     }
 }

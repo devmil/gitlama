@@ -1481,6 +1481,36 @@ impl WorkspaceService {
         None
     }
 
+    /// Closes every tab of the worktree `root` except the one of `source`,
+    /// and returns the worktrees it closed (the Dart closeWorktreeTabs).
+    pub async fn close_worktree_tabs(self: &Rc<Self>, root: &NativePathIdentity, source: SessionIdentity) -> Vec<NativePathIdentity> {
+        let affected: Vec<u64> = self
+            .inner
+            .borrow()
+            .tabs
+            .iter()
+            .filter(|tab| tab.session.as_ref().map(|session| session.identity) != Some(source) && tab.canonical_identity() == Some(root))
+            .map(|tab| tab.id)
+            .collect();
+        let mut closed = Vec::new();
+        for tab_id in affected {
+            closed.push(root.clone());
+            self.close_tab(tab_id).await;
+        }
+        closed
+    }
+
+    /// Reopens `worktrees` and activates `source`'s tab again.
+    pub async fn restore_worktree_tabs(self: &Rc<Self>, worktrees: Vec<NativePathIdentity>, source: SessionIdentity) {
+        for worktree in worktrees {
+            // A concurrent external delete makes reopening impossible.
+            let _ = self.open_recent(worktree).await;
+        }
+        if let Some(tab) = self.tab_for_session(source) {
+            self.activate_tab(tab.id);
+        }
+    }
+
     pub async fn close_tab(self: &Rc<Self>, tab_id: u64) {
         let (removed, was_active, index) = {
             let mut inner = self.inner.borrow_mut();

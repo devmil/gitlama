@@ -147,6 +147,11 @@ impl Driver {
                 workflows.snapshots = snapshots;
                 workflows.snapshots_changed();
             }
+            let extensions = gitlama_workbench::extensions::panel_value(&services.extensions.panel());
+            if workflows.extensions != extensions {
+                workflows.extensions = extensions;
+                workflows.extensions_changed();
+            }
             let power_tools = gitlama_workbench::power_tools::panel_value(&services.power_tools.panel());
             if workflows.power_tools != power_tools {
                 workflows.power_tools = power_tools;

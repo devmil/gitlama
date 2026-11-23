@@ -26,6 +26,8 @@ mod workflows_state {
         pub(crate) snapshots: Value,
         /// The power tools panel (power_tools.rs panel_value).
         pub(crate) power_tools: Value,
+        /// The extensions panel (extensions.rs panel_value).
+        pub(crate) extensions: Value,
     }
 
     impl WorkflowsState {
@@ -41,6 +43,55 @@ mod workflows_state {
 
         #[qsignal]
         pub fn power_tools_changed(&mut self);
+
+        qproperty!("extensions", Member = extensions, Notify = extensions_changed);
+
+        #[qsignal]
+        pub fn extensions_changed(&mut self);
+
+        /// The extensions panel: `action` is open, load, createWorktree
+        /// (path, reference), lfsTrack, lfsUntrack (pattern), lfsPull, or a
+        /// row action (openWorktree, deleteWorktree, submodule,
+        /// enterSubmodule, inspectPointer) with its `index`.
+        #[qslot]
+        fn extension(&self, action: String, options: Value) {
+            use gitlama_contract::extensions::NativeExtensionMutationKind as Kind;
+            use gitlama_workbench::extensions::PanelAction;
+            self.with_services(move |services| {
+                let extensions = Rc::clone(&services.extensions);
+                let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
+                let index = options["index"].as_u64().unwrap_or(u64::MAX) as usize;
+                let row = match action.as_str() {
+                    "openWorktree" => Some(PanelAction::OpenWorktree(index)),
+                    "deleteWorktree" => Some(PanelAction::DeleteWorktree(index)),
+                    "submodule" => Some(PanelAction::Submodule(index)),
+                    "enterSubmodule" => Some(PanelAction::EnterSubmodule(index)),
+                    "inspectPointer" => Some(PanelAction::InspectPointer(index)),
+                    _ => None,
+                };
+                if let Some(row) = row {
+                    return rt::spawn_detached(async move { extensions.act(row).await });
+                }
+                match action.as_str() {
+                    "open" => rt::spawn_detached(async move { extensions.open().await }),
+                    "load" => rt::spawn_detached(async move { extensions.load().await }),
+                    "createWorktree" => {
+                        let (path, reference) = (text("path"), text("reference"));
+                        rt::spawn_detached(async move { extensions.create_worktree(path, reference).await })
+                    }
+                    "lfsTrack" | "lfsUntrack" | "lfsPull" => {
+                        let kind = match action.as_str() {
+                            "lfsTrack" => Kind::LfsTrack,
+                            "lfsUntrack" => Kind::LfsUntrack,
+                            _ => Kind::LfsPull,
+                        };
+                        let pattern = text("pattern");
+                        rt::spawn_detached(async move { extensions.lfs(kind, pattern).await })
+                    }
+                    _ => {}
+                }
+            });
+        }
 
         /// Power tools: `action` is open or close (options.owner), search
         /// (query, caseSensitive, currentBranch), cancelSearch, statistics,

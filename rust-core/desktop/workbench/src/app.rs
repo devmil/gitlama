@@ -270,6 +270,7 @@ impl Services {
                 Rc::clone(&sidebar),
                 Rc::clone(&prompts),
                 Rc::clone(&notices),
+                notifier.clone(),
             );
         let operations = crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
         operations.start();

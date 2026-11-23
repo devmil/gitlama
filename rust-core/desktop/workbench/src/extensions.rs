@@ -1,18 +1,41 @@
-//! Repository extensions (the Dart RepositoryExtensionCommands): for now the
+//! Repository extensions (the Dart ExtensionCommands and
+//! RepositoryExtensionsPanel): worktrees, submodules, Git LFS and the
 //! `.gitignore` entry that hides a changed path.
 
 use crate::backend::SessionCalls;
 use crate::notices::Notices;
+use crate::notify::{Notifier, Topics};
 use crate::prompts::Prompts;
-use crate::session::display_path;
+use crate::session::{SessionIdentity, display_path, local_path};
 use crate::sidebar::{SidebarService, worktree_deletion_protected};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::extensions::{
-    NativeExtensionFailureKind, NativeExtensionMutationKind, NativeExtensionMutationRequest, NativeExtensionMutationResult,
+    NativeExtensionFailureKind, NativeExtensionInventory, NativeLfsPathState, NativeSubmoduleState, NativeWorktreeEntry, NativeExtensionMutationKind, NativeExtensionMutationRequest, NativeExtensionMutationResult,
     NativeExtensionMutationState,
 };
 use serde_json::{Value, json};
+use std::cell::RefCell;
 use std::rc::Rc;
+
+/// The extensions panel's state.
+#[derive(Clone, Debug, Default)]
+pub struct Panel {
+    pub inventory: Option<NativeExtensionInventory>,
+    pub busy: bool,
+    pub failure: Option<&'static str>,
+    /// The references a new worktree can check out.
+    pub names: Vec<String>,
+}
+
+/// What a panel action names: a row of one of the inventory's lists.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PanelAction {
+    OpenWorktree(usize),
+    DeleteWorktree(usize),
+    Submodule(usize),
+    EnterSubmodule(usize),
+    InspectPointer(usize),
+}
 
 /// The failure a mutation reports, unless its outcome is uncertain.
 pub fn reported_failure(result: &NativeExtensionMutationResult) -> Option<NativeExtensionFailureKind> {
@@ -52,6 +75,8 @@ pub struct Extensions {
     sidebar: Rc<SidebarService>,
     prompts: Rc<Prompts>,
     notices: Rc<Notices>,
+    notifier: Notifier,
+    panel: RefCell<Panel>,
 }
 
 impl Extensions {
@@ -61,8 +86,204 @@ impl Extensions {
         sidebar: Rc<SidebarService>,
         prompts: Rc<Prompts>,
         notices: Rc<Notices>,
+        notifier: Notifier,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, sidebar, prompts, notices })
+        Rc::new(Self { calls, workspace, sidebar, prompts, notices, notifier, panel: RefCell::new(Panel::default()) })
+    }
+
+    pub fn panel(&self) -> Panel {
+        self.panel.borrow().clone()
+    }
+
+    fn update(&self, change: impl FnOnce(&mut Panel)) {
+        change(&mut self.panel.borrow_mut());
+        self.notifier.notify(Topics::OPERATIONS);
+    }
+
+    /// Runs `request` for the active repository. Deleting a worktree first
+    /// closes its other tabs and reopens them when the deletion does not
+    /// happen (the Dart ExtensionCommands.execute).
+    async fn execute(&self, identity: SessionIdentity, request: NativeExtensionMutationRequest) -> Result<NativeExtensionMutationResult, ()> {
+        let mut closed = Vec::new();
+        if request.kind == NativeExtensionMutationKind::WorktreeDelete
+            && let Some(root) = &request.worktree_root
+        {
+            closed = self.workspace.close_worktree_tabs(root, identity).await;
+        }
+        let result = self.calls.repository_session_extension_execute(identity.native_id, identity.generation, request).await;
+        let restore = match &result {
+            Ok(result) => matches!(
+                result.state,
+                NativeExtensionMutationState::Failed | NativeExtensionMutationState::Canceled | NativeExtensionMutationState::OutcomeUncertain
+            ),
+            Err(_) => true,
+        };
+        if restore && !closed.is_empty() {
+            self.workspace.restore_worktree_tabs(closed, identity).await;
+        }
+        result.map_err(|_| ())
+    }
+
+    /// Reads the inventory again.
+    pub async fn load(&self) {
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        self.update(|panel| {
+            panel.busy = true;
+            panel.failure = None;
+        });
+        let result = self.calls.repository_session_extensions(identity.native_id, identity.generation).await;
+        self.update(|panel| {
+            panel.busy = false;
+            match result {
+                Ok(result) => match (result.inventory, result.failure) {
+                    (Some(inventory), None) => panel.inventory = Some(inventory),
+                    (_, failure) => {
+                        panel.failure = Some(failure_key(failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind)))
+                    }
+                },
+                Err(_) => panel.failure = Some(failure_key(NativeExtensionFailureKind::Stale)),
+            }
+        });
+    }
+
+    /// The panel opened: it starts from a fresh inventory.
+    pub async fn open(&self) {
+        let names = self
+            .workspace
+            .current()
+            .map(|session| crate::power_tools::reference_choices(&session.snapshot).into_iter().map(|(name, _)| name).collect())
+            .unwrap_or_default();
+        self.update(|panel| *panel = Panel { names, ..Panel::default() });
+        self.load().await;
+    }
+
+    /// Runs a change from the panel; a reported failure shows in its banner,
+    /// anything else reloads the inventory.
+    async fn run(&self, request: NativeExtensionMutationRequest) {
+        if self.panel.borrow().busy {
+            return;
+        }
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        self.update(|panel| {
+            panel.busy = true;
+            panel.failure = None;
+        });
+        let result = self.execute(identity, request).await;
+        let failure = match &result {
+            Ok(result) => reported_failure(result),
+            Err(()) => Some(NativeExtensionFailureKind::Git),
+        };
+        self.update(|panel| {
+            panel.busy = false;
+            panel.failure = failure.map(failure_key);
+        });
+        if failure.is_none() {
+            if result.is_ok_and(|result| result.state == NativeExtensionMutationState::OutcomeUncertain) {
+                self.notices.error("mutationOutcomeUncertain", Value::Null);
+            }
+            self.sidebar.reload_worktrees();
+            self.load().await;
+        }
+    }
+
+    fn request(kind: NativeExtensionMutationKind) -> NativeExtensionMutationRequest {
+        NativeExtensionMutationRequest { kind, path: None, worktree_root: None, pattern: None, reference: None }
+    }
+
+    /// Adds a worktree at `path` (a folder on this computer) checked out at
+    /// `reference`.
+    pub async fn create_worktree(&self, path: String, reference: String) {
+        let (path, reference) = (path.trim().to_owned(), reference.trim().to_owned());
+        if path.is_empty() || reference.is_empty() || self.panel.borrow().inventory.is_none() {
+            return;
+        }
+        let mut request = Self::request(NativeExtensionMutationKind::WorktreeCreate);
+        request.worktree_root = Some(local_path(&path));
+        request.reference = Some(reference);
+        self.run(request).await;
+    }
+
+    pub async fn lfs(&self, kind: NativeExtensionMutationKind, pattern: String) {
+        let mut request = Self::request(kind);
+        if kind != NativeExtensionMutationKind::LfsPull {
+            request.pattern = Some(pattern.trim().to_owned());
+        }
+        self.run(request).await;
+    }
+
+    /// Runs `action` on its row of the inventory.
+    pub async fn act(&self, action: PanelAction) {
+        let Some(inventory) = self.panel.borrow().inventory.clone() else { return };
+        match action {
+            PanelAction::OpenWorktree(index) => {
+                if let Some(entry) = inventory.worktrees.get(index).filter(|entry| !entry.current) {
+                    // A failed tab stays visible with its error.
+                    let _ = self.workspace.open_recent(entry.worktree_root.clone()).await;
+                }
+            }
+            PanelAction::DeleteWorktree(index) => {
+                let Some(entry) = inventory.worktrees.get(index).cloned() else { return };
+                if worktree_deletion_protected(&inventory, &entry) {
+                    return;
+                }
+                let payload = json!({"path": display_path(&entry.worktree_root)});
+                if self.prompts.ask("confirmWorktreeDelete", payload).await != Some(Value::Bool(true)) {
+                    return;
+                }
+                let mut request = Self::request(NativeExtensionMutationKind::WorktreeDelete);
+                request.worktree_root = Some(entry.worktree_root);
+                self.run(request).await;
+            }
+            PanelAction::Submodule(index) => {
+                let Some(entry) = inventory.submodules.get(index) else { return };
+                let kind = if entry.state == NativeSubmoduleState::Uninitialized {
+                    NativeExtensionMutationKind::SubmoduleInit
+                } else {
+                    NativeExtensionMutationKind::SubmoduleUpdate
+                };
+                let mut request = Self::request(kind);
+                request.path = Some(entry.path.clone());
+                self.run(request).await;
+            }
+            PanelAction::EnterSubmodule(index) => {
+                let Some(entry) = inventory.submodules.get(index).filter(|entry| entry.state != NativeSubmoduleState::Uninitialized) else {
+                    return;
+                };
+                let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+                let failure = match self.calls.repository_session_submodule_enter(identity.native_id, identity.generation, entry.path.clone()).await {
+                    Ok(result) => match (result.worktree_root, result.failure) {
+                        (Some(root), None) => {
+                            let _ = self.workspace.open_recent(root).await;
+                            None
+                        }
+                        (_, failure) => Some(failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind)),
+                    },
+                    Err(_) => Some(NativeExtensionFailureKind::Stale),
+                };
+                if let Some(kind) = failure {
+                    self.update(|panel| panel.failure = Some(failure_key(kind)));
+                }
+            }
+            PanelAction::InspectPointer(index) => {
+                let Some(entry) = inventory.lfs_entries.get(index) else { return };
+                let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+                match self.calls.repository_session_lfs_pointer(identity.native_id, identity.generation, entry.path.clone()).await {
+                    Ok(result) if result.failure.is_none() => {
+                        let payload = json!({
+                            "path": String::from_utf8_lossy(&entry.path),
+                            "oid": result.pointer.as_ref().map(|pointer| pointer.oid_sha256.clone()),
+                            "size": result.pointer.as_ref().map(|pointer| pointer.size),
+                        });
+                        self.prompts.ask("lfsPointer", payload).await;
+                    }
+                    Ok(result) => {
+                        let key = failure_key(result.failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind));
+                        self.update(|panel| panel.failure = Some(key));
+                    }
+                    Err(_) => self.update(|panel| panel.failure = Some(failure_key(NativeExtensionFailureKind::Stale))),
+                }
+            }
+        }
     }
 
     /// Deletes linked worktree `index` of the sidebar's inventory after a
@@ -90,7 +311,7 @@ impl Extensions {
             pattern: None,
             reference: None,
         };
-        let failure = match self.calls.repository_session_extension_execute(identity.native_id, identity.generation, request).await {
+        let failure = match self.execute(identity, request).await {
             Ok(result) if result.state == NativeExtensionMutationState::OutcomeUncertain => {
                 self.notices.error("mutationOutcomeUncertain", Value::Null);
                 self.sidebar.reload_worktrees();
@@ -147,6 +368,56 @@ impl Extensions {
             }
         }
     }
+}
+
+/// The last part of `path`, or all of it.
+fn folder_name(path: &str) -> String {
+    path.split(['/', '\\']).rfind(|part| !part.is_empty()).unwrap_or(path).to_owned()
+}
+
+fn worktree_value(inventory: &NativeExtensionInventory, entry: &NativeWorktreeEntry) -> Value {
+    let path = display_path(&entry.worktree_root);
+    let branch = entry.branch.as_deref().map(|branch| {
+        let name = String::from_utf8_lossy(branch).into_owned();
+        name.strip_prefix("refs/heads/").map(str::to_owned).unwrap_or(name)
+    });
+    json!({
+        "title": branch.clone().unwrap_or_else(|| folder_name(&path)),
+        "path": path,
+        "locked": entry.locked,
+        "current": entry.current,
+        "head": entry.head.as_deref().map(|head| head.chars().take(8).collect::<String>()),
+        "deletable": !worktree_deletion_protected(inventory, entry),
+    })
+}
+
+/// The panel as the presentation shows it.
+pub fn panel_value(panel: &Panel) -> Value {
+    let inventory = panel.inventory.as_ref().map(|inventory| {
+        json!({
+            "worktrees": inventory.worktrees.iter().map(|entry| worktree_value(inventory, entry)).collect::<Vec<_>>(),
+            "submodules": inventory.submodules.iter().map(|entry| json!({
+                "path": String::from_utf8_lossy(&entry.path),
+                "state": match entry.state {
+                    NativeSubmoduleState::AtRecordedCommit => "extensionSubmoduleRecorded",
+                    NativeSubmoduleState::DifferentCommit => "extensionSubmoduleDifferent",
+                    NativeSubmoduleState::Uninitialized => "extensionSubmoduleUninitialized",
+                    NativeSubmoduleState::Conflicted => "extensionSubmoduleConflicted",
+                },
+                "initialized": entry.state != NativeSubmoduleState::Uninitialized,
+            })).collect::<Vec<_>>(),
+            "lfsAvailable": inventory.lfs_available,
+            "lfs": inventory.lfs_entries.iter().map(|entry| json!({
+                "path": String::from_utf8_lossy(&entry.path),
+                "state": match entry.state {
+                    NativeLfsPathState::Pointer => "extensionLfsStatePointer",
+                    NativeLfsPathState::Materialized => "extensionLfsStateMaterialized",
+                    NativeLfsPathState::Missing => "extensionLfsStateMissing",
+                },
+            })).collect::<Vec<_>>(),
+        })
+    });
+    json!({"busy": panel.busy, "failure": panel.failure, "inventory": inventory, "names": panel.names})
 }
 
 #[cfg(test)]

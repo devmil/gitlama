@@ -84,6 +84,11 @@ Item {
             snapshotBranch.open()
             snapshotBranchField.forceActiveFocus()
             return
+        case "lfsPointer":
+            lfsPointer.promptId = id
+            lfsPointer.pointer = payload
+            lfsPointer.open()
+            return
         case "confirmBisect":
             bisectConfirm.promptId = id
             bisectConfirm.action = payload.action ?? "start"
@@ -286,6 +291,8 @@ Item {
         case "showShortcutReference": shortcutReference.show(); return
         case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
         case "showPowerTools": if (Store.shell) Store.shell.togglePanel("powerTools"); return
+        case "addWorktree": if (Store.shell) Store.shell.togglePanel("extensions"); return
+        case "trackLfsPattern": if (Store.shell) Store.shell.showExtensions(true); return
         case "showRepositoryDetails": if (Store.shell) Store.shell.showRepositoryDetails(); return
         case "saveCommitArchive": {
             const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
@@ -857,6 +864,27 @@ Item {
             }
         }
     }
+    // An LFS pointer's facts (lfsPointer).
+    MeridianDialog {
+        id: lfsPointer
+        objectName: "lfs-pointer-dialog"
+        property int promptId: -1
+        property var pointer: ({})
+        readonly property bool isPointer: pointer.oid !== null && pointer.oid !== undefined
+        title: L10n.t("extensionLfsPointerTitle")
+        description: isPointer ? L10n.t("extensionLfsPointerDescription") : L10n.t("extensionLfsNotPointer")
+        closeLabel: L10n.t("close")
+        onClosed: { if (promptId >= 0) actions.answer(promptId, true); promptId = -1 }
+        MeridianPropertyList {
+            objectName: "lfs-pointer-details"
+            width: parent ? parent.width : 0
+            properties: [{ label: L10n.t("extensionLfsPointerFile"), value: lfsPointer.pointer.path ?? "", monospace: true }].concat(
+                lfsPointer.isPointer ? [
+                    { label: L10n.t("extensionLfsPointerOid"), value: lfsPointer.pointer.oid, monospace: true },
+                    { label: L10n.t("extensionLfsPointerSize"), value: Labels.byteSize(lfsPointer.pointer.size ?? 0), selectable: false },
+                ] : [])
+        }
+    }
     // One bisect step with its Git command (confirmBisect).
     MeridianConfirm {
         id: bisectConfirm
@@ -1005,6 +1033,15 @@ Item {
                 // powerTool:<action>=<options json>
                 const split = argument.indexOf("=")
                 Store.workflows.powerTool(split < 0 ? argument : argument.slice(0, split), split < 0 ? ({}) : JSON.parse(argument.slice(split + 1)))
+            }
+            else if (name === "extension") {
+                // extension:<action>=<options json>
+                const split = argument.indexOf("=")
+                Store.workflows.extension(split < 0 ? argument : argument.slice(0, split), split < 0 ? ({}) : JSON.parse(argument.slice(split + 1)))
+            }
+            else if (name === "createWorktreeDialog") {
+                if (Store.shell && Store.shell.extensionsPanel)
+                    Store.shell.extensionsPanel.showCreateWorktree()
             }
             else if (name === "confirmBisect") {
                 bisectConfirm.close()

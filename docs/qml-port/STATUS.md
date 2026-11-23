@@ -109,10 +109,14 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   their commits (the core takes object IDs only); commit choices with subjects and the remote
   host's history-write check wait for the history projection and remote workspaces.
 
+- Extensions panel: worktrees (open, open in file manager, delete with their other tabs
+  closed first and reopened when the deletion does not happen, create from a reference into
+  a chosen folder), submodules (initialize, update, open) and Git LFS (pull, track, untrack,
+  pointer details); Track LFS pattern opens it with the pattern field focused.
+
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
-- Extensions panel (worktree create, LFS, submodules),
-  integrations panel and settings page, status acceleration settings.
+- Integrations panel and settings page, status acceleration settings.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.
