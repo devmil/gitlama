@@ -226,6 +226,7 @@ Rectangle {
                 function onCountChanged() { workingImage.refresh() }
                 function onDataChanged() { workingImage.refresh() }
                 function onModelReset() { workingImage.refresh() }
+                function onReplaced() { workingImage.refresh() }
             }
         }
         DiffView {

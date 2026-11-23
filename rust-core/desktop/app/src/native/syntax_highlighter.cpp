@@ -124,4 +124,73 @@ void SyntaxHighlighter::clear()
     m_highlighter->rehighlight();
 }
 
+class LineHighlighter : public QSyntaxHighlighter
+{
+public:
+    LineHighlighter(QTextDocument *document, LineColours *owner)
+        : QSyntaxHighlighter(document)
+        , m_owner(owner)
+    {
+    }
+
+protected:
+    void highlightBlock(const QString &text) override
+    {
+        // Offsets are of the whole line; a wrapped line is still one block.
+        const int offset = currentBlock().position();
+        const int length = int(text.size());
+        for (const LineColours::Run &run : m_owner->parsed()) {
+            const int start = qBound(0, run.start - offset, length);
+            const int end = qBound(start, run.end - offset, length);
+            if (end > start)
+                setFormat(start, end - start, run.colour);
+        }
+    }
+
+private:
+    LineColours *m_owner;
+};
+
+LineColours::LineColours(QObject *parent)
+    : QObject(parent)
+{
+}
+
+LineColours::~LineColours()
+{
+    delete m_highlighter;
+}
+
+void LineColours::setDocument(QQuickTextDocument *document)
+{
+    if (m_document == document)
+        return;
+    delete m_highlighter;
+    m_document = document;
+    if (document != nullptr && document->textDocument() != nullptr)
+        m_highlighter = new LineHighlighter(document->textDocument(), this);
+    emit documentChanged();
+}
+
+void LineColours::setRuns(const QVariantList &runs)
+{
+    if (m_runs == runs)
+        return;
+    const bool hadRuns = !m_parsed.isEmpty();
+    m_runs = runs;
+    m_parsed.clear();
+    m_parsed.reserve(runs.size());
+    for (const QVariant &entry : runs) {
+        const QVariantList run = entry.toList();
+        if (run.size() < 3)
+            continue;
+        const QColor colour(run.at(2).toString());
+        if (colour.isValid())
+            m_parsed.append({ run.at(0).toInt(), run.at(1).toInt(), colour });
+    }
+    if (m_highlighter != nullptr && (hadRuns || !m_parsed.isEmpty()))
+        m_highlighter->rehighlight();
+    emit runsChanged();
+}
+
 } // namespace gitlama

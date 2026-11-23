@@ -218,6 +218,12 @@ build against the installed Flutter release 0.1.0-beta.67 (build 68), opening th
 | RSS, welcome screen | 157 MB | 207 MB |
 | RSS, repository open | 207-209 MB | 322-323 MB |
 
+Switching tabs (2026-11-23): diff documents replace each other in place (rows rebound, not
+reset; a cleared document waits 400 ms for the next one), cells that are not shown hold no
+text, and diff lines are plain text coloured by a native highlighter (`LineColours`) instead of
+rich text. A switch went from about 300 ms of late frames (rebuilding ~25 diff rows and parsing
+their HTML twice) to two hitches of about 40 ms.
+
 Found and fixed on the way: a hidden drop zone kept an infinite animation (and 60 frames
 a second) running; every dialog was built at startup (now created on first use: -184 MB,
 -1.3 s); the QML is compiled to bytecode at build time (qmlcachegen, -0.2 s). The remaining

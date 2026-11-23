@@ -147,6 +147,7 @@ def main():
     run(sys.executable, '-m', 'unittest', 'discover', '-s', 'tests/package', '-v')
     run(sys.executable, 'scripts/check_architecture.py')
     run(sys.executable, 'scripts/check_dependencies.py')
+    run(sys.executable, 'scripts/check_qml_numbers.py')
     run(sys.executable, 'scripts/check_meridian_usage.py')
     run(sys.executable, 'scripts/check_design_contract.py')
     run(sys.executable, 'scripts/audit_command_inventory.py')

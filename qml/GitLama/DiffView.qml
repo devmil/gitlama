@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
+import GitLamaNative
 
 // A diff: file headers, hunk headers and lines with
 // their numbers and signs, unified or side by side. Lines keep their colours
@@ -125,6 +126,7 @@ Item {
     Connections {
         target: view.model
         function onModelReset() { view.clearTextSelection() }
+        function onReplaced() { view.clearTextSelection() }
     }
 
     /// Row `index`'s delegate, when built; a delegate type has no name to check against.
@@ -414,6 +416,7 @@ Item {
         // The model is still publishing: its colours follow on the next turn.
         function onCountChanged() { Qt.callLater(view.applyPalette); syntaxTimer.restart(); view.hunkRows = []; view.hunkIndex = -1 }
         function onModelReset() { view.hunkRows = []; view.hunkIndex = -1 }
+        function onReplaced() { Qt.callLater(view.applyPalette); syntaxTimer.restart(); view.hunkRows = []; view.hunkIndex = -1 }
     }
 
     FontMetrics { id: code; font: Theme.type.code }
@@ -476,8 +479,8 @@ Item {
             required property int oldLine
             required property int newLine
             required property string text
-            required property string styledOld
-            required property string styledNew
+            required property var runsOld
+            required property var runsNew
             required property var marks
             required property string fileKind
             required property string oldPath
@@ -640,9 +643,13 @@ Item {
 
             component Cell: Item {
                 id: cell
+                /// A cell that is not shown (the second one of a unified row, both on header
+                /// rows) holds no text, so rebinding the row parses nothing for it.
+                property bool active: true
                 property bool oldSide: false
                 property bool unified: true
-                property string styled
+                /// Syntax colours of the line: [start, end, colour] runs.
+                property var runs: []
                 readonly property int number: oldSide ? line.oldLine : line.newLine
                 readonly property bool blank: !unified && ((oldSide && line.added) || (!oldSide && line.deleted))
                 readonly property real textHeight: view.wrap && !blank ? lineText.implicitHeight + 2 * Theme.space.s1 : 0
@@ -651,7 +658,7 @@ Item {
 
                 // This cell's part of the text selection.
                 readonly property string side: unified ? "" : oldSide ? "old" : "new"
-                readonly property var selectedRange: blank ? null : view.rangeIn(line.index, side, line.text.length)
+                readonly property var selectedRange: blank || !active ? null : view.rangeIn(line.index, side, line.text.length)
                 onSelectedRangeChanged: Qt.callLater(applySelection)
                 function applySelection() {
                     if (selectedRange)
@@ -673,7 +680,7 @@ Item {
                     visible: !cell.blank
                     height: parent.height
                     Repeater {
-                        model: cell.unified ? [line.oldLine, line.newLine] : [cell.number]
+                        model: !cell.active ? [] : cell.unified ? [line.oldLine, line.newLine] : [cell.number]
                         delegate: MeridianText {
                             required property int modelData
                             width: GitLamaLayout.diffGutterWidth
@@ -708,7 +715,7 @@ Item {
                             width: view.wrap ? textCell.width : lineText.implicitWidth
                             // Changed words.
                             Repeater {
-                                model: view.wrap ? [] : line.marks
+                                model: view.wrap || !cell.active ? [] : line.marks
                                 delegate: Rectangle {
                                     required property var modelData
                                     x: code.advanceWidth(line.text.substring(0, modelData[0]))
@@ -723,7 +730,7 @@ Item {
                             // text's own layout places each part.
                             Repeater {
                                 model: {
-                                    if (!view.wrap || cell.blank)
+                                    if (!view.wrap || cell.blank || !cell.active)
                                         return []
                                     void lineText.contentHeight
                                     void lineText.width
@@ -761,10 +768,14 @@ Item {
                                 color: Theme.colors.ink
                                 selectionColor: Qt.alpha(Theme.colors.accent, GitLamaLayout.opacityDiffSelectedText)
                                 selectedTextColor: Theme.colors.ink
-                                textFormat: cell.styled.length > 0 ? TextEdit.RichText : TextEdit.PlainText
-                                text: cell.styled.length > 0 ? cell.styled : line.text
+                                textFormat: TextEdit.PlainText
+                                text: !cell.active || cell.blank ? "" : line.text
                                 onImplicitWidthChanged: if (!view.wrap && implicitWidth > view.widestText) view.widestText = implicitWidth
                                 onTextChanged: Qt.callLater(cell.applySelection)
+                                LineColours {
+                                    document: lineText.textDocument
+                                    runs: cell.active && !cell.blank ? cell.runs : []
+                                }
                             }
                         }
                     }
@@ -777,10 +788,11 @@ Item {
                 height: parent.height
                 Cell {
                     id: firstCell
+                    active: line.lineRow && !line.loading && !line.fallback
                     width: view.split ? (parent.width - Metrics.hairline) / 2 : parent.width
                     unified: !view.split
                     oldSide: view.split
-                    styled: view.split ? line.styledOld : (line.deleted ? line.styledOld : line.styledNew)
+                    runs: view.split || line.deleted ? line.runsOld : line.runsNew
                 }
                 Rectangle {
                     visible: view.split
@@ -791,10 +803,11 @@ Item {
                 Cell {
                     id: secondCell
                     visible: view.split
+                    active: view.split && firstCell.active
                     width: (parent.width - Metrics.hairline) / 2
                     unified: false
                     oldSide: false
-                    styled: line.styledNew
+                    runs: line.runsNew
                 }
             }
 

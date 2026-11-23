@@ -311,6 +311,7 @@ mod workspace_state {
         /// Opens the local paths dropped on the window.
         #[qslot]
         fn open_dropped(&self, paths: Value) {
+            let paths = crate::json::integral_numbers(paths);
             let paths: Vec<String> = paths
                 .as_array()
                 .map(|paths| {

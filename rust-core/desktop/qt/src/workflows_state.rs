@@ -87,6 +87,7 @@ mod workflows_state {
         /// enterSubmodule, inspectPointer) with its `index`.
         #[qslot]
         fn extension(&self, action: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             use gitlama_contract::extensions::NativeExtensionMutationKind as Kind;
             use gitlama_workbench::extensions::PanelAction;
             self.with_services(move |services| {
@@ -133,6 +134,7 @@ mod workflows_state {
         /// (commit).
         #[qslot]
         fn power_tool(&self, action: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             self.with_services(move |services| {
                 let tools = Rc::clone(&services.power_tools);
                 let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
@@ -173,6 +175,7 @@ mod workflows_state {
         /// keepIndex.
         #[qslot]
         fn snapshot(&self, action: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             self.with_services(move |services| {
                 let snapshots = Rc::clone(&services.snapshots);
                 let id = options["id"].as_str().and_then(|id| id.parse::<u64>().ok());
@@ -247,6 +250,9 @@ mod workflows_state {
         /// allowStagingWhileBusy}.
         #[qslot]
         fn file_menu(&self, subject: Value, selection: Value, host: Value) -> Value {
+            let subject = crate::json::integral_numbers(subject);
+            let selection = crate::json::integral_numbers(selection);
+            let host = crate::json::integral_numbers(host);
             use gitlama_workbench::file_actions::{FileAction, Host, Selection, Subject, menu};
             let Some(subject) = Subject::from_value(&subject) else {
                 return Value::Array(Vec::new());
@@ -404,6 +410,7 @@ mod workflows_state {
         /// `options` may carry initialRemote, initialBranch, initialForce.
         #[qslot]
         fn transfer(&self, kind: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             let Some(kind) = parse_kind(&kind) else {
                 return;
             };
@@ -421,6 +428,7 @@ mod workflows_state {
         /// `options` may carry initialName and initialTarget.
         #[qslot]
         fn reference(&self, kind: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             let Some(kind) = gitlama_workbench::refs::parse_kind(&kind) else {
                 return;
             };
@@ -468,6 +476,7 @@ mod workflows_state {
         /// targetBranch.
         #[qslot]
         fn stash(&self, kind: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             let Some(kind) = gitlama_workbench::rewrite::parse_stash_kind(&kind) else {
                 return;
             };

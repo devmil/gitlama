@@ -1,5 +1,5 @@
 //! A diff's rows for QML: built on demand from a
-//! `DiffDocument`, with each line's text, its syntax colours as styled text
+//! `DiffDocument`, with each line's text, its syntax colours as runs
 //! and its changed-word marks. Rows not loaded yet are placeholders that
 //! ask the document for their page.
 
@@ -24,8 +24,8 @@ const ROLES: &[&str] = &[
     "oldLine",
     "newLine",
     "text",
-    "styledOld",
-    "styledNew",
+    "runsOld",
+    "runsNew",
     "marks",
     "fileKind",
     "oldPath",
@@ -236,64 +236,30 @@ fn display(bytes: &[u8]) -> Option<Display> {
     Some(Display { text, utf16_at })
 }
 
-/// Escapes `text` for styled text; spaces become `&nbsp;` so runs of them
-/// keep their width (styled text collapses spaces, and `<pre>` would add a
-/// block margin to the line).
-fn escape(text: &str, out: &mut String) {
-    for ch in text.chars() {
-        match ch {
-            ' ' => out.push_str("&nbsp;"),
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            _ => out.push(ch),
-        }
-    }
-}
-
-/// `display` coloured by `spans` (byte ranges of the source) as QML
-/// styled text, or "" when nothing is coloured.
-fn styled(
+/// `display`'s colour runs from `spans` (byte ranges of the source): `[start, end, colour]`
+/// over UTF-16 offsets of the shown text, empty when nothing is coloured. A native
+/// highlighter applies them to the line's plain text, which parses no markup.
+fn runs(
     display: &Display,
     source: &[u8],
     spans: &[NativeSyntaxSpan],
     palette: &SyntaxPalette,
     kind: &str,
-) -> String {
-    let utf16: Vec<u16> = display.text.encode_utf16().collect();
-    let mut out = String::new();
+) -> Value {
+    let mut out = Vec::new();
     let mut cursor = 0usize;
-    let mut coloured = false;
-    let slice = |from: usize, to: usize| {
-        String::from_utf16_lossy(&utf16[from.min(utf16.len())..to.min(utf16.len())])
-    };
     for span in spans {
         let start = display.utf16_at[(span.start as usize).min(source.len())];
         let end = display.utf16_at[(span.end as usize).min(source.len())];
         if start < cursor || end <= start {
             continue;
         }
-        escape(&slice(cursor, start), &mut out);
-        let text = slice(start, end);
-        match palette.colour(kind, token_name(span.kind)) {
-            Some(colour) => {
-                coloured = true;
-                out.push_str("<font color=\"");
-                out.push_str(colour);
-                out.push_str("\">");
-                escape(&text, &mut out);
-                out.push_str("</font>");
-            }
-            None => escape(&text, &mut out),
+        if let Some(colour) = palette.colour(kind, token_name(span.kind)) {
+            out.push(json!([start, end, colour]));
         }
         cursor = end;
     }
-    if !coloured {
-        return String::new();
-    }
-    escape(&slice(cursor, utf16.len()), &mut out);
-    out
+    Value::Array(out)
 }
 
 fn marks(row: &NativeDiffRow, display: &Display) -> Value {
@@ -322,8 +288,8 @@ struct RowView {
     old_line: i32,
     new_line: i32,
     text: String,
-    styled_old: String,
-    styled_new: String,
+    runs_old: Value,
+    runs_new: Value,
     marks: Value,
     file_kind: Option<&'static str>,
     old_path: String,
@@ -345,8 +311,8 @@ impl RowView {
             old_line: -1,
             new_line: -1,
             text: String::new(),
-            styled_old: String::new(),
-            styled_new: String::new(),
+            runs_old: Value::Array(Vec::new()),
+            runs_new: Value::Array(Vec::new()),
             marks: Value::Array(Vec::new()),
             file_kind: None,
             old_path: String::new(),
@@ -380,7 +346,7 @@ impl RowView {
             row.kind,
             NativeDiffRowKind::Context | NativeDiffRowKind::Addition | NativeDiffRowKind::Deletion
         );
-        let (mut styled_old, mut styled_new) = (String::new(), String::new());
+        let (mut runs_old, mut runs_new) = (Value::Array(Vec::new()), Value::Array(Vec::new()));
         if line_row
             && !row.text_truncated
             && let Some(display) = &shown
@@ -393,10 +359,10 @@ impl RowView {
             };
 
             if syntax.old_state == NativeSyntaxSideState::Ready && !syntax.old_spans.is_empty() {
-                styled_old = styled(display, &row.text, &syntax.old_spans, palette, surface);
+                runs_old = runs(display, &row.text, &syntax.old_spans, palette, surface);
             }
             if syntax.new_state == NativeSyntaxSideState::Ready && !syntax.new_spans.is_empty() {
-                styled_new = styled(display, &row.text, &syntax.new_spans, palette, surface);
+                runs_new = runs(display, &row.text, &syntax.new_spans, palette, surface);
             }
         }
         let (hunk_range, hunk_text) = if row.kind == NativeDiffRowKind::Hunk {
@@ -416,8 +382,8 @@ impl RowView {
                 .unwrap_or(Value::Array(Vec::new())),
             invalid: shown.is_none() && line_row,
             text,
-            styled_old,
-            styled_new,
+            runs_old,
+            runs_new,
             file_kind: row.file_kind.map(file_kind_name),
             old_path: row
                 .old_path
@@ -462,11 +428,19 @@ mod diff_model {
         shown_revision: u64,
         /// Text is read as Latin-1 instead of UTF-8.
         latin1: bool,
+        /// Counts publishes; a deferred clear applies only if none came after it.
+        publications: u64,
+        /// The publication a deferred clear waits on.
+        clear_pending: Option<u64>,
     }
 
     impl DiffModel {
         #[qsignal]
         fn count_changed(&mut self);
+        /// Another document replaced the shown one. Rows are rebound in place
+        /// rather than reset, so the view keeps (and reuses) its row delegates.
+        #[qsignal]
+        fn replaced(&mut self);
 
         #[qslot]
         fn count(&self) -> i32 {
@@ -476,6 +450,7 @@ mod diff_model {
         /// Sets the syntax colours and the surfaces they are checked on.
         #[qslot]
         fn set_palette(&mut self, palette: Value) {
+            let palette = crate::json::integral_numbers(palette);
             let palette = SyntaxPalette::from_value(&palette);
             // The same palette changes nothing: no refresh while the model publishes.
             if palette == self.palette {
@@ -773,8 +748,8 @@ mod diff_model {
                 "oldLine" => QVariant::from(view.old_line),
                 "newLine" => QVariant::from(view.new_line),
                 "text" => QVariant::from(&view.text),
-                "styledOld" => QVariant::from(&view.styled_old),
-                "styledNew" => QVariant::from(&view.styled_new),
+                "runsOld" => to_qvariant(&view.runs_old),
+                "runsNew" => to_qvariant(&view.runs_new),
                 "marks" => to_qvariant(&view.marks),
                 "fileKind" => QVariant::from(view.file_kind.unwrap_or_default()),
                 "oldPath" => QVariant::from(&view.old_path),
@@ -828,7 +803,30 @@ mod diff_model {
 
         /// Shows `document` (None shows nothing). The same document only
         /// refreshes when rows or colours arrived.
+        /// Starts waiting to clear the shown rows: the publication to clear after, or None when
+        /// a clear already waits or there were no rows to keep (cleared at once).
+        pub fn defer_clear(&mut self) -> Option<u64> {
+            if self.clear_pending.is_some() {
+                return None;
+            }
+            if self.total == 0 {
+                self.publish(None);
+                return None;
+            }
+            self.clear_pending = Some(self.publications);
+            self.clear_pending
+        }
+
+        /// Clears the rows unless a document was published since `defer_clear` gave `waiting`.
+        pub fn clear_after(&mut self, waiting: u64) {
+            if self.clear_pending == Some(waiting) {
+                self.publish(None);
+            }
+        }
+
         pub fn publish(&mut self, document: Option<Rc<DiffDocument>>) {
+            self.publications += 1;
+            self.clear_pending = None;
             let same = match (&self.document, &document) {
                 (Some(shown), Some(next)) => Rc::ptr_eq(shown, next),
                 (None, None) => true,
@@ -845,18 +843,58 @@ mod diff_model {
             let total = document.as_ref().map_or(0, |document| {
                 i32::try_from(document.total()).unwrap_or(i32::MAX)
             });
-            self.begin_reset_model();
+            // A reset would drop every row delegate and the view's reuse pool;
+            // switching tabs or commits rebuilt the whole diff on each change.
             self.shown_revision = document.as_ref().map_or(0, |document| document.revision());
             self.document = document;
-            self.total = total;
             self.rows.borrow_mut().clear();
-            self.end_reset_model();
-            self.count_changed();
+            let previous = self.total;
+            if total > previous {
+                self.begin_insert_rows(&QModelIndex::default(), previous, total - 1);
+                self.total = total;
+                self.end_insert_rows();
+            } else if total < previous {
+                self.begin_remove_rows(&QModelIndex::default(), total, previous - 1);
+                self.total = total;
+                self.end_remove_rows();
+            }
+            let kept = previous.min(total);
+            if kept > 0 {
+                let top = self.create_index(0, 0, 0);
+                let bottom = self.create_index(kept - 1, 0, 0);
+                self.data_changed(&top, &bottom);
+            }
+            if total != previous {
+                self.count_changed();
+            }
+            self.replaced();
         }
     }
 }
 
 pub use diff_model::DiffModel;
+
+/// How long a shown diff waits for the next document before it clears. Switching tabs or
+/// commits clears the document and then shows the next one: rebinding the shown rows to it
+/// keeps their delegates, where clearing first would rebuild every row.
+const CLEAR_GRACE: std::time::Duration = std::time::Duration::from_millis(400);
+
+/// Shows `document` in `model`. Clearing a shown document waits `CLEAR_GRACE` for the next
+/// one; views hide the diff while their state has none, so the waiting rows are not seen.
+pub fn show(model: &Rc<RefCell<DiffModel>>, document: Option<Rc<DiffDocument>>) {
+    if document.is_some() {
+        model.borrow_mut().publish(document);
+        return;
+    }
+    let Some(waiting) = model.borrow_mut().defer_clear() else {
+        return;
+    };
+    let model = Rc::clone(model);
+    gitlama_workbench::rt::spawn_detached(async move {
+        gitlama_workbench::rt::sleep(CLEAR_GRACE).await;
+        model.borrow_mut().clear_after(waiting);
+    });
+}
 
 #[cfg(test)]
 mod tests {
@@ -891,22 +929,30 @@ mod tests {
     }
 
     #[test]
-    fn styled_text_escapes_and_colours() {
+    fn runs_colour_utf16_ranges() {
         let palette = SyntaxPalette::from_value(&json!({
             "ink": "#111111",
-            "syntax": {"keyword": "#0000aa"},
+            "syntax": {"keyword": "#0000aa", "number": "#0a3d00"},
             "surfaces": {"context": ["#ffffff"]},
         }));
-        let source = b"if a<b";
+        let source = "é if 1".as_bytes();
         let shown = display(source).unwrap();
-        let spans = [NativeSyntaxSpan {
-            start: 0,
-            end: 2,
-            kind: NativeSyntaxTokenKind::Keyword,
-        }];
+        let spans = [
+            NativeSyntaxSpan {
+                start: 3,
+                end: 5,
+                kind: NativeSyntaxTokenKind::Keyword,
+            },
+            NativeSyntaxSpan {
+                start: 6,
+                end: 7,
+                kind: NativeSyntaxTokenKind::Number,
+            },
+        ];
         assert_eq!(
-            styled(&shown, source, &spans, &palette, "context"),
-            "<font color=\"#0000aa\">if</font>&nbsp;a&lt;b"
+            runs(&shown, source, &spans, &palette, "context"),
+            json!([[2, 4, "#0000aa"], [5, 6, "#0a3d00"]])
         );
+        assert_eq!(runs(&shown, source, &[], &palette, "context"), json!([]));
     }
 }

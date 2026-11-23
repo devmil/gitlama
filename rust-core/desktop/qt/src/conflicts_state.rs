@@ -456,6 +456,8 @@ mod conflicts_state {
         /// file's queue index, or -1 for a folder.
         #[qslot]
         fn tree_rows(&self, paths: Value, collapsed: Value) -> Value {
+            let paths = crate::json::integral_numbers(paths);
+            let collapsed = crate::json::integral_numbers(collapsed);
             let paths: Vec<(usize, String)> = paths
                 .as_array()
                 .map(|paths| {
@@ -512,6 +514,7 @@ mod conflicts_state {
         /// puts each back.
         #[qslot]
         fn for_each(&self, keys: Value, side: String) {
+            let keys = crate::json::integral_numbers(keys);
             let paths: Vec<Vec<u8>> = keys
                 .as_array()
                 .map(|keys| {

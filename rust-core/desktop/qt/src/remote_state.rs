@@ -430,6 +430,7 @@ mod remote_state {
         /// Lists `directory` (path bytes; null for the home) on a connected host.
         #[qslot]
         fn list_directory(&self, request: i32, profile: String, directory: Value, cursor: String) {
+            let directory = crate::json::integral_numbers(directory);
             let Some(commands) = self.commands.clone() else {
                 return;
             };

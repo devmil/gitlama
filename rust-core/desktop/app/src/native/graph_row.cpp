@@ -445,6 +445,7 @@ extern "C" void gitlama_register_native_types()
     qmlRegisterType<gitlama::GraphRow>("GitLamaNative", 1, 0, "GraphRow");
     qmlRegisterType<gitlama::TextFormatter>("GitLamaNative", 1, 0, "TextFormatter");
     qmlRegisterType<gitlama::SyntaxHighlighter>("GitLamaNative", 1, 0, "SyntaxHighlighter");
+    qmlRegisterType<gitlama::LineColours>("GitLamaNative", 1, 0, "LineColours");
 }
 
 // The modifier keys held now (Qt::KeyboardModifiers): a command run from a

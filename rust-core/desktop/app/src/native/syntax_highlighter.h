@@ -10,6 +10,7 @@
 #include <QPointer>
 #include <QQuickTextDocument>
 #include <QVariant>
+#include <QVector>
 
 namespace gitlama {
 
@@ -48,6 +49,45 @@ private:
     QPointer<BlockHighlighter> m_highlighter;
     QVariantMap m_palette;
     QHash<QString, QColor> m_colours;
+};
+
+class LineHighlighter;
+
+/// Colours a one-line TextEdit (a diff line) from runs of explicit colours: plain text with
+/// formats instead of rich text, which a line would otherwise parse on every rebind.
+class LineColours : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QQuickTextDocument *document READ document WRITE setDocument NOTIFY documentChanged)
+    /// [start, end, colour] triples over UTF-16 offsets of the line.
+    Q_PROPERTY(QVariantList runs READ runs WRITE setRuns NOTIFY runsChanged)
+
+public:
+    explicit LineColours(QObject *parent = nullptr);
+    ~LineColours() override;
+
+    QQuickTextDocument *document() const { return m_document; }
+    void setDocument(QQuickTextDocument *document);
+    QVariantList runs() const { return m_runs; }
+    void setRuns(const QVariantList &runs);
+
+    struct Run
+    {
+        int start;
+        int end;
+        QColor colour;
+    };
+    const QVector<Run> &parsed() const { return m_parsed; }
+
+signals:
+    void documentChanged();
+    void runsChanged();
+
+private:
+    QPointer<QQuickTextDocument> m_document;
+    QPointer<LineHighlighter> m_highlighter;
+    QVariantList m_runs;
+    QVector<Run> m_parsed;
 };
 
 } // namespace gitlama

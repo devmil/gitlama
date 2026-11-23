@@ -212,6 +212,7 @@ mod hosting_state {
         /// signing it in.
         #[qslot]
         fn add_connection(&self, form: Value) {
+            let form = crate::json::integral_numbers(form);
             let text = |key: &str| form[key].as_str().unwrap_or_default().trim().to_owned();
             let Some(preset) = parse_preset(&text("preset")) else {
                 return;
@@ -476,6 +477,7 @@ mod hosting_state {
 
         #[qslot]
         fn set_expanded_nodes(&self, nodes: Value) {
+            let nodes = crate::json::integral_numbers(nodes);
             let nodes: Vec<String> = nodes
                 .as_array()
                 .map(|nodes| {

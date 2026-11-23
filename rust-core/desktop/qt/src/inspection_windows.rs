@@ -79,6 +79,7 @@ mod inspection_windows {
         /// `diff` and `blame`), or 0 when the location is invalid.
         #[qslot]
         fn open(&self, location: Value) -> i32 {
+            let location = crate::json::integral_numbers(location);
             let Some(location) = location_of(&location) else {
                 return 0;
             };

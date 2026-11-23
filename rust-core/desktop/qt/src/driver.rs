@@ -1044,7 +1044,7 @@ impl Driver {
             }
         }
         let current = service.current();
-        diff_model.borrow_mut().publish(current.diff);
+        crate::diff_model::show(diff_model, current.diff);
         blame_model.borrow_mut().publish(current.blame);
     }
 
@@ -1110,8 +1110,6 @@ impl Driver {
         // leaves (a commit, a move) when it does.
         self.unstaged_rows.borrow_mut().publish(projection.unstaged);
         self.staged_rows.borrow_mut().publish(projection.staged);
-        self.working_diff
-            .borrow_mut()
-            .publish(services.working_detail.document());
+        crate::diff_model::show(&self.working_diff, services.working_detail.document());
     }
 }

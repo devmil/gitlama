@@ -86,6 +86,7 @@ mod commit_state {
         /// amend, skipHooks, signOff}; `retry` is "", "skipHooks" or "unsigned".
         #[qslot]
         fn commit(&self, request: Value, push: bool, retry: String) {
+            let request = crate::json::integral_numbers(request);
             self.post(move |driver| {
                 let Some(services) = driver.app.services() else { return };
                 let text = |key: &str| request[key].as_str().unwrap_or_default().to_owned();

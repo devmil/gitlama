@@ -110,6 +110,7 @@ mod patch_state {
         /// Starts a dialog for `source` in `mode` (create or apply).
         #[qslot]
         fn begin(&self, source: Value, mode: String) {
+            let source = crate::json::integral_numbers(source);
             let Some(source) = parse_source(&source) else {
                 return;
             };

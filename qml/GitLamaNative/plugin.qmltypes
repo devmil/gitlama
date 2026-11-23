@@ -66,4 +66,16 @@ Module {
         }
         Method { name: "clear" }
     }
+    Component {
+        file: "syntax_highlighter.h"
+        name: "gitlama::LineColours"
+        accessSemantics: "reference"
+        prototype: "QObject"
+        exports: ["GitLamaNative/LineColours 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "document"; type: "QQuickTextDocument"; isPointer: true }
+        Property { name: "runs"; type: "QVariantList" }
+        Signal { name: "documentChanged" }
+        Signal { name: "runsChanged" }
+    }
 }

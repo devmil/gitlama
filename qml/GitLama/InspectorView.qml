@@ -930,6 +930,7 @@ Rectangle {
                                 function onCountChanged() { commitImage.refresh() }
                                 function onDataChanged() { commitImage.refresh() }
                                 function onModelReset() { commitImage.refresh() }
+                                function onReplaced() { commitImage.refresh() }
                             }
                         }
                         // The renderer's progress or why it fell back to the built-in diff.
@@ -989,6 +990,7 @@ Rectangle {
                             Connections {
                                 target: inspector.diffModel
                                 function onModelReset() { commitDiff.selectedRows = [] }
+                                function onReplaced() { commitDiff.selectedRows = [] }
                             }
                             CommandMenu {
                                 id: commitLineMenu

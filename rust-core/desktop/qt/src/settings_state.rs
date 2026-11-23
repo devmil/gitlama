@@ -196,6 +196,7 @@ mod settings_state {
         /// title, executable, arguments) or remove.
         #[qslot]
         fn diff_renderer(&self, action: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             self.post(move |driver| {
                 let Some(services) = driver.app.services() else {
                     return;
@@ -229,6 +230,7 @@ mod settings_state {
         /// executable, arguments, explicitShell, wait, confirmation, timeout).
         #[qslot]
         fn tool(&self, action: String, options: Value) {
+            let options = crate::json::integral_numbers(options);
             self.post(move |driver| {
                 let Some(services) = driver.app.services() else {
                     return;
@@ -271,6 +273,7 @@ mod settings_state {
         /// `value` is {enabled?, intervalMinutes?}.
         #[qslot]
         fn update_auto_fetch(&self, value: Value) {
+            let value = crate::json::integral_numbers(value);
             self.post(move |driver| {
                 let Some(services) = driver.app.services() else {
                     return;
