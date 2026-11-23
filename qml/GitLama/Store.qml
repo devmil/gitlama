@@ -107,6 +107,13 @@ QtObject {
             // inspectorFileMenu:<file>[=<action>]
             const parts = argument.split("=")
             inspectorView.runFileAction(Number(parts[0]), parts[1] ?? "")
+        } else if (name === "historySearch" && historyPane) {
+            // historySearch:<text>: types and searches the query.
+            historyPane.searchFor(argument)
+        } else if (name === "historyBranchFilter" && historyPane) {
+            historyPane.openBranchFilter()
+        } else if (name === "historyReflog" && historyPane) {
+            historyPane.toggleReflog()
         } else if (name === "commitMenu" && historyPane && historyRows) {
             // Development: builds row N's commit menu and reports its shape.
             historyPane.showCommitMenu(historyRows.objectIdAt(Number(argument)), "", historyPane, 10, 10)

@@ -56,6 +56,9 @@ pub struct Driver {
     pub patches: Rc<RefCell<crate::patch_state::PatchState>>,
     pub line_selection: Rc<RefCell<crate::line_selection_state::LineSelectionState>>,
     pub line_rows: Rc<RefCell<RowModel>>,
+    /// The history reference scope last seen in the settings; a change
+    /// reloads the shown history.
+    pub history_other_refs: std::cell::Cell<Option<bool>>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -232,6 +235,14 @@ impl Driver {
             if settings.acceleration != acceleration {
                 settings.acceleration = acceleration;
                 settings.acceleration_changed();
+            }
+        }
+        if changed.intersects(Topics::SETTINGS)
+            && let Some(services) = self.app.services()
+        {
+            let other_refs = services.settings.with(|document| document.appearance.history_other_refs);
+            if self.history_other_refs.replace(Some(other_refs)).is_some_and(|previous| previous != other_refs) {
+                services.workspace.reload_shown_history();
             }
         }
         if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION)

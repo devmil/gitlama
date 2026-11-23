@@ -45,9 +45,63 @@ pub fn project(history: &gitlama_workbench::history::HistoryService) -> Value {
         "searchFailure": history.search_failure_code(),
         "searchMatches": history.search_matches().len(),
         "searchIndex": history.search_index(),
-        "searchText": history.search_query().map(|query| query.text),
+        "searchText": history.search_query().map(|query| query.text.clone()),
+        "searchScopes": history.search_query().map(|query| json!({
+            "hash": query.search_hash, "message": query.search_message,
+            "author": query.search_author, "path": query.search_path,
+        })),
+        // The single selected commit is a merge whose side can collapse.
+        "canCollapse": page.is_some_and(|page| page.selected_object_ids.len() == 1)
+            && page
+                .and_then(|page| page.selected_object_ids.first())
+                .and_then(|id| history.row_by_id(id))
+                .is_some_and(|row| row.parents.len() > 1),
         "generation": history.pages_generation(),
     })
+}
+
+/// The branches the graph can be filtered to: local branches (the main
+/// branch first, the checked-out one next), then each remote's.
+pub fn branch_filter_choices(snapshot: &gitlama_contract::dto::NativeRepositorySnapshot) -> Value {
+    use gitlama_workbench::sidebar::{branch_reference, filter_upstream, main_branch_first, remote_branch_reference};
+    let refs = &snapshot.refs;
+    let ordered = main_branch_first(&refs.branches);
+    let (main, others) = ordered.split_first().map_or((None, &[][..]), |(main, others)| (Some(*main), others));
+    let mut choices = Vec::new();
+    let locals = main
+        .into_iter()
+        .chain(others.iter().copied().filter(|branch| branch.head))
+        .chain(others.iter().copied().filter(|branch| !branch.head));
+    for branch in locals {
+        let Ok(name) = std::str::from_utf8(&branch.name) else { continue };
+        choices.push(json!({
+            "reference": branch_reference(branch), "label": name, "name": name, "remote": null,
+            "current": branch.head, "upstream": filter_upstream(branch),
+        }));
+    }
+    for remote in &refs.remotes {
+        let Ok(remote_name) = std::str::from_utf8(&remote.name) else { continue };
+        for branch in main_branch_first(&remote.branches) {
+            let Ok(name) = std::str::from_utf8(&branch.name) else { continue };
+            if name == "HEAD" {
+                continue;
+            }
+            choices.push(json!({
+                "reference": remote_branch_reference(remote, branch), "label": format!("{remote_name}/{name}"), "name": name,
+                "remote": remote_name, "current": false, "upstream": null,
+            }));
+        }
+    }
+    Value::Array(choices)
+}
+
+/// The checked-out branch's upstream when it has commits the branch lacks.
+pub fn stale_upstream(snapshot: &gitlama_contract::dto::NativeRepositorySnapshot) -> Value {
+    let Some(branch) = snapshot.refs.branches.iter().find(|branch| branch.head) else { return Value::Null };
+    let Some(upstream) = branch.upstream.as_ref().filter(|_| branch.behind > 0 && !branch.upstream_gone) else { return Value::Null };
+    let upstream = String::from_utf8_lossy(upstream).into_owned();
+    let shown = upstream.strip_prefix("refs/remotes/").map(str::to_owned).unwrap_or(upstream);
+    json!({"reference": shown, "behind": branch.behind})
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -166,6 +220,51 @@ mod history_state {
         fn toggle_collapse(&self, object_id: String) {
             self.with_services(move |services| services.workspace.history.toggle_collapse(object_id, 0));
         }
+
+        /// The branches the graph can be filtered to (the Dart
+        /// buildBranchFilterChoices): {reference, label, name, remote,
+        /// current, upstream}, the main branch first.
+        #[qslot]
+        fn branch_filter_choices(&self) -> Value {
+            self.snapshot.as_deref().map_or(Value::Array(Vec::new()), branch_filter_choices)
+        }
+
+        /// The new commits of the checked-out branch's upstream:
+        /// {reference, behind}, or null.
+        #[qslot]
+        fn stale_upstream(&self) -> Value {
+            self.snapshot.as_deref().map_or(Value::Null, stale_upstream)
+        }
+
+        /// Reads the reflog; `reflog_loaded` carries {entries: [{summary,
+        /// commit, short}], retainedAfterFailure} or {failed: true}.
+        #[qslot]
+        fn load_reflog(&self) {
+            let Some(commands) = self.commands.clone() else { return };
+            let reply = commands.clone();
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(identity) = services.workspace.current().map(|session| session.identity) else { return };
+                let request = services.calls.repository_session_reflog(identity.native_id, identity.generation, 0, 256);
+                rt::spawn_detached(async move {
+                    let value = match request.await {
+                        Ok(result) if result.failure.is_none() => json!({
+                            "entries": result.page.entries.iter().map(|entry| json!({
+                                "summary": String::from_utf8_lossy(&entry.summary),
+                                "commit": entry.commit,
+                                "short": entry.commit.chars().take(10).collect::<String>(),
+                            })).collect::<Vec<_>>(),
+                            "retainedAfterFailure": result.page.retained_after_failure,
+                        }),
+                        _ => json!({"failed": true, "entries": []}),
+                    };
+                    reply.post(move |driver| driver.history.borrow_mut().reflog_loaded(value));
+                });
+            });
+        }
+
+        #[qsignal]
+        pub fn reflog_loaded(&mut self, reflog: Value);
 
         /// Loads History of the active tab again.
         #[qslot]

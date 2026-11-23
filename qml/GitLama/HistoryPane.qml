@@ -154,6 +154,73 @@ Item {
         }
     }
 
+    // The search scopes and whether the typed query is the one searched.
+    property bool searchHash: true
+    property bool searchMessage: true
+    property bool searchAuthor: true
+    property bool searchPath: false
+    readonly property bool queryApplied: {
+        const applied = paneState.searchText
+        const text = query.text.trim()
+        if (applied === null || applied === undefined)
+            return text.length === 0
+        const scopes = paneState.searchScopes ?? ({})
+        return applied === text && scopes.hash === searchHash && scopes.message === searchMessage
+            && scopes.author === searchAuthor && scopes.path === searchPath
+    }
+    property bool showReflog: false
+    property var reflog: null
+    /// The upstream banner the person dismissed: "<ref>:<behind>".
+    property string dismissedStale: ""
+    readonly property var staleUpstream: {
+        void Store.workspace.active
+        return Store.history ? Store.history.staleUpstream() : null
+    }
+    readonly property string staleKey: staleUpstream ? staleUpstream.reference + ":" + staleUpstream.behind : ""
+    readonly property var branchFilter: active ? (active.branchFilter ?? []) : []
+    readonly property bool otherRefs: Store.appearance.historyOtherRefs === true
+
+    function applyQuery() {
+        Store.history.applyQuery(query.text, searchHash, searchMessage, searchAuthor, searchPath)
+    }
+    /// Enter searches a new query and steps through the matches of the
+    /// searched one.
+    function activateSearch(backwards) {
+        if (!queryApplied || (paneState.searchMatches ?? 0) === 0) {
+            applyQuery()
+            return
+        }
+        Store.history.navigateSearch(backwards)
+    }
+    function clearSearch() {
+        query.text = ""
+        applyQuery()
+        query.searchField.forceActiveFocus()
+    }
+    function focusSearch() { query.searchField.forceActiveFocus() }
+    function searchFor(text) {
+        query.text = text
+        activateSearch(false)
+    }
+    function openBranchFilter() { branchFilterEditor.show(Store.history.branchFilterChoices(), branchFilter) }
+    function setOtherRefs(value) { Store.app.updateAppearance({ historyOtherRefs: value }) }
+    function toggleReflog() {
+        showReflog = !showReflog
+        if (showReflog) {
+            reflog = null
+            Store.history.loadReflog()
+        }
+    }
+    Connections {
+        target: Store.history
+        function onReflogLoaded(value) { pane.reflog = value }
+    }
+    // Another repository drops the reflog and the dismissed banner.
+    onActiveChanged: {
+        showReflog = false
+        reflog = null
+    }
+
     // The query toolbar.
     Rectangle {
         id: toolbar
@@ -162,39 +229,141 @@ Item {
         height: Theme.size.control + 2 * Theme.space.s2
         color: Theme.colors.pane
 
-        MeridianText {
-            x: Theme.space.s5
-            anchors.verticalCenter: parent.verticalCenter
-            role: MeridianText.BodyStrong
-            text: L10n.t("workspaceHistory")
-        }
-        Row {
-            anchors.right: parent.right
+        Flickable {
+            id: toolbarScroll
+            anchors.fill: parent
+            anchors.leftMargin: Theme.space.s5
             anchors.rightMargin: Theme.space.s5
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Theme.space.s2
+            contentWidth: Math.max(width, GitLamaLayout.historyQueryToolbarMinWidth)
+            interactive: contentWidth > width
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
 
-            MeridianTextField {
-                id: query
-                objectName: "history-query"
-                width: 240
-                variant: MeridianTextField.Search
-                controlSize: MeridianButton.Small
-                placeholderText: L10n.t("historySearchHint")
-                Accessible.name: L10n.t("historySearchHint")
-                onAccepted: {
-                    if (pane.paneState.searchText === text.trim() && (pane.paneState.searchMatches ?? 0) > 0)
-                        Store.history.navigateSearch(false)
-                    else
-                        Store.history.applyQuery(text, true, true, true, false)
+            Item {
+                width: toolbarScroll.contentWidth
+                height: toolbarScroll.height
+                MeridianText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    role: MeridianText.BodyStrong
+                    text: L10n.t("workspaceHistory")
                 }
-                onTextEdited: {
-                    if (text.length === 0)
-                        Store.history.applyQuery("", true, true, true, false)
-                }
-                Keys.onEscapePressed: {
-                    text = ""
-                    Store.history.applyQuery("", true, true, true, false)
+                Row {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 0
+
+                    MeridianButton {
+                        id: branchFilterButton
+                        objectName: "history-branch-filter"
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: pane.branchFilter.length === 0 ? L10n.t("historyBranchFilter")
+                            : L10n.tn("historyBranchFilterCount", { count: pane.branchFilter.length })
+                        tooltip: L10n.t("historyBranchFilterTooltip")
+                        iconName: "git-branch"
+                        trailingIconName: "chevron-down"
+                        variant: pane.branchFilter.length === 0 ? MeridianButton.Quiet : MeridianButton.Secondary
+                        controlSize: MeridianButton.Small
+                        onClicked: pane.openBranchFilter()
+                        BranchFilterEditor {
+                            id: branchFilterEditor
+                            x: Math.min(0, branchFilterButton.width - width)
+                            onChanged: filter => Store.sidebar.setBranchFilter(filter)
+                        }
+                    }
+                    MeridianIconButton {
+                        id: viewOptions
+                        objectName: "history-view-options"
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: L10n.t("historyViewOptions")
+                        iconName: "eye"
+                        controlSize: MeridianButton.Small
+                        onClicked: {
+                            viewMenu.items = [{ title: L10n.t("historyShowOtherRefs"), value: "otherRefs", checked: pane.otherRefs }]
+                            viewMenu.show(viewOptions, 0, viewOptions.height)
+                        }
+                        CommandMenu {
+                            id: viewMenu
+                            onSelected: value => {
+                                if (value === "otherRefs")
+                                    pane.setOtherRefs(!pane.otherRefs)
+                            }
+                        }
+                    }
+                    Item { width: Theme.space.s3; height: 1 }
+                    MeridianFindBar {
+                        id: query
+                        objectName: "history-query"
+                        anchors.verticalCenter: parent.verticalCenter
+                        placeholder: L10n.t("historySearchHint")
+                        previousLabel: L10n.t("diffPreviousMatch")
+                        nextLabel: L10n.t("diffNextMatch")
+                        clearLabel: L10n.t("searchClear")
+                        searchingLabel: L10n.t("findSearching")
+                        noMatchesLabel: pane.queryApplied ? L10n.t("findNoMatches") : ""
+                        positionText: (current, total) => L10n.tn("findMatchPosition", { current: current, total: total })
+                        countText: total => L10n.tn("findMatchCount", { count: total })
+                        matchCount: pane.paneState.searchMatches ?? 0
+                        currentMatch: pane.paneState.searchIndex ?? -1
+                        searching: pane.paneState.searchPending === true
+                        // Clearing (typing, Clear, Escape) shows every commit
+                        // again and keeps typing in the field.
+                        onEdited: value => { if (value.length === 0) pane.clearSearch() }
+                        onNext: pane.activateSearch(false)
+                        onPrevious: pane.activateSearch(true)
+                        Keys.onEscapePressed: pane.clearSearch()
+                        trailing: [
+                            MeridianIconButton {
+                                id: scopesButton
+                                objectName: "history-search-scopes"
+                                text: L10n.t("historySearchScopes")
+                                iconName: "list-filter-plus"
+                                controlSize: MeridianButton.Small
+                                onClicked: {
+                                    scopesMenu.items = [
+                                        { title: L10n.t("historySearchHash"), value: "hash", checked: pane.searchHash },
+                                        { title: L10n.t("historySearchMessage"), value: "message", checked: pane.searchMessage },
+                                        { title: L10n.t("historySearchAuthor"), value: "author", checked: pane.searchAuthor },
+                                        { title: L10n.t("historySearchPath"), value: "path", checked: pane.searchPath },
+                                    ]
+                                    scopesMenu.show(scopesButton, 0, scopesButton.height)
+                                }
+                                CommandMenu {
+                                    id: scopesMenu
+                                    onSelected: value => {
+                                        if (value === "hash") pane.searchHash = !pane.searchHash
+                                        else if (value === "message") pane.searchMessage = !pane.searchMessage
+                                        else if (value === "author") pane.searchAuthor = !pane.searchAuthor
+                                        else if (value === "path") pane.searchPath = !pane.searchPath
+                                    }
+                                }
+                            },
+                            MeridianIconButton {
+                                objectName: "history-apply-filter"
+                                text: L10n.t("historyApplyFilter")
+                                iconName: "inspect"
+                                controlSize: MeridianButton.Small
+                                onClicked: pane.applyQuery()
+                            }
+                        ]
+                    }
+                    MeridianIconButton {
+                        objectName: "history-collapse-selected"
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: L10n.t("historyCollapseSelected")
+                        iconName: "git-merge"
+                        controlSize: MeridianButton.Small
+                        enabled: pane.paneState.canCollapse === true
+                        onClicked: Store.history.toggleCollapse((pane.paneState.selectedIds ?? [])[0] ?? "")
+                    }
+                    MeridianButton {
+                        objectName: "history-reflog-toggle"
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: pane.showReflog ? L10n.t("historyGraph") : L10n.t("historyReflog")
+                        variant: MeridianButton.Quiet
+                        iconName: pane.showReflog ? "branch" : "history"
+                        controlSize: MeridianButton.Small
+                        onClicked: pane.toggleReflog()
+                    }
                 }
             }
         }
@@ -233,9 +402,104 @@ Item {
         }
     }
 
+    // The upstream banner and History's one notice (the Dart
+    // _HistoryNotice), above the graph.
+    Column {
+        id: notices
+        anchors.top: powerTools.bottom
+        width: parent.width
+
+        Item {
+            visible: pane.staleUpstream !== null && pane.staleKey !== pane.dismissedStale
+            width: parent.width
+            height: visible ? staleBanner.implicitHeight + 2 * Theme.space.s2 : 0
+            MeridianBanner {
+                id: staleBanner
+                objectName: "history-stale-upstream"
+                x: Theme.space.s2
+                y: Theme.space.s2
+                width: parent.width - 2 * Theme.space.s2
+                tone: MeridianBanner.Info
+                message: pane.staleUpstream ? L10n.tn("historyNewUpstreamCommits", { count: pane.staleUpstream.behind, ref: pane.staleUpstream.reference }) : ""
+                MeridianButton {
+                    text: L10n.t("workspaceRefresh")
+                    controlSize: MeridianButton.Small
+                    onClicked: {
+                        Store.history.reload()
+                        pane.dismissedStale = pane.staleKey
+                    }
+                }
+                MeridianButton {
+                    text: L10n.t("operationsDismiss")
+                    variant: MeridianButton.Quiet
+                    controlSize: MeridianButton.Small
+                    onClicked: pane.dismissedStale = pane.staleKey
+                }
+            }
+        }
+        Item {
+            readonly property var notice: {
+                const state = pane.paneState
+                if (pane.showReflog)
+                    return null
+                if (state.searchPending)
+                    return { message: L10n.tn("historyPendingFilter", { filter: state.searchText ?? "" }), progress: true }
+                if (state.searchFailure || state.queryFailure)
+                    return { message: L10n.t("historyFilterFailed") }
+                if ((state.branchFilterCount ?? 0) > 0 && (state.total ?? 0) === 0)
+                    return { message: L10n.t("historyBranchFilterNoCommits"), action: "showAll" }
+                if (state.targetNotShown)
+                    return state.otherRefs ? { message: L10n.t("historyTargetNotShown") }
+                                           : { message: L10n.t("historyTargetOutsideRefScope"), action: "otherRefs" }
+                if (state.selectedFilteredOut)
+                    return { message: L10n.t("historySelectionFilteredOut") }
+                if (state.queryActive)
+                    return { message: L10n.tn("historyAcceptedFilter", { filter: state.acceptedQuery ?? "" }) }
+                if ((state.collapsedCommits ?? 0) > 0)
+                    return { message: L10n.tn("historyCollapsedCount", { count: state.collapsedCommits }) }
+                return null
+            }
+            visible: notice !== null
+            width: parent.width
+            height: visible ? noticeBanner.implicitHeight + 2 * Theme.space.s1 : 0
+            MeridianBanner {
+                id: noticeBanner
+                objectName: "history-notice"
+                x: Theme.space.s2
+                y: Theme.space.s1
+                width: parent.width - 2 * Theme.space.s2
+                tone: MeridianBanner.Info
+                message: parent.notice ? parent.notice.message : ""
+                Accessible.role: Accessible.AlertMessage
+                MeridianSpinner {
+                    visible: noticeBanner.parent.notice !== null && noticeBanner.parent.notice.progress === true
+                }
+                MeridianButton {
+                    objectName: "history-branch-filter-show-all"
+                    visible: noticeBanner.parent.notice !== null && noticeBanner.parent.notice.action === "showAll"
+                    text: L10n.t("historyBranchFilterShowAll")
+                    controlSize: MeridianButton.Small
+                    onClicked: Store.sidebar.setBranchFilter([])
+                }
+                MeridianButton {
+                    objectName: "history-show-other-refs"
+                    visible: noticeBanner.parent.notice !== null && noticeBanner.parent.notice.action === "otherRefs"
+                    text: L10n.t("historyShowOtherRefs")
+                    controlSize: MeridianButton.Small
+                    onClicked: {
+                        pane.setOtherRefs(true)
+                        const target = pane.paneState.targetObjectId
+                        if (target)
+                            Store.history.showCommit(target)
+                    }
+                }
+            }
+        }
+    }
+
     Item {
         id: body
-        anchors.top: powerTools.bottom
+        anchors.top: notices.bottom
         anchors.bottom: parent.bottom
         width: parent.width
 
@@ -326,6 +590,67 @@ Item {
             }
         }
         HoverHandler { id: listHover }
+
+        // The reflog in place of the graph.
+        Rectangle {
+            visible: pane.showReflog
+            anchors.fill: parent
+            color: Theme.colors.pane
+            MeridianEmptyState {
+                visible: pane.reflog === null || pane.reflog.entries.length === 0
+                anchors.fill: parent
+                compact: true
+                progress: pane.reflog === null
+                iconName: pane.reflog === null ? "" : "history"
+                title: pane.reflog === null ? L10n.t("loading") : L10n.t("historyReflogEmpty")
+            }
+            Column {
+                visible: pane.reflog !== null && pane.reflog.entries.length > 0
+                anchors.fill: parent
+                Item {
+                    visible: pane.reflog !== null && pane.reflog.retainedAfterFailure === true
+                    width: parent.width
+                    height: visible ? retainedBanner.implicitHeight + 2 * Theme.space.s1 : 0
+                    MeridianBanner {
+                        id: retainedBanner
+                        x: Theme.space.s2
+                        y: Theme.space.s1
+                        width: parent.width - 2 * Theme.space.s2
+                        tone: MeridianBanner.Info
+                        message: L10n.t("historyReflogRetainedFailure")
+                    }
+                }
+                ListView {
+                    id: reflogList
+                    objectName: "history-reflog"
+                    width: parent.width
+                    height: parent.height - y
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: pane.reflog ? pane.reflog.entries : []
+                    MeridianWheelScroll { flickable: reflogList }
+                    C.ScrollBar.vertical: MeridianScrollBar {}
+                    delegate: MeridianListRow {
+                        id: reflogRow
+                        required property var modelData
+                        width: reflogList.width
+                        height: Theme.size.row
+                        text: modelData.summary
+                        iconName: "history"
+                        trailing: Component {
+                            MeridianText {
+                                role: MeridianText.Caption
+                                text: reflogRow.modelData.short
+                            }
+                        }
+                        onClicked: {
+                            pane.showReflog = false
+                            Store.history.reveal(modelData.commit)
+                        }
+                    }
+                }
+            }
+        }
 
         MeridianSpinner {
             visible: pane.paneState.phase === "preview" || pane.paneState.phase === "loading"

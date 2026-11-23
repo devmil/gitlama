@@ -1994,6 +1994,7 @@
     }
   },
   "findNoMatches": "No matches",
+  "findSearching": "Searching…",
   "@findNoMatches": {
     "description": "Find bar counter when a search found nothing."
   },

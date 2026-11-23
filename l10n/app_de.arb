@@ -493,6 +493,7 @@
   "findMatchPosition": "{current} von {total}",
   "findMatchCount": "{count, plural, =1{1 Treffer} other{{count} Treffer}}",
   "findNoMatches": "Keine Treffer",
+  "findSearching": "Wird gesucht …",
   "findInFileHint": "In Datei suchen",
   "loading": "Wird geladen…",
   "diffPreviousHunk": "Vorheriger Block",

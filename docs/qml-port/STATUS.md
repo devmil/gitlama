@@ -119,13 +119,18 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Status acceleration: the slow-status offer (once per session after a slow first scan,
   enable or dismiss) under the repository conditions, and Settings › Git › Faster change
   checks (untracked cache, file system monitor, last scan, turn on).
+- History query bar: branch filter editor popover (tree of local and remote branches, search,
+  toggle, focus, current branch, show all), view options (other refs, reloading History),
+  find bar with search scopes, match position and stepping, apply filter, collapse merge,
+  reflog view; History notices (pending search, failure, empty filter, target outside the
+  ref scope, filtered-out selection, accepted filter, collapsed count) and the new upstream
+  commits banner.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
 - Integrations panel (the hosting resources view) and the Integrations/Repository binding
   settings pages (with hosting), diff renderer (settings card and inspector rendering).
-- History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
-  notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing
+- History: selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.
 - Hosting (pull requests, checks, links), updates (Sparkle/AppImage and its settings page),
   CLI forwarding, drag and drop, macOS window configuration.

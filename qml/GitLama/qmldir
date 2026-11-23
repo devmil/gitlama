@@ -58,6 +58,7 @@ ShortcutReferenceDialog 1.0 ShortcutReferenceDialog.qml
 SidebarRail 1.0 SidebarRail.qml
 SnapshotsPanel 1.0 SnapshotsPanel.qml
 PowerTools 1.0 PowerTools.qml
+BranchFilterEditor 1.0 BranchFilterEditor.qml
 PowerToolsPanel 1.0 PowerToolsPanel.qml
 CustomCommandsPage 1.0 CustomCommandsPage.qml
 StatusAccelerationSettings 1.0 StatusAccelerationSettings.qml

@@ -182,6 +182,7 @@ fn main() {
         history_rows: Rc::clone(&history_rows),
         history_context: RefCell::new(None),
         history_published: RefCell::new(None),
+        history_other_refs: std::cell::Cell::new(None),
         sidebar: Rc::clone(&sidebar),
         sidebar_rows: Rc::clone(&sidebar_rows),
         app: Rc::clone(&app),
