@@ -37,6 +37,7 @@ pub fn accounts_value(hosting: &Hosting, credentials: &[(String, NativeHostingCr
         })
     });
     json!({
+        "expandedNodes": hosting.expanded_nodes(),
         "githubCli": github,
         "gitlabCli": gitlab,
         "authorization": authorization,

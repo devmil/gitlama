@@ -446,6 +446,10 @@ impl Hosting {
             .map_err(|_| "settings")
     }
 
+    pub fn expanded_nodes(&self) -> Vec<String> {
+        self.settings.with(|document| document.hosting_expanded_nodes.clone())
+    }
+
     pub fn set_expanded_nodes(&self, nodes: Vec<String>) {
         let mut nodes: Vec<String> = nodes.into_iter().collect::<HashSet<_>>().into_iter().take(256).collect();
         nodes.sort();

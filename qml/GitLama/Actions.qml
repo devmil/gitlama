@@ -166,6 +166,12 @@ Item {
     }
 
     function showSettings(category) { settingsDialog.show(category ?? "appearance") }
+    /// Reviews a pull request (the review workspace); until it is ported,
+    /// its page opens in the browser.
+    function showPullRequestReview(pull) {
+        if (pull && Store.hosting.openable(pull.webUrl))
+            Qt.openUrlExternally(pull.webUrl)
+    }
     function showLicenses() {
         licenseDialog.packages = Store.settings.licenses()
         licenseDialog.open()
@@ -295,6 +301,15 @@ Item {
         case "showShortcutReference": shortcutReference.show(); return
         case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
         case "diffRenderConfigured": Store.settings.diffRenderer("render", ({})); return
+        case "showIntegrations": if (Store.shell) Store.shell.togglePanel("integrations"); return
+        case "hostingCreatePullRequest": {
+            const url = Store.hosting ? Store.hosting.resourceLink("createChangeRequest", 0) : ""
+            if (url.length > 0 && Store.hosting.openable(url))
+                Qt.openUrlExternally(url)
+            else
+                Notifications.show(Commands.reasonText("contextRequired"), false)
+            return
+        }
         case "showPowerTools": if (Store.shell) Store.shell.togglePanel("powerTools"); return
         case "addIntegration": showSettings("customCommands"); return
         case "addWorktree": if (Store.shell) Store.shell.togglePanel("extensions"); return

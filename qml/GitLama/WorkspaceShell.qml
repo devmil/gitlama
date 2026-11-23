@@ -216,4 +216,17 @@ Rectangle {
             onHidden: shell.unmountPanel("extensions")
         }
     }
+    // The bound repository's provider resources, in the same place.
+    Loader {
+        active: shell.mounted.integrations === true
+        x: shell.width - width - Theme.space.s3
+        y: toolbar.height + tabs.height + Theme.space.s2
+        z: 10
+        sourceComponent: IntegrationsPanel {
+            shown: shell.panel === "integrations"
+            availableHeight: shell.height - y - Metrics.statusBarHeight - Theme.space.s4
+            onCloseRequested: shell.closePanel("integrations")
+            onHidden: shell.unmountPanel("integrations")
+        }
+    }
 }
