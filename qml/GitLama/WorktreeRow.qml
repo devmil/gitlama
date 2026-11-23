@@ -9,7 +9,7 @@ Item {
     id: row
 
     property var worktrees: []
-    required property Item tabs
+    required property var tabs
 
     implicitHeight: Metrics.tabStripHeight
     readonly property var group: worktrees.length > 0 && worktrees[0].groupId !== null && worktrees[0].groupId !== undefined

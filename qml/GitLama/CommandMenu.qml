@@ -27,6 +27,11 @@ MeridianMenu {
         _fill(menu, items)
     }
 
+    // Created items are untyped; their triggered signal is reached dynamically.
+    function _connectTriggered(item, value) {
+        item.triggered.connect(() => menu.selected(value))
+    }
+
     function _fill(target, entries) {
         while (target.count > 0)
             target.takeItem(0).destroy()
@@ -53,7 +58,7 @@ MeridianMenu {
                     enabled: entry.enabled !== false,
                 })
                 const value = entry.value
-                item.triggered.connect(() => menu.selected(value))
+                menu._connectTriggered(item, value)
                 target.addItem(item)
             }
         }

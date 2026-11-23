@@ -21,7 +21,7 @@ MeridianDialog {
     property int revision: 0
     readonly property int publishedCount: plan.publishedCount ?? 0
     readonly property bool valid: {
-        revision
+        void revision
         if (instructions.count === 0)
             return false
         const first = instructions.get(0).action
@@ -72,6 +72,11 @@ MeridianDialog {
         revision++
     }
     /// Moves `draggedId` under `targetId` as a squash into it.
+    // A drag source is untyped; the dragged row carries its instruction.
+    function draggedInstruction(source) {
+        return source.instructionId
+    }
+
     function squashOnto(draggedId, targetId) {
         const from = indexOf(draggedId)
         if (from < 0 || draggedId === targetId)
@@ -191,8 +196,8 @@ MeridianDialog {
                         id: squashTarget
                         anchors.fill: card
                         keys: ["gitlama/rebase-instruction"]
-                        onEntered: drag => drag.accepted = drag.source !== null && drag.source.instructionId !== row.instructionId
-                        onDropped: drop => dialog.squashOnto(drop.source.instructionId, row.instructionId)
+                        onEntered: drag => drag.accepted = drag.source !== null && dialog.draggedInstruction(drag.source) !== row.instructionId
+                        onDropped: drop => dialog.squashOnto(dialog.draggedInstruction(drop.source), row.instructionId)
                     }
 
                     Rectangle {

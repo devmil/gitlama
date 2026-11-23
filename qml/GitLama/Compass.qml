@@ -104,7 +104,7 @@ Item {
             Item {
                 id: identity
                 height: parent.height
-                width: Math.max(0, row.width - state.width - Theme.space.s5)
+                width: Math.max(0, row.width - stateSwap.width - Theme.space.s5)
                 implicitWidth: (compass.compact ? 0 : repositoryText.implicitWidth + separator.implicitWidth)
                     + branchIcon.width + Theme.space.s2 + branchText.implicitWidth
                 Row {
@@ -150,7 +150,7 @@ Item {
             Item { width: Theme.space.s5; height: 1 }
             // The state and a running operation swap with a rise (NM-01).
             MeridianSwap {
-                id: state
+                id: stateSwap
                 anchors.verticalCenter: parent.verticalCenter
                 swapKey: compass.operation.length === 0 ? "state" : "op:" + compass.operation
                 alignment: 1

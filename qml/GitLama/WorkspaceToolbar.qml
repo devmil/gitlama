@@ -23,7 +23,7 @@ Item {
     /// The operation center: {runningCount, failedCount, foreground: {label, detail, progress}, running}.
     property var operations: ({})
     readonly property Item compassItem: compass
-    readonly property Item paletteButton: paletteButton
+    readonly property Item paletteButton: paletteToolbarButton
 
     signal command(string id, var options)
 
@@ -148,7 +148,7 @@ Item {
         }
         Item { width: Theme.space.s2; height: 1 }
         MeridianIconButton {
-            id: paletteButton
+            id: paletteToolbarButton
             objectName: "toolbar-command-palette"
             anchors.verticalCenter: parent.verticalCenter
             opacity: toolbar.paletteOpen ? 0 : 1

@@ -5,27 +5,28 @@ import Meridian
 // Loader that carries `tab`: the repository's icon, and for a repository
 // with several open worktrees the fork mark and their count.
 Row {
-    id: mark
+    id: tabMark
 
-    readonly property var tab: parent ? parent.tab : null
+    readonly property var host: parent
+    readonly property var tab: host ? host.tab ?? null : null
     spacing: Theme.space.s2
     visible: tab !== null && (tab.mark || tab.worktreeCount > 1)
 
     RepositoryIcon {
         anchors.verticalCenter: parent.verticalCenter
-        mark: mark.tab ? (mark.tab.mark ?? null) : null
+        mark: tabMark.tab ? (tabMark.tab.mark ?? null) : null
     }
     MeridianIcon {
-        visible: mark.tab !== null && mark.tab.worktreeCount > 1
+        visible: tabMark.tab !== null && tabMark.tab.worktreeCount > 1
         anchors.verticalCenter: parent.verticalCenter
         name: "git-fork"
         iconSize: MeridianIcon.Small
         color: Theme.colors.inkMuted
     }
     MeridianCount {
-        visible: mark.tab !== null && mark.tab.worktreeCount > 1
+        visible: tabMark.tab !== null && tabMark.tab.worktreeCount > 1
         anchors.verticalCenter: parent.verticalCenter
-        label: mark.tab ? String(mark.tab.worktreeCount) : ""
+        label: tabMark.tab ? String(tabMark.tab.worktreeCount) : ""
         tone: MeridianCount.Quiet
     }
 }

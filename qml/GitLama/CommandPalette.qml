@@ -8,7 +8,7 @@ import Meridian
 // filtered as the query is typed, with why one cannot run and its
 // shortcut. Up and Down move, Enter runs, Escape closes.
 T.Popup {
-    id: palette
+    id: commandPalette
 
     property string query: ""
     property int selectedIndex: 0
@@ -69,10 +69,10 @@ T.Popup {
     }
 
     contentItem: Item {
-        Keys.onUpPressed: palette.move(-1)
-        Keys.onDownPressed: palette.move(1)
-        Keys.onReturnPressed: palette.activate(palette.selectedIndex)
-        Keys.onEnterPressed: palette.activate(palette.selectedIndex)
+        Keys.onUpPressed: commandPalette.move(-1)
+        Keys.onDownPressed: commandPalette.move(1)
+        Keys.onReturnPressed: commandPalette.activate(commandPalette.selectedIndex)
+        Keys.onEnterPressed: commandPalette.activate(commandPalette.selectedIndex)
 
         Item {
             id: queryRow
@@ -94,10 +94,10 @@ T.Popup {
                 variant: MeridianTextField.Plain
                 placeholderText: L10n.t("commandPaletteSearch")
                 Accessible.name: L10n.t("commandPaletteSearch")
-                onTextEdited: { palette.query = text; palette.selectedIndex = 0 }
-                Keys.onUpPressed: palette.move(-1)
-                Keys.onDownPressed: palette.move(1)
-                onAccepted: palette.activate(palette.selectedIndex)
+                onTextEdited: { commandPalette.query = text; commandPalette.selectedIndex = 0 }
+                Keys.onUpPressed: commandPalette.move(-1)
+                Keys.onDownPressed: commandPalette.move(1)
+                onAccepted: commandPalette.activate(commandPalette.selectedIndex)
             }
             MeridianKbd {
                 id: escapeKey
@@ -109,18 +109,18 @@ T.Popup {
         MeridianHairline { id: topRule; anchors.top: queryRow.bottom; width: parent.width }
 
         MeridianEmptyState {
-            visible: palette.results.length === 0
+            visible: commandPalette.results.length === 0
             anchors.top: topRule.bottom
-            anchors.bottom: footer.top
+            anchors.bottom: footerBar.top
             width: parent.width
             compact: true
-            title: L10n.tn("commandPaletteNoMatch", { query: palette.query.trim() })
+            title: L10n.tn("commandPaletteNoMatch", { query: commandPalette.query.trim() })
         }
         ListView {
             id: list
-            visible: palette.results.length > 0
+            visible: commandPalette.results.length > 0
             anchors.top: topRule.bottom
-            anchors.bottom: footer.top
+            anchors.bottom: footerBar.top
             width: parent.width
             topMargin: Theme.space.s2
             bottomMargin: Theme.space.s2
@@ -128,7 +128,7 @@ T.Popup {
             rightMargin: Theme.space.s2
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: palette.results
+            model: commandPalette.results
             MeridianWheelScroll { flickable: list }
             C.ScrollBar.vertical: MeridianScrollBar {}
             header: Item {
@@ -147,11 +147,11 @@ T.Popup {
                 id: row
                 required property var modelData
                 required property int index
-                readonly property string reason: palette.reasonOf(modelData.id)
+                readonly property string reason: commandPalette.reasonOf(modelData.id)
                 width: list.width - list.leftMargin - list.rightMargin
                 text: Commands.label(modelData.id)
-                match: palette.query
-                selected: index === palette.selectedIndex
+                match: commandPalette.query
+                selected: index === commandPalette.selectedIndex
                 islandFocused: true
                 enabled: reason.length === 0
                 subtitle: reason.length > 0 ? Commands.reasonText(reason) : ""
@@ -164,13 +164,13 @@ T.Popup {
                     id: keycap
                     MeridianKbd { keys: [Commands.shortcutLabel(row.modelData.id)]; onAccent: row.solid }
                 }
-                onClicked: palette.activate(index)
-                HoverHandler { onHoveredChanged: if (hovered) palette.selectedIndex = row.index }
+                onClicked: commandPalette.activate(index)
+                HoverHandler { onHoveredChanged: if (hovered) commandPalette.selectedIndex = row.index }
             }
         }
 
         Rectangle {
-            id: footer
+            id: footerBar
             anchors.bottom: parent.bottom
             width: parent.width
             height: hints.implicitHeight + 2 * Theme.space.s4

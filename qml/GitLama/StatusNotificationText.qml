@@ -4,6 +4,7 @@ import Meridian
 // The status bar slot that shows Notifications' message: one line, caption,
 // `danger` for errors; a new message rises in. Messages never resize the slot.
 MeridianSwapText {
+    id: statusText
     property string fallback
     readonly property bool showsMessage: Notifications.message.length > 0
     text: showsMessage ? Notifications.message : fallback
@@ -15,7 +16,7 @@ MeridianSwapText {
 
     HoverHandler { id: hover }
     MeridianTooltip {
-        shown: hover.hovered && parent.text.length > 0
-        text: parent.text
+        shown: hover.hovered && statusText.text.length > 0
+        text: statusText.text
     }
 }

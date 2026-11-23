@@ -33,7 +33,7 @@ MeridianStatusBar {
                 active: bar.host !== null
                 visible: active
                 anchors.verticalCenter: parent.verticalCenter
-                width: active && item ? Math.min(item.implicitWidth, GitLamaLayout.remoteHostBadgeMaxWidth) : 0
+                width: active && item ? Math.min((item as Item).implicitWidth, GitLamaLayout.remoteHostBadgeMaxWidth) : 0
                 sourceComponent: bar.host
             }
             Item { visible: bar.host !== null; width: Theme.space.s5; height: 1 }

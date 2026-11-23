@@ -8,7 +8,7 @@ import Meridian
 // The window's dialogs: questions the core's workflows ask (prompts), and
 // dialogs the UI opens itself.
 Item {
-    id: actions
+    id: actionsRoot
 
     required property var window
     /// The shown conflict resolver, which takes the conflict commands.
@@ -236,7 +236,7 @@ Item {
             }
         ]
     }
-    AboutDialog { id: aboutDialog; onOpenLicenses: actions.showLicenses() }
+    AboutDialog { id: aboutDialog; onOpenLicenses: actionsRoot.showLicenses() }
     /// Opens the patch dialog in `mode` for what the active pane shows: the
     /// Changes selection, else History's (or `commit`).
     function showPatchWorkflow(mode, commit) {
@@ -286,7 +286,7 @@ Item {
     /// Runs command `id` when the shared policy allows it now, and
     /// otherwise says why (the Flutter shell's _executeCommand).
     function runCommand(id, options) {
-        const reason = Commands.reason(id, actions.availability)
+        const reason = Commands.reason(id, actionsRoot.availability)
         if (reason.length > 0) {
             Notifications.show(Commands.reasonText(reason), false)
             return
@@ -372,7 +372,7 @@ Item {
         case "rebaseAbort": Store.conflicts.sequence("abort"); return
         case "conflictNext": case "conflictPrevious": case "conflictTakeCurrent": case "conflictTakeIncoming":
         case "conflictTakeBoth":
-            if (actions.conflictResolver && actions.conflictResolver.runCommand(id))
+            if (actionsRoot.conflictResolver && actionsRoot.conflictResolver.runCommand(id))
                 return
             Notifications.show(Commands.reasonText("contextRequired"), false)
             return
@@ -467,13 +467,13 @@ Item {
         onAccepted: {
             const url = selectedFolder.toString()
             const path = url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url
-            actions.answer(promptId, path)
+            actionsRoot.answer(promptId, path)
             promptId = -1
         }
         onRejected: {
             if (promptId < 0)
                 return
-            actions.answer(promptId, null)
+            actionsRoot.answer(promptId, null)
             promptId = -1
         }
     }
@@ -496,8 +496,8 @@ Item {
         confirmLabel: clean ? L10n.t("cleanConfirmAction") : L10n.t("discardConfirmAction")
         cancelLabel: L10n.t("cancel")
         destructive: true
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
 
     // Amending a commit others may have.
@@ -509,8 +509,8 @@ Item {
         confirmLabel: L10n.t("commitConfirmAmend")
         cancelLabel: L10n.t("cancel")
         destructive: true
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
 
     // Skipping hooks asks for SKIP to be typed.
@@ -527,8 +527,8 @@ Item {
         title: L10n.t("commitSkipHooksConfirmTitle")
         description: L10n.t("commitSkipHooksConfirmBody")
         submitDisabled: !confirmed
-        onSubmitted: { if (confirmed) { close(); actions.answer(promptId, true); promptId = -1 } }
-        onRejected: { actions.answer(promptId, false); promptId = -1 }
+        onSubmitted: { if (confirmed) { close(); actionsRoot.answer(promptId, true); promptId = -1 } }
+        onRejected: { actionsRoot.answer(promptId, false); promptId = -1 }
         MeridianTextField {
             id: skipField
             width: parent ? parent.width : 0
@@ -552,43 +552,43 @@ Item {
 
     StashDialog {
         id: stashDialog
-        onAnswered: (id, request) => actions.answer(id, request)
+        onAnswered: (id, request) => actionsRoot.answer(id, request)
     }
     StashConfirmDialog {
         id: stashConfirm
-        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
     }
     HistoryMutationDialog {
         id: historyMutationDialog
-        onAnswered: (id, request) => actions.answer(id, request)
+        onAnswered: (id, request) => actionsRoot.answer(id, request)
     }
     HistoryMutationPreviewDialog {
         id: historyMutationPreview
-        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
     }
     BranchIntegrationDialog {
         id: branchIntegration
-        onAnswered: (id, choice) => actions.answer(id, choice)
+        onAnswered: (id, choice) => actionsRoot.answer(id, choice)
     }
     RebaseTargetDialog {
         id: rebaseTarget
-        onAnswered: (id, branch) => actions.answer(id, branch)
+        onAnswered: (id, branch) => actionsRoot.answer(id, branch)
     }
     RebaseEditorDialog {
         id: rebaseEditor
-        onAnswered: (id, edit) => actions.answer(id, edit)
+        onAnswered: (id, edit) => actionsRoot.answer(id, edit)
     }
     RebasePreviewDialog {
         id: rebasePreview
-        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
     }
     RestackRootDialog {
         id: restackRoot
-        onAnswered: (id, branch) => actions.answer(id, branch)
+        onAnswered: (id, branch) => actionsRoot.answer(id, branch)
     }
     RestackPreviewDialog {
         id: restackPreview
-        onAnswered: (id, acknowledge) => actions.answer(id, acknowledge)
+        onAnswered: (id, acknowledge) => actionsRoot.answer(id, acknowledge)
     }
     MeridianDialog {
         id: cloneSourceDialog
@@ -603,7 +603,7 @@ Item {
             if (cloneSource.text.trim().length === 0)
                 return
             close()
-            actions.answer(promptId, cloneSource.text.trim())
+            actionsRoot.answer(promptId, cloneSource.text.trim())
             promptId = -1
         }
         widthClass: MeridianDialog.Form
@@ -611,7 +611,7 @@ Item {
         description: L10n.t("cloneSourceDescription")
         submitDisabled: cloneSource.text.trim().length === 0
         onSubmitted: choose()
-        onRejected: { actions.answer(promptId, null); promptId = -1 }
+        onRejected: { actionsRoot.answer(promptId, null); promptId = -1 }
         Column {
             width: parent ? parent.width : 0
             spacing: Theme.space.s2
@@ -641,12 +641,12 @@ Item {
         property int promptId: -1
         cancelLabel: L10n.t("cancel")
         destructive: true
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
     SettingsDialog {
         id: settingsDialog
-        onLicensesRequested: actions.showLicenses()
+        onLicensesRequested: actionsRoot.showLicenses()
     }
     MeridianLicenseDialog {
         id: licenseDialog
@@ -662,19 +662,19 @@ Item {
     }
     CommitCheckoutDialog {
         id: commitCheckout
-        onAnswered: (id, choice) => actions.answer(id, choice)
+        onAnswered: (id, choice) => actionsRoot.answer(id, choice)
     }
     CommandPalette {
         id: commandPalette
-        onRun: id => actions.runCommand(id, ({}))
+        onRun: id => actionsRoot.runCommand(id, ({}))
     }
     RefMutationDialog {
         id: refDialog
-        onAnswered: (id, request) => actions.answer(id, request)
+        onAnswered: (id, request) => actionsRoot.answer(id, request)
     }
     RefConfirmDialog {
         id: refConfirm
-        onAnswered: (id, confirmed) => actions.answer(id, confirmed)
+        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
     }
     // Restoring a file to a commit's version (the Dart confirmRestore).
     MeridianConfirm {
@@ -696,8 +696,8 @@ Item {
         confirmLabel: L10n.t("historyRestoreConfirm")
         cancelLabel: L10n.t("cancel")
         destructive: true
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
         MeridianPropertyList {
             width: parent ? parent.width : 0
             properties: [
@@ -719,8 +719,8 @@ Item {
         confirmLabel: L10n.t("delete")
         cancelLabel: L10n.t("cancel")
         destructive: true
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
     // Replacing the current changes with a snapshot's (the Dart
     // NamedSnapshotRestoreDialog).
@@ -739,13 +739,13 @@ Item {
             const pending = promptId
             promptId = -1
             close()
-            actions.answer(pending, value)
+            actionsRoot.answer(pending, value)
         }
         title: L10n.tn("namedSnapshotRestoreTitle", { name: payload.name ?? "" })
         description: L10n.t("namedSnapshotRestoreSummary")
         submitDisabled: !acknowledged
         onSubmitted: answer(true)
-        onRejected: { if (promptId >= 0) { actions.answer(promptId, false); promptId = -1 } }
+        onRejected: { if (promptId >= 0) { actionsRoot.answer(promptId, false); promptId = -1 } }
         Column {
             width: parent ? parent.width : 0
             spacing: Theme.space.s6
@@ -817,13 +817,13 @@ Item {
             const pending = promptId
             promptId = -1
             close()
-            actions.answer(pending, value)
+            actionsRoot.answer(pending, value)
         }
         widthClass: MeridianDialog.Form
         title: L10n.t("namedSnapshotBranchTitle")
         submitDisabled: name.length === 0
         onSubmitted: answer(name)
-        onRejected: { if (promptId >= 0) { actions.answer(promptId, null); promptId = -1 } }
+        onRejected: { if (promptId >= 0) { actionsRoot.answer(promptId, null); promptId = -1 } }
         ReferenceField {
             id: snapshotBranchField
             width: parent ? parent.width : 0
@@ -849,12 +849,12 @@ Item {
         confirmLabel: L10n.t("delete")
         cancelLabel: L10n.t("cancel")
         destructive: true
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
     IgnoreDialog {
         id: ignoreDialog
-        onAnswered: (id, entry) => actions.answer(id, entry)
+        onAnswered: (id, entry) => actionsRoot.answer(id, entry)
     }
     // Asks to run a configured tool that needs confirmation (the Dart
     // confirmIntegration).
@@ -867,8 +867,8 @@ Item {
         title: L10n.t("integrationPreviewTitle")
         confirmLabel: L10n.t("integrationRun")
         cancelLabel: L10n.t("cancel")
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
         Column {
             width: parent ? parent.width : 0
             spacing: Theme.space.s4
@@ -887,7 +887,7 @@ Item {
     }
     DiffRendererConfirm {
         id: rendererConfirm
-        onAnswered: (id, value) => actions.answer(id, value)
+        onAnswered: (id, value) => actionsRoot.answer(id, value)
     }
     // An LFS pointer's facts (lfsPointer).
     MeridianDialog {
@@ -899,7 +899,7 @@ Item {
         title: L10n.t("extensionLfsPointerTitle")
         description: isPointer ? L10n.t("extensionLfsPointerDescription") : L10n.t("extensionLfsNotPointer")
         closeLabel: L10n.t("close")
-        onClosed: { if (promptId >= 0) actions.answer(promptId, true); promptId = -1 }
+        onClosed: { if (promptId >= 0) actionsRoot.answer(promptId, true); promptId = -1 }
         MeridianPropertyList {
             objectName: "lfs-pointer-details"
             width: parent ? parent.width : 0
@@ -931,8 +931,8 @@ Item {
         title: L10n.t("bisect" + suffix + "Title")
         confirmLabel: L10n.t(action === "good" ? "bisectConfirmGood" : action === "bad" ? "bisectConfirmBad" : "powerBisect" + suffix)
         cancelLabel: L10n.t("cancel")
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
         Column {
             width: parent ? parent.width : 0
             spacing: Theme.space.s4
@@ -951,7 +951,7 @@ Item {
     }
     EditBranchDialog {
         id: editBranchDialog
-        onAnswered: (id, edit) => actions.answer(id, edit)
+        onAnswered: (id, edit) => actionsRoot.answer(id, edit)
     }
     MeridianConfirm {
         id: recoverTarget
@@ -960,24 +960,24 @@ Item {
         description: L10n.t("refMutationTargetUnavailableDetail")
         confirmLabel: L10n.t("refMutationRefreshTarget")
         cancelLabel: L10n.t("cancel")
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
     TransferDialog {
         id: transferDialog
-        onAnswered: (id, request) => actions.answer(id, request)
+        onAnswered: (id, request) => actionsRoot.answer(id, request)
     }
     HostKeyDialog {
         id: hostKeyDialog
-        onAnswered: (id, trust) => actions.answer(id, trust)
+        onAnswered: (id, trust) => actionsRoot.answer(id, trust)
     }
     CredentialDialog {
         id: credentialDialog
-        onAnswered: (id, credentials) => actions.answer(id, credentials)
+        onAnswered: (id, credentials) => actionsRoot.answer(id, credentials)
     }
     TransferFailureDialog {
         id: transferFailureDialog
-        onAnswered: (id, remedy) => actions.answer(id, remedy)
+        onAnswered: (id, remedy) => actionsRoot.answer(id, remedy)
     }
     MeridianConfirm {
         id: refetchConfirm
@@ -985,13 +985,13 @@ Item {
         title: L10n.t("transferMissingObjectTitle")
         confirmLabel: L10n.t("transferRefetchAction")
         cancelLabel: L10n.t("cancel")
-        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
-        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
 
     InitializeRepositoryDialog {
         id: initializeDialog
-        onChosen: (id, choice) => actions.answer(id, choice)
+        onChosen: (id, choice) => actionsRoot.answer(id, choice)
     }
 
     // Development screenshots can submit the transfer dialog.
@@ -1022,7 +1022,7 @@ Item {
                 if (row)
                     Store.lineSelection.toggle(row.rowId, row.checked !== true)
             } else if (name === "deleteWorktree") {
-                deleteWorktree(Number(argument), "")
+                actionsRoot.deleteWorktree(Number(argument), "")
             } else if (name === "confirmWorktreeDelete") {
                 worktreeDeleteConfirm.close()
                 worktreeDeleteConfirm.confirmed()
@@ -1032,7 +1032,7 @@ Item {
             } else if (name === "patchSubmit")
                 patchDialog.submit()
             else if (name === "iconDialog")
-                showRepositoryIconDialog({ id: Store.workspace.activeTabId })
+                actionsRoot.showRepositoryIconDialog({ id: Store.workspace.activeTabId })
             else if (name === "iconPick") {
                 // iconPick:<icon>=<series index>
                 const parts = argument.split("=")
@@ -1045,13 +1045,13 @@ Item {
             else if (name === "groupDialog") {
                 const group = Store.workspace.groups[0]
                 if (group)
-                    showTabGroupDialog(group, Store.workspace.tabs.filter(tab => tab.groupId === group.id).map(tab => tab.label))
+                    actionsRoot.showTabGroupDialog(group, Store.workspace.tabs.filter(tab => tab.groupId === group.id).map(tab => tab.label))
             } else if (name === "colorWell") {
                 // Opens the custom colour well of the open dialog's colour row.
                 const dialogs = [repositoryIconDialog, tabGroupDialog]
                 for (const d of dialogs)
                     if (d.opened) {
-                        const well = findWell(d.contentItem)
+                        const well = actionsRoot.findWell(d.contentItem)
                         if (well) well.clicked()
                     }
             }
@@ -1093,10 +1093,10 @@ Item {
             }
             else if (name === "rendererSave")
                 Store.settings.diffRenderer("save", JSON.parse(argument))
-            else if (name === "conflictTree" && conflictResolver)
-                conflictResolver.treeMode = argument !== "off"
-            else if (name === "conflictFileMenu" && conflictResolver)
-                conflictResolver.showFileMenu(conflictResolver.files[Number(argument)], conflictResolver, 10, 10)
+            else if (name === "conflictTree" && actionsRoot.conflictResolver)
+                actionsRoot.conflictResolver.treeMode = argument !== "off"
+            else if (name === "conflictFileMenu" && actionsRoot.conflictResolver)
+                actionsRoot.conflictResolver.showFileMenu(actionsRoot.conflictResolver.files[Number(argument)], actionsRoot.conflictResolver, 10, 10)
             else if (name === "conflictExternal")
                 Store.conflicts.mergeExternally(argument)
             else if (name === "confirmIntegrationRun") {
@@ -1110,7 +1110,7 @@ Item {
             else if (name === "snapshotCreate")
                 Store.workflows.snapshot("create", { name: argument, includeUntracked: true, keepIndex: false })
             else if (name === "about")
-                showAbout()
+                actionsRoot.showAbout()
             else if (name === "submitIgnore")
                 ignoreDialog.submit()
             else if (name === "submitMutation")
@@ -1147,19 +1147,19 @@ Item {
                 if (pending >= 0) {
                     folderDialog.promptId = -1
                     folderDialog.close()
-                    actions.answer(pending, argument)
+                    actionsRoot.answer(pending, argument)
                 }
             } else if (name === "settings")
-                actions.showSettings(argument)
+                actionsRoot.showSettings(argument)
             else if (name === "licenses")
-                actions.showLicenses()
+                actionsRoot.showLicenses()
         }
     }
 
     Connections {
         target: Store.app
         function onPrompt(id, kind, payload) {
-            actions.handlePrompt(id, kind, payload)
+            actionsRoot.handlePrompt(id, kind, payload)
         }
         function onNotice(key, args, error) {
             const values = args.length > 0 ? JSON.parse(args) : []

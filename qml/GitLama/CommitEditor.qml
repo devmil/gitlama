@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls.Basic as C
 import Meridian
 
 // The commit editor (the Dart CommitEditor in a GitLamaComposer): subject
@@ -19,7 +18,7 @@ Rectangle {
     property bool skipHooks: false
     property bool signOff: false
     property bool attempted: false
-    readonly property string subjectText: subject.text
+    readonly property string subjectText: subjectField.text
     readonly property bool empty: subjectText.trim().length === 0
     readonly property bool trailingSpace: subjectText.length > 0 && subjectText.replace(/\s+$/, "") !== subjectText
     readonly property string subjectError: empty && attempted ? L10n.t("commitEmptySubject")
@@ -47,8 +46,8 @@ Rectangle {
         target: Store.commit
         function onDraftChanged() { editor.loadDraft() }
         function onCommitted(push) {
-            editor.subject.text = ""
-            description.text = ""
+            subjectField.text = ""
+            descriptionField.text = ""
             editor.amend = false
             editor.attempted = false
             if (push)
@@ -58,19 +57,19 @@ Rectangle {
     function loadDraft() {
         const draft = Store.commit ? Store.commit.draft : null
         _loading = true
-        subject.text = draft ? (draft.subject ?? "") : ""
-        description.text = draft ? (draft.description ?? "") : ""
+        subjectField.text = draft ? (draft.subject ?? "") : ""
+        descriptionField.text = draft ? (draft.description ?? "") : ""
         _loading = false
         amend = false
         attempted = false
     }
     property bool _loading: false
-    property alias subject: subject
+    property alias subject: subjectField
     Component.onCompleted: loadDraft()
     Timer {
         id: draftTimer
         interval: 300
-        onTriggered: Store.commit.updateDraft(subject.text, description.text)
+        onTriggered: Store.commit.updateDraft(subjectField.text, descriptionField.text)
     }
     function draftEdited() {
         if (!_loading)
@@ -90,8 +89,8 @@ Rectangle {
         }
         draftTimer.stop()
         Store.commit.commit({
-            subject: subject.text,
-            description: description.text,
+            subject: subjectField.text,
+            description: descriptionField.text,
             coauthors: [],
             author: "",
             amend: amend,
@@ -178,7 +177,7 @@ Rectangle {
             }
 
             MeridianTextField {
-                id: subject
+                id: subjectField
                 objectName: "commit-subject-field"
                 width: parent.width
                 height: GitLamaLayout.composerSubjectHeight
@@ -188,11 +187,11 @@ Rectangle {
                 enabled: !editor.busy
                 error: editor.subjectError.length > 0
                 onTextChanged: editor.draftEdited()
-                onAccepted: description.forceActiveFocus()
+                onAccepted: descriptionField.forceActiveFocus()
                 trailingContent: [
                     MeridianText {
                         objectName: "commit-subject-counter"
-                        readonly property int length: [...subject.text].length
+                        readonly property int length: [...subjectField.text].length
                         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
                         role: MeridianText.Caption
                         tabular: true
@@ -212,7 +211,7 @@ Rectangle {
                 ]
             }
             MeridianTextArea {
-                id: description
+                id: descriptionField
                 objectName: "commit-description-field"
                 width: parent.width
                 minimumLines: GitLamaLayout.composerDescriptionMinLines
@@ -236,7 +235,7 @@ Rectangle {
                     enabled: !editor.busy
                     onToggled: {
                         editor.amend = checked
-                        if (checked && subject.text.length === 0 && description.text.length === 0) {
+                        if (checked && subjectField.text.length === 0 && descriptionField.text.length === 0) {
                             Store.commit.loadTools()
                             editor._fillAmend = true
                         }
@@ -273,8 +272,8 @@ Rectangle {
                         if (value === "template" && editor.commitState.template) {
                             const template = editor.commitState.template
                             const lines = template.split("\n")
-                            subject.text = lines[0] ?? ""
-                            description.text = lines.slice(1).join("\n").trim()
+                            subjectField.text = lines[0] ?? ""
+                            descriptionField.text = lines.slice(1).join("\n").trim()
                         } else if (value === "skipHooks") {
                             editor.skipHooks = !editor.skipHooks
                         } else if (value === "signOff") {
@@ -325,14 +324,14 @@ Rectangle {
         if (!message)
             return
         _fillAmend = false
-        subject.text = message.subject
-        description.text = message.description
+        subjectField.text = message.subject
+        descriptionField.text = message.description
     }
 
     // Ctrl/Cmd+Enter commits from either field.
     Shortcut {
         sequences: [Commands.sequence("commitCreate")]
-        enabled: subject.activeFocus || description.textArea.activeFocus
+        enabled: subjectField.activeFocus || descriptionField.textArea.activeFocus
         onActivated: editor.submit(false)
     }
 }

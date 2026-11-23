@@ -5,7 +5,7 @@ import Meridian
 CommandMenu {
     id: menu
 
-    required property Item tabs
+    required property var tabs
     property var group: null
     signal renameRequested(var groupId)
 
