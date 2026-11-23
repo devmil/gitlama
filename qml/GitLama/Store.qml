@@ -164,6 +164,19 @@ QtObject {
                 changes.select("unstaged", [row.key])
                 history.select(row.path)
             }
+        } else if (name === "diffDrag" && workingDiffPane) {
+            // diffDrag:<x1>,<y1>,<x2>,<y2>[,<clicks>]: presses on the working diff and drags,
+            // then logs the selected text.
+            const v = argument.split(",").map(Number)
+            const diff = workingDiffPane.diffView
+            for (let click = 0; click < (v[4] || 1); ++click) {
+                diff._press({ x: v[0], y: v[1], modifiers: 0 })
+                if (click + 1 < (v[4] || 1))
+                    diff._release({ x: v[0], y: v[1], modifiers: 0 })
+            }
+            diff._extend(v[2], v[3])
+            diff._release({ x: v[2], y: v[3], modifiers: 0 })
+            console.log("diff selection:", JSON.stringify(diff.selectedText()))
         } else if (name === "stageSelected" && changes) {
             changes.stageSelection(argument)
         } else if (name === "remoteAdd" && remote) {

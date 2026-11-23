@@ -214,6 +214,9 @@ QtObject {
     readonly property int copiedHold: 1200
     /// How long a press on a Changes row holds before the row drags (Flutter's long press).
     readonly property int longPressDrag: 500
+    /// A text selection dragged this close to a list's edge scrolls it, every interval.
+    readonly property real dragAutoScrollEdge: 24
+    readonly property int dragAutoScrollInterval: 32
     /// Quiet time after a text appears or changes before it is coloured.
     readonly property int syntaxIdle: 150
     /// The palette's content fades in this long after its surface starts growing (NH-6).

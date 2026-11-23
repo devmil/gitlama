@@ -105,6 +105,192 @@ Item {
         list.positionViewAtIndex(index, ListView.Beginning)
     }
 
+    // ---------------------------------------------------------------- text selection
+
+    // Text is selected like in an editor: drag across lines, double-click for a word,
+    // triple-click for whole lines, Shift-click to extend; side by side, a selection stays on
+    // the side it started on. The lines it touches become the selected lines (staging,
+    // discarding, patches). Ctrl+C copies the text, Ctrl+A selects every line.
+    /// {anchor: {row, offset}, focus: {row, offset}, side: "old" | "new" | ""}, or null.
+    property var textSelection: null
+    readonly property bool hasTextSelection: textSelection !== null
+        && (textSelection.anchor.row !== textSelection.focus.row || textSelection.anchor.offset !== textSelection.focus.offset)
+    property string _granularity: "character"
+    property var _wordAnchor: null
+    property int _clicks: 0
+    property real _lastPressTime: 0
+    property point _lastPressAt: Qt.point(0, 0)
+    property bool _dragging: false
+    property point _dragAt: Qt.point(0, 0)
+    Connections {
+        target: view.model
+        function onModelReset() { view.clearTextSelection() }
+    }
+
+    /// Row `index`'s delegate, when built; a delegate type has no name to check against.
+    function _rowItem(index) {
+        return view._untyped(list.itemAtIndex(index))
+    }
+    function _untyped(item) {
+        return item
+    }
+    function clearTextSelection() {
+        textSelection = null
+    }
+    function _before(a, b) {
+        return a.row < b.row || (a.row === b.row && a.offset < b.offset)
+    }
+    /// The selected range of row `row`'s text on `side` ("old", "new" or "" unified), or null.
+    function rangeIn(row, side, length) {
+        const selection = textSelection
+        if (!hasTextSelection || (selection.side !== "" && side !== "" && side !== selection.side))
+            return null
+        const start = _before(selection.anchor, selection.focus) ? selection.anchor : selection.focus
+        const end = start === selection.anchor ? selection.focus : selection.anchor
+        if (row < start.row || row > end.row)
+            return null
+        const from = row === start.row ? Math.min(start.offset, length) : 0
+        const to = row === end.row ? Math.min(end.offset, length) : length
+        return to > from ? [from, to] : null
+    }
+    /// The text point under `x`, `y` of the list, on `side` when given: {row, offset, side, gutter}.
+    function _pointAt(x, y, side) {
+        const contentY = Math.max(list.contentY, Math.min(list.contentY + list.height - 1, y + list.contentY))
+        let row = list.indexAt(1, contentY)
+        if (row < 0)
+            return null
+        const item = view._rowItem(row)
+        if (!item || !item.lineRow)
+            return { row: row, offset: 0, side: side ?? "", gutter: true, line: false }
+        const at = item.mapFromItem(list, x, contentY - list.contentY)
+        const point = item.textPoint(at.x, at.y, side)
+        point.row = row
+        point.line = true
+        // Above or below the list: the start or the end of the edge row.
+        if (y < 0)
+            point.offset = 0
+        else if (y >= list.height)
+            point.offset = item.textLength()
+        return point
+    }
+    function _wordAround(row, side, offset) {
+        const item = view._rowItem(row)
+        const text = item && item.lineRow ? item.text : ""
+        let start = offset, end = offset
+        // Letters, digits and underscores; Latin and beyond (no \\p{L} in QML JavaScript).
+        const word = /[\w\u00C0-\u024F\u0370-\uFFFF]/
+        while (start > 0 && word.test(text.charAt(start - 1)))
+            start--
+        while (end < text.length && word.test(text.charAt(end)))
+            end++
+        if (start === end && end < text.length)
+            end++
+        return { start: start, end: end }
+    }
+    function _select(anchor, focus, side) {
+        textSelection = { anchor: { row: anchor.row, offset: anchor.offset }, focus: { row: focus.row, offset: focus.offset }, side: side }
+    }
+    /// The lines the text selection touches become the selected lines.
+    function _publishLines() {
+        if (!lineSelection || !model || !hasTextSelection)
+            return
+        const first = Math.min(textSelection.anchor.row, textSelection.focus.row)
+        const last = Math.max(textSelection.anchor.row, textSelection.focus.row)
+        const rows = model.lineIds(first, last)
+        selectionAnchor = textSelection.anchor.row
+        rowsSelected(rows)
+    }
+    function selectAllText() {
+        if (!model || model.count() === 0)
+            return
+        _select({ row: 0, offset: 0 }, { row: model.count() - 1, offset: Number.MAX_SAFE_INTEGER }, "")
+        _publishLines()
+    }
+    /// The selected text, lines joined by newlines.
+    function selectedText() {
+        if (!hasTextSelection || !model)
+            return ""
+        const selection = textSelection
+        const start = _before(selection.anchor, selection.focus) ? selection.anchor : selection.focus
+        const end = start === selection.anchor ? selection.focus : selection.anchor
+        return model.textBetween(start.row, start.offset, end.row, Math.min(end.offset, 2147483647), selection.side)
+    }
+    function copyText() {
+        const text = selectedText()
+        if (text.length > 0)
+            Store.actions.copyText(text, L10n.t("diffSelectionCopied"))
+    }
+    function _press(mouse) {
+        const point = _pointAt(mouse.x, mouse.y)
+        if (!point || !point.line)
+            return false
+        list.forceActiveFocus()
+        const now = Date.now()
+        const repeat = now - _lastPressTime <= Application.styleHints.mouseDoubleClickInterval
+            && Math.abs(mouse.x - _lastPressAt.x) <= Application.styleHints.startDragDistance
+            && Math.abs(mouse.y - _lastPressAt.y) <= Application.styleHints.startDragDistance
+        _clicks = repeat ? _clicks % 3 + 1 : 1
+        _lastPressTime = now
+        _lastPressAt = Qt.point(mouse.x, mouse.y)
+        _dragging = true
+        _dragAt = Qt.point(mouse.x, mouse.y)
+        if ((mouse.modifiers & Qt.ShiftModifier) && textSelection !== null) {
+            _clicks = 1
+            _select(textSelection.anchor, point, textSelection.side)
+            return true
+        }
+        if (point.gutter || _clicks === 3) {
+            _granularity = "line"
+            _select({ row: point.row, offset: 0 }, { row: point.row, offset: Number.MAX_SAFE_INTEGER }, point.side)
+        } else if (_clicks === 2) {
+            _granularity = "word"
+            const word = _wordAround(point.row, point.side, point.offset)
+            _wordAnchor = { row: point.row, start: word.start, end: word.end }
+            _select({ row: point.row, offset: word.start }, { row: point.row, offset: word.end }, point.side)
+        } else {
+            _granularity = "character"
+            _select(point, point, point.side)
+        }
+        return true
+    }
+    function _extend(x, y) {
+        const selection = textSelection
+        if (!selection)
+            return
+        const point = _pointAt(x, y, selection.side)
+        if (!point)
+            return
+        if (_granularity === "line") {
+            const down = point.row >= selection.anchor.row
+            _select({ row: selection.anchor.row, offset: down ? 0 : Number.MAX_SAFE_INTEGER },
+                    { row: point.row, offset: down ? Number.MAX_SAFE_INTEGER : 0 }, selection.side)
+        } else if (_granularity === "word" && _wordAnchor) {
+            const word = point.line ? _wordAround(point.row, selection.side, point.offset) : { start: point.offset, end: point.offset }
+            if (_before(point, { row: _wordAnchor.row, offset: _wordAnchor.start }))
+                _select({ row: _wordAnchor.row, offset: _wordAnchor.end }, { row: point.row, offset: word.start }, selection.side)
+            else
+                _select({ row: _wordAnchor.row, offset: _wordAnchor.start }, { row: point.row, offset: word.end }, selection.side)
+        } else {
+            _select(selection.anchor, point, selection.side)
+        }
+    }
+    function _release(mouse) {
+        _dragging = false
+        autoScroll.stop()
+        const point = _pointAt(mouse.x, mouse.y)
+        // A plain click selects its line as before (or clears the text selection).
+        if (!hasTextSelection && _clicks === 1 && point && point.line) {
+            const item = view._rowItem(point.row)
+            textSelection = null
+            if (item) {
+                selectLine(point.row, item.stableId, mouse.modifiers)
+                rowActivated(point.row, item.kind)
+            }
+            return
+        }
+        _publishLines()
+    }
+
     /// Actions shown over the first selected line while lines are selected
     /// and that line is on screen.
     property Component selectionActions: null
@@ -127,8 +313,10 @@ Item {
     }
     /// The copy entries of the selected lines' menu, after the caller's own.
     function copyMenuItems() {
-        const items = [{ separator: true },
-            { title: L10n.t("diffCopyLines"), icon: "copy", value: "copyLines", shortcut: Store.isMac ? "Cmd+C" : "Ctrl+C" }]
+        const items = [{ separator: true }]
+        if (hasTextSelection)
+            items.push({ title: L10n.t("textMenuCopy"), icon: "copy", value: "copyText", shortcut: Store.isMac ? "Cmd+C" : "Ctrl+C" })
+        items.push({ title: L10n.t("diffCopyLines"), icon: "copy", value: "copyLines", shortcut: hasTextSelection ? "" : Store.isMac ? "Cmd+C" : "Ctrl+C" })
         if (patchSource)
             items.push({ title: L10n.t("diffCopyAsPatch"), icon: "file-diff", value: "copyPatch",
                          enabled: model !== null && model.selectionHasChange(selectedRows) })
@@ -136,7 +324,9 @@ Item {
     }
     /// Runs a copy entry of `copyMenuItems`; false for other values.
     function runCopyMenuItem(value) {
-        if (value === "copyLines")
+        if (value === "copyText")
+            copyText()
+        else if (value === "copyLines")
             copyLines()
         else if (value === "copyPatch")
             copyPatch()
@@ -196,7 +386,7 @@ Item {
         }
     }
 
-    onModelChanged: { textOffset = 0; widestText = 0; if (model) model.setLatin1(encoding === "latin1") }
+    onModelChanged: { textOffset = 0; widestText = 0; clearTextSelection(); if (model) model.setLatin1(encoding === "latin1") }
     onMaximumOffsetChanged: textOffset = Math.min(textOffset, maximumOffset)
 
     // The syntax palette, checked against the surfaces lines are drawn on.
@@ -256,8 +446,17 @@ Item {
         cacheBuffer: 360
         keyNavigationEnabled: false
         Keys.onPressed: event => {
-            if (event.matches(StandardKey.Copy) && view.selectedRows.length > 0) {
+            if (event.matches(StandardKey.Copy) && view.hasTextSelection) {
+                view.copyText()
+                event.accepted = true
+            } else if (event.matches(StandardKey.Copy) && view.selectedRows.length > 0) {
                 view.copyLines()
+                event.accepted = true
+            } else if (event.matches(StandardKey.SelectAll)) {
+                view.selectAllText()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Escape && view.textSelection !== null) {
+                view.clearTextSelection()
                 event.accepted = true
             }
         }
@@ -303,6 +502,17 @@ Item {
                 : Theme.colors.pane
 
             width: list.width
+            /// The text point at `x`, `y` of the row, on `side` when given (a drag stays on it).
+            function textPoint(x, y, side) {
+                const cell = !view.split ? firstCell
+                    : side === "old" ? firstCell : side === "new" ? secondCell
+                    : x >= secondCell.x ? secondCell : firstCell
+                const at = line.mapToItem(cell, x, y)
+                return cell.textPoint(at.x, at.y)
+            }
+            function textLength() {
+                return line.text.length
+            }
             /// The tallest wrapped text of the row's cells.
             readonly property real wrappedHeight: Math.max(GitLamaLayout.diffLineHeight, firstCell.textHeight, secondCell.visible ? secondCell.textHeight : 0)
             height: loading ? GitLamaLayout.diffLineHeight
@@ -439,6 +649,26 @@ Item {
                 height: line.height
                 clip: true
 
+                // This cell's part of the text selection.
+                readonly property string side: unified ? "" : oldSide ? "old" : "new"
+                readonly property var selectedRange: blank ? null : view.rangeIn(line.index, side, line.text.length)
+                onSelectedRangeChanged: Qt.callLater(applySelection)
+                function applySelection() {
+                    if (selectedRange)
+                        lineText.select(selectedRange[0], selectedRange[1])
+                    else
+                        lineText.deselect()
+                }
+                /// The text point at `x`, `y` of the cell: {offset, side, gutter}.
+                function textPoint(x, y) {
+                    const inCell = textCell.mapFromItem(cell, x, y)
+                    if (blank || inCell.x < 0)
+                        return { offset: 0, side: side, gutter: !blank }
+                    const inText = lineText.mapFromItem(cell, x, y)
+                    return { offset: lineText.positionAt(Math.max(0, inText.x), Math.max(0, Math.min(lineText.height - 1, inText.y))),
+                             side: side, gutter: false }
+                }
+
                 Row {
                     visible: !cell.blank
                     height: parent.height
@@ -489,60 +719,52 @@ Item {
                                     color: line.deleted ? GitColors.deletedStrong : GitColors.addedStrong
                                 }
                             }
-                            // On a wrapped line a changed word can break across visual lines: a
-                            // hidden copy of the text laid out the same way places each part.
-                            Loader {
-                                active: view.wrap && (line.marks ?? []).length > 0 && !cell.blank
-                                y: lineText.y
-                                width: textCell.width
-                                sourceComponent: Item {
-                                    TextLayoutProbe {
-                                        id: measure
-                                        width: textCell.width
-                                        wrapMode: TextEdit.WrapAnywhere
-                                        font: Theme.type.code
-                                        text: line.text
-                                    }
-                                    Repeater {
-                                        model: {
-                                            void measure.contentHeight
-                                            const parts = []
-                                            for (const mark of line.marks ?? []) {
-                                                const from = measure.positionToRectangle(mark[0])
-                                                const to = measure.positionToRectangle(mark[1])
-                                                if (Math.abs(from.y - to.y) < 1) {
-                                                    parts.push({ x: from.x, y: from.y, width: to.x - from.x, height: from.height })
-                                                    continue
-                                                }
-                                                parts.push({ x: from.x, y: from.y, width: measure.width - from.x, height: from.height })
-                                                for (let y = from.y + from.height; y < to.y - 1; y += from.height)
-                                                    parts.push({ x: 0, y: y, width: measure.width, height: from.height })
-                                                parts.push({ x: 0, y: to.y, width: to.x, height: to.height })
-                                            }
-                                            return parts.filter(part => part.width > 0.5)
+                            // On a wrapped line a changed word can break across visual lines: the
+                            // text's own layout places each part.
+                            Repeater {
+                                model: {
+                                    if (!view.wrap || cell.blank)
+                                        return []
+                                    void lineText.contentHeight
+                                    void lineText.width
+                                    const parts = []
+                                    for (const mark of line.marks ?? []) {
+                                        const from = lineText.positionToRectangle(mark[0])
+                                        const to = lineText.positionToRectangle(mark[1])
+                                        if (Math.abs(from.y - to.y) < 1) {
+                                            parts.push({ x: from.x, y: from.y, width: to.x - from.x, height: from.height })
+                                            continue
                                         }
-                                        delegate: Rectangle {
-                                            required property var modelData
-                                            x: modelData.x
-                                            y: modelData.y + 1
-                                            width: modelData.width
-                                            height: modelData.height - 2
-                                            radius: Theme.radius.xs
-                                            color: line.deleted ? GitColors.deletedStrong : GitColors.addedStrong
-                                        }
+                                        parts.push({ x: from.x, y: from.y, width: lineText.width - from.x, height: from.height })
+                                        for (let y = from.y + from.height; y < to.y - 1; y += from.height)
+                                            parts.push({ x: 0, y: y, width: lineText.width, height: from.height })
+                                        parts.push({ x: 0, y: to.y, width: to.x, height: to.height })
                                     }
+                                    return parts.filter(part => part.width > 0.5)
+                                }
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    x: modelData.x
+                                    y: lineText.y + modelData.y + 1
+                                    width: modelData.width
+                                    height: modelData.height - 2
+                                    radius: Theme.radius.xs
+                                    color: line.deleted ? GitColors.deletedStrong : GitColors.addedStrong
                                 }
                             }
-                            Text {
+                            DiffLineText {
                                 id: lineText
                                 y: view.wrap ? Theme.space.s1 : (parent.height - height) / 2
-                                width: view.wrap ? textCell.width : undefined
-                                wrapMode: view.wrap ? Text.WrapAnywhere : Text.NoWrap
+                                width: view.wrap ? textCell.width : implicitWidth
+                                wrapMode: view.wrap ? TextEdit.WrapAnywhere : TextEdit.NoWrap
                                 font: Theme.type.code
                                 color: Theme.colors.ink
-                                textFormat: cell.styled.length > 0 ? Text.StyledText : Text.PlainText
+                                selectionColor: Qt.alpha(Theme.colors.accent, GitLamaLayout.opacityDiffSelectedText)
+                                selectedTextColor: Theme.colors.ink
+                                textFormat: cell.styled.length > 0 ? TextEdit.RichText : TextEdit.PlainText
                                 text: cell.styled.length > 0 ? cell.styled : line.text
                                 onImplicitWidthChanged: if (!view.wrap && implicitWidth > view.widestText) view.widestText = implicitWidth
+                                onTextChanged: Qt.callLater(cell.applySelection)
                             }
                         }
                     }
@@ -589,12 +811,60 @@ Item {
                 enabled: view.lineSelection && line.lineRow
                 acceptedButtons: Qt.RightButton
                 onTapped: point => {
-                    if (!line.chosen)
+                    if (!line.chosen) {
+                        view.clearTextSelection()
                         view.selectLine(line.index, line.stableId, 0)
+                    }
                     const at = line.mapToItem(view, point.position.x, point.position.y)
                     view.lineMenuRequested(at.x, at.y)
                 }
             }
+        }
+    }
+
+    // Presses on line text select text (the selection controller above); presses on other
+    // rows (headers and their buttons, binary files) pass through. The strip at the right
+    // edge belongs to the scrollbar.
+    MouseArea {
+        id: textPointer
+        x: list.x
+        y: list.y
+        width: Math.max(0, list.width - Theme.space.s6)
+        height: list.height
+        acceptedButtons: Qt.LeftButton
+        preventStealing: true
+        onPressed: mouse => mouse.accepted = view._press(mouse)
+        onPositionChanged: mouse => {
+            if (!view._dragging)
+                return
+            view._dragAt = Qt.point(mouse.x, mouse.y)
+            view._extend(mouse.x, mouse.y)
+            if (mouse.y < GitLamaLayout.dragAutoScrollEdge || mouse.y > height - GitLamaLayout.dragAutoScrollEdge)
+                autoScroll.start()
+            else
+                autoScroll.stop()
+        }
+        onReleased: mouse => view._release(mouse)
+        onCanceled: {
+            view._dragging = false
+            autoScroll.stop()
+        }
+        onWheel: wheel => wheel.accepted = false
+    }
+    // A drag past the top or bottom edge scrolls and keeps extending the selection.
+    Timer {
+        id: autoScroll
+        interval: GitLamaLayout.dragAutoScrollInterval
+        repeat: true
+        onTriggered: {
+            const step = view._dragAt.y < GitLamaLayout.dragAutoScrollEdge ? -GitLamaLayout.diffLineHeight
+                : view._dragAt.y > textPointer.height - GitLamaLayout.dragAutoScrollEdge ? GitLamaLayout.diffLineHeight : 0
+            if (step === 0 || !view._dragging) {
+                stop()
+                return
+            }
+            list.contentY = Math.max(list.originY, Math.min(list.originY + Math.max(0, list.contentHeight - list.height), list.contentY + step))
+            view._extend(view._dragAt.x, view._dragAt.y)
         }
     }
 
@@ -718,7 +988,7 @@ Item {
         property real rowY: 0
         function refresh() {
             rowIndex = view.model && view.selectedRows.length > 0 ? view.model.firstIndexOf(view.selectedRows) : -1
-            const item = rowIndex < 0 ? null : list.itemAtIndex(rowIndex)
+            const item = rowIndex < 0 ? null : view._rowItem(rowIndex)
             rowY = item ? item.y - list.contentY : -1
         }
         active: view.selectionActions !== null && view.selectedRows.length > 0

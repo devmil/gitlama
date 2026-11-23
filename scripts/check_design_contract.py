@@ -227,8 +227,8 @@ for path in sorted(qml.glob("*Dialog.qml")):
 for path in sorted(qml.glob("*.qml")):
     text = path.read_text(encoding="utf-8")
     if re.search(r"^\s*(T\.TextArea|T\.TextField|TextEdit|TextInput)\s*\{", text, re.M):
-        # TextLayoutProbe is an invisible, disabled layout copy that nobody edits or selects.
-        if "MeridianTextMenu" not in text and path.name not in ("Actions.qml", "TextLayoutProbe.qml"):
+        # DiffLineText is selected by DiffView, whose own menu and Ctrl+C copy the selection.
+        if "MeridianTextMenu" not in text and path.name not in ("Actions.qml", "DiffLineText.qml"):
             errors.append(f"{path.relative_to(root)}: an editable text lacks MeridianTextMenu")
 # The history graph is drawn natively and fed by the G-LANE-01 rows.
 history_row = (qml / "HistoryRow.qml").read_text(encoding="utf-8")

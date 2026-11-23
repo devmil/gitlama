@@ -615,6 +615,46 @@ mod diff_model {
             change
         }
 
+        /// The text selected from row `first` at UTF-16 `first_offset` to row `last` at
+        /// `last_offset`, over the line rows `side` shows ("old": context and deletions,
+        /// "new": context and additions, "": every line row), joined by newlines (Copy).
+        #[qslot]
+        fn text_between(
+            &self,
+            first: i32,
+            first_offset: i32,
+            last: i32,
+            last_offset: i32,
+            side: String,
+        ) -> String {
+            let mut lines = Vec::new();
+            for row in first.max(0)..=last.min(self.total - 1) {
+                let view = self.view(row);
+                let shown = match side.as_str() {
+                    "old" => matches!(view.kind, "context" | "deletion"),
+                    "new" => matches!(view.kind, "context" | "addition"),
+                    _ => matches!(view.kind, "context" | "addition" | "deletion"),
+                };
+                if !shown || view.loading {
+                    continue;
+                }
+                let units: Vec<u16> = view.text.encode_utf16().collect();
+                let from = if row == first {
+                    first_offset.max(0) as usize
+                } else {
+                    0
+                };
+                let to = if row == last {
+                    last_offset.max(0) as usize
+                } else {
+                    units.len()
+                };
+                let to = to.min(units.len());
+                lines.push(String::from_utf16_lossy(&units[from.min(to)..to]));
+            }
+            lines.join("\n")
+        }
+
         /// The stable ids of the line rows from `first` to `last` (a Shift range).
         #[qslot]
         fn line_ids(&self, first: i32, last: i32) -> Vec<String> {

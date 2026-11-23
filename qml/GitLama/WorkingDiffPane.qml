@@ -23,6 +23,8 @@ Rectangle {
     readonly property bool busy: paneState.busy === true
 
     color: Theme.colors.pane
+    /// The diff (development screenshot steps).
+    readonly property alias diffView: diff
     Component.onCompleted: Store.workingDiffPane = pane
     Component.onDestruction: if (Store.workingDiffPane === pane) Store.workingDiffPane = null
 

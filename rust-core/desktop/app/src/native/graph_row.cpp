@@ -3,6 +3,7 @@
 #include "syntax_highlighter.h"
 #include "text_formatter.h"
 
+#include <QMetaMethod>
 #include <QPainter>
 #include <QPainterPath>
 #include <QtQml/qqml.h>
@@ -95,11 +96,21 @@ void GraphRow::beginTransition()
     from_ = currentLighting();
     hasFrom_ = true;
     pending_ = true;
+    // The row keeps showing the old lighting until the transition's owner times it: drawing
+    // the new state now and the old one again when the (queued) transition starts flickers.
+    litBlend_ = 0;
     const int generation = generation_;
     QMetaObject::invokeMethod(this, [this, generation] {
         pending_ = false;
-        if (generation == generation_ && hasFrom_)
-            emit lightingTransition();
+        if (generation != generation_ || !hasFrom_)
+            return;
+        // Nobody animates it: show the new lighting at once.
+        if (!isSignalConnected(QMetaMethod::fromSignal(&GraphRow::lightingTransition))) {
+            litBlend_ = 1;
+            emit changed();
+            return;
+        }
+        emit lightingTransition();
     }, Qt::QueuedConnection);
 }
 
