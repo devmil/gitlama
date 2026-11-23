@@ -40,9 +40,12 @@ pub const MAX_TAB_NAME_BYTES: usize = 256;
 /// Whether `key` names a colour: a palette name or `rgb-rrggbb`.
 pub fn is_color_key(key: &str) -> bool {
     PALETTE_COLORS.contains(&key)
-        || key
-            .strip_prefix("rgb-")
-            .is_some_and(|hex| hex.len() == 6 && hex.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)))
+        || key.strip_prefix("rgb-").is_some_and(|hex| {
+            hex.len() == 6
+                && hex
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        })
 }
 
 pub fn is_icon(name: &str) -> bool {

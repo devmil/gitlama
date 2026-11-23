@@ -13,14 +13,17 @@ pub fn png_data_url(bytes: Vec<u8>, max_side: u32) -> Option<String> {
     // cancels the first, so they run one at a time.
     static DECODING: std::sync::Mutex<()> = std::sync::Mutex::new(());
     let result = {
-        let _turn = DECODING.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _turn = DECODING
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         gitlama_core::api::image_decode_pair(None, Some(bytes))
     };
     if result.failure.is_some() || result.decode_failure.is_some() {
         return None;
     }
     let decoded = result.new?;
-    let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_raw(decoded.width, decoded.height, decoded.rgba)?;
+    let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_raw(decoded.width, decoded.height, decoded.rgba)?;
     let longer = decoded.width.max(decoded.height).max(1);
     let image = if longer > max_side {
         let scale = f64::from(max_side) / f64::from(longer);
@@ -62,18 +65,26 @@ mod tests {
 }
 
 /// A decoded image as a PNG data URL, at full size.
-pub fn decoded_data_url(decoded: gitlama_contract::image_decoder::NativeDecodedImage) -> Option<String> {
-    let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_raw(decoded.width, decoded.height, decoded.rgba)?;
+pub fn decoded_data_url(
+    decoded: gitlama_contract::image_decoder::NativeDecodedImage,
+) -> Option<String> {
+    let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_raw(decoded.width, decoded.height, decoded.rgba)?;
     let mut png = Vec::new();
     image::DynamicImage::ImageRgba8(buffer)
         .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
         .ok()?;
-    Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
+    Some(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(png)
+    ))
 }
 
 /// An image diff as the presentation shows it: {failed, decodeFailure,
 /// old: {url, width, height, bytes} | null, new: ...}.
-pub fn image_diff_value(result: Option<gitlama_contract::dto::NativeImageDiffResult>) -> serde_json::Value {
+pub fn image_diff_value(
+    result: Option<gitlama_contract::dto::NativeImageDiffResult>,
+) -> serde_json::Value {
     use gitlama_contract::image_decoder::NativeImageDecodeFailureKind as Failure;
     let Some(result) = result.filter(|result| result.failure.is_none()) else {
         return serde_json::json!({"failed": true});
@@ -82,8 +93,12 @@ pub fn image_diff_value(result: Option<gitlama_contract::dto::NativeImageDiffRes
         Some(image) => {
             let (width, height, bytes) = (image.width, image.height, image.encoded_bytes);
             match decoded_data_url(image) {
-                Some(url) => serde_json::json!({"url": url, "width": width, "height": height, "bytes": bytes}),
-                None => serde_json::json!({"failed": true, "width": width, "height": height, "bytes": bytes}),
+                Some(url) => {
+                    serde_json::json!({"url": url, "width": width, "height": height, "bytes": bytes})
+                }
+                None => {
+                    serde_json::json!({"failed": true, "width": width, "height": height, "bytes": bytes})
+                }
             }
         }
         None => serde_json::Value::Null,

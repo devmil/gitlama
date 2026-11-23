@@ -38,12 +38,24 @@ mod app_state {
 
     impl AppState {
         qproperty!("startup", Member = startup, Notify = startup_changed);
-        qproperty!("appearance", Member = appearance, Notify = appearance_changed);
+        qproperty!(
+            "appearance",
+            Member = appearance,
+            Notify = appearance_changed
+        );
         qproperty!("platform", Member = platform, Notify = platform_changed);
-        qproperty!("commands", Member = command_registry, Notify = platform_changed);
+        qproperty!(
+            "commands",
+            Member = command_registry,
+            Notify = platform_changed
+        );
         qproperty!("shortcuts", Member = shortcuts, Notify = appearance_changed);
 
-        qproperty!("activation", Member = activation, Notify = activation_changed);
+        qproperty!(
+            "activation",
+            Member = activation,
+            Notify = activation_changed
+        );
         #[qsignal]
         pub fn activation_changed(&mut self);
 
@@ -85,12 +97,19 @@ mod app_state {
         #[qslot]
         fn update_appearance(&self, patch: Value) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let Value::Object(fields) = patch else { return };
                 let mut document = services.settings.current();
-                let Ok(Value::Object(mut current)) = serde_json::to_value(&document.appearance) else { return };
+                let Ok(Value::Object(mut current)) = serde_json::to_value(&document.appearance)
+                else {
+                    return;
+                };
                 current.extend(fields);
-                let Ok(appearance) = serde_json::from_value(Value::Object(current)) else { return };
+                let Ok(appearance) = serde_json::from_value(Value::Object(current)) else {
+                    return;
+                };
                 if document.appearance == appearance {
                     return;
                 }

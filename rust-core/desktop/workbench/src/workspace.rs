@@ -8,15 +8,18 @@ use crate::history::{BranchFilter, HistoryService, SelectionOrigin};
 use crate::notify::{Notifier, Topics};
 use crate::rt::{self, PeriodicHandle};
 use crate::session::{
-    FailureCode, OpenedSession, SessionError, SessionIdentity, SessionResult, SessionState, basename,
-    path_label,
+    FailureCode, OpenedSession, SessionError, SessionIdentity, SessionResult, SessionState,
+    basename, path_label,
 };
 use crate::settings::SettingsService;
 use crate::view_cache::SessionViewCache;
 use futures::future::LocalBoxFuture;
-use gitlama_contract::domain::path_identity::{NativePathIdentity, NativePathPlatform, NativeRemoteAuthority};
+use gitlama_contract::domain::path_identity::{
+    NativePathIdentity, NativePathPlatform, NativeRemoteAuthority,
+};
 use gitlama_contract::dto::{
-    NativeRepositoryEventKind, NativeRepositoryPhase, NativeRepositorySnapshot, NativeRepositoryStatus,
+    NativeRepositoryEventKind, NativeRepositoryPhase, NativeRepositorySnapshot,
+    NativeRepositoryStatus,
 };
 use gitlama_contract::storage::{NativeTabGroup, NativeWorktreeSettings};
 use std::cell::{Cell, RefCell};
@@ -228,7 +231,9 @@ impl WorkspaceState {
     }
 
     pub fn entry_of(&self, tab_id: Option<u64>) -> Vec<&Tab> {
-        let Some(tab_id) = tab_id else { return Vec::new() };
+        let Some(tab_id) = tab_id else {
+            return Vec::new();
+        };
         self.tab_entries()
             .into_iter()
             .find(|entry| entry.iter().any(|tab| tab.id == tab_id))
@@ -288,7 +293,11 @@ struct FollowedHead {
 }
 
 impl FollowedHeads {
-    fn take(&mut self, identity: SessionIdentity, snapshot: &NativeRepositorySnapshot) -> Option<String> {
+    fn take(
+        &mut self,
+        identity: SessionIdentity,
+        snapshot: &NativeRepositorySnapshot,
+    ) -> Option<String> {
         let follow = self.followed.get(&identity.native_id)?.clone();
         let head = snapshot.status.as_ref()?.head_object_id.clone()?;
         if Some(&head) == follow.before.as_ref() {
@@ -452,11 +461,17 @@ impl WorkspaceService {
     }
 
     pub fn active_canonical(&self) -> Option<NativePathIdentity> {
-        self.active_tab().and_then(|tab| tab.canonical_identity().cloned())
+        self.active_tab()
+            .and_then(|tab| tab.canonical_identity().cloned())
     }
 
     pub fn tab(&self, tab_id: u64) -> Option<Tab> {
-        self.inner.borrow().tabs.iter().find(|tab| tab.id == tab_id).cloned()
+        self.inner
+            .borrow()
+            .tabs
+            .iter()
+            .find(|tab| tab.id == tab_id)
+            .cloned()
     }
 
     pub fn tab_for_session(&self, session: SessionIdentity) -> Option<Tab> {
@@ -465,7 +480,13 @@ impl WorkspaceService {
     }
 
     /// The open tabs' sessions with their repositories, for background work.
-    pub fn open_sessions(&self) -> Vec<(SessionIdentity, NativePathIdentity, Rc<NativeRepositorySnapshot>)> {
+    pub fn open_sessions(
+        &self,
+    ) -> Vec<(
+        SessionIdentity,
+        NativePathIdentity,
+        Rc<NativeRepositorySnapshot>,
+    )> {
         let inner = self.inner.borrow();
         inner
             .tabs
@@ -684,7 +705,12 @@ impl WorkspaceService {
         }
         let path = match &recent {
             None => {
-                let chooser = self.hooks.borrow().choose_repository.as_ref().map(|choose| choose());
+                let chooser = self
+                    .hooks
+                    .borrow()
+                    .choose_repository
+                    .as_ref()
+                    .map(|choose| choose());
                 match chooser {
                     Some(chooser) => chooser.await,
                     None => None,
@@ -699,17 +725,27 @@ impl WorkspaceService {
         let state = match recent {
             Some(recent) => {
                 let start = recent.clone();
-                self.open_tab(basename(&recent), Some(tab_id), Some(recent), None, true, move |generation| {
-                    sessions.open_identity(start, generation)
-                })
+                self.open_tab(
+                    basename(&recent),
+                    Some(tab_id),
+                    Some(recent),
+                    None,
+                    true,
+                    move |generation| sessions.open_identity(start, generation),
+                )
                 .await?
             }
             None => {
                 let path = path.unwrap_or_default();
                 let start = path.clone();
-                self.open_tab(path_label(&path), Some(tab_id), None, None, true, move |generation| {
-                    sessions.open(start, generation)
-                })
+                self.open_tab(
+                    path_label(&path),
+                    Some(tab_id),
+                    None,
+                    None,
+                    true,
+                    move |generation| sessions.open(start, generation),
+                )
                 .await?
             }
         };
@@ -720,19 +756,32 @@ impl WorkspaceService {
     pub async fn open(self: &Rc<Self>, path: String) -> SessionResult<SessionState> {
         let sessions = Rc::clone(&self.sessions);
         let start = path.clone();
-        self.open_tab(path_label(&path), None, None, None, true, move |generation| {
-            sessions.open(start, generation)
-        })
+        self.open_tab(
+            path_label(&path),
+            None,
+            None,
+            None,
+            true,
+            move |generation| sessions.open(start, generation),
+        )
         .await
     }
 
     /// Opens a known repository, or activates its tab.
-    pub async fn open_recent(self: &Rc<Self>, identity: NativePathIdentity) -> SessionResult<SessionState> {
+    pub async fn open_recent(
+        self: &Rc<Self>,
+        identity: NativePathIdentity,
+    ) -> SessionResult<SessionState> {
         let sessions = Rc::clone(&self.sessions);
         let start = identity.clone();
-        self.open_tab(basename(&identity), None, Some(identity), None, true, move |generation| {
-            sessions.open_identity(start, generation)
-        })
+        self.open_tab(
+            basename(&identity),
+            None,
+            Some(identity),
+            None,
+            true,
+            move |generation| sessions.open_identity(start, generation),
+        )
         .await
     }
 
@@ -744,14 +793,22 @@ impl WorkspaceService {
     ) -> SessionResult<SessionState> {
         let sessions = Rc::clone(&self.sessions);
         let start = path.clone();
-        self.open_tab(path_label(&path), None, None, None, true, move |generation| {
-            sessions.initialize(start, generation, initial_branch, bare)
-        })
+        self.open_tab(
+            path_label(&path),
+            None,
+            None,
+            None,
+            true,
+            move |generation| sessions.initialize(start, generation, initial_branch, bare),
+        )
         .await
     }
 
     /// The identity of the remote `path` of a connected host.
-    pub fn remote_path_identity(authority: NativeRemoteAuthority, path: &[u8]) -> NativePathIdentity {
+    pub fn remote_path_identity(
+        authority: NativeRemoteAuthority,
+        path: &[u8],
+    ) -> NativePathIdentity {
         NativePathIdentity {
             platform: NativePathPlatform::Unix,
             units: path.iter().map(|byte| u16::from(*byte)).collect(),
@@ -760,7 +817,11 @@ impl WorkspaceService {
     }
 
     /// Opens a session that opened outside the workspace (a finished clone).
-    pub async fn adopt_opened(self: &Rc<Self>, opened: OpenedSession, current: bool) -> SessionResult<SessionState> {
+    pub async fn adopt_opened(
+        self: &Rc<Self>,
+        opened: OpenedSession,
+        current: bool,
+    ) -> SessionResult<SessionState> {
         if self.disposed() || !current {
             let _ = self.sessions.close(opened.identity).await;
             return Err(SessionError(FailureCode::StaleGeneration));
@@ -900,7 +961,12 @@ impl WorkspaceService {
         Ok(self.adopt(opened, Some(tab_id), Some(label)))
     }
 
-    fn adopt(self: &Rc<Self>, opened: OpenedSession, tab_id: Option<u64>, label: Option<String>) -> SessionState {
+    fn adopt(
+        self: &Rc<Self>,
+        opened: OpenedSession,
+        tab_id: Option<u64>,
+        label: Option<String>,
+    ) -> SessionState {
         let presented = Rc::new(self.view_cache.present(&opened.snapshot));
         self.view_cache.remember(&opened.snapshot);
         let state = SessionState {
@@ -927,7 +993,9 @@ impl WorkspaceService {
             let navigation = match &existing {
                 None => self.navigation_for(worktree_root.as_ref()),
                 Some(existing) if existing.navigation.is_default() => self.navigation_for(
-                    worktree_root.as_ref().or(existing.requested_identity.as_ref()),
+                    worktree_root
+                        .as_ref()
+                        .or(existing.requested_identity.as_ref()),
                 ),
                 Some(existing) => existing.navigation.clone(),
             };
@@ -939,7 +1007,9 @@ impl WorkspaceService {
                     .or_else(|| existing.as_ref().map(|tab| tab.label.clone()))
                     .unwrap_or_else(|| worktree_root.as_ref().map(basename).unwrap_or_default()),
                 phase: TabPhase::Open,
-                requested_identity: existing.as_ref().and_then(|tab| tab.requested_identity.clone()),
+                requested_identity: existing
+                    .as_ref()
+                    .and_then(|tab| tab.requested_identity.clone()),
                 session: Some(state.clone()),
                 failure: None,
                 watch_overflow_revision: None,
@@ -1000,7 +1070,10 @@ impl WorkspaceService {
                 inner.opening_panes.remove(&tab_id);
             }
             let tab = &inner.tabs[index];
-            let Some(status) = tab.session.as_ref().and_then(|session| session.snapshot.status.as_ref())
+            let Some(status) = tab
+                .session
+                .as_ref()
+                .and_then(|session| session.snapshot.status.as_ref())
             else {
                 return;
             };
@@ -1030,7 +1103,9 @@ impl WorkspaceService {
             if inner.disposed || inner.active_tab_id == Some(tab_id) {
                 return;
             }
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             Self::expand_group_of(&mut inner, index);
             if let Some(previous) = inner.active_tab_id {
                 inner.revealed_references.remove(&previous);
@@ -1049,7 +1124,9 @@ impl WorkspaceService {
     pub fn reorder_tab(&self, tab_id: u64, target_index: usize) {
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             if inner.tabs.len() < 2 {
                 return;
             }
@@ -1059,8 +1136,16 @@ impl WorkspaceService {
             }
             let tab = inner.tabs.remove(index);
             inner.tabs.insert(bounded, tab.clone());
-            let before = if bounded > 0 { inner.tabs[bounded - 1].group_id } else { None };
-            let after = if bounded + 1 < inner.tabs.len() { inner.tabs[bounded + 1].group_id } else { None };
+            let before = if bounded > 0 {
+                inner.tabs[bounded - 1].group_id
+            } else {
+                None
+            };
+            let after = if bounded + 1 < inner.tabs.len() {
+                inner.tabs[bounded + 1].group_id
+            } else {
+                None
+            };
             let group = if before.is_some() && before == after {
                 before
             } else if tab.group_id.is_some() && (before == tab.group_id || after == tab.group_id) {
@@ -1079,7 +1164,9 @@ impl WorkspaceService {
     pub fn move_tab(&self, tab_id: u64, target_index: usize, group_id: Option<u64>) {
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             let group = group_id.filter(|id| Self::group_index(&inner, *id).is_some());
             let mut tab = inner.tabs.remove(index);
             tab.group_id = group;
@@ -1105,7 +1192,9 @@ impl WorkspaceService {
         };
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             if others.is_empty() {
                 return;
             }
@@ -1177,7 +1266,11 @@ impl WorkspaceService {
         let group_id = {
             let mut inner = self.inner.borrow_mut();
             let index = Self::index(&inner, tab_id)?;
-            let used: HashSet<&str> = inner.groups.iter().map(|group| group.color.as_str()).collect();
+            let used: HashSet<&str> = inner
+                .groups
+                .iter()
+                .map(|group| group.color.as_str())
+                .collect();
             let color = PALETTE_COLORS
                 .iter()
                 .find(|color| !used.contains(**color))
@@ -1196,8 +1289,12 @@ impl WorkspaceService {
     pub fn add_tab_to_group(&self, tab_id: u64, group_id: u64) {
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
-            if Self::group_index(&inner, group_id).is_none() || inner.tabs[index].group_id == Some(group_id) {
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
+            if Self::group_index(&inner, group_id).is_none()
+                || inner.tabs[index].group_id == Some(group_id)
+            {
                 return;
             }
             Self::move_into_group(&mut inner, index, group_id);
@@ -1211,8 +1308,12 @@ impl WorkspaceService {
         let worktrees = self.worktree_ids(tab_id);
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
-            let Some(group_id) = inner.tabs[index].group_id else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
+            let Some(group_id) = inner.tabs[index].group_id else {
+                return;
+            };
             let mut tab = inner.tabs.remove(index);
             tab.group_id = None;
             let last = inner
@@ -1236,7 +1337,9 @@ impl WorkspaceService {
     pub fn set_tab_group_collapsed(self: &Rc<Self>, group_id: u64, collapsed: bool) {
         let replacement = {
             let mut inner = self.inner.borrow_mut();
-            let Some(group_index) = Self::group_index(&inner, group_id) else { return };
+            let Some(group_index) = Self::group_index(&inner, group_id) else {
+                return;
+            };
             if inner.groups[group_index].collapsed == collapsed {
                 return;
             }
@@ -1245,7 +1348,9 @@ impl WorkspaceService {
                 && let Some(active_index) = active_index
                 && inner.tabs[active_index].group_id == Some(group_id)
             {
-                let Some(replacement) = Self::visible_neighbour(&inner, active_index, Some(group_id)) else {
+                let Some(replacement) =
+                    Self::visible_neighbour(&inner, active_index, Some(group_id))
+                else {
                     return;
                 };
                 inner.groups[group_index].collapsed = true;
@@ -1299,7 +1404,13 @@ impl WorkspaceService {
         self.close_tabs(members).await;
     }
 
-    fn add_group(&self, name: String, color: Option<String>, icon: Option<String>, collapsed: bool) -> u64 {
+    fn add_group(
+        &self,
+        name: String,
+        color: Option<String>,
+        icon: Option<String>,
+        collapsed: bool,
+    ) -> u64 {
         Self::add_group_to(&mut self.inner.borrow_mut(), name, color, icon, collapsed)
     }
 
@@ -1329,7 +1440,9 @@ impl WorkspaceService {
     fn update_group(&self, group_id: u64, update: impl FnOnce(&mut TabGroup)) {
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::group_index(&inner, group_id) else { return };
+            let Some(index) = Self::group_index(&inner, group_id) else {
+                return;
+            };
             let mut next = inner.groups[index].clone();
             update(&mut next);
             if next == inner.groups[index] {
@@ -1382,7 +1495,13 @@ impl WorkspaceService {
                 None => ordered.push(tab.clone()),
                 Some(group) => {
                     if placed.insert(group) {
-                        ordered.extend(inner.tabs.iter().filter(|item| item.group_id == Some(group)).cloned());
+                        ordered.extend(
+                            inner
+                                .tabs
+                                .iter()
+                                .filter(|item| item.group_id == Some(group))
+                                .cloned(),
+                        );
                     }
                 }
             }
@@ -1404,7 +1523,10 @@ impl WorkspaceService {
         let mut worktrees: HashMap<NativePathIdentity, Vec<u64>> = HashMap::new();
         for tab in &inner.tabs {
             if let Some(repository) = tab.repository() {
-                worktrees.entry(repository.clone()).or_default().push(tab.id);
+                worktrees
+                    .entry(repository.clone())
+                    .or_default()
+                    .push(tab.id);
             }
         }
         if !worktrees.values().any(|tabs| tabs.len() > 1) {
@@ -1413,7 +1535,9 @@ impl WorkspaceService {
         let by_id: HashMap<u64, Tab> = inner.tabs.iter().map(|tab| (tab.id, tab.clone())).collect();
         let mut ordered = Vec::with_capacity(inner.tabs.len());
         for tab in &inner.tabs {
-            let members = tab.repository().and_then(|repository| worktrees.get(repository));
+            let members = tab
+                .repository()
+                .and_then(|repository| worktrees.get(repository));
             let Some(members) = members.filter(|members| members.len() >= 2) else {
                 ordered.push(tab.clone());
                 continue;
@@ -1446,7 +1570,9 @@ impl WorkspaceService {
     }
 
     fn expand_group_of(inner: &mut Inner, tab_index: usize) {
-        let Some(group_id) = inner.tabs[tab_index].group_id else { return };
+        let Some(group_id) = inner.tabs[tab_index].group_id else {
+            return;
+        };
         if let Some(index) = Self::group_index(inner, group_id)
             && inner.groups[index].collapsed
         {
@@ -1483,13 +1609,20 @@ impl WorkspaceService {
 
     /// Closes every tab of the worktree `root` except the one of `source`,
     /// and returns the worktrees it closed (the Dart closeWorktreeTabs).
-    pub async fn close_worktree_tabs(self: &Rc<Self>, root: &NativePathIdentity, source: SessionIdentity) -> Vec<NativePathIdentity> {
+    pub async fn close_worktree_tabs(
+        self: &Rc<Self>,
+        root: &NativePathIdentity,
+        source: SessionIdentity,
+    ) -> Vec<NativePathIdentity> {
         let affected: Vec<u64> = self
             .inner
             .borrow()
             .tabs
             .iter()
-            .filter(|tab| tab.session.as_ref().map(|session| session.identity) != Some(source) && tab.canonical_identity() == Some(root))
+            .filter(|tab| {
+                tab.session.as_ref().map(|session| session.identity) != Some(source)
+                    && tab.canonical_identity() == Some(root)
+            })
             .map(|tab| tab.id)
             .collect();
         let mut closed = Vec::new();
@@ -1501,7 +1634,11 @@ impl WorkspaceService {
     }
 
     /// Reopens `worktrees` and activates `source`'s tab again.
-    pub async fn restore_worktree_tabs(self: &Rc<Self>, worktrees: Vec<NativePathIdentity>, source: SessionIdentity) {
+    pub async fn restore_worktree_tabs(
+        self: &Rc<Self>,
+        worktrees: Vec<NativePathIdentity>,
+        source: SessionIdentity,
+    ) {
         for worktree in worktrees {
             // A concurrent external delete makes reopening impossible.
             let _ = self.open_recent(worktree).await;
@@ -1517,7 +1654,9 @@ impl WorkspaceService {
             if inner.disposed {
                 return;
             }
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             let was_active = inner.active_tab_id == Some(tab_id);
             let removed = inner.tabs.remove(index);
             inner.history_selections.remove(&tab_id);
@@ -1545,19 +1684,27 @@ impl WorkspaceService {
                     let replacement = if !Self::hidden(&inner, &inner.tabs[nearest]) {
                         inner.tabs[nearest].id
                     } else {
-                        Self::visible_neighbour(&inner, nearest, None).unwrap_or(inner.tabs[nearest].id)
+                        Self::visible_neighbour(&inner, nearest, None)
+                            .unwrap_or(inner.tabs[nearest].id)
                     };
                     let replacement_index = Self::index(&inner, replacement).expect("replacement");
                     inner.active_tab_id = Some(replacement);
                     inner.current = inner.tabs[replacement_index].session.clone();
-                    (inner.tabs[replacement_index].navigation.pane == Pane::History).then_some(replacement)
+                    (inner.tabs[replacement_index].navigation.pane == Pane::History)
+                        .then_some(replacement)
                 }
             };
             if let Some(load) = load {
                 self.load_history_for_tab(load, true, None);
             }
         }
-        if !self.inner.borrow().tabs.iter().any(|tab| tab.session.is_some()) {
+        if !self
+            .inner
+            .borrow()
+            .tabs
+            .iter()
+            .any(|tab| tab.session.is_some())
+        {
             self.drain.borrow_mut().cancel();
         }
         self.publish_workspace();
@@ -1568,7 +1715,9 @@ impl WorkspaceService {
     pub fn update_navigation(&self, tab_id: u64, navigation: Navigation) {
         {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             if navigation.pane != inner.tabs[index].navigation.pane {
                 inner.opening_panes.remove(&tab_id);
             }
@@ -1594,10 +1743,15 @@ impl WorkspaceService {
     /// Loads the history of `tab_id` and selects its remembered commit or HEAD.
     pub async fn show_history(self: &Rc<Self>, tab_id: u64) {
         let Some(tab) = self.tab(tab_id) else { return };
-        let Some(session) = tab.session.clone() else { return };
+        let Some(session) = tab.session.clone() else {
+            return;
+        };
         let reveal = self.take_head_reveal(&tab);
         match reveal {
-            Some(reveal) => self.load_history_and_reveal(tab_id, session.identity, reveal).await,
+            Some(reveal) => {
+                self.load_history_and_reveal(tab_id, session.identity, reveal)
+                    .await
+            }
             None => {
                 self.load_history_and_restore_selection(
                     tab_id,
@@ -1614,7 +1768,9 @@ impl WorkspaceService {
     pub async fn set_branch_filter(self: &Rc<Self>, tab_id: u64, filter: BranchFilter) {
         let apply = {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             if inner.tabs[index].navigation.branch_filter == filter {
                 return;
             }
@@ -1633,7 +1789,9 @@ impl WorkspaceService {
     pub async fn reveal_reference(self: &Rc<Self>, tab_id: u64, reference: Option<String>) {
         let apply = {
             let mut inner = self.inner.borrow_mut();
-            let Some(index) = Self::index(&inner, tab_id) else { return };
+            let Some(index) = Self::index(&inner, tab_id) else {
+                return;
+            };
             let before = Self::shown_filter(&inner, &inner.tabs[index]);
             match reference {
                 None => {
@@ -1644,8 +1802,10 @@ impl WorkspaceService {
                 }
             }
             let shown = Self::shown_filter(&inner, &inner.tabs[index]);
-            (shown != before && inner.active_tab_id == Some(tab_id) && inner.tabs[index].session.is_some())
-                .then_some(shown)
+            (shown != before
+                && inner.active_tab_id == Some(tab_id)
+                && inner.tabs[index].session.is_some())
+            .then_some(shown)
         };
         if let Some(shown) = apply {
             self.history.apply_branch_filter(shown).await;
@@ -1655,7 +1815,9 @@ impl WorkspaceService {
     /// The tab's branch filter plus the reference revealed in it.
     pub fn shown_branch_filter(&self, tab_id: u64) -> BranchFilter {
         let inner = self.inner.borrow();
-        Self::index(&inner, tab_id).map_or(BranchFilter::NONE, |index| Self::shown_filter(&inner, &inner.tabs[index]))
+        Self::index(&inner, tab_id).map_or(BranchFilter::NONE, |index| {
+            Self::shown_filter(&inner, &inner.tabs[index])
+        })
     }
 
     fn shown_filter(inner: &Inner, tab: &Tab) -> BranchFilter {
@@ -1666,7 +1828,13 @@ impl WorkspaceService {
                     && !filter.contains(revealed)
                     && filter.len() < crate::history::BRANCH_FILTER_REFERENCES =>
             {
-                BranchFilter::new(filter.references().iter().cloned().chain(std::iter::once(revealed.clone())))
+                BranchFilter::new(
+                    filter
+                        .references()
+                        .iter()
+                        .cloned()
+                        .chain(std::iter::once(revealed.clone())),
+                )
             }
             _ => filter.clone(),
         }
@@ -1683,7 +1851,8 @@ impl WorkspaceService {
         self.ensure_active()?;
         let revision = {
             let inner = self.inner.borrow();
-            let index = Self::index_for_session(&inner, identity).ok_or(SessionError::UNKNOWN_SESSION)?;
+            let index =
+                Self::index_for_session(&inner, identity).ok_or(SessionError::UNKNOWN_SESSION)?;
             inner.tabs[index]
                 .session
                 .as_ref()
@@ -1694,7 +1863,8 @@ impl WorkspaceService {
         loop {
             {
                 let inner = self.inner.borrow();
-                let index = Self::index_for_session(&inner, identity).ok_or(SessionError::UNKNOWN_SESSION)?;
+                let index = Self::index_for_session(&inner, identity)
+                    .ok_or(SessionError::UNKNOWN_SESSION)?;
                 let snapshot = &inner.tabs[index]
                     .session
                     .as_ref()
@@ -1730,7 +1900,9 @@ impl WorkspaceService {
         }
         let weak = Rc::downgrade(self);
         let handle = PeriodicHandle::start(self.drain_interval, move || {
-            let Some(service) = weak.upgrade() else { return };
+            let Some(service) = weak.upgrade() else {
+                return;
+            };
             let sessions: Vec<(SessionIdentity, bool)> = {
                 let mut inner = service.inner.borrow_mut();
                 inner.drain_tick += 1;
@@ -1756,7 +1928,9 @@ impl WorkspaceService {
 
     /// Drains `session` once, unless a drain of it is running.
     pub async fn drain_now(self: &Rc<Self>, session: SessionIdentity) {
-        if self.inner.borrow().disposed || !self.inner.borrow_mut().draining.insert(session.native_id) {
+        if self.inner.borrow().disposed
+            || !self.inner.borrow_mut().draining.insert(session.native_id)
+        {
             return;
         }
         self.drain_events(session).await;
@@ -1808,7 +1982,10 @@ impl WorkspaceService {
                 let changed = {
                     let mut inner = self.inner.borrow_mut();
                     let tab = &mut inner.tabs[index];
-                    if tab.watch_overflow_revision.is_none_or(|previous| revision > previous) {
+                    if tab
+                        .watch_overflow_revision
+                        .is_none_or(|previous| revision > previous)
+                    {
                         tab.watch_overflow_revision = Some(revision);
                         true
                     } else {
@@ -1819,7 +1996,9 @@ impl WorkspaceService {
                     self.publish_workspace();
                 }
             }
-            let Some(snapshot) = event.snapshot else { continue };
+            let Some(snapshot) = event.snapshot else {
+                continue;
+            };
             let current = self.inner.borrow().tabs[index].session.clone();
             let Some(current) = current else { continue };
             if event.kind != NativeRepositoryEventKind::Resynchronize
@@ -1879,27 +2058,42 @@ impl WorkspaceService {
     /// `reveal` names a commit the reloaded history selects and scrolls to.
     fn load_history_for_tab(self: &Rc<Self>, tab_id: u64, entering: bool, reveal: Option<String>) {
         let Some(tab) = self.tab(tab_id) else { return };
-        let Some(session) = tab.session.clone() else { return };
+        let Some(session) = tab.session.clone() else {
+            return;
+        };
         let kept = self.take_head_reveal(&tab);
         let reveal = reveal.or(kept);
         let this = Rc::clone(self);
         match reveal {
             Some(reveal) => rt::spawn_detached(async move {
-                this.load_history_and_reveal(tab_id, session.identity, reveal).await
+                this.load_history_and_reveal(tab_id, session.identity, reveal)
+                    .await
             }),
             None => {
                 let selected = tab.navigation.selected_identity.clone();
                 rt::spawn_detached(async move {
-                    this.load_history_and_restore_selection(tab_id, session.identity, selected, entering)
-                        .await
+                    this.load_history_and_restore_selection(
+                        tab_id,
+                        session.identity,
+                        selected,
+                        entering,
+                    )
+                    .await
                 })
             }
         }
     }
 
     fn take_head_reveal(&self, tab: &Tab) -> Option<String> {
-        let head = tab.session.as_ref().and_then(|session| session.head_object_id()).map(str::to_owned);
-        self.inner.borrow_mut().heads.take_reveal(tab.id, head.as_deref())
+        let head = tab
+            .session
+            .as_ref()
+            .and_then(|session| session.head_object_id())
+            .map(str::to_owned);
+        self.inner
+            .borrow_mut()
+            .heads
+            .take_reveal(tab.id, head.as_deref())
     }
 
     fn tab_shows_history_of(&self, tab_id: u64, identity: SessionIdentity) -> Option<Tab> {
@@ -1916,10 +2110,17 @@ impl WorkspaceService {
             .then(|| tab.clone())
     }
 
-    async fn load_history_and_reveal(self: &Rc<Self>, tab_id: u64, identity: SessionIdentity, object_id: String) {
+    async fn load_history_and_reveal(
+        self: &Rc<Self>,
+        tab_id: u64,
+        identity: SessionIdentity,
+        object_id: String,
+    ) {
         self.history.load(identity, vec![object_id.clone()]).await;
         for attempt in 0..3 {
-            let Some(tab) = self.tab_shows_history_of(tab_id, identity) else { return };
+            let Some(tab) = self.tab_shows_history_of(tab_id, identity) else {
+                return;
+            };
             if attempt == 0 {
                 let mut navigation = tab.navigation.clone();
                 navigation.selected_identity = Some(object_id.clone());
@@ -1928,7 +2129,14 @@ impl WorkspaceService {
                 return;
             }
             self.history
-                .select(Some(object_id.clone()), false, true, false, 0, SelectionOrigin::Graph)
+                .select(
+                    Some(object_id.clone()),
+                    false,
+                    true,
+                    false,
+                    0,
+                    SelectionOrigin::Graph,
+                )
                 .await;
             if self
                 .history
@@ -1966,16 +2174,21 @@ impl WorkspaceService {
         }
         let mut expected = selected;
         for use_head in [false, true] {
-            let Some(tab) = self.tab_shows_history_of(tab_id, identity) else { return };
+            let Some(tab) = self.tab_shows_history_of(tab_id, identity) else {
+                return;
+            };
             if tab.navigation.selected_identity != expected {
                 return;
             }
             let session = tab.session.as_ref().expect("session");
             let candidate = if use_head {
-                session
-                    .head_object_id()
-                    .map(str::to_owned)
-                    .or_else(|| session.snapshot.identity.as_ref().and_then(|identity| identity.head_object_id.clone()))
+                session.head_object_id().map(str::to_owned).or_else(|| {
+                    session
+                        .snapshot
+                        .identity
+                        .as_ref()
+                        .and_then(|identity| identity.head_object_id.clone())
+                })
             } else {
                 remembered.clone()
             };
@@ -1990,7 +2203,14 @@ impl WorkspaceService {
                 self.update_navigation(tab_id, navigation);
             }
             self.history
-                .select(Some(candidate.clone()), false, false, true, 0, SelectionOrigin::Graph)
+                .select(
+                    Some(candidate.clone()),
+                    false,
+                    false,
+                    true,
+                    0,
+                    SelectionOrigin::Graph,
+                )
                 .await;
             if self
                 .history
@@ -2075,7 +2295,11 @@ impl WorkspaceService {
             return Navigation::default();
         };
         settings.with(|document| {
-            let Some(saved) = document.worktrees.iter().find(|worktree| &worktree.identity == identity) else {
+            let Some(saved) = document
+                .worktrees
+                .iter()
+                .find(|worktree| &worktree.identity == identity)
+            else {
                 return Navigation::default();
             };
             Navigation {
@@ -2090,7 +2314,9 @@ impl WorkspaceService {
     }
 
     fn persist(&self) {
-        let Some(settings) = &self.settings else { return };
+        let Some(settings) = &self.settings else {
+            return;
+        };
         let inner = self.inner.borrow();
         let active_identity = inner
             .active_tab_id
@@ -2104,19 +2330,24 @@ impl WorkspaceService {
                 identities.push(identity.clone());
             }
         }
-        let (mut worktrees, current_groups, current_open, current_active) = settings.with(|document| {
-            (
-                document.worktrees.clone(),
-                document.tab_groups.clone(),
-                document.open_worktrees.clone(),
-                document.active_worktree.clone(),
-            )
-        });
+        let (mut worktrees, current_groups, current_open, current_active) =
+            settings.with(|document| {
+                (
+                    document.worktrees.clone(),
+                    document.tab_groups.clone(),
+                    document.open_worktrees.clone(),
+                    document.active_worktree.clone(),
+                )
+            });
         let before = worktrees.clone();
         for tab in &inner.tabs {
-            let Some(identity) = tab.canonical_identity() else { continue };
+            let Some(identity) = tab.canonical_identity() else {
+                continue;
+            };
             let navigation = &tab.navigation;
-            let position = worktrees.iter().position(|worktree| &worktree.identity == identity);
+            let position = worktrees
+                .iter()
+                .position(|worktree| &worktree.identity == identity);
             let mut updated = match position {
                 Some(position) => worktrees[position].clone(),
                 None => NativeWorktreeSettings {
@@ -2137,8 +2368,10 @@ impl WorkspaceService {
             updated.anchor = navigation.selected_identity.clone();
             updated.pane = navigation.pane.name().into();
             updated.route = navigation.route.name().into();
-            updated.changes_scroll_offset = navigation.changes_scroll_offset.round().max(0.0) as u64;
-            updated.history_scroll_offset = navigation.history_scroll_offset.round().max(0.0) as u64;
+            updated.changes_scroll_offset =
+                navigation.changes_scroll_offset.round().max(0.0) as u64;
+            updated.history_scroll_offset =
+                navigation.history_scroll_offset.round().max(0.0) as u64;
             updated.branch_filter = navigation.branch_filter.references().to_vec();
             match position {
                 Some(position) => worktrees[position] = updated,
@@ -2182,11 +2415,17 @@ impl WorkspaceService {
 
     /// Puts a loaded repository first among the recent ones.
     fn record_recent(&self, snapshot: &NativeRepositorySnapshot) {
-        let Some(settings) = &self.settings else { return };
+        let Some(settings) = &self.settings else {
+            return;
+        };
         if snapshot.phase != NativeRepositoryPhase::Ready {
             return;
         }
-        let Some(identity) = snapshot.identity.as_ref().map(|identity| identity.worktree_root.clone()) else {
+        let Some(identity) = snapshot
+            .identity
+            .as_ref()
+            .map(|identity| identity.worktree_root.clone())
+        else {
             return;
         };
         if settings.with(|document| document.recent_repositories.first() == Some(&identity)) {
@@ -2219,7 +2458,10 @@ fn staged_entry_count(status: Option<&NativeRepositoryStatus>) -> usize {
 
 /// Whether what History shows (HEAD, WIP state, file counts, references)
 /// changed between two snapshots.
-fn history_projection_changed(previous: &NativeRepositorySnapshot, next: &NativeRepositorySnapshot) -> bool {
+fn history_projection_changed(
+    previous: &NativeRepositorySnapshot,
+    next: &NativeRepositorySnapshot,
+) -> bool {
     let old = previous.status.as_ref();
     let new = next.status.as_ref();
     if old.and_then(|s| s.head_object_id.as_ref()) != new.and_then(|s| s.head_object_id.as_ref())
@@ -2253,7 +2495,9 @@ fn history_projection_changed(previous: &NativeRepositorySnapshot, next: &Native
             .all(|(left, right)| left.name == right.name && left.target == right.target);
     let stashes = old.stashes.len() == new.stashes.len()
         && old.stashes.iter().zip(&new.stashes).all(|(left, right)| {
-            left.selector == right.selector && left.object_id == right.object_id && left.subject == right.subject
+            left.selector == right.selector
+                && left.object_id == right.object_id
+                && left.subject == right.subject
         });
     !(branches && remotes && tags && stashes)
 }

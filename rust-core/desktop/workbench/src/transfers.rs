@@ -13,8 +13,8 @@ use crate::session::{SessionError, SessionIdentity};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::dto::{NativeRepositorySnapshot, NativeWorkingTreeState};
 use gitlama_contract::transfer::{
-    NativePullStrategy, NativeTransferExecutionResult, NativeTransferExecutionState, NativeTransferFailureKind,
-    NativeTransferKind, NativeTransferPreview, NativeTransferRequest,
+    NativePullStrategy, NativeTransferExecutionResult, NativeTransferExecutionState,
+    NativeTransferFailureKind, NativeTransferKind, NativeTransferPreview, NativeTransferRequest,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -110,7 +110,9 @@ impl Draft {
 pub fn dialog_payload(draft: &Draft, snapshot: &NativeRepositorySnapshot) -> Value {
     let refs = &snapshot.refs;
     let status = snapshot.status.as_ref();
-    let branch_name = status.and_then(|status| status.branch_name.as_deref()).map(text);
+    let branch_name = status
+        .and_then(|status| status.branch_name.as_deref())
+        .map(text);
     json!({
         "kind": kind_name(draft.kind),
         "initialForce": draft.initial_force,
@@ -135,7 +137,12 @@ pub fn dialog_payload(draft: &Draft, snapshot: &NativeRepositorySnapshot) -> Val
 
 /// The request the dialog answered with.
 pub fn parse_request(value: &Value) -> Option<NativeTransferRequest> {
-    let text = |key: &str| value[key].as_str().filter(|text| !text.is_empty()).map(str::to_owned);
+    let text = |key: &str| {
+        value[key]
+            .as_str()
+            .filter(|text| !text.is_empty())
+            .map(str::to_owned)
+    };
     let flag = |key: &str| value[key].as_bool().unwrap_or(false);
     Some(NativeTransferRequest {
         kind: parse_kind(value["kind"].as_str()?)?,
@@ -169,15 +176,26 @@ fn fetch_of(remote: Option<String>) -> NativeTransferRequest {
 /// Whether the failure guide explains `result` (and offers remedies).
 fn explained(result: &NativeTransferExecutionResult) -> bool {
     use gitlama_contract::transfer::NativeTransferDiagnosisKind as Diagnosis;
-    result.stash.as_ref().is_some_and(|stash| !stash.reapply_completed)
-        || result.failure.as_ref().is_some_and(|failure| failure.kind == NativeTransferFailureKind::Locked)
+    result
+        .stash
+        .as_ref()
+        .is_some_and(|stash| !stash.reapply_completed)
         || result
-            .diagnosis
+            .failure
             .as_ref()
-            .is_some_and(|diagnosis| matches!(diagnosis.kind, Diagnosis::RefCaseCollision | Diagnosis::RemoteAhead))
+            .is_some_and(|failure| failure.kind == NativeTransferFailureKind::Locked)
+        || result.diagnosis.as_ref().is_some_and(|diagnosis| {
+            matches!(
+                diagnosis.kind,
+                Diagnosis::RefCaseCollision | Diagnosis::RemoteAhead
+            )
+        })
 }
 
-fn result_payload(result: &NativeTransferExecutionResult, request: &NativeTransferRequest) -> Value {
+fn result_payload(
+    result: &NativeTransferExecutionResult,
+    request: &NativeTransferRequest,
+) -> Value {
     use gitlama_contract::transfer::NativeTransferDiagnosisKind as Diagnosis;
     json!({
         "kind": kind_name(request.kind),
@@ -222,7 +240,14 @@ impl TransferService {
         notices: Rc<Notices>,
         notifier: Notifier,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, prompts, notices, notifier, running: RefCell::new(Vec::new()) })
+        Rc::new(Self {
+            calls,
+            workspace,
+            prompts,
+            notices,
+            notifier,
+            running: RefCell::new(Vec::new()),
+        })
     }
 
     /// The transfers running now.
@@ -232,21 +257,46 @@ impl TransferService {
 
     /// Asks for the transfer, then runs it.
     pub async fn start(&self, draft: Draft) {
-        let Some(snapshot) = self.workspace.current().map(|session| Rc::clone(&session.snapshot)) else { return };
-        let Some(answer) = self.prompts.ask("chooseTransfer", dialog_payload(&draft, &snapshot)).await else { return };
-        let Some(request) = parse_request(&answer) else { return };
+        let Some(snapshot) = self
+            .workspace
+            .current()
+            .map(|session| Rc::clone(&session.snapshot))
+        else {
+            return;
+        };
+        let Some(answer) = self
+            .prompts
+            .ask("chooseTransfer", dialog_payload(&draft, &snapshot))
+            .await
+        else {
+            return;
+        };
+        let Some(request) = parse_request(&answer) else {
+            return;
+        };
         Box::pin(self.execute(request, true)).await;
     }
 
     fn same_session(&self, tab: u64, identity: SessionIdentity) -> bool {
-        self.workspace.active_tab_id() == Some(tab) && self.workspace.current().map(|session| session.identity) == Some(identity)
+        self.workspace.active_tab_id() == Some(tab)
+            && self.workspace.current().map(|session| session.identity) == Some(identity)
     }
 
     /// Runs `request` in the active tab; true when it succeeded.
     pub async fn execute(&self, request: NativeTransferRequest, notify_result: bool) -> bool {
-        let (Some(tab), Some(session)) = (self.workspace.active_tab_id(), self.workspace.current()) else { return false };
+        let (Some(tab), Some(session)) = (self.workspace.active_tab_id(), self.workspace.current())
+        else {
+            return false;
+        };
         let identity = session.identity;
-        let preview = match self.calls.repository_session_transfer_preview(identity.native_id, identity.generation, request.clone()).await
+        let preview = match self
+            .calls
+            .repository_session_transfer_preview(
+                identity.native_id,
+                identity.generation,
+                request.clone(),
+            )
+            .await
         {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
@@ -264,7 +314,11 @@ impl TransferService {
                 return false;
             }
         };
-        diagnostics::info("Transfers", "transfer_preview_finished", &[("kind", (request.kind as u64).into())]);
+        diagnostics::info(
+            "Transfers",
+            "transfer_preview_finished",
+            &[("kind", (request.kind as u64).into())],
+        );
         let mut result = match self.run(identity, &preview, None).await {
             Ok(result) => result,
             Err(error) => {
@@ -273,13 +327,24 @@ impl TransferService {
             }
         };
         let needs_stash_recovery = |result: &NativeTransferExecutionResult| {
-            result.stash.as_ref().is_some_and(|stash| !stash.reapply_completed)
+            result
+                .stash
+                .as_ref()
+                .is_some_and(|stash| !stash.reapply_completed)
         };
-        let failure = |result: &NativeTransferExecutionResult| result.failure.as_ref().map(|failure| failure.kind);
-        if !needs_stash_recovery(&result) && failure(&result) == Some(NativeTransferFailureKind::HostKey) {
+        let failure = |result: &NativeTransferExecutionResult| {
+            result.failure.as_ref().map(|failure| failure.kind)
+        };
+        if !needs_stash_recovery(&result)
+            && failure(&result) == Some(NativeTransferFailureKind::HostKey)
+        {
             let challenge = match self
                 .calls
-                .repository_session_transfer_probe_host_key(identity.native_id, identity.generation, preview.token)
+                .repository_session_transfer_probe_host_key(
+                    identity.native_id,
+                    identity.generation,
+                    preview.token,
+                )
                 .await
             {
                 Ok(result) => result.challenge,
@@ -324,8 +389,16 @@ impl TransferService {
                 }
             };
         }
-        if !needs_stash_recovery(&result) && failure(&result) == Some(NativeTransferFailureKind::Authentication) {
-            let Some(answer) = self.prompts.ask("gitCredentials", json!({"target": preview.remote, "allowToken": true})).await
+        if !needs_stash_recovery(&result)
+            && failure(&result) == Some(NativeTransferFailureKind::Authentication)
+        {
+            let Some(answer) = self
+                .prompts
+                .ask(
+                    "gitCredentials",
+                    json!({"target": preview.remote, "allowToken": true}),
+                )
+                .await
             else {
                 return false;
             };
@@ -344,33 +417,62 @@ impl TransferService {
         }
         if needs_stash_recovery(&result) {
             if self.same_session(tab, identity) {
-                drop(self.prompts.ask("transferFailure", result_payload(&result, &request)).await);
+                drop(
+                    self.prompts
+                        .ask("transferFailure", result_payload(&result, &request))
+                        .await,
+                );
             } else {
                 self.report(&request, &result);
             }
             return false;
         }
         if explained(&result) && self.same_session(tab, identity) {
-            let remedy = self.prompts.ask("transferFailure", result_payload(&result, &request)).await;
+            let remedy = self
+                .prompts
+                .ask("transferFailure", result_payload(&result, &request))
+                .await;
             let Some(remedy) = remedy else { return false };
             if !self.same_session(tab, identity) {
                 return false;
             }
             return match remedy["remedy"].as_str().unwrap_or_default() {
                 "retry" => Box::pin(self.execute(request, notify_result)).await,
-                "retryWithoutPrune" => Box::pin(self.execute(NativeTransferRequest { prune: false, ..request }, notify_result)).await,
-                "fetchRemote" => Box::pin(self.execute(fetch_of(request.remote.clone()), true)).await,
+                "retryWithoutPrune" => {
+                    Box::pin(self.execute(
+                        NativeTransferRequest {
+                            prune: false,
+                            ..request
+                        },
+                        notify_result,
+                    ))
+                    .await
+                }
+                "fetchRemote" => {
+                    Box::pin(self.execute(fetch_of(request.remote.clone()), true)).await
+                }
                 "repairTrackingRefs" => {
                     let references: Vec<String> = remedy["references"]
                         .as_array()
-                        .map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect())
+                        .map(|items| {
+                            items
+                                .iter()
+                                .filter_map(|item| item.as_str().map(str::to_owned))
+                                .collect()
+                        })
                         .unwrap_or_default();
                     let repaired = self
                         .calls
-                        .repository_session_delete_tracking_refs(identity.native_id, identity.generation, references)
+                        .repository_session_delete_tracking_refs(
+                            identity.native_id,
+                            identity.generation,
+                            references,
+                        )
                         .await;
                     match repaired {
-                        Ok(repaired) if repaired.state == NativeTransferExecutionState::Completed => {
+                        Ok(repaired)
+                            if repaired.state == NativeTransferExecutionState::Completed =>
+                        {
                             Box::pin(self.execute(request, notify_result)).await
                         }
                         Ok(repaired) => {
@@ -392,12 +494,27 @@ impl TransferService {
         if failure(&result) == Some(NativeTransferFailureKind::MissingObject)
             && !request.refetch
             && self.same_session(tab, identity)
-            && self.prompts.ask("offerRefetch", json!({"remote": preview.remote})).await == Some(Value::Bool(true))
+            && self
+                .prompts
+                .ask("offerRefetch", json!({"remote": preview.remote}))
+                .await
+                == Some(Value::Bool(true))
             && self.same_session(tab, identity)
         {
-            Box::pin(self.execute(NativeTransferRequest { refetch: true, ..fetch_of(Some(preview.remote.clone())) }, true)).await;
+            Box::pin(self.execute(
+                NativeTransferRequest {
+                    refetch: true,
+                    ..fetch_of(Some(preview.remote.clone()))
+                },
+                true,
+            ))
+            .await;
         }
-        matches!(result.state, NativeTransferExecutionState::Completed | NativeTransferExecutionState::ReconciledWithWarning)
+        matches!(
+            result.state,
+            NativeTransferExecutionState::Completed
+                | NativeTransferExecutionState::ReconciledWithWarning
+        )
     }
 
     async fn run(
@@ -406,18 +523,26 @@ impl TransferService {
         preview: &NativeTransferPreview,
         credentials: Option<(Option<String>, Option<String>, bool)>,
     ) -> Result<NativeTransferExecutionResult, SessionError> {
-        self.running.borrow_mut().push((preview.token, preview.kind, identity));
+        self.running
+            .borrow_mut()
+            .push((preview.token, preview.kind, identity));
         self.notifier.notify(Topics::OPERATIONS);
         let call = match credentials {
-            None => self.calls.repository_session_transfer_execute(identity.native_id, identity.generation, preview.token),
-            Some((username, secret, token)) => self.calls.repository_session_transfer_execute_with_credentials(
+            None => self.calls.repository_session_transfer_execute(
                 identity.native_id,
                 identity.generation,
                 preview.token,
-                username,
-                if token { None } else { secret.clone() },
-                if token { secret } else { None },
             ),
+            Some((username, secret, token)) => self
+                .calls
+                .repository_session_transfer_execute_with_credentials(
+                    identity.native_id,
+                    identity.generation,
+                    preview.token,
+                    username,
+                    if token { None } else { secret.clone() },
+                    if token { secret } else { None },
+                ),
         };
         let result = if preview.kind == NativeTransferKind::Pull {
             self.workspace
@@ -431,14 +556,22 @@ impl TransferService {
         } else {
             call.await
         };
-        self.running.borrow_mut().retain(|(token, _, _)| *token != preview.token);
+        self.running
+            .borrow_mut()
+            .retain(|(token, _, _)| *token != preview.token);
         self.notifier.notify(Topics::OPERATIONS);
         diagnostics::info(
             "Transfers",
             "transfer_execute_finished",
             &[
                 ("kind", (preview.kind as u64).into()),
-                ("state", result.as_ref().map_or(u64::MAX, |result| result.state as u64).into()),
+                (
+                    "state",
+                    result
+                        .as_ref()
+                        .map_or(u64::MAX, |result| result.state as u64)
+                        .into(),
+                ),
             ],
         );
         result.map_err(SessionError::from)
@@ -462,7 +595,11 @@ impl TransferService {
         };
         let fields = [("kind", (NativeTransferKind::Fetch as u64).into())];
         diagnostics::info("Transfers", "background_fetch_preview_started", &fields);
-        let preview = match self.calls.repository_session_transfer_preview(identity.native_id, identity.generation, request).await {
+        let preview = match self
+            .calls
+            .repository_session_transfer_preview(identity.native_id, identity.generation, request)
+            .await
+        {
             Ok(result) => match result.preview {
                 Some(preview) if result.failure.is_none() => preview,
                 _ => return,
@@ -472,12 +609,22 @@ impl TransferService {
         diagnostics::info("Transfers", "background_fetch_execute_started", &fields);
         let result = self
             .calls
-            .repository_session_transfer_execute_background(identity.native_id, identity.generation, preview.token)
+            .repository_session_transfer_execute_background(
+                identity.native_id,
+                identity.generation,
+                preview.token,
+            )
             .await;
         diagnostics::info(
             "Transfers",
             "background_fetch_execute_finished",
-            &[("state", result.as_ref().map_or(u64::MAX, |result| result.state as u64).into())],
+            &[(
+                "state",
+                result
+                    .as_ref()
+                    .map_or(u64::MAX, |result| result.state as u64)
+                    .into(),
+            )],
         );
     }
 
@@ -497,14 +644,28 @@ impl TransferService {
     }
 
     fn report(&self, request: &NativeTransferRequest, result: &NativeTransferExecutionResult) {
-        let error = matches!(result.state, NativeTransferExecutionState::Failed | NativeTransferExecutionState::Stale)
-            || result.stash.as_ref().is_some_and(|stash| !stash.reapply_completed);
-        let failure = result.failure.as_ref().map_or("transferFailed", |failure| failure_key(failure.kind));
-        let (key, args) = if request.refetch && result.state == NativeTransferExecutionState::Completed {
+        let error = matches!(
+            result.state,
+            NativeTransferExecutionState::Failed | NativeTransferExecutionState::Stale
+        ) || result
+            .stash
+            .as_ref()
+            .is_some_and(|stash| !stash.reapply_completed);
+        let failure = result
+            .failure
+            .as_ref()
+            .map_or("transferFailed", |failure| failure_key(failure.kind));
+        let (key, args) = if request.refetch
+            && result.state == NativeTransferExecutionState::Completed
+        {
             ("transferRefetchCompleted", Value::Null)
         } else if let Some(stash) = &result.stash {
             let key = if !stash.pull_completed {
-                if stash.reapply_completed { "transferPullFailedStashRestored" } else { "transferPullFailedStashSaved" }
+                if stash.reapply_completed {
+                    "transferPullFailedStashRestored"
+                } else {
+                    "transferPullFailedStashSaved"
+                }
             } else if stash.reapply_completed {
                 "transferPullStashRestored"
             } else if stash.conflicted {
@@ -515,13 +676,18 @@ impl TransferService {
             (key, json!({"reason": {"l10n": failure}}))
         } else {
             match result.state {
-                NativeTransferExecutionState::Completed => {
-                    ("transferCompleted", json!({"ahead": result.ahead.to_string(), "behind": result.behind.to_string()}))
+                NativeTransferExecutionState::Completed => (
+                    "transferCompleted",
+                    json!({"ahead": result.ahead.to_string(), "behind": result.behind.to_string()}),
+                ),
+                NativeTransferExecutionState::ReconciledWithWarning => {
+                    ("transferReconciledWarning", Value::Null)
                 }
-                NativeTransferExecutionState::ReconciledWithWarning => ("transferReconciledWarning", Value::Null),
                 NativeTransferExecutionState::Stale => ("transferFailureStale", Value::Null),
                 NativeTransferExecutionState::Failed => (failure, Value::Null),
-                NativeTransferExecutionState::OutcomeUncertain => ("mutationOutcomeUncertain", Value::Null),
+                NativeTransferExecutionState::OutcomeUncertain => {
+                    ("mutationOutcomeUncertain", Value::Null)
+                }
             }
         };
         if error {

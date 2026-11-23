@@ -316,7 +316,10 @@ pub fn shown(
     overrides: &[NativeShortcutOverride],
     mac: bool,
 ) -> Result<HashMap<String, Option<Shortcut>>, ShortcutError> {
-    let overridden: HashSet<&str> = overrides.iter().map(|entry| entry.command_id.as_str()).collect();
+    let overridden: HashSet<&str> = overrides
+        .iter()
+        .map(|entry| entry.command_id.as_str())
+        .collect();
     let mut resolved = resolve(overrides, mac)?;
     for command in registry() {
         let entry = resolved.entry(command.id.clone()).or_insert(None);
@@ -371,7 +374,10 @@ mod tests {
 
     #[test]
     fn the_registry_has_every_command_once() {
-        let ids: HashSet<&str> = registry().iter().map(|command| command.id.as_str()).collect();
+        let ids: HashSet<&str> = registry()
+            .iter()
+            .map(|command| command.id.as_str())
+            .collect();
         assert_eq!(ids.len(), registry().len());
         assert_eq!(registry().len(), 104);
     }
@@ -380,17 +386,32 @@ mod tests {
     fn defaults_resolve_without_conflicts_on_both_platforms() {
         resolve(&[], true).unwrap();
         let bindings = resolve(&[], false).unwrap();
-        assert_eq!(bindings["fetch"].as_ref().unwrap().canonical, "Ctrl+Shift+K");
+        assert_eq!(
+            bindings["fetch"].as_ref().unwrap().canonical,
+            "Ctrl+Shift+K"
+        );
     }
 
     #[test]
     fn parsing_canonicalizes_and_rejects_reserved_keys() {
-        assert_eq!(Shortcut::parse("shift+ctrl+p").unwrap().canonical, "Ctrl+Shift+P");
+        assert_eq!(
+            Shortcut::parse("shift+ctrl+p").unwrap().canonical,
+            "Ctrl+Shift+P"
+        );
         assert_eq!(Shortcut::parse("?").unwrap().canonical, "?");
         assert_eq!(Shortcut::parse("f12").unwrap().canonical, "F12");
-        assert_eq!(Shortcut::parse("Ctrl+Q").unwrap_err().code, ShortcutFailure::Reserved);
-        assert_eq!(Shortcut::parse("Ctrl+Cmd+A").unwrap_err().code, ShortcutFailure::Invalid);
-        assert_eq!(Shortcut::parse("F25").unwrap_err().code, ShortcutFailure::Invalid);
+        assert_eq!(
+            Shortcut::parse("Ctrl+Q").unwrap_err().code,
+            ShortcutFailure::Reserved
+        );
+        assert_eq!(
+            Shortcut::parse("Ctrl+Cmd+A").unwrap_err().code,
+            ShortcutFailure::Invalid
+        );
+        assert_eq!(
+            Shortcut::parse("F25").unwrap_err().code,
+            ShortcutFailure::Invalid
+        );
     }
 
     #[test]

@@ -12,10 +12,12 @@ use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::domain::path_identity::NativePathIdentity;
 use gitlama_contract::dto::{
-    NativeCommitExecutionResult, NativeCommitExecutionState, NativeCommitRequest, NativeCommitSigning,
-    NativeCommitTools, NativeCommitWarning,
+    NativeCommitExecutionResult, NativeCommitExecutionState, NativeCommitRequest,
+    NativeCommitSigning, NativeCommitTools, NativeCommitWarning,
 };
-use gitlama_contract::storage::{NativeCommitDraft, NativeSettingsDocument, NativeWorktreeSettings};
+use gitlama_contract::storage::{
+    NativeCommitDraft, NativeSettingsDocument, NativeWorktreeSettings,
+};
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
@@ -34,8 +36,14 @@ pub enum Outcome {
     /// The person declined a confirmation.
     Declined,
     /// Git refused the commit (a hook, signing); the editor shows why.
-    Rejected { result: NativeCommitExecutionResult, push: bool },
-    Finished { result: NativeCommitExecutionResult, push_next: bool },
+    Rejected {
+        result: NativeCommitExecutionResult,
+        push: bool,
+    },
+    Finished {
+        result: NativeCommitExecutionResult,
+        push_next: bool,
+    },
     /// The repository may have changed; never retried.
     OutcomeUnknown,
     Failed(FailureCode),
@@ -61,8 +69,16 @@ pub struct CommitService {
     tools: RefCell<HashMap<(u64, u64), Rc<NativeCommitTools>>>,
 }
 
-fn with_draft(document: &mut NativeSettingsDocument, canonical: &NativePathIdentity, draft: NativeCommitDraft) {
-    match document.worktrees.iter_mut().find(|worktree| &worktree.identity == canonical) {
+fn with_draft(
+    document: &mut NativeSettingsDocument,
+    canonical: &NativePathIdentity,
+    draft: NativeCommitDraft,
+) {
+    match document
+        .worktrees
+        .iter_mut()
+        .find(|worktree| &worktree.identity == canonical)
+    {
         Some(worktree) => worktree.draft = draft,
         None => document.worktrees.push(NativeWorktreeSettings {
             draft,
@@ -80,7 +96,10 @@ fn worktree_settings(identity: NativePathIdentity) -> NativeWorktreeSettings {
         route: "repository".into(),
         changes_scroll_offset: 0,
         history_scroll_offset: 0,
-        draft: NativeCommitDraft { subject: String::new(), description: String::new() },
+        draft: NativeCommitDraft {
+            subject: String::new(),
+            description: String::new(),
+        },
         branch_filter: Vec::new(),
     }
 }
@@ -109,14 +128,22 @@ impl CommitService {
 
     /// The draft the worktree `canonical` keeps.
     pub fn draft(&self, canonical: Option<&NativePathIdentity>) -> NativeCommitDraft {
-        let Some(canonical) = canonical else { return NativeCommitDraft { subject: String::new(), description: String::new() } };
+        let Some(canonical) = canonical else {
+            return NativeCommitDraft {
+                subject: String::new(),
+                description: String::new(),
+            };
+        };
         self.settings.with(|document| {
             document
                 .worktrees
                 .iter()
                 .find(|worktree| &worktree.identity == canonical)
                 .map(|worktree| worktree.draft.clone())
-                .unwrap_or(NativeCommitDraft { subject: String::new(), description: String::new() })
+                .unwrap_or(NativeCommitDraft {
+                    subject: String::new(),
+                    description: String::new(),
+                })
         })
     }
 
@@ -133,7 +160,11 @@ impl CommitService {
     /// The newest commit `canonical` made here, for History's flash.
     pub fn last_committed(&self, canonical: Option<&NativePathIdentity>) -> Option<Committed> {
         let canonical = canonical?;
-        self.flashes.borrow().iter().find(|(identity, _)| identity == canonical).map(|(_, committed)| committed.clone())
+        self.flashes
+            .borrow()
+            .iter()
+            .find(|(identity, _)| identity == canonical)
+            .map(|(_, committed)| committed.clone())
     }
 
     /// Recent messages and the template of `session` (loaded once).
@@ -142,14 +173,24 @@ impl CommitService {
         if let Some(tools) = self.tools.borrow().get(&key) {
             return Some(Rc::clone(tools));
         }
-        let result = self.calls.repository_session_commit_tools(session.native_id, session.generation).await.ok()?;
+        let result = self
+            .calls
+            .repository_session_commit_tools(session.native_id, session.generation)
+            .await
+            .ok()?;
         let tools = Rc::new(result.tools.filter(|_| result.failure.is_none())?);
         self.tools.borrow_mut().insert(key, Rc::clone(&tools));
         Some(tools)
     }
 
     /// Commits `request` in the active tab; `draft` is the editor's text.
-    pub async fn commit(&self, mut request: NativeCommitRequest, draft: NativeCommitDraft, push: bool, retry: Option<Retry>) -> Outcome {
+    pub async fn commit(
+        &self,
+        mut request: NativeCommitRequest,
+        draft: NativeCommitDraft,
+        push: bool,
+        retry: Option<Retry>,
+    ) -> Outcome {
         if retry == Some(Retry::SkipHooks)
             && self.prompts.ask("confirmSkipHooks", Value::Null).await != Some(Value::Bool(true))
         {
@@ -160,14 +201,22 @@ impl CommitService {
             Some(Retry::Unsigned) => request.signing = NativeCommitSigning::Disable,
             None => {}
         }
-        let Some(tab) = self.workspace.active_tab() else { return Outcome::Failed(FailureCode::UnknownSession) };
-        let (Some(session), Some(canonical)) = (tab.session.as_ref().map(|session| session.identity), tab.canonical_identity().cloned())
-        else {
+        let Some(tab) = self.workspace.active_tab() else {
+            return Outcome::Failed(FailureCode::UnknownSession);
+        };
+        let (Some(session), Some(canonical)) = (
+            tab.session.as_ref().map(|session| session.identity),
+            tab.canonical_identity().cloned(),
+        ) else {
             return Outcome::Failed(FailureCode::UnknownSession);
         };
         self.update_draft(&canonical, draft.clone());
         let amend = request.amend;
-        let preview = match self.calls.repository_session_commit_preview(session.native_id, session.generation, request).await {
+        let preview = match self
+            .calls
+            .repository_session_commit_preview(session.native_id, session.generation, request)
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
                 (_, Some(failure)) => return Outcome::Failed(FailureCode::from(&failure)),
@@ -175,12 +224,19 @@ impl CommitService {
             },
             Err(error) => return Outcome::Failed(SessionError::from(error).code()),
         };
-        if preview.warnings.contains(&NativeCommitWarning::PublishedAmend)
-            && self.prompts.ask("confirmPublishedAmend", Value::Null).await != Some(Value::Bool(true))
+        if preview
+            .warnings
+            .contains(&NativeCommitWarning::PublishedAmend)
+            && self.prompts.ask("confirmPublishedAmend", Value::Null).await
+                != Some(Value::Bool(true))
         {
             return Outcome::Declined;
         }
-        let result = match self.calls.repository_session_commit_execute(session.native_id, session.generation, preview.token).await {
+        let result = match self
+            .calls
+            .repository_session_commit_execute(session.native_id, session.generation, preview.token)
+            .await
+        {
             Ok(result) => result,
             Err(error) => {
                 return match error {
@@ -198,20 +254,33 @@ impl CommitService {
         if result.state == NativeCommitExecutionState::Failed {
             return Outcome::Rejected { result, push };
         }
-        let committed =
-            matches!(result.state, NativeCommitExecutionState::Completed | NativeCommitExecutionState::ReconciledWithWarning);
+        let committed = matches!(
+            result.state,
+            NativeCommitExecutionState::Completed
+                | NativeCommitExecutionState::ReconciledWithWarning
+        );
         if committed && let Some(object_id) = result.commit.clone() {
             let sequence = self.sequence.get() + 1;
             self.sequence.set(sequence);
             let mut flashes = self.flashes.borrow_mut();
             flashes.retain(|(identity, _)| identity != &canonical);
-            flashes.push_front((canonical.clone(), Committed { sequence, object_id, amend }));
+            flashes.push_front((
+                canonical.clone(),
+                Committed {
+                    sequence,
+                    object_id,
+                    amend,
+                },
+            ));
             flashes.truncate(16);
             drop(flashes);
             self.notifier.notify(Topics::HISTORY | Topics::CHANGES);
         }
         if committed && self.draft(Some(&canonical)) == draft {
-            let empty = NativeCommitDraft { subject: String::new(), description: String::new() };
+            let empty = NativeCommitDraft {
+                subject: String::new(),
+                description: String::new(),
+            };
             let previous = draft.clone();
             let target = canonical.clone();
             let restore_target = canonical.clone();
@@ -225,20 +294,32 @@ impl CommitService {
             );
         }
         self.report(&result);
-        Outcome::Finished { push_next: push && committed, result }
+        Outcome::Finished {
+            push_next: push && committed,
+            result,
+        }
     }
 
     fn report(&self, result: &NativeCommitExecutionResult) {
-        let short = result.commit.as_deref().map(|commit| &commit[..commit.len().min(7)]);
+        let short = result
+            .commit
+            .as_deref()
+            .map(|commit| &commit[..commit.len().min(7)]);
         match result.state {
             NativeCommitExecutionState::Stale => self.notices.status("commitStale", Value::Null),
             NativeCommitExecutionState::Failed => self.notices.status("commitFailed", Value::Null),
-            NativeCommitExecutionState::ReconciledWithWarning => self.notices.status("commitWarning", Value::Null),
+            NativeCommitExecutionState::ReconciledWithWarning => {
+                self.notices.status("commitWarning", Value::Null)
+            }
             NativeCommitExecutionState::Completed => match short {
-                Some(short) => self.notices.status("commitCommittedObject", json!({"objectId": short})),
+                Some(short) => self
+                    .notices
+                    .status("commitCommittedObject", json!({"objectId": short})),
                 None => self.notices.status("commitCompleted", Value::Null),
             },
-            NativeCommitExecutionState::OutcomeUncertain => self.notices.error("mutationOutcomeUncertain", Value::Null),
+            NativeCommitExecutionState::OutcomeUncertain => {
+                self.notices.error("mutationOutcomeUncertain", Value::Null)
+            }
         }
     }
 }

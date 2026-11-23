@@ -15,9 +15,19 @@ pub enum BusyActivity {
     Stash(&'static str),
     /// kind (merge, cherryPick, revert), source label, commit count and
     /// the current branch.
-    HistoryMutation { kind: &'static str, source: String, count: usize, branch: String },
-    Rebase { current_branch: Vec<u8>, onto: Vec<u8> },
-    Restack { root_branch: Vec<u8> },
+    HistoryMutation {
+        kind: &'static str,
+        source: String,
+        count: usize,
+        branch: String,
+    },
+    Rebase {
+        current_branch: Vec<u8>,
+        onto: Vec<u8>,
+    },
+    Restack {
+        root_branch: Vec<u8>,
+    },
     ConflictPrediction,
     Changes,
 }
@@ -40,14 +50,32 @@ impl BusyActivity {
                 },
                 Value::Null,
             ),
-            Self::HistoryMutation { kind, source, count, branch } => match *kind {
-                "merge" => ("historyMutationBusyMerge", json!({"source": source, "branch": branch})),
-                "cherryPick" => ("historyMutationBusyCherryPick", json!({"count": count, "branch": branch})),
-                _ => ("historyMutationBusyRevert", json!({"count": count, "branch": branch})),
+            Self::HistoryMutation {
+                kind,
+                source,
+                count,
+                branch,
+            } => match *kind {
+                "merge" => (
+                    "historyMutationBusyMerge",
+                    json!({"source": source, "branch": branch}),
+                ),
+                "cherryPick" => (
+                    "historyMutationBusyCherryPick",
+                    json!({"count": count, "branch": branch}),
+                ),
+                _ => (
+                    "historyMutationBusyRevert",
+                    json!({"count": count, "branch": branch}),
+                ),
             },
-            Self::Rebase { current_branch, onto } => {
-                ("rebaseBusy", json!({"branch": text(current_branch), "target": text(onto)}))
-            }
+            Self::Rebase {
+                current_branch,
+                onto,
+            } => (
+                "rebaseBusy",
+                json!({"branch": text(current_branch), "target": text(onto)}),
+            ),
             Self::Restack { root_branch } => ("restackBusy", json!({"root": text(root_branch)})),
             Self::ConflictPrediction => ("conflictPredictionBusy", Value::Null),
             Self::Changes => ("loading", Value::Null),
@@ -71,15 +99,22 @@ pub struct BusyService {
 
 impl BusyService {
     pub fn new(notifier: Notifier) -> Rc<Self> {
-        Rc::new(Self { notifier, operations: RefCell::new(HashMap::new()), next: Cell::new(1) })
+        Rc::new(Self {
+            notifier,
+            operations: RefCell::new(HashMap::new()),
+            next: Cell::new(1),
+        })
     }
 
     /// The latest blocking operation of `tab`.
     pub fn blocking_of(&self, tab: Option<u64>) -> Option<Rc<BusyOperation>> {
-        self.operations
-            .borrow()
-            .get(&tab?)
-            .and_then(|operations| operations.iter().rev().find(|operation| operation.blocking).cloned())
+        self.operations.borrow().get(&tab?).and_then(|operations| {
+            operations
+                .iter()
+                .rev()
+                .find(|operation| operation.blocking)
+                .cloned()
+        })
     }
 
     pub fn is_blocked(&self, tab: Option<u64>) -> bool {
@@ -87,7 +122,12 @@ impl BusyService {
     }
 
     pub fn is_busy(&self, tab: Option<u64>) -> bool {
-        tab.is_some_and(|tab| self.operations.borrow().get(&tab).is_some_and(|operations| !operations.is_empty()))
+        tab.is_some_and(|tab| {
+            self.operations
+                .borrow()
+                .get(&tab)
+                .is_some_and(|operations| !operations.is_empty())
+        })
     }
 
     /// Asks the blocking operation of `tab` to stop.
@@ -110,16 +150,22 @@ impl BusyService {
         cancel: Option<Rc<dyn Fn()>>,
         operation: impl Future<Output = T>,
     ) -> T {
-        let Some(tab) = tab else { return operation.await };
+        let Some(tab) = tab else {
+            return operation.await;
+        };
         let id = self.next.get();
         self.next.set(id + 1);
-        self.operations.borrow_mut().entry(tab).or_default().push(Rc::new(BusyOperation {
-            id,
-            activity,
-            blocking,
-            cancel,
-            canceling: Cell::new(false),
-        }));
+        self.operations
+            .borrow_mut()
+            .entry(tab)
+            .or_default()
+            .push(Rc::new(BusyOperation {
+                id,
+                activity,
+                blocking,
+                cancel,
+                canceling: Cell::new(false),
+            }));
         self.notifier.notify(Topics::OPERATIONS);
         struct Done<'a>(&'a BusyService, u64, u64);
         impl Drop for Done<'_> {

@@ -12,9 +12,9 @@ use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::dto::{NativePathIdentity, NativePathPlatform};
 use gitlama_contract::integrations::{
-    NativeIntegrationDefinition, NativeIntegrationExecution, NativeIntegrationExecutionState, NativeIntegrationKind,
-    NativeIntegrationLaunchMode, NativeIntegrationPreview, NativeIntegrationRequest, NativeIntegrationSettings,
-    NativeIntegrationVariables,
+    NativeIntegrationDefinition, NativeIntegrationExecution, NativeIntegrationExecutionState,
+    NativeIntegrationKind, NativeIntegrationLaunchMode, NativeIntegrationPreview,
+    NativeIntegrationRequest, NativeIntegrationSettings, NativeIntegrationVariables,
 };
 use serde_json::{Value, json};
 use std::rc::Rc;
@@ -70,8 +70,16 @@ pub fn definition(settings: &NativeIntegrationSettings) -> Option<NativeIntegrat
         kind: parse_kind(&settings.kind)?,
         executable: settings.executable.clone(),
         arguments: settings.arguments.clone(),
-        execution: if settings.explicit_shell { NativeIntegrationExecution::ExplicitShell } else { NativeIntegrationExecution::Direct },
-        launch_mode: if settings.wait { NativeIntegrationLaunchMode::Wait } else { NativeIntegrationLaunchMode::Detached },
+        execution: if settings.explicit_shell {
+            NativeIntegrationExecution::ExplicitShell
+        } else {
+            NativeIntegrationExecution::Direct
+        },
+        launch_mode: if settings.wait {
+            NativeIntegrationLaunchMode::Wait
+        } else {
+            NativeIntegrationLaunchMode::Detached
+        },
         requires_confirmation: settings.requires_confirmation,
         timeout_seconds: settings.timeout_seconds,
     })
@@ -79,15 +87,26 @@ pub fn definition(settings: &NativeIntegrationSettings) -> Option<NativeIntegrat
 
 /// The arguments that make a discovered tool of `kind` open (an editor) or
 /// reveal (a file manager) `{file}` on `platform`.
-pub fn file_arguments(kind: NativeIntegrationKind, candidate: &str, platform: Platform) -> Vec<String> {
+pub fn file_arguments(
+    kind: NativeIntegrationKind,
+    candidate: &str,
+    platform: Platform,
+) -> Vec<String> {
     let arguments: &[&str] = match (kind, platform) {
         (NativeIntegrationKind::Editor, Platform::MacOs) => &["-t", "{file}"],
         (NativeIntegrationKind::FileManager, Platform::MacOs) => &["-R", "{file}"],
         (NativeIntegrationKind::FileManager, Platform::Windows) => &["/select,{file}"],
-        (NativeIntegrationKind::FileManager, Platform::Linux) if selects_file(candidate, platform) => &["--select", "{file}"],
+        (NativeIntegrationKind::FileManager, Platform::Linux)
+            if selects_file(candidate, platform) =>
+        {
+            &["--select", "{file}"]
+        }
         _ => &["{file}"],
     };
-    arguments.iter().map(|argument| (*argument).to_owned()).collect()
+    arguments
+        .iter()
+        .map(|argument| (*argument).to_owned())
+        .collect()
 }
 
 /// Whether a discovered file manager can select a file in its folder; the
@@ -98,17 +117,30 @@ pub fn selects_file(candidate: &str, platform: Platform) -> bool {
 
 /// The arguments that open a folder itself.
 pub fn folder_arguments(candidate: &str) -> Vec<String> {
-    if candidate.ends_with("-gio") { vec!["open".into(), "{file}".into()] } else { vec!["{file}".into()] }
+    if candidate.ends_with("-gio") {
+        vec!["open".into(), "{file}".into()]
+    } else {
+        vec!["{file}".into()]
+    }
 }
 
 /// The file manager's name for "Open in …" (the Dart
 /// configuredFileBrowserName / platformFileBrowserName).
-pub fn file_browser_name(configured: Option<&NativeIntegrationSettings>, platform: Platform) -> String {
+pub fn file_browser_name(
+    configured: Option<&NativeIntegrationSettings>,
+    platform: Platform,
+) -> String {
     let known = |id: &str| -> Option<&'static str> {
-        [("dolphin", "Dolphin"), ("nautilus", "Files"), ("nemo", "Nemo"), ("thunar", "Thunar"), ("pcmanfm", "PCManFM")]
-            .into_iter()
-            .find(|(needle, _)| id.contains(needle))
-            .map(|(_, name)| name)
+        [
+            ("dolphin", "Dolphin"),
+            ("nautilus", "Files"),
+            ("nemo", "Nemo"),
+            ("thunar", "Thunar"),
+            ("pcmanfm", "PCManFM"),
+        ]
+        .into_iter()
+        .find(|(needle, _)| id.contains(needle))
+        .map(|(_, name)| name)
     };
     if let Some(configured) = configured {
         let executable = String::from_utf16_lossy(&configured.executable.units).to_lowercase();
@@ -129,7 +161,10 @@ fn separator(unit: u16) -> bool {
 /// The folder that contains `path`; `path` itself at the top.
 pub fn parent(path: &NativePathIdentity) -> NativePathIdentity {
     match path.units.iter().rposition(|unit| separator(*unit)) {
-        Some(index) => NativePathIdentity { units: path.units[..index].to_vec(), ..path.clone() },
+        Some(index) => NativePathIdentity {
+            units: path.units[..index].to_vec(),
+            ..path.clone()
+        },
         None => path.clone(),
     }
 }
@@ -146,7 +181,11 @@ pub fn repository_file(root: &NativePathIdentity, relative: &str) -> NativePathI
     } else {
         relative.bytes().map(u16::from).collect()
     };
-    let separator = if windows { u16::from(b'\\') } else { u16::from(b'/') };
+    let separator = if windows {
+        u16::from(b'\\')
+    } else {
+        u16::from(b'/')
+    };
     let mut joined = root.units.clone();
     if !units.is_empty() {
         if joined.last().is_some_and(|last| *last != separator) {
@@ -154,7 +193,11 @@ pub fn repository_file(root: &NativePathIdentity, relative: &str) -> NativePathI
         }
         joined.extend(units);
     }
-    NativePathIdentity { platform: root.platform, units: joined, remote: root.remote.clone() }
+    NativePathIdentity {
+        platform: root.platform,
+        units: joined,
+        remote: root.remote.clone(),
+    }
 }
 
 /// A file or folder a tool opens: repository-relative, or absolute (a file
@@ -184,24 +227,44 @@ impl Integrations {
         prompts: Rc<Prompts>,
         notices: Rc<Notices>,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, history, settings, prompts, notices, platform: Platform::host() })
+        Rc::new(Self {
+            calls,
+            workspace,
+            history,
+            settings,
+            prompts,
+            notices,
+            platform: Platform::host(),
+        })
     }
 
     fn configured(&self, kind: NativeIntegrationKind) -> Option<NativeIntegrationDefinition> {
         self.settings.with(|document| {
-            document.integrations.iter().filter_map(definition).find(|definition| definition.kind == kind)
+            document
+                .integrations
+                .iter()
+                .filter_map(definition)
+                .find(|definition| definition.kind == kind)
         })
     }
 
     /// The name of the file manager "Open in …" opens.
     pub fn file_browser(&self) -> String {
         self.settings.with(|document| {
-            file_browser_name(document.integrations.iter().find(|tool| tool.kind == "fileManager"), self.platform)
+            file_browser_name(
+                document
+                    .integrations
+                    .iter()
+                    .find(|tool| tool.kind == "fileManager"),
+                self.platform,
+            )
         })
     }
 
     fn remote(&self) -> bool {
-        self.workspace.active_canonical().is_some_and(|root| root.remote.is_some())
+        self.workspace
+            .active_canonical()
+            .is_some_and(|root| root.remote.is_some())
     }
 
     fn resolve(&self, target: Option<&Target>) -> Option<NativePathIdentity> {
@@ -214,21 +277,30 @@ impl Integrations {
     }
 
     fn variables(&self, file: Option<NativePathIdentity>) -> NativeIntegrationVariables {
-        let status = self.workspace.current().and_then(|session| session.snapshot.status.clone());
+        let status = self
+            .workspace
+            .current()
+            .and_then(|session| session.snapshot.status.clone());
         NativeIntegrationVariables {
             file,
-            current_branch: status.as_ref().and_then(|status| status.branch_name.clone()),
-            selected_commit: self
-                .history
-                .current()
-                .target_object_id
-                .or_else(|| status.as_ref().and_then(|status| status.head_object_id.clone())),
+            current_branch: status
+                .as_ref()
+                .and_then(|status| status.branch_name.clone()),
+            selected_commit: self.history.current().target_object_id.or_else(|| {
+                status
+                    .as_ref()
+                    .and_then(|status| status.head_object_id.clone())
+            }),
             ..NativeIntegrationVariables::default()
         }
     }
 
     /// Runs a configured tool on the repository or `target`.
-    pub async fn run_configured(&self, definition: NativeIntegrationDefinition, target: Option<Target>) {
+    pub async fn run_configured(
+        &self,
+        definition: NativeIntegrationDefinition,
+        target: Option<Target>,
+    ) {
         let file = self.resolve(target.as_ref());
         self.launch(NativeIntegrationRequest {
             kind: definition.kind,
@@ -242,7 +314,11 @@ impl Integrations {
     /// Runs the stored tool `id` on the repository.
     pub async fn run_stored(&self, id: &str) {
         let Some(definition) = self.settings.with(|document| {
-            document.integrations.iter().find(|tool| tool.id == id).and_then(definition)
+            document
+                .integrations
+                .iter()
+                .find(|tool| tool.id == id)
+                .and_then(definition)
         }) else {
             return self.notices.status("integrationUnavailable", Value::Null);
         };
@@ -264,11 +340,20 @@ impl Integrations {
             Ok(result) => result.candidates.into_iter().next(),
             Err(_) => return self.notices.error("integrationLaunchFailed", Value::Null),
         };
-        let Some(candidate) = candidate else { return self.notices.status("integrationUnavailable", Value::Null) };
+        let Some(candidate) = candidate else {
+            return self.notices.status("integrationUnavailable", Value::Null);
+        };
         let file = self.resolve(target.as_ref());
-        let opens_file = matches!(kind, NativeIntegrationKind::Editor | NativeIntegrationKind::FileManager) && target.is_some();
+        let opens_file = matches!(
+            kind,
+            NativeIntegrationKind::Editor | NativeIntegrationKind::FileManager
+        ) && target.is_some();
         let file = match file {
-            Some(file) if target.is_some() && kind == NativeIntegrationKind::FileManager && !selects_file(&candidate.id, self.platform) => {
+            Some(file)
+                if target.is_some()
+                    && kind == NativeIntegrationKind::FileManager
+                    && !selects_file(&candidate.id, self.platform) =>
+            {
                 Some(parent(&file))
             }
             other => other,
@@ -298,13 +383,21 @@ impl Integrations {
             return self.notices.status("remoteCommandUnsupported", Value::Null);
         }
         if let Some(configured) = self.configured(NativeIntegrationKind::FileManager) {
-            return self.run_configured(configured, Some(Target::Absolute(folder))).await;
+            return self
+                .run_configured(configured, Some(Target::Absolute(folder)))
+                .await;
         }
-        let candidate = match self.calls.integration_discover(NativeIntegrationKind::FileManager).await {
+        let candidate = match self
+            .calls
+            .integration_discover(NativeIntegrationKind::FileManager)
+            .await
+        {
             Ok(result) => result.candidates.into_iter().next(),
             Err(_) => return self.notices.error("integrationLaunchFailed", Value::Null),
         };
-        let Some(candidate) = candidate else { return self.notices.status("integrationUnavailable", Value::Null) };
+        let Some(candidate) = candidate else {
+            return self.notices.status("integrationUnavailable", Value::Null);
+        };
         self.launch(NativeIntegrationRequest {
             kind: NativeIntegrationKind::FileManager,
             discovered_id: None,
@@ -324,7 +417,9 @@ impl Integrations {
     }
 
     async fn launch(&self, request: NativeIntegrationRequest) {
-        let Some(session) = self.workspace.current() else { return };
+        let Some(session) = self.workspace.current() else {
+            return;
+        };
         if request.variables.file.is_none() {
             return;
         }
@@ -344,12 +439,29 @@ impl Integrations {
             return self.notices.status("remoteCommandUnsupported", Value::Null);
         }
         let identity = session.identity;
-        let preview = match self.calls.repository_session_integration_preview(identity.native_id, identity.generation, request).await {
+        let preview = match self
+            .calls
+            .repository_session_integration_preview(
+                identity.native_id,
+                identity.generation,
+                request,
+            )
+            .await
+        {
             Ok(result) => result.preview,
             Err(_) => None,
         };
-        let Some(preview) = preview else { return self.notices.error("integrationLaunchFailed", Value::Null) };
-        self.confirm_and_run(identity.native_id, identity.generation, preview, "integrationRunSummary", false).await;
+        let Some(preview) = preview else {
+            return self.notices.error("integrationLaunchFailed", Value::Null);
+        };
+        self.confirm_and_run(
+            identity.native_id,
+            identity.generation,
+            preview,
+            "integrationRunSummary",
+            false,
+        )
+        .await;
     }
 
     /// Asks to run `preview` when it needs confirmation (described by
@@ -364,17 +476,33 @@ impl Integrations {
         completed_only: bool,
     ) {
         if preview.requires_confirmation {
-            let commands: Vec<String> = std::iter::once(preview.executable.clone()).chain(preview.arguments.iter().cloned()).collect();
-            let answer = self.prompts.ask("confirmIntegration", json!({"commands": commands, "summary": summary})).await;
+            let commands: Vec<String> = std::iter::once(preview.executable.clone())
+                .chain(preview.arguments.iter().cloned())
+                .collect();
+            let answer = self
+                .prompts
+                .ask(
+                    "confirmIntegration",
+                    json!({"commands": commands, "summary": summary}),
+                )
+                .await;
             if answer != Some(Value::Bool(true)) {
-                let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
+                let _ = self
+                    .calls
+                    .repository_session_integration_cancel(session, generation, preview.token)
+                    .await;
                 return;
             }
         }
-        match self.calls.repository_session_integration_execute(session, generation, preview.token, true).await {
+        match self
+            .calls
+            .repository_session_integration_execute(session, generation, preview.token, true)
+            .await
+        {
             Ok(result)
                 if result.state == NativeIntegrationExecutionState::Completed
-                    || (!completed_only && result.state == NativeIntegrationExecutionState::Detached) => {}
+                    || (!completed_only
+                        && result.state == NativeIntegrationExecutionState::Detached) => {}
             _ => self.notices.error("integrationLaunchFailed", Value::Null),
         }
     }
@@ -385,18 +513,37 @@ mod tests {
     use super::*;
 
     fn unix(path: &str) -> NativePathIdentity {
-        NativePathIdentity { platform: NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+        NativePathIdentity {
+            platform: NativePathPlatform::Unix,
+            units: path.bytes().map(u16::from).collect(),
+            remote: None,
+        }
     }
 
     #[test]
     fn discovered_tools_get_each_platforms_arguments() {
         use NativeIntegrationKind::{Editor, FileManager};
-        assert_eq!(file_arguments(Editor, "code", Platform::MacOs), ["-t", "{file}"]);
+        assert_eq!(
+            file_arguments(Editor, "code", Platform::MacOs),
+            ["-t", "{file}"]
+        );
         assert_eq!(file_arguments(Editor, "code", Platform::Linux), ["{file}"]);
-        assert_eq!(file_arguments(FileManager, "finder", Platform::MacOs), ["-R", "{file}"]);
-        assert_eq!(file_arguments(FileManager, "explorer", Platform::Windows), ["/select,{file}"]);
-        assert_eq!(file_arguments(FileManager, "linux-nautilus", Platform::Linux), ["--select", "{file}"]);
-        assert_eq!(file_arguments(FileManager, "linux-thunar", Platform::Linux), ["{file}"]);
+        assert_eq!(
+            file_arguments(FileManager, "finder", Platform::MacOs),
+            ["-R", "{file}"]
+        );
+        assert_eq!(
+            file_arguments(FileManager, "explorer", Platform::Windows),
+            ["/select,{file}"]
+        );
+        assert_eq!(
+            file_arguments(FileManager, "linux-nautilus", Platform::Linux),
+            ["--select", "{file}"]
+        );
+        assert_eq!(
+            file_arguments(FileManager, "linux-thunar", Platform::Linux),
+            ["{file}"]
+        );
         assert!(!selects_file("linux-xdg-open", Platform::Linux));
         assert_eq!(folder_arguments("linux-gio"), ["open", "{file}"]);
         assert_eq!(folder_arguments("linux-xdg-open"), ["{file}"]);
@@ -404,7 +551,10 @@ mod tests {
 
     #[test]
     fn paths_join_the_repository_root_and_find_their_folder() {
-        assert_eq!(repository_file(&unix("/repo"), "lib/a.rs"), unix("/repo/lib/a.rs"));
+        assert_eq!(
+            repository_file(&unix("/repo"), "lib/a.rs"),
+            unix("/repo/lib/a.rs")
+        );
         assert_eq!(repository_file(&unix("/repo/"), "a"), unix("/repo/a"));
         assert_eq!(parent(&unix("/repo/lib/a.rs")), unix("/repo/lib"));
         assert_eq!(parent(&unix("a")), unix("a"));
@@ -423,7 +573,10 @@ mod tests {
             timeout_seconds: 0,
         };
         assert_eq!(file_browser_name(Some(&tool), Platform::Linux), "Dolphin");
-        let other = NativeIntegrationSettings { executable: unix("/opt/fm"), ..tool };
+        let other = NativeIntegrationSettings {
+            executable: unix("/opt/fm"),
+            ..tool
+        };
         assert_eq!(file_browser_name(Some(&other), Platform::Linux), "mine");
         assert_eq!(file_browser_name(None, Platform::MacOs), "Finder");
         assert_eq!(file_browser_name(None, Platform::Linux), "Files");

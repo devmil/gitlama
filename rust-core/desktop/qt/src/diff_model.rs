@@ -3,7 +3,10 @@
 //! and its changed-word marks. Rows not loaded yet are placeholders that
 //! ask the document for their page.
 
-use gitlama_contract::diff::{NativeDiffFileKind, NativeDiffRow, NativeDiffRowKind, NativeSyntaxSideState, NativeSyntaxSpan, NativeSyntaxTokenKind};
+use gitlama_contract::diff::{
+    NativeDiffFileKind, NativeDiffRow, NativeDiffRowKind, NativeSyntaxSideState, NativeSyntaxSpan,
+    NativeSyntaxTokenKind,
+};
 use gitlama_workbench::diff_doc::DiffDocument;
 use qtbridge::qtbridge_type_lib::{QByteArray, QHash, QModelIndex, QVariant};
 use qtbridge::{QAbstractItemModel, QAbstractItemModelBase};
@@ -103,12 +106,22 @@ fn parse_color(text: &str) -> Option<Rgb> {
     if hex.len() != 6 {
         return None;
     }
-    let channel = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).ok().map(|value| f64::from(value) / 255.0);
+    let channel = |at: usize| {
+        u8::from_str_radix(&hex[at..at + 2], 16)
+            .ok()
+            .map(|value| f64::from(value) / 255.0)
+    };
     Some(Rgb(channel(0)?, channel(2)?, channel(4)?))
 }
 
 fn luminance(Rgb(r, g, b): Rgb) -> f64 {
-    let linear = |c: f64| if c <= 0.03928 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) };
+    let linear = |c: f64| {
+        if c <= 0.03928 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
     0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
 }
 
@@ -135,18 +148,45 @@ impl SyntaxPalette {
         for kind in ["context", "addition", "deletion"] {
             let surfaces: Vec<Rgb> = value["surfaces"][kind]
                 .as_array()
-                .map(|items| items.iter().filter_map(|item| item.as_str().and_then(parse_color)).collect())
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| item.as_str().and_then(parse_color))
+                        .collect()
+                })
                 .unwrap_or_default();
             let mut colours = HashMap::new();
             if let Some(syntax) = value["syntax"].as_object() {
                 for token in [
-                    "comment", "keyword", "string", "number", "type", "function", "variable", "constant", "operator",
-                    "punctuation", "attribute", "tag",
+                    "comment",
+                    "keyword",
+                    "string",
+                    "number",
+                    "type",
+                    "function",
+                    "variable",
+                    "constant",
+                    "operator",
+                    "punctuation",
+                    "attribute",
+                    "tag",
                 ] {
-                    let Some(colour) = syntax.get(token).and_then(Value::as_str) else { continue };
-                    let readable = parse_color(colour)
-                        .is_some_and(|rgb| surfaces.iter().all(|surface| contrast(rgb, *surface) >= MINIMUM_CONTRAST));
-                    colours.insert(token, if readable { colour.to_owned() } else { ink.clone() });
+                    let Some(colour) = syntax.get(token).and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let readable = parse_color(colour).is_some_and(|rgb| {
+                        surfaces
+                            .iter()
+                            .all(|surface| contrast(rgb, *surface) >= MINIMUM_CONTRAST)
+                    });
+                    colours.insert(
+                        token,
+                        if readable {
+                            colour.to_owned()
+                        } else {
+                            ink.clone()
+                        },
+                    );
                 }
             }
             by_kind.insert(kind, colours);
@@ -155,7 +195,11 @@ impl SyntaxPalette {
     }
 
     fn colour(&self, kind: &str, token: &str) -> Option<&str> {
-        self.by_kind.get(kind)?.get(token).map(String::as_str).filter(|colour| *colour != self.ink)
+        self.by_kind
+            .get(kind)?
+            .get(token)
+            .map(String::as_str)
+            .filter(|colour| *colour != self.ink)
     }
 }
 
@@ -231,12 +275,20 @@ fn escape(text: &str, out: &mut String) {
 
 /// `display` coloured by `spans` (byte ranges of the source) as QML
 /// styled text, or "" when nothing is coloured.
-fn styled(display: &Display, source: &[u8], spans: &[NativeSyntaxSpan], palette: &SyntaxPalette, kind: &str) -> String {
+fn styled(
+    display: &Display,
+    source: &[u8],
+    spans: &[NativeSyntaxSpan],
+    palette: &SyntaxPalette,
+    kind: &str,
+) -> String {
     let utf16: Vec<u16> = display.text.encode_utf16().collect();
     let mut out = String::new();
     let mut cursor = 0usize;
     let mut coloured = false;
-    let slice = |from: usize, to: usize| String::from_utf16_lossy(&utf16[from.min(utf16.len())..to.min(utf16.len())]);
+    let slice = |from: usize, to: usize| {
+        String::from_utf16_lossy(&utf16[from.min(utf16.len())..to.min(utf16.len())])
+    };
     for span in spans {
         let start = display.utf16_at[(span.start as usize).min(source.len())];
         let end = display.utf16_at[(span.end as usize).min(source.len())];
@@ -272,7 +324,10 @@ fn marks(row: &NativeDiffRow, display: &Display) -> Value {
     for span in row.intra_line.iter().take(MAX_MARKS) {
         let start = span.start.clamp(cursor, length);
         let end = span.end.clamp(start, length);
-        let (from, to) = (display.utf16_at[start as usize], display.utf16_at[end as usize]);
+        let (from, to) = (
+            display.utf16_at[start as usize],
+            display.utf16_at[end as usize],
+        );
         if to > from {
             result.push(json!([from, to]));
         }
@@ -326,10 +381,22 @@ impl RowView {
         }
     }
 
-    fn of(row: &NativeDiffRow, document: &DiffDocument, palette: &SyntaxPalette, latin1: bool) -> Self {
+    fn of(
+        row: &NativeDiffRow,
+        document: &DiffDocument,
+        palette: &SyntaxPalette,
+        latin1: bool,
+    ) -> Self {
         let kind = kind_name(row.kind);
-        let shown = if latin1 { Some(display_latin1(&row.text)) } else { display(&row.text) };
-        let text = shown.as_ref().map(|display| display.text.clone()).unwrap_or_default();
+        let shown = if latin1 {
+            Some(display_latin1(&row.text))
+        } else {
+            display(&row.text)
+        };
+        let text = shown
+            .as_ref()
+            .map(|display| display.text.clone())
+            .unwrap_or_default();
         let line_row = matches!(
             row.kind,
             NativeDiffRowKind::Context | NativeDiffRowKind::Addition | NativeDiffRowKind::Deletion
@@ -340,7 +407,11 @@ impl RowView {
             && let Some(display) = &shown
             && let Some(syntax) = document.syntax(&row.stable_id)
         {
-            let surface = if row.kind == NativeDiffRowKind::Context { "context" } else { kind };
+            let surface = if row.kind == NativeDiffRowKind::Context {
+                "context"
+            } else {
+                kind
+            };
 
             if syntax.old_state == NativeSyntaxSideState::Ready && !syntax.old_spans.is_empty() {
                 styled_old = styled(display, &row.text, &syntax.old_spans, palette, surface);
@@ -360,14 +431,25 @@ impl RowView {
             loading: false,
             old_line: row.old_line.map_or(-1, |line| line as i32),
             new_line: row.new_line.map_or(-1, |line| line as i32),
-            marks: shown.as_ref().map(|display| marks(row, display)).unwrap_or(Value::Array(Vec::new())),
+            marks: shown
+                .as_ref()
+                .map(|display| marks(row, display))
+                .unwrap_or(Value::Array(Vec::new())),
             invalid: shown.is_none() && line_row,
             text,
             styled_old,
             styled_new,
             file_kind: row.file_kind.map(file_kind_name),
-            old_path: row.old_path.as_deref().map(|path| String::from_utf8_lossy(path).into_owned()).unwrap_or_default(),
-            new_path: row.new_path.as_deref().map(|path| String::from_utf8_lossy(path).into_owned()).unwrap_or_default(),
+            old_path: row
+                .old_path
+                .as_deref()
+                .map(|path| String::from_utf8_lossy(path).into_owned())
+                .unwrap_or_default(),
+            new_path: row
+                .new_path
+                .as_deref()
+                .map(|path| String::from_utf8_lossy(path).into_owned())
+                .unwrap_or_default(),
             selectable: row.selectable,
             truncated: row.text_truncated,
             section_end: row.section_end.map_or(-1, |end| end as i32),
@@ -423,11 +505,17 @@ mod diff_model {
         /// or null (the Dart imageDiffRow).
         #[qslot]
         fn image_row(&self) -> Value {
-            let Some(document) = &self.document else { return Value::Null };
+            let Some(document) = &self.document else {
+                return Value::Null;
+            };
             let mut found = Value::Null;
             document.for_each_loaded(|_, row| {
                 if found.is_null() && row.kind == NativeDiffRowKind::Image {
-                    let text = |path: &Option<Vec<u8>>| path.as_deref().map(|path| String::from_utf8_lossy(path).into_owned()).unwrap_or_default();
+                    let text = |path: &Option<Vec<u8>>| {
+                        path.as_deref()
+                            .map(|path| String::from_utf8_lossy(path).into_owned())
+                            .unwrap_or_default()
+                    };
                     found = serde_json::json!({
                         "key": format!("{}:{}", document.request_id(), row.stable_id),
                         "oldPath": text(&row.old_path),
@@ -454,7 +542,9 @@ mod diff_model {
         fn change_map(&self, buckets: i32) -> Vec<i32> {
             let buckets = buckets.max(1) as usize;
             let mut map = vec![0; buckets];
-            let (Some(document), true) = (&self.document, self.total > 0) else { return map };
+            let (Some(document), true) = (&self.document, self.total > 0) else {
+                return map;
+            };
             let total = self.total as usize;
             document.for_each_loaded(|at, row| {
                 let mark = match row.kind {
@@ -508,7 +598,9 @@ mod diff_model {
         /// The index of the next (or previous) hunk header from `index`, or -1.
         #[qslot]
         fn hunk_from(&self, index: i32, forward: bool) -> i32 {
-            let Some(document) = &self.document else { return -1 };
+            let Some(document) = &self.document else {
+                return -1;
+            };
             let mut found = -1;
             document.for_each_loaded(|at, row| {
                 let at = at as i32;
@@ -552,7 +644,11 @@ mod diff_model {
                 return QVariant::default();
             }
             let view = self.view(row);
-            match ROLES.get((role - FIRST_ROLE) as usize).copied().unwrap_or_default() {
+            match ROLES
+                .get((role - FIRST_ROLE) as usize)
+                .copied()
+                .unwrap_or_default()
+            {
                 "stableId" => QVariant::from(&view.stable_id),
                 "kind" => QVariant::from(view.kind),
                 "loading" => QVariant::from(view.loading),
@@ -592,7 +688,9 @@ mod diff_model {
             let Some(document) = &self.document else {
                 return Rc::new(RowView::loading(row as u64));
             };
-            let Some(view) = document.with_row(row as u64, |native| RowView::of(native, document, &self.palette, self.latin1)) else {
+            let Some(view) = document.with_row(row as u64, |native| {
+                RowView::of(native, document, &self.palette, self.latin1)
+            }) else {
                 document.ensure(row as u64);
                 return Rc::new(RowView::loading(row as u64));
             };
@@ -626,7 +724,9 @@ mod diff_model {
                 }
                 return;
             }
-            let total = document.as_ref().map_or(0, |document| i32::try_from(document.total()).unwrap_or(i32::MAX));
+            let total = document.as_ref().map_or(0, |document| {
+                i32::try_from(document.total()).unwrap_or(i32::MAX)
+            });
             self.begin_reset_model();
             self.shown_revision = document.as_ref().map_or(0, |document| document.revision());
             self.document = document;
@@ -680,7 +780,14 @@ mod tests {
         }));
         let source = b"if a<b";
         let shown = display(source).unwrap();
-        let spans = [NativeSyntaxSpan { start: 0, end: 2, kind: NativeSyntaxTokenKind::Keyword }];
-        assert_eq!(styled(&shown, source, &spans, &palette, "context"), "<font color=\"#0000aa\">if</font>&nbsp;a&lt;b");
+        let spans = [NativeSyntaxSpan {
+            start: 0,
+            end: 2,
+            kind: NativeSyntaxTokenKind::Keyword,
+        }];
+        assert_eq!(
+            styled(&shown, source, &spans, &palette, "context"),
+            "<font color=\"#0000aa\">if</font>&nbsp;a&lt;b"
+        );
     }
 }

@@ -12,8 +12,10 @@ use crate::rt;
 use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::power_tools::{
-    NativeBisectAction, NativeBisectExecutionState, NativeBisectState, NativeDiffContentSearchResult, NativeDiffSearchOptions,
-    NativeDiffSearchScope, NativePowerJobStartResult, NativePowerJobState, NativeRepositoryStatisticsResult, NativeSearchCompleteness,
+    NativeBisectAction, NativeBisectExecutionState, NativeBisectState,
+    NativeDiffContentSearchResult, NativeDiffSearchOptions, NativeDiffSearchScope,
+    NativePowerJobStartResult, NativePowerJobState, NativeRepositoryStatisticsResult,
+    NativeSearchCompleteness,
 };
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
@@ -55,8 +57,15 @@ pub struct PowerTools {
 
 /// A commit ID shortened for reading; anything else unchanged.
 pub fn short_commit(commit: &str) -> String {
-    let hex = (40..=64).contains(&commit.len()) && commit.bytes().all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'));
-    if hex { commit[..10].to_owned() } else { commit.to_owned() }
+    let hex = (40..=64).contains(&commit.len())
+        && commit
+            .bytes()
+            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'));
+    if hex {
+        commit[..10].to_owned()
+    } else {
+        commit.to_owned()
+    }
 }
 
 fn action_name(action: NativeBisectAction) -> &'static str {
@@ -82,25 +91,46 @@ pub fn bisect_action(name: &str) -> Option<NativeBisectAction> {
 
 /// The references a bisect field offers, each with the commit it names:
 /// HEAD, local branches, remote-tracking branches, then tags.
-pub fn reference_choices(snapshot: &gitlama_contract::dto::NativeRepositorySnapshot) -> Vec<(String, String)> {
+pub fn reference_choices(
+    snapshot: &gitlama_contract::dto::NativeRepositorySnapshot,
+) -> Vec<(String, String)> {
     let text = |bytes: &[u8]| String::from_utf8_lossy(bytes).into_owned();
     let refs = &snapshot.refs;
-    let head = snapshot.status.as_ref().and_then(|status| status.head_object_id.clone());
+    let head = snapshot
+        .status
+        .as_ref()
+        .and_then(|status| status.head_object_id.clone());
     head.map(|head| ("HEAD".to_owned(), head))
         .into_iter()
-        .chain(refs.branches.iter().map(|branch| (text(&branch.name), branch.target.clone())))
+        .chain(
+            refs.branches
+                .iter()
+                .map(|branch| (text(&branch.name), branch.target.clone())),
+        )
         .chain(refs.remotes.iter().flat_map(|remote| {
             let prefix = text(&remote.name);
-            remote.branches.iter().map(move |branch| (format!("{prefix}/{}", String::from_utf8_lossy(&branch.name)), branch.target.clone()))
+            remote.branches.iter().map(move |branch| {
+                (
+                    format!("{prefix}/{}", String::from_utf8_lossy(&branch.name)),
+                    branch.target.clone(),
+                )
+            })
         }))
-        .chain(refs.tags.iter().map(|tag| (text(&tag.name), tag.target.clone())))
+        .chain(
+            refs.tags
+                .iter()
+                .map(|tag| (text(&tag.name), tag.target.clone())),
+        )
         .collect()
 }
 
 /// The commit `value` names: a listed reference's target, else `value`.
 pub fn resolve_reference(choices: &[(String, String)], value: &str) -> String {
     let value = value.trim();
-    choices.iter().find(|(name, _)| name == value).map_or_else(|| value.to_owned(), |(_, target)| target.clone())
+    choices
+        .iter()
+        .find(|(name, _)| name == value)
+        .map_or_else(|| value.to_owned(), |(_, target)| target.clone())
 }
 
 enum Job<T> {
@@ -144,7 +174,9 @@ impl PowerTools {
     }
 
     fn session(&self) -> Option<(u64, u64)> {
-        self.workspace.current().map(|session| (session.identity.native_id, session.identity.generation))
+        self.workspace
+            .current()
+            .map(|session| (session.identity.native_id, session.identity.generation))
     }
 
     fn stop_jobs(&self) {
@@ -156,15 +188,31 @@ impl PowerTools {
     pub async fn open(&self, owner: u64) {
         self.owner.set(owner);
         self.stop_jobs();
-        let choices = self.workspace.current().map(|session| reference_choices(&session.snapshot)).unwrap_or_default();
-        self.update(|panel| *panel = Panel { choices, ..Panel::default() });
-        let Some((session, generation)) = self.session() else { return };
-        let result = self.calls.repository_session_bisect_state(session, generation).await;
+        let choices = self
+            .workspace
+            .current()
+            .map(|session| reference_choices(&session.snapshot))
+            .unwrap_or_default();
+        self.update(|panel| {
+            *panel = Panel {
+                choices,
+                ..Panel::default()
+            }
+        });
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
+        let result = self
+            .calls
+            .repository_session_bisect_state(session, generation)
+            .await;
         if self.owner.get() != owner {
             return;
         }
         self.update(|panel| match result {
-            Ok(result) if result.failure.is_none() && result.state.is_some() => panel.bisect = result.state,
+            Ok(result) if result.failure.is_none() && result.state.is_some() => {
+                panel.bisect = result.state
+            }
             _ => panel.failed = true,
         });
     }
@@ -193,18 +241,44 @@ impl PowerTools {
         P: std::future::Future<Output = Result<T, ()>>,
     {
         let token = match started {
-            Ok(NativePowerJobStartResult { token: Some(token), failure: None }) => token,
-            _ => return if run.get() == expected { Job::Failed } else { Job::Superseded },
+            Ok(NativePowerJobStartResult {
+                token: Some(token),
+                failure: None,
+            }) => token,
+            _ => {
+                return if run.get() == expected {
+                    Job::Failed
+                } else {
+                    Job::Superseded
+                };
+            }
         };
         loop {
             if run.get() != expected {
-                let _ = self.calls.repository_session_power_job_cancel(session, generation, token).await;
+                let _ = self
+                    .calls
+                    .repository_session_power_job_cancel(session, generation, token)
+                    .await;
                 return Job::Superseded;
             }
             match poll(token).await {
-                Ok(result) if state(&result) == NativePowerJobState::Pending => rt::sleep(POLL).await,
-                Ok(result) => return if run.get() == expected { Job::Done(result) } else { Job::Superseded },
-                Err(()) => return if run.get() == expected { Job::Failed } else { Job::Superseded },
+                Ok(result) if state(&result) == NativePowerJobState::Pending => {
+                    rt::sleep(POLL).await
+                }
+                Ok(result) => {
+                    return if run.get() == expected {
+                        Job::Done(result)
+                    } else {
+                        Job::Superseded
+                    };
+                }
+                Err(()) => {
+                    return if run.get() == expected {
+                        Job::Failed
+                    } else {
+                        Job::Superseded
+                    };
+                }
             }
         }
     }
@@ -213,7 +287,9 @@ impl PowerTools {
         if query.trim().is_empty() || self.panel.borrow().search_running {
             return;
         }
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         let run = self.search_run.get() + 1;
         self.search_run.set(run);
         self.update(|panel| {
@@ -225,8 +301,14 @@ impl PowerTools {
             query,
             maximum_commits: MAXIMUM_COMMITS,
             case_sensitive,
-            scope: if current_branch { NativeDiffSearchScope::CurrentBranch } else { NativeDiffSearchScope::AllRefs },
-            other_refs: self.settings.with(|document| document.appearance.history_other_refs),
+            scope: if current_branch {
+                NativeDiffSearchScope::CurrentBranch
+            } else {
+                NativeDiffSearchScope::AllRefs
+            },
+            other_refs: self
+                .settings
+                .with(|document| document.appearance.history_other_refs),
         };
         let started = self
             .calls
@@ -243,7 +325,12 @@ impl PowerTools {
                 run,
                 |token| {
                     let calls = Rc::clone(&calls);
-                    async move { calls.repository_session_diff_content_search_poll(session, generation, token).await.map_err(|_| ()) }
+                    async move {
+                        calls
+                            .repository_session_diff_content_search_poll(session, generation, token)
+                            .await
+                            .map_err(|_| ())
+                    }
                 },
                 |result: &NativeDiffContentSearchResult| result.state,
             )
@@ -273,7 +360,9 @@ impl PowerTools {
         if self.panel.borrow().statistics_running {
             return;
         }
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         let run = self.statistics_run.get() + 1;
         self.statistics_run.set(run);
         self.update(|panel| {
@@ -281,7 +370,11 @@ impl PowerTools {
             panel.statistics = None;
             panel.failed = false;
         });
-        let started = self.calls.repository_session_statistics_start(session, generation).await.map_err(|_| ());
+        let started = self
+            .calls
+            .repository_session_statistics_start(session, generation)
+            .await
+            .map_err(|_| ());
         let calls = Rc::clone(&self.calls);
         let job = self
             .poll(
@@ -292,7 +385,12 @@ impl PowerTools {
                 run,
                 |token| {
                     let calls = Rc::clone(&calls);
-                    async move { calls.repository_session_statistics_poll(session, generation, token).await.map_err(|_| ()) }
+                    async move {
+                        calls
+                            .repository_session_statistics_poll(session, generation, token)
+                            .await
+                            .map_err(|_| ())
+                    }
                 },
                 |result: &NativeRepositoryStatisticsResult| result.state,
             )
@@ -316,38 +414,70 @@ impl PowerTools {
         if self.panel.borrow().bisect_busy {
             return;
         }
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         self.update(|panel| {
             panel.bisect_busy = true;
             panel.failed = false;
         });
         let (good, bad) = match action {
             NativeBisectAction::Start => {
-                let choices = self.workspace.current().map(|session| reference_choices(&session.snapshot)).unwrap_or_default();
-                (Some(resolve_reference(&choices, &good)), Some(resolve_reference(&choices, &bad)))
+                let choices = self
+                    .workspace
+                    .current()
+                    .map(|session| reference_choices(&session.snapshot))
+                    .unwrap_or_default();
+                (
+                    Some(resolve_reference(&choices, &good)),
+                    Some(resolve_reference(&choices, &bad)),
+                )
             }
             _ => (None, None),
         };
-        let preview = match self.calls.repository_session_bisect_preview(session, generation, action, good, bad).await {
+        let preview = match self
+            .calls
+            .repository_session_bisect_preview(session, generation, action, good, bad)
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
-                _ => return self.update(|panel| {
+                _ => {
+                    return self.update(|panel| {
+                        panel.bisect_busy = false;
+                        panel.failed = true;
+                    });
+                }
+            },
+            Err(_) => {
+                return self.update(|panel| {
                     panel.bisect_busy = false;
                     panel.failed = true;
-                }),
-            },
-            Err(_) => return self.update(|panel| {
-                panel.bisect_busy = false;
-                panel.failed = true;
-            }),
+                });
+            }
         };
-        let command = std::iter::once("git".to_owned()).chain(preview.arguments.iter().cloned()).collect::<Vec<_>>().join(" ");
-        let answer = self.prompts.ask("confirmBisect", json!({"action": action_name(action), "command": command})).await;
+        let command = std::iter::once("git".to_owned())
+            .chain(preview.arguments.iter().cloned())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let answer = self
+            .prompts
+            .ask(
+                "confirmBisect",
+                json!({"action": action_name(action), "command": command}),
+            )
+            .await;
         if answer != Some(Value::Bool(true)) {
-            let _ = self.calls.repository_session_bisect_cancel_preview(session, generation, preview.token).await;
+            let _ = self
+                .calls
+                .repository_session_bisect_cancel_preview(session, generation, preview.token)
+                .await;
             return self.update(|panel| panel.bisect_busy = false);
         }
-        let result = self.calls.repository_session_bisect_execute(session, generation, preview.token).await;
+        let result = self
+            .calls
+            .repository_session_bisect_execute(session, generation, preview.token)
+            .await;
         if let Some(session) = self.workspace.current() {
             let _ = self.workspace.refresh_if_open(session.identity).await;
         }
@@ -361,8 +491,11 @@ impl PowerTools {
                     if result.bisect.is_some() {
                         panel.bisect = result.bisect;
                     }
-                    panel.failed =
-                        !matches!(result.state, NativeBisectExecutionState::Completed | NativeBisectExecutionState::OutcomeUncertain);
+                    panel.failed = !matches!(
+                        result.state,
+                        NativeBisectExecutionState::Completed
+                            | NativeBisectExecutionState::OutcomeUncertain
+                    );
                 });
             }
             Err(_) => self.update(|panel| {
@@ -446,7 +579,10 @@ mod tests {
 
     #[test]
     fn references_resolve_to_their_commits() {
-        let choices = vec![("HEAD".to_owned(), "a".repeat(40)), ("main".to_owned(), "b".repeat(40))];
+        let choices = vec![
+            ("HEAD".to_owned(), "a".repeat(40)),
+            ("main".to_owned(), "b".repeat(40)),
+        ];
         assert_eq!(resolve_reference(&choices, " main "), "b".repeat(40));
         assert_eq!(resolve_reference(&choices, "HEAD"), "a".repeat(40));
         assert_eq!(resolve_reference(&choices, &"c".repeat(40)), "c".repeat(40));

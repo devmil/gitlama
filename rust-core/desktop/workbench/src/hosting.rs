@@ -12,16 +12,19 @@ use crate::rt;
 use crate::settings::SettingsService;
 use gitlama_contract::dto::NativePathIdentity;
 use gitlama_contract::hosting::{
-    NativeHostingAuthentication, NativeHostingBindingResult, NativeHostingBindingState, NativeHostingCapability,
-    NativeHostingChangeRequest, NativeHostingChangeRequestState, NativeHostingCheckState, NativeHostingConnection,
-    NativeHostingCredentialState, NativeHostingFailureKind, NativeHostingMergeability, NativeHostingPreset, NativeHostingRemote,
+    NativeHostingAuthentication, NativeHostingBindingResult, NativeHostingBindingState,
+    NativeHostingCapability, NativeHostingChangeRequest, NativeHostingChangeRequestState,
+    NativeHostingCheckState, NativeHostingConnection, NativeHostingCredentialState,
+    NativeHostingFailureKind, NativeHostingMergeability, NativeHostingPreset, NativeHostingRemote,
     NativeHostingResourceKind, NativeHostingResources,
 };
 use gitlama_contract::hosting_runtime::{
-    NativeHostingOAuthSnapshot, NativeHostingOAuthState, NativeHostingResourceFailure, NativeHostingResourceLoadState,
-    NativeHostingResourceSnapshot,
+    NativeHostingOAuthSnapshot, NativeHostingOAuthState, NativeHostingResourceFailure,
+    NativeHostingResourceLoadState, NativeHostingResourceSnapshot,
 };
-use gitlama_contract::hosting_settings::{NativeHostingBindingSettings, NativeHostingConnectionSettings};
+use gitlama_contract::hosting_settings::{
+    NativeHostingBindingSettings, NativeHostingConnectionSettings,
+};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::{Rc, Weak};
@@ -109,7 +112,9 @@ pub fn parse_capability(name: &str) -> Option<NativeHostingCapability> {
 }
 
 /// A stored account as the core takes it; None for unknown names.
-pub fn connection_of(settings: &NativeHostingConnectionSettings) -> Option<NativeHostingConnection> {
+pub fn connection_of(
+    settings: &NativeHostingConnectionSettings,
+) -> Option<NativeHostingConnection> {
     Some(NativeHostingConnection {
         id: settings.id.clone(),
         preset: parse_preset(&settings.preset)?,
@@ -120,7 +125,11 @@ pub fn connection_of(settings: &NativeHostingConnectionSettings) -> Option<Nativ
         authentication: parse_authentication(&settings.authentication)?,
         enabled: settings.enabled,
         refresh_enabled: settings.refresh_enabled,
-        capabilities: settings.capabilities.iter().filter_map(|name| parse_capability(name)).collect(),
+        capabilities: settings
+            .capabilities
+            .iter()
+            .filter_map(|name| parse_capability(name))
+            .collect(),
         credential_identity: settings.credential_identity.clone(),
         allow_split_origin: settings.allow_split_origin,
     })
@@ -137,7 +146,11 @@ pub fn settings_of(connection: &NativeHostingConnection) -> NativeHostingConnect
         authentication: authentication_name(connection.authentication).to_owned(),
         enabled: connection.enabled,
         refresh_enabled: connection.refresh_enabled,
-        capabilities: connection.capabilities.iter().map(|capability| capability_name(*capability).to_owned()).collect(),
+        capabilities: connection
+            .capabilities
+            .iter()
+            .map(|capability| capability_name(*capability).to_owned())
+            .collect(),
         credential_identity: connection.credential_identity.clone(),
         allow_split_origin: connection.allow_split_origin,
     }
@@ -180,7 +193,9 @@ pub fn resource_failure_name(failure: NativeHostingResourceFailure) -> &'static 
     }
 }
 
-pub fn oauth_failure_name(failure: gitlama_contract::hosting_runtime::NativeHostingOAuthFailure) -> &'static str {
+pub fn oauth_failure_name(
+    failure: gitlama_contract::hosting_runtime::NativeHostingOAuthFailure,
+) -> &'static str {
     use gitlama_contract::hosting_runtime::NativeHostingOAuthFailure::*;
     match failure {
         InvalidConnection => "invalidConnection",
@@ -202,7 +217,12 @@ pub fn oauth_failure_name(failure: gitlama_contract::hosting_runtime::NativeHost
 }
 
 fn oauth_terminal(state: NativeHostingOAuthState) -> bool {
-    matches!(state, NativeHostingOAuthState::Succeeded | NativeHostingOAuthState::Failed | NativeHostingOAuthState::Canceled)
+    matches!(
+        state,
+        NativeHostingOAuthState::Succeeded
+            | NativeHostingOAuthState::Failed
+            | NativeHostingOAuthState::Canceled
+    )
 }
 
 fn resource_terminal(state: NativeHostingResourceLoadState) -> bool {
@@ -212,19 +232,26 @@ fn resource_terminal(state: NativeHostingResourceLoadState) -> bool {
 /// Whether `url` may open in a browser: https (or http on the loopback
 /// interface), with a host and no user information.
 pub fn openable_url(url: &str) -> bool {
-    let Some((scheme, rest)) = url.split_once("://") else { return false };
+    let Some((scheme, rest)) = url.split_once("://") else {
+        return false;
+    };
     let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
     if authority.is_empty() || authority.contains('@') {
         return false;
     }
-    let host = authority.rsplit_once(':').map_or(authority, |(host, _)| host);
+    let host = authority
+        .rsplit_once(':')
+        .map_or(authority, |(host, _)| host);
     scheme == "https" || (scheme == "http" && matches!(host, "localhost" | "127.0.0.1"))
 }
 
 /// The defaults a new account of `preset` starts with, for the form:
 /// {preset, webBaseUrl, apiBaseUrl, capabilities, authentications}, or
 /// null when a self-hosted preset has no valid `https` `web_base`.
-pub fn preset_defaults_value(preset: NativeHostingPreset, web_base: Option<String>) -> serde_json::Value {
+pub fn preset_defaults_value(
+    preset: NativeHostingPreset,
+    web_base: Option<String>,
+) -> serde_json::Value {
     let result = gitlama_core::api::hosting_preset_defaults(preset, web_base);
     result.defaults.filter(|_| result.failure.is_none()).map_or(serde_json::Value::Null, |defaults| {
         serde_json::json!({
@@ -274,28 +301,45 @@ impl Hosting {
             cli: Cell::new((false, false)),
             credentials: RefCell::new(Vec::new()),
         });
-        let stored = this.settings.with(|document| document.hosting_connections.clone());
+        let stored = this
+            .settings
+            .with(|document| document.hosting_connections.clone());
         let mut retained = Vec::new();
         for settings in stored.iter() {
-            let Some(connection) = connection_of(settings) else { continue };
-            let result = rt::blocking(move || gitlama_core::api::hosting_connection_validate(connection)).await;
+            let Some(connection) = connection_of(settings) else {
+                continue;
+            };
+            let result =
+                rt::blocking(move || gitlama_core::api::hosting_connection_validate(connection))
+                    .await;
             if let (Some(connection), None) = (result.connection, result.failure) {
                 retained.push(settings_of(&connection));
             }
         }
         if retained.len() != stored.len() {
-            let ids: HashSet<String> = retained.iter().map(|connection| connection.id.clone()).collect();
+            let ids: HashSet<String> = retained
+                .iter()
+                .map(|connection| connection.id.clone())
+                .collect();
             let _ = this
                 .save_hosting(move |document| {
                     document.hosting_connections = retained;
-                    document.hosting_bindings.retain(|binding| ids.contains(&binding.connection_id));
+                    document
+                        .hosting_bindings
+                        .retain(|binding| ids.contains(&binding.connection_id));
                 })
                 .await;
         }
         this.read_credentials();
         let weak = Rc::downgrade(&this);
         rt::spawn_detached(async move {
-            let found = rt::blocking(|| (gitlama_core::api::hosting_github_cli_available(), gitlama_core::api::hosting_gitlab_cli_available())).await;
+            let found = rt::blocking(|| {
+                (
+                    gitlama_core::api::hosting_github_cli_available(),
+                    gitlama_core::api::hosting_gitlab_cli_available(),
+                )
+            })
+            .await;
             if let Some(this) = weak.upgrade() {
                 this.cli.set(found);
                 this.changed();
@@ -329,7 +373,12 @@ impl Hosting {
             let states = rt::blocking(move || {
                 connections
                     .into_iter()
-                    .map(|connection| (connection.id.clone(), gitlama_core::api::hosting_credential_state(connection).state))
+                    .map(|connection| {
+                        (
+                            connection.id.clone(),
+                            gitlama_core::api::hosting_credential_state(connection).state,
+                        )
+                    })
                     .collect::<Vec<_>>()
             })
             .await;
@@ -341,22 +390,42 @@ impl Hosting {
     }
 
     pub fn connections(&self) -> Vec<NativeHostingConnection> {
-        self.settings.with(|document| document.hosting_connections.iter().filter_map(connection_of).collect())
+        self.settings.with(|document| {
+            document
+                .hosting_connections
+                .iter()
+                .filter_map(connection_of)
+                .collect()
+        })
     }
 
     pub fn connection(&self, id: &str) -> Option<NativeHostingConnection> {
-        self.connections().into_iter().find(|connection| connection.id == id)
+        self.connections()
+            .into_iter()
+            .find(|connection| connection.id == id)
     }
 
-    pub fn binding_for(&self, repository: &NativePathIdentity) -> Option<NativeHostingBindingSettings> {
-        self.settings.with(|document| document.hosting_bindings.iter().find(|binding| &binding.repository == repository).cloned())
+    pub fn binding_for(
+        &self,
+        repository: &NativePathIdentity,
+    ) -> Option<NativeHostingBindingSettings> {
+        self.settings.with(|document| {
+            document
+                .hosting_bindings
+                .iter()
+                .find(|binding| &binding.repository == repository)
+                .cloned()
+        })
     }
 
     pub fn authorization(&self) -> Option<Authorization> {
         self.authorization.borrow().clone()
     }
 
-    async fn save_hosting(&self, change: impl FnOnce(&mut gitlama_contract::storage::NativeSettingsDocument)) -> Result<(), ()> {
+    async fn save_hosting(
+        &self,
+        change: impl FnOnce(&mut gitlama_contract::storage::NativeSettingsDocument),
+    ) -> Result<(), ()> {
         let saved = self
             .settings
             .update_durable(change, |current, previous| {
@@ -370,8 +439,11 @@ impl Hosting {
         saved
     }
 
-    async fn validate(connection: NativeHostingConnection) -> Result<NativeHostingConnection, NativeHostingFailureKind> {
-        let result = rt::blocking(move || gitlama_core::api::hosting_connection_validate(connection)).await;
+    async fn validate(
+        connection: NativeHostingConnection,
+    ) -> Result<NativeHostingConnection, NativeHostingFailureKind> {
+        let result =
+            rt::blocking(move || gitlama_core::api::hosting_connection_validate(connection)).await;
         match (result.connection, result.failure) {
             (Some(connection), None) => Ok(connection),
             (_, failure) => Err(failure.unwrap_or(NativeHostingFailureKind::InvalidConnection)),
@@ -379,43 +451,68 @@ impl Hosting {
     }
 
     /// Stores `connection` in place of the account with its name.
-    pub async fn save_connection(&self, connection: NativeHostingConnection) -> Result<NativeHostingConnection, &'static str> {
+    pub async fn save_connection(
+        &self,
+        connection: NativeHostingConnection,
+    ) -> Result<NativeHostingConnection, &'static str> {
         let normalized = Self::validate(connection).await.map_err(failure_key)?;
         let current = self.connections();
-        if current.len() >= MAXIMUM_CONNECTIONS && !current.iter().any(|value| value.id == normalized.id) {
+        if current.len() >= MAXIMUM_CONNECTIONS
+            && !current.iter().any(|value| value.id == normalized.id)
+        {
             return Err("settings");
         }
-        if current.iter().any(|value| value.id != normalized.id && value.credential_identity == normalized.credential_identity) {
+        if current.iter().any(|value| {
+            value.id != normalized.id && value.credential_identity == normalized.credential_identity
+        }) {
             return Err("settings");
         }
-        let mut next: Vec<NativeHostingConnection> = current.into_iter().filter(|value| value.id != normalized.id).collect();
+        let mut next: Vec<NativeHostingConnection> = current
+            .into_iter()
+            .filter(|value| value.id != normalized.id)
+            .collect();
         next.push(normalized.clone());
         next.sort_by(|left, right| left.id.cmp(&right.id));
         let stored: Vec<NativeHostingConnectionSettings> = next.iter().map(settings_of).collect();
-        self.save_hosting(move |document| document.hosting_connections = stored).await.map_err(|_| "settings")?;
+        self.save_hosting(move |document| document.hosting_connections = stored)
+            .await
+            .map_err(|_| "settings")?;
         Ok(normalized)
     }
 
     /// Removes account `id` with its credential; the account comes back
     /// when the credential cannot be removed.
     pub async fn remove_connection(&self, id: &str) -> Result<(), &'static str> {
-        let Some(connection) = self.connection(id) else { return Ok(()) };
+        let Some(connection) = self.connection(id) else {
+            return Ok(());
+        };
         let probe = connection.clone();
-        let state = rt::blocking(move || gitlama_core::api::hosting_credential_state(probe)).await.state;
+        let state = rt::blocking(move || gitlama_core::api::hosting_credential_state(probe))
+            .await
+            .state;
         if state == NativeHostingCredentialState::Unreadable {
             return Err(failure_key(NativeHostingFailureKind::CredentialUnreadable));
         }
-        let (previous_connections, previous_bindings) =
-            self.settings.with(|document| (document.hosting_connections.clone(), document.hosting_bindings.clone()));
+        let (previous_connections, previous_bindings) = self.settings.with(|document| {
+            (
+                document.hosting_connections.clone(),
+                document.hosting_bindings.clone(),
+            )
+        });
         let id = id.to_owned();
         let removed_id = id.clone();
         self.save_hosting(move |document| {
-            document.hosting_connections.retain(|value| value.id != removed_id);
-            document.hosting_bindings.retain(|value| value.connection_id != removed_id);
+            document
+                .hosting_connections
+                .retain(|value| value.id != removed_id);
+            document
+                .hosting_bindings
+                .retain(|value| value.connection_id != removed_id);
         })
         .await
         .map_err(|_| "settings")?;
-        let removed = rt::blocking(move || gitlama_core::api::hosting_credential_remove(connection)).await;
+        let removed =
+            rt::blocking(move || gitlama_core::api::hosting_credential_remove(connection)).await;
         if let Some(failure) = removed.failure {
             let _ = self
                 .save_hosting(move |document| {
@@ -428,12 +525,21 @@ impl Hosting {
         Ok(())
     }
 
-    pub async fn save_binding(&self, binding: NativeHostingBindingSettings) -> Result<(), &'static str> {
-        if !self.connections().iter().any(|connection| connection.id == binding.connection_id) {
+    pub async fn save_binding(
+        &self,
+        binding: NativeHostingBindingSettings,
+    ) -> Result<(), &'static str> {
+        if !self
+            .connections()
+            .iter()
+            .any(|connection| connection.id == binding.connection_id)
+        {
             return Err("settings");
         }
         self.save_hosting(move |document| {
-            document.hosting_bindings.retain(|existing| existing.repository != binding.repository);
+            document
+                .hosting_bindings
+                .retain(|existing| existing.repository != binding.repository);
             document.hosting_bindings.push(binding);
         })
         .await
@@ -441,48 +547,77 @@ impl Hosting {
     }
 
     pub async fn clear_binding(&self, repository: NativePathIdentity) -> Result<(), &'static str> {
-        self.save_hosting(move |document| document.hosting_bindings.retain(|binding| binding.repository != repository))
-            .await
-            .map_err(|_| "settings")
+        self.save_hosting(move |document| {
+            document
+                .hosting_bindings
+                .retain(|binding| binding.repository != repository)
+        })
+        .await
+        .map_err(|_| "settings")
     }
 
     pub fn expanded_nodes(&self) -> Vec<String> {
-        self.settings.with(|document| document.hosting_expanded_nodes.clone())
+        self.settings
+            .with(|document| document.hosting_expanded_nodes.clone())
     }
 
     pub fn set_expanded_nodes(&self, nodes: Vec<String>) {
-        let mut nodes: Vec<String> = nodes.into_iter().collect::<HashSet<_>>().into_iter().take(256).collect();
+        let mut nodes: Vec<String> = nodes
+            .into_iter()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .take(256)
+            .collect();
         nodes.sort();
-        let _ = self.settings.update(|document| document.hosting_expanded_nodes = nodes);
+        let _ = self
+            .settings
+            .update(|document| document.hosting_expanded_nodes = nodes);
     }
 
     pub async fn credential_state(&self, id: &str) -> Option<NativeHostingCredentialState> {
         let connection = self.connection(id)?;
-        Some(rt::blocking(move || gitlama_core::api::hosting_credential_state(connection)).await.state)
+        Some(
+            rt::blocking(move || gitlama_core::api::hosting_credential_state(connection))
+                .await
+                .state,
+        )
     }
 
     /// Signs `connection` in. A sign-in the core finishes at once (a
     /// command-line tool) stores the account; otherwise it is followed every
     /// half second until it ends.
-    pub async fn authorize(self: &Rc<Self>, connection: NativeHostingConnection, new_connection: bool) -> Result<(), String> {
+    pub async fn authorize(
+        self: &Rc<Self>,
+        connection: NativeHostingConnection,
+        new_connection: bool,
+    ) -> Result<(), String> {
         if let Some(previous) = self.authorization.borrow_mut().take()
-            && let Some(snapshot) = previous.snapshot.filter(|snapshot| !oauth_terminal(snapshot.state))
+            && let Some(snapshot) = previous
+                .snapshot
+                .filter(|snapshot| !oauth_terminal(snapshot.state))
         {
             let request = snapshot.request_id;
             rt::spawn_detached(async move {
                 rt::blocking(move || gitlama_core::api::hosting_oauth_cancel(request)).await;
             });
         }
-        let normalized = Self::validate(connection).await.map_err(|failure| failure_key(failure).to_owned())?;
+        let normalized = Self::validate(connection)
+            .await
+            .map_err(|failure| failure_key(failure).to_owned())?;
         let start = normalized.clone();
         let result = rt::blocking(move || gitlama_core::api::hosting_oauth_start(start)).await;
         if let Some(failure) = result.failure {
             return Err(format!("oauth:{}", oauth_failure_name(failure)));
         }
-        let Some(snapshot) = result.snapshot else { return Err("malformedResponse".to_owned()) };
+        let Some(snapshot) = result.snapshot else {
+            return Err("malformedResponse".to_owned());
+        };
         self.runtime_used.set(true);
-        *self.authorization.borrow_mut() =
-            Some(Authorization { connection_id: normalized.id.clone(), snapshot: Some(snapshot.clone()), new_connection });
+        *self.authorization.borrow_mut() = Some(Authorization {
+            connection_id: normalized.id.clone(),
+            snapshot: Some(snapshot.clone()),
+            new_connection,
+        });
         self.changed();
         if snapshot.state == NativeHostingOAuthState::Succeeded {
             return self.finish_authorization(&normalized, &snapshot).await;
@@ -494,23 +629,38 @@ impl Hosting {
         Ok(())
     }
 
-    async fn finish_authorization(&self, connection: &NativeHostingConnection, snapshot: &NativeHostingOAuthSnapshot) -> Result<(), String> {
-        let Some(login) = snapshot.authenticated_login.clone() else { return Err("malformedResponse".to_owned()) };
+    async fn finish_authorization(
+        &self,
+        connection: &NativeHostingConnection,
+        snapshot: &NativeHostingOAuthSnapshot,
+    ) -> Result<(), String> {
+        let Some(login) = snapshot.authenticated_login.clone() else {
+            return Err("malformedResponse".to_owned());
+        };
         let mut signed_in = connection.clone();
         signed_in.login = login;
-        self.save_connection(signed_in).await.map_err(str::to_owned)?;
+        self.save_connection(signed_in)
+            .await
+            .map_err(str::to_owned)?;
         Ok(())
     }
 
     async fn follow(this: Weak<Self>, connection: NativeHostingConnection, request: u64) {
         loop {
             rt::sleep(Duration::from_millis(500)).await;
-            let Some(hosting) = this.upgrade() else { return };
+            let Some(hosting) = this.upgrade() else {
+                return;
+            };
             let current = hosting
                 .authorization
                 .borrow()
                 .as_ref()
-                .and_then(|authorization| authorization.snapshot.as_ref().map(|snapshot| snapshot.request_id));
+                .and_then(|authorization| {
+                    authorization
+                        .snapshot
+                        .as_ref()
+                        .map(|snapshot| snapshot.request_id)
+                });
             if current != Some(request) {
                 return;
             }
@@ -546,7 +696,10 @@ impl Hosting {
     /// Forgets a finished sign-in; a running one is canceled.
     pub async fn end_authorization(&self) {
         let ended = self.authorization.borrow_mut().take();
-        if let Some(snapshot) = ended.and_then(|authorization| authorization.snapshot).filter(|snapshot| !oauth_terminal(snapshot.state)) {
+        if let Some(snapshot) = ended
+            .and_then(|authorization| authorization.snapshot)
+            .filter(|snapshot| !oauth_terminal(snapshot.state))
+        {
             let request = snapshot.request_id;
             rt::blocking(move || gitlama_core::api::hosting_oauth_cancel(request)).await;
         }
@@ -565,8 +718,15 @@ impl Hosting {
         kind: NativeHostingResourceKind,
         number: Option<u64>,
     ) -> Result<String, &'static str> {
-        let Some(connection) = self.connection(connection_id) else { return Err("settings") };
-        let result = gitlama_core::api::hosting_resource_link(connection, provider_repository.to_owned(), kind, number);
+        let Some(connection) = self.connection(connection_id) else {
+            return Err("settings");
+        };
+        let result = gitlama_core::api::hosting_resource_link(
+            connection,
+            provider_repository.to_owned(),
+            kind,
+            number,
+        );
         match (result.url, result.failure) {
             (Some(url), None) if openable_url(&url) => Ok(url),
             (_, Some(failure)) => Err(failure_key(failure)),
@@ -628,7 +788,11 @@ struct SessionState {
 }
 
 fn empty_resources() -> NativeHostingResources {
-    NativeHostingResources { change_requests: Vec::new(), issues: Vec::new(), remote_references: Vec::new() }
+    NativeHostingResources {
+        change_requests: Vec::new(),
+        issues: Vec::new(),
+        remote_references: Vec::new(),
+    }
 }
 
 impl Default for SessionState {
@@ -677,7 +841,10 @@ pub struct RepositoryHosting {
     revision: Cell<u64>,
 }
 
-fn same_pulls(left: Option<&Vec<NativeHostingChangeRequest>>, right: Option<&Vec<NativeHostingChangeRequest>>) -> bool {
+fn same_pulls(
+    left: Option<&Vec<NativeHostingChangeRequest>>,
+    right: Option<&Vec<NativeHostingChangeRequest>>,
+) -> bool {
     match (left, right) {
         (Some(left), Some(right)) => {
             left.len() == right.len()
@@ -700,7 +867,8 @@ fn unsettled(pulls: Option<&Vec<NativeHostingChangeRequest>>) -> bool {
     pulls.is_some_and(|pulls| {
         pulls.iter().any(|pull| {
             pull.state == NativeHostingChangeRequestState::Open
-                && (pull.checks.state == NativeHostingCheckState::Pending || pull.mergeability == NativeHostingMergeability::Checking)
+                && (pull.checks.state == NativeHostingCheckState::Pending
+                    || pull.mergeability == NativeHostingMergeability::Checking)
         })
     })
 }
@@ -733,7 +901,10 @@ impl RepositoryHosting {
     pub fn branch_for(&self, reference: &str, tracking: Option<&str>) -> Option<String> {
         let remote = {
             let state = self.state.borrow();
-            let binding = state.binding.as_ref().filter(|binding| binding.state == NativeHostingBindingState::Bound)?;
+            let binding = state
+                .binding
+                .as_ref()
+                .filter(|binding| binding.state == NativeHostingBindingState::Bound)?;
             String::from_utf8_lossy(&binding.remote).into_owned()
         };
         let prefix = format!("refs/remotes/{remote}/");
@@ -741,7 +912,9 @@ impl RepositoryHosting {
             return (branch != "HEAD").then(|| branch.to_owned());
         }
         if reference.starts_with("refs/heads/") {
-            return tracking.and_then(|tracking| tracking.strip_prefix(&prefix)).map(str::to_owned);
+            return tracking
+                .and_then(|tracking| tracking.strip_prefix(&prefix))
+                .map(str::to_owned);
         }
         None
     }
@@ -753,7 +926,11 @@ impl RepositoryHosting {
         pulls
             .iter()
             .find(|pull| pull.state == NativeHostingChangeRequestState::Open)
-            .or_else(|| pulls.iter().find(|pull| pull.state == NativeHostingChangeRequestState::Merged))
+            .or_else(|| {
+                pulls
+                    .iter()
+                    .find(|pull| pull.state == NativeHostingChangeRequestState::Merged)
+            })
             .cloned()
     }
 
@@ -767,8 +944,14 @@ impl RepositoryHosting {
 
     fn bound(&self) -> Option<(String, String)> {
         let state = self.state.borrow();
-        let binding = state.binding.as_ref().filter(|binding| binding.state == NativeHostingBindingState::Bound)?;
-        Some((binding.connection_id.clone()?, binding.provider_repository.clone()?))
+        let binding = state
+            .binding
+            .as_ref()
+            .filter(|binding| binding.state == NativeHostingBindingState::Bound)?;
+        Some((
+            binding.connection_id.clone()?,
+            binding.provider_repository.clone()?,
+        ))
     }
 
     fn connection(&self) -> Option<NativeHostingConnection> {
@@ -778,7 +961,9 @@ impl RepositoryHosting {
 
     fn lookups(&self, capability: NativeHostingCapability) -> bool {
         self.connection().is_some_and(|connection| {
-            connection.enabled && connection.refresh_enabled && connection.capabilities.contains(&capability)
+            connection.enabled
+                && connection.refresh_enabled
+                && connection.capabilities.contains(&capability)
         })
     }
 
@@ -787,20 +972,30 @@ impl RepositoryHosting {
     }
 
     fn head_checks_enabled(&self) -> bool {
-        self.lookups(NativeHostingCapability::CommitStatuses) || self.lookups(NativeHostingCapability::CheckRuns)
+        self.lookups(NativeHostingCapability::CommitStatuses)
+            || self.lookups(NativeHostingCapability::CheckRuns)
     }
 
     fn authored_login(&self) -> Option<String> {
-        self.connection().map(|connection| connection.login).filter(|login| !login.is_empty())
+        self.connection()
+            .map(|connection| connection.login)
+            .filter(|login| !login.is_empty())
     }
 
     /// Follows the active repository and its remotes; accounts or bindings
     /// that changed resolve the binding again.
-    pub fn update(self: &Rc<Self>, repository: Option<NativePathIdentity>, remotes: Vec<NativeHostingRemote>) {
+    pub fn update(
+        self: &Rc<Self>,
+        repository: Option<NativePathIdentity>,
+        remotes: Vec<NativeHostingRemote>,
+    ) {
         let revision = self.hosting.revision();
         {
             let state = self.state.borrow();
-            if state.repository == repository && state.remotes == remotes && self.seen_revision.get() == revision {
+            if state.repository == repository
+                && state.remotes == remotes
+                && self.seen_revision.get() == revision
+            {
                 return;
             }
         }
@@ -830,7 +1025,10 @@ impl RepositoryHosting {
         self.reset_lookups(false);
         self.changed();
         if let Some((connection_id, provider_repository)) = previous {
-            rt::blocking(move || gitlama_core::api::hosting_resources_deactivate(connection_id, provider_repository)).await;
+            rt::blocking(move || {
+                gitlama_core::api::hosting_resources_deactivate(connection_id, provider_repository)
+            })
+            .await;
         }
         let (repository, remotes) = {
             let state = self.state.borrow();
@@ -865,11 +1063,15 @@ impl RepositoryHosting {
     }
 
     pub async fn refresh(self: &Rc<Self>, manual: bool, page: u32) {
-        let Some((connection_id, provider_repository)) = self.bound() else { return };
+        let Some((connection_id, provider_repository)) = self.bound() else {
+            return;
+        };
         if self.state.borrow().busy {
             return;
         }
-        let Some(connection) = self.hosting.connection(&connection_id) else { return };
+        let Some(connection) = self.hosting.connection(&connection_id) else {
+            return;
+        };
         let generation = self.generation.get();
         {
             let mut state = self.state.borrow_mut();
@@ -883,8 +1085,15 @@ impl RepositoryHosting {
         }
         self.changed();
         self.hosting.note_runtime_used();
-        let started =
-            rt::blocking(move || gitlama_core::api::hosting_resources_start(connection, provider_repository, page, manual)).await;
+        let started = rt::blocking(move || {
+            gitlama_core::api::hosting_resources_start(
+                connection,
+                provider_repository,
+                page,
+                manual,
+            )
+        })
+        .await;
         if !self.current(generation) {
             if let Some(snapshot) = started.snapshot {
                 let request = snapshot.request_id;
@@ -899,12 +1108,18 @@ impl RepositoryHosting {
                 self.apply(snapshot, page > 1);
                 if !terminal {
                     let this = Rc::clone(self);
-                    rt::spawn_detached(async move { this.poll(request, page > 1, generation).await });
+                    rt::spawn_detached(
+                        async move { this.poll(request, page > 1, generation).await },
+                    );
                 }
             }
             (_, failure) => {
-                self.state.borrow_mut().failure =
-                    Some(resource_failure_name(failure.unwrap_or(NativeHostingResourceFailure::Unavailable)).to_owned());
+                self.state.borrow_mut().failure = Some(
+                    resource_failure_name(
+                        failure.unwrap_or(NativeHostingResourceFailure::Unavailable),
+                    )
+                    .to_owned(),
+                );
             }
         }
         if self.current(generation) {
@@ -919,11 +1134,14 @@ impl RepositoryHosting {
             if !self.current(generation) {
                 return;
             }
-            let polled = rt::blocking(move || gitlama_core::api::hosting_resources_poll(request)).await;
+            let polled =
+                rt::blocking(move || gitlama_core::api::hosting_resources_poll(request)).await;
             if !self.current(generation) {
                 return;
             }
-            let Some(snapshot) = polled.snapshot else { return };
+            let Some(snapshot) = polled.snapshot else {
+                return;
+            };
             let terminal = resource_terminal(snapshot.state);
             self.apply(snapshot, append);
             if terminal {
@@ -940,19 +1158,51 @@ impl RepositoryHosting {
             } else if next.state == NativeHostingResourceLoadState::Ready {
                 // A later page starts out showing the cached first page; only
                 // its own rows are appended, once each.
-                let seen: HashSet<String> = state.resources.change_requests.iter().map(|value| value.stable_id.clone()).collect();
-                let pulls: Vec<_> = next.resources.change_requests.iter().filter(|value| !seen.contains(&value.stable_id)).cloned().collect();
+                let seen: HashSet<String> = state
+                    .resources
+                    .change_requests
+                    .iter()
+                    .map(|value| value.stable_id.clone())
+                    .collect();
+                let pulls: Vec<_> = next
+                    .resources
+                    .change_requests
+                    .iter()
+                    .filter(|value| !seen.contains(&value.stable_id))
+                    .cloned()
+                    .collect();
                 state.resources.change_requests.extend(pulls);
-                let seen: HashSet<String> = state.resources.issues.iter().map(|value| value.stable_id.clone()).collect();
-                let issues: Vec<_> = next.resources.issues.iter().filter(|value| !seen.contains(&value.stable_id)).cloned().collect();
+                let seen: HashSet<String> = state
+                    .resources
+                    .issues
+                    .iter()
+                    .map(|value| value.stable_id.clone())
+                    .collect();
+                let issues: Vec<_> = next
+                    .resources
+                    .issues
+                    .iter()
+                    .filter(|value| !seen.contains(&value.stable_id))
+                    .cloned()
+                    .collect();
                 state.resources.issues.extend(issues);
-                let key = |value: &gitlama_contract::hosting::NativeHostingRemoteReference| format!("{:?}:{}", value.kind, value.stable_id);
-                let seen: HashSet<String> = state.resources.remote_references.iter().map(key).collect();
-                let references: Vec<_> =
-                    next.resources.remote_references.iter().filter(|value| !seen.contains(&key(value))).cloned().collect();
+                let key = |value: &gitlama_contract::hosting::NativeHostingRemoteReference| {
+                    format!("{:?}:{}", value.kind, value.stable_id)
+                };
+                let seen: HashSet<String> =
+                    state.resources.remote_references.iter().map(key).collect();
+                let references: Vec<_> = next
+                    .resources
+                    .remote_references
+                    .iter()
+                    .filter(|value| !seen.contains(&key(value)))
+                    .cloned()
+                    .collect();
                 state.resources.remote_references.extend(references);
             }
-            state.failure = next.failure.map(|failure| resource_failure_name(failure).to_owned());
+            state.failure = next
+                .failure
+                .map(|failure| resource_failure_name(failure).to_owned());
             state.snapshot = Some(next);
         }
         self.changed();
@@ -960,7 +1210,10 @@ impl RepositoryHosting {
 
     /// Open and merged pull requests from provider branch `branch`, or None
     /// while unknown.
-    pub fn pull_requests_for_branch(&self, branch: &str) -> Option<Vec<NativeHostingChangeRequest>> {
+    pub fn pull_requests_for_branch(
+        &self,
+        branch: &str,
+    ) -> Option<Vec<NativeHostingChangeRequest>> {
         let state = self.state.borrow();
         if let Some((_, pulls)) = state.branch_pulls.iter().find(|(name, _)| name == branch) {
             return Some(pulls.clone());
@@ -986,7 +1239,11 @@ impl RepositoryHosting {
         {
             let mut state = self.state.borrow_mut();
             for branch in branches {
-                if branch.is_empty() || state.fresh.contains(&branch) || state.in_flight.contains(&branch) || state.failed.contains(&branch) {
+                if branch.is_empty()
+                    || state.fresh.contains(&branch)
+                    || state.in_flight.contains(&branch)
+                    || state.failed.contains(&branch)
+                {
                     continue;
                 }
                 state.queued.retain(|queued| queued != &branch);
@@ -1021,7 +1278,9 @@ impl RepositoryHosting {
                     true
                 }
                 _ => {
-                    state.moved_refs.insert(branch.to_owned(), (refs.to_owned(), 0));
+                    state
+                        .moved_refs
+                        .insert(branch.to_owned(), (refs.to_owned(), 0));
                     state.moved.remove(branch);
                     state.fresh.remove(branch);
                     false
@@ -1051,7 +1310,10 @@ impl RepositoryHosting {
                 let mut state = this.state.borrow_mut();
                 state.moved_recheck = false;
                 let moved: Vec<String> = state.moved.drain().collect();
-                let branches: Vec<String> = moved.into_iter().filter(|branch| state.fresh.contains(branch)).collect();
+                let branches: Vec<String> = moved
+                    .into_iter()
+                    .filter(|branch| state.fresh.contains(branch))
+                    .collect();
                 for branch in &branches {
                     if let Some(entry) = state.moved_refs.get_mut(branch) {
                         entry.1 += 1;
@@ -1095,15 +1357,29 @@ impl RepositoryHosting {
         let state = self.state.borrow();
         let mut by_number: Vec<Linked> = Vec::new();
         for pull in state.authored.iter().flatten() {
-            if !by_number.iter().any(|linked| linked.pull.number == pull.number) {
-                by_number.push(Linked { pull: pull.clone(), authored: true, via_branch: false });
+            if !by_number
+                .iter()
+                .any(|linked| linked.pull.number == pull.number)
+            {
+                by_number.push(Linked {
+                    pull: pull.clone(),
+                    authored: true,
+                    via_branch: false,
+                });
             }
         }
         for (_, pulls) in &state.branch_pulls {
             for pull in pulls {
-                if !by_number.iter().any(|linked| linked.pull.number == pull.number) {
+                if !by_number
+                    .iter()
+                    .any(|linked| linked.pull.number == pull.number)
+                {
                     let authored = login.as_deref().is_some_and(|login| pull.author == login);
-                    by_number.push(Linked { pull: pull.clone(), authored, via_branch: true });
+                    by_number.push(Linked {
+                        pull: pull.clone(),
+                        authored,
+                        via_branch: true,
+                    });
                 }
             }
         }
@@ -1112,7 +1388,9 @@ impl RepositoryHosting {
                 .authored
                 .cmp(&left.authored)
                 .then_with(|| {
-                    let merged = |linked: &Linked| linked.pull.state == NativeHostingChangeRequestState::Merged;
+                    let merged = |linked: &Linked| {
+                        linked.pull.state == NativeHostingChangeRequestState::Merged
+                    };
                     merged(left).cmp(&merged(right))
                 })
                 .then_with(|| right.pull.number.cmp(&left.pull.number))
@@ -1125,7 +1403,9 @@ impl RepositoryHosting {
         state.lookup_running
             || !state.queued.is_empty()
             || state.head_queued
-            || (self.lookups_enabled() && !state.authored_requested && self.authored_login().is_some())
+            || (self.lookups_enabled()
+                && !state.authored_requested
+                && self.authored_login().is_some())
     }
 
     fn reset_lookups(&self, keep_known: bool) {
@@ -1180,13 +1460,25 @@ impl RepositoryHosting {
         }
         let lookups = self.lookups_enabled();
         let login = self.authored_login();
-        let Some((connection_id, provider_repository)) = self.bound() else { return };
-        let Some(connection) = self.hosting.connection(&connection_id) else { return };
+        let Some((connection_id, provider_repository)) = self.bound() else {
+            return;
+        };
+        let Some(connection) = self.hosting.connection(&connection_id) else {
+            return;
+        };
         let (batch, head, authored) = {
             let mut state = self.state.borrow_mut();
-            let head = if state.head_queued && self.head_checks_enabled() { state.head.clone() } else { None };
+            let head = if state.head_queued && self.head_checks_enabled() {
+                state.head.clone()
+            } else {
+                None
+            };
             let authored = lookups && !state.authored_requested && login.is_some();
-            let batch: Vec<String> = if lookups { state.queued.iter().take(LOOKUP_BATCH).cloned().collect() } else { Vec::new() };
+            let batch: Vec<String> = if lookups {
+                state.queued.iter().take(LOOKUP_BATCH).cloned().collect()
+            } else {
+                Vec::new()
+            };
             if batch.is_empty() && !authored && head.is_none() {
                 return;
             }
@@ -1206,34 +1498,60 @@ impl RepositoryHosting {
         let epoch = self.epoch.get();
         let current = |this: &Self| this.current(generation) && this.epoch.get() == epoch;
         self.hosting.note_runtime_used();
-        let (heads, branches, authored_by) = (head.into_iter().collect::<Vec<_>>(), batch.clone(), if authored { login } else { None });
+        let (heads, branches, authored_by) = (
+            head.into_iter().collect::<Vec<_>>(),
+            batch.clone(),
+            if authored { login } else { None },
+        );
         let started = rt::blocking(move || {
-            gitlama_core::api::hosting_pull_request_lookup_start(connection, provider_repository, heads, branches, authored_by)
+            gitlama_core::api::hosting_pull_request_lookup_start(
+                connection,
+                provider_repository,
+                heads,
+                branches,
+                authored_by,
+            )
         })
         .await;
         let Some(mut snapshot) = started.snapshot.filter(|_| started.failure.is_none()) else {
             if current(self) {
-                self.finish_lookup(&batch, Some(started.failure.unwrap_or(NativeHostingResourceFailure::Unavailable)));
+                self.finish_lookup(
+                    &batch,
+                    Some(
+                        started
+                            .failure
+                            .unwrap_or(NativeHostingResourceFailure::Unavailable),
+                    ),
+                );
             }
             return;
         };
         loop {
             if !current(self) {
                 let request = snapshot.request_id;
-                rt::blocking(move || gitlama_core::api::hosting_pull_request_lookup_cancel(request)).await;
+                rt::blocking(move || {
+                    gitlama_core::api::hosting_pull_request_lookup_cancel(request)
+                })
+                .await;
                 return;
             }
             let terminal = resource_terminal(snapshot.state);
             self.apply_lookup(&snapshot);
             if terminal {
-                let failure = (snapshot.state == NativeHostingResourceLoadState::Failed)
-                    .then(|| snapshot.failure.unwrap_or(NativeHostingResourceFailure::Unavailable));
+                let failure =
+                    (snapshot.state == NativeHostingResourceLoadState::Failed).then(|| {
+                        snapshot
+                            .failure
+                            .unwrap_or(NativeHostingResourceFailure::Unavailable)
+                    });
                 self.finish_lookup(&batch, failure);
                 return;
             }
             rt::sleep(Duration::from_millis(150)).await;
             let request = snapshot.request_id;
-            let polled = rt::blocking(move || gitlama_core::api::hosting_pull_request_lookup_poll(request)).await;
+            let polled =
+                rt::blocking(move || gitlama_core::api::hosting_pull_request_lookup_poll(request))
+                    .await;
             match polled.snapshot {
                 Some(next) => snapshot = next,
                 None => {
@@ -1246,12 +1564,19 @@ impl RepositoryHosting {
         }
     }
 
-    fn apply_lookup(&self, next: &gitlama_contract::hosting_runtime::NativeHostingPullRequestLookupSnapshot) {
+    fn apply_lookup(
+        &self,
+        next: &gitlama_contract::hosting_runtime::NativeHostingPullRequestLookupSnapshot,
+    ) {
         let mut changed = false;
         {
             let mut state = self.state.borrow_mut();
             if state.head_in_flight
-                && let Some(checks) = next.heads.iter().find(|head| Some(&head.head) == state.head.as_ref()).map(|head| head.checks)
+                && let Some(checks) = next
+                    .heads
+                    .iter()
+                    .find(|head| Some(&head.head) == state.head.as_ref())
+                    .map(|head| head.checks)
             {
                 state.head_in_flight = false;
                 changed |= Some(checks) != state.head_checks;
@@ -1261,9 +1586,15 @@ impl RepositoryHosting {
                 if !state.fresh.insert(branch.branch.clone()) {
                     continue;
                 }
-                let previous = state.branch_pulls.iter().position(|(name, _)| name == &branch.branch).map(|index| state.branch_pulls.remove(index).1);
+                let previous = state
+                    .branch_pulls
+                    .iter()
+                    .position(|(name, _)| name == &branch.branch)
+                    .map(|index| state.branch_pulls.remove(index).1);
                 changed |= !same_pulls(previous.as_ref(), Some(&branch.change_requests));
-                state.branch_pulls.push((branch.branch.clone(), branch.change_requests.clone()));
+                state
+                    .branch_pulls
+                    .push((branch.branch.clone(), branch.change_requests.clone()));
                 state.in_flight.remove(&branch.branch);
             }
             if let Some(authored) = &next.authored
@@ -1281,7 +1612,11 @@ impl RepositoryHosting {
 
     // Branches a lookup left unanswered are not asked again until the next
     // manual refresh, so a failing provider is not called for every row.
-    fn finish_lookup(self: &Rc<Self>, batch: &[String], failure: Option<NativeHostingResourceFailure>) {
+    fn finish_lookup(
+        self: &Rc<Self>,
+        batch: &[String],
+        failure: Option<NativeHostingResourceFailure>,
+    ) {
         let again = {
             let mut state = self.state.borrow_mut();
             state.lookup_running = false;
@@ -1316,7 +1651,15 @@ impl RepositoryHosting {
                 && !state.head_queued
                 && !state.head_in_flight
                 && !state.head_failed;
-            let any = state.fresh.iter().any(|branch| unsettled(state.branch_pulls.iter().find(|(name, _)| name == branch).map(|(_, pulls)| pulls)));
+            let any = state.fresh.iter().any(|branch| {
+                unsettled(
+                    state
+                        .branch_pulls
+                        .iter()
+                        .find(|(name, _)| name == branch)
+                        .map(|(_, pulls)| pulls),
+                )
+            });
             if !head_pending && !any {
                 return;
             }
@@ -1342,7 +1685,15 @@ impl RepositoryHosting {
                 let branches: Vec<String> = state
                     .fresh
                     .iter()
-                    .filter(|branch| unsettled(state.branch_pulls.iter().find(|(name, _)| name == *branch).map(|(_, pulls)| pulls)))
+                    .filter(|branch| {
+                        unsettled(
+                            state
+                                .branch_pulls
+                                .iter()
+                                .find(|(name, _)| name == *branch)
+                                .map(|(_, pulls)| pulls),
+                        )
+                    })
                     .cloned()
                     .collect();
                 for branch in &branches {
@@ -1448,13 +1799,31 @@ mod tests {
 
     #[test]
     fn storage_names_round_trip() {
-        for name in ["github", "gitlab", "gitlabSelfManaged", "forgejo", "codeberg", "gitHubEnterprise"] {
+        for name in [
+            "github",
+            "gitlab",
+            "gitlabSelfManaged",
+            "forgejo",
+            "codeberg",
+            "gitHubEnterprise",
+        ] {
             assert_eq!(preset_name(parse_preset(name).unwrap()), name);
         }
         for name in ["oauth", "gitHubCli", "gitLabCli"] {
-            assert_eq!(authentication_name(parse_authentication(name).unwrap()), name);
+            assert_eq!(
+                authentication_name(parse_authentication(name).unwrap()),
+                name
+            );
         }
-        for name in ["changeRequests", "changeRequestCheckout", "changeRequestReview", "commitStatuses", "checkRuns", "issues", "remoteReferences"] {
+        for name in [
+            "changeRequests",
+            "changeRequestCheckout",
+            "changeRequestReview",
+            "commitStatuses",
+            "checkRuns",
+            "issues",
+            "remoteReferences",
+        ] {
             assert_eq!(capability_name(parse_capability(name).unwrap()), name);
         }
     }

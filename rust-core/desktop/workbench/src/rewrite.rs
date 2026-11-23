@@ -11,12 +11,12 @@ use crate::prompts::Prompts;
 use crate::session::{SessionError, SessionIdentity, display_path};
 use crate::workspace::{Pane, WorkspaceService};
 use gitlama_contract::dto::{
-    NativeRefMutationExecutionState, NativeRefMutationKind, NativeRefMutationRequest, NativeRefMutationWarning,
-    NativeStatusEntryKind,
+    NativeRefMutationExecutionState, NativeRefMutationKind, NativeRefMutationRequest,
+    NativeRefMutationWarning, NativeStatusEntryKind,
 };
 use gitlama_contract::stash::{
-    NativeStashExecutionResult, NativeStashExecutionState, NativeStashFailureKind, NativeStashKind, NativeStashPreview,
-    NativeStashRequest,
+    NativeStashExecutionResult, NativeStashExecutionState, NativeStashFailureKind, NativeStashKind,
+    NativeStashPreview, NativeStashRequest,
 };
 use serde_json::{Value, json};
 use std::rc::Rc;
@@ -58,7 +58,9 @@ fn stash_failure_key(kind: NativeStashFailureKind) -> &'static str {
         NativeStashFailureKind::Canceled => "stashFailureCanceled",
         NativeStashFailureKind::TimedOut => "stashFailureTimeout",
         NativeStashFailureKind::MissingGit => "stashFailureMissingGit",
-        NativeStashFailureKind::Failed | NativeStashFailureKind::Read | NativeStashFailureKind::Write => "stashFailed",
+        NativeStashFailureKind::Failed
+        | NativeStashFailureKind::Read
+        | NativeStashFailureKind::Write => "stashFailed",
     }
 }
 
@@ -97,35 +99,68 @@ impl RewriteService {
         prompts: Rc<Prompts>,
         notices: Rc<Notices>,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, busy, navigator, prompts, notices })
+        Rc::new(Self {
+            calls,
+            workspace,
+            busy,
+            navigator,
+            prompts,
+            notices,
+        })
     }
 
     fn session(&self) -> Option<(u64, SessionIdentity)> {
-        Some((self.workspace.active_tab_id()?, self.workspace.current()?.identity))
+        Some((
+            self.workspace.active_tab_id()?,
+            self.workspace.current()?.identity,
+        ))
     }
 
     fn current(&self, tab: u64, identity: SessionIdentity) -> bool {
         self.session() == Some((tab, identity))
     }
 
-    async fn stash_preview(&self, identity: SessionIdentity, request: NativeStashRequest) -> Result<NativeStashPreview, Value> {
-        match self.calls.repository_session_stash_preview(identity.native_id, identity.generation, request).await {
+    async fn stash_preview(
+        &self,
+        identity: SessionIdentity,
+        request: NativeStashRequest,
+    ) -> Result<NativeStashPreview, Value> {
+        match self
+            .calls
+            .repository_session_stash_preview(identity.native_id, identity.generation, request)
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => Ok(preview),
                 (_, Some(failure)) => Err(json!({"key": stash_failure_key(failure.kind)})),
                 _ => Err(json!({"key": "stashFailed"})),
             },
-            Err(error) => Err(json!({"failure": crate::changes::failure_reason_key(SessionError::from(error).code())})),
+            Err(error) => Err(
+                json!({"failure": crate::changes::failure_reason_key(SessionError::from(error).code())}),
+            ),
         }
     }
 
-    async fn stash_execute(&self, tab: u64, identity: SessionIdentity, preview: &NativeStashPreview) -> Result<NativeStashExecutionResult, SessionError> {
+    async fn stash_execute(
+        &self,
+        tab: u64,
+        identity: SessionIdentity,
+        preview: &NativeStashPreview,
+    ) -> Result<NativeStashExecutionResult, SessionError> {
         let calls = Rc::clone(&self.calls);
         let token = preview.token;
         let cancel: Rc<dyn Fn()> = Rc::new(move || {
             let calls = Rc::clone(&calls);
             crate::rt::spawn_detached(async move {
-                drop(calls.repository_session_stash_cancel(identity.native_id, identity.generation, token).await);
+                drop(
+                    calls
+                        .repository_session_stash_cancel(
+                            identity.native_id,
+                            identity.generation,
+                            token,
+                        )
+                        .await,
+                );
             });
         });
         self.busy
@@ -134,7 +169,11 @@ impl RewriteService {
                 BusyActivity::Stash(stash_kind_name(preview.kind)),
                 true,
                 Some(cancel),
-                self.calls.repository_session_stash_execute(identity.native_id, identity.generation, preview.token),
+                self.calls.repository_session_stash_execute(
+                    identity.native_id,
+                    identity.generation,
+                    preview.token,
+                ),
             )
             .await
             .map_err(SessionError::from)
@@ -145,12 +184,21 @@ impl RewriteService {
             NativeStashExecutionState::Completed => ("stashCompleted", false),
             NativeStashExecutionState::ReconciledWithWarning => ("stashReconciledWarning", false),
             NativeStashExecutionState::Stale => ("stashFailureStale", true),
-            NativeStashExecutionState::Conflict => {
-                (if result.stash_retained { "stashConflictRetained" } else { "stashConflict" }, false)
-            }
-            NativeStashExecutionState::Failed => {
-                (result.failure.as_ref().map_or("stashFailed", |failure| stash_failure_key(failure.kind)), true)
-            }
+            NativeStashExecutionState::Conflict => (
+                if result.stash_retained {
+                    "stashConflictRetained"
+                } else {
+                    "stashConflict"
+                },
+                false,
+            ),
+            NativeStashExecutionState::Failed => (
+                result
+                    .failure
+                    .as_ref()
+                    .map_or("stashFailed", |failure| stash_failure_key(failure.kind)),
+                true,
+            ),
             NativeStashExecutionState::OutcomeUncertain => ("mutationOutcomeUncertain", true),
         };
         if error {
@@ -171,13 +219,29 @@ impl RewriteService {
     }
 
     /// Asks for a stash change of `kind`, previews, confirms and runs it.
-    pub async fn stash(&self, kind: NativeStashKind, selector: Option<String>, object_id: Option<String>, target_branch: Option<String>) {
-        let Some(session) = self.workspace.current() else { return };
+    pub async fn stash(
+        &self,
+        kind: NativeStashKind,
+        selector: Option<String>,
+        object_id: Option<String>,
+        target_branch: Option<String>,
+    ) {
+        let Some(session) = self.workspace.current() else {
+            return;
+        };
         let snapshot = Rc::clone(&session.snapshot);
-        let stash = selector
+        let stash = selector.as_ref().and_then(|selector| {
+            snapshot
+                .refs
+                .stashes
+                .iter()
+                .find(|stash| &text(&stash.selector) == selector)
+        });
+        let entries = snapshot
+            .status
             .as_ref()
-            .and_then(|selector| snapshot.refs.stashes.iter().find(|stash| &text(&stash.selector) == selector));
-        let entries = snapshot.status.as_ref().map(|status| status.entries.clone()).unwrap_or_default();
+            .map(|status| status.entries.clone())
+            .unwrap_or_default();
         let payload = json!({
             "kind": stash_kind_name(kind),
             "selector": selector,
@@ -188,26 +252,47 @@ impl RewriteService {
             "untracked": entries.iter().filter(|entry| entry.kind == NativeStatusEntryKind::Untracked).count(),
             "branches": snapshot.refs.branches.iter().map(|branch| text(&branch.name)).collect::<Vec<_>>(),
         });
-        let Some(answer) = self.prompts.ask("chooseStash", payload).await else { return };
-        let Some((tab, identity)) = self.session() else { return };
+        let Some(answer) = self.prompts.ask("chooseStash", payload).await else {
+            return;
+        };
+        let Some((tab, identity)) = self.session() else {
+            return;
+        };
         let request = NativeStashRequest {
             kind,
-            message: answer["message"].as_str().filter(|message| !message.is_empty()).map(str::to_owned),
+            message: answer["message"]
+                .as_str()
+                .filter(|message| !message.is_empty())
+                .map(str::to_owned),
             selector: selector.clone(),
             object_id: object_id.clone(),
             paths: answer["paths"]
                 .as_array()
-                .map(|paths| paths.iter().filter_map(|path| path.as_str().map(|path| path.as_bytes().to_vec())).collect())
+                .map(|paths| {
+                    paths
+                        .iter()
+                        .filter_map(|path| path.as_str().map(|path| path.as_bytes().to_vec()))
+                        .collect()
+                })
                 .unwrap_or_default(),
             include_untracked: answer["includeUntracked"].as_bool().unwrap_or(false),
             keep_index: answer["keepIndex"].as_bool().unwrap_or(false),
-            target_branch: answer["targetBranch"].as_str().filter(|branch| !branch.is_empty()).map(str::to_owned),
+            target_branch: answer["targetBranch"]
+                .as_str()
+                .filter(|branch| !branch.is_empty())
+                .map(str::to_owned),
         };
         let preview = match self.stash_preview(identity, request).await {
             Ok(preview) => preview,
             Err(refusal) => return self.report_refused(refusal),
         };
-        if self.prompts.ask("confirmStash", preview_payload(&preview)).await != Some(Value::Bool(true)) || !self.current(tab, identity) {
+        if self
+            .prompts
+            .ask("confirmStash", preview_payload(&preview))
+            .await
+            != Some(Value::Bool(true))
+            || !self.current(tab, identity)
+        {
             return;
         }
         match self.stash_execute(tab, identity, &preview).await {
@@ -217,22 +302,36 @@ impl RewriteService {
                     self.navigator.select_pane(Pane::Changes, Some(tab));
                 }
             }
-            Err(error) => self.report_refused(json!({"failure": crate::changes::failure_reason_key(error.code())})),
+            Err(error) => self.report_refused(
+                json!({"failure": crate::changes::failure_reason_key(error.code())}),
+            ),
         }
     }
 
     /// Checks out commit `target`; a dirty tree offers stashing first.
     pub async fn checkout_commit(&self, target: Option<String>) {
         let Some(target) = target.filter(|target| {
-            (target.len() == 40 || target.len() == 64) && target.chars().all(|ch| ch.is_ascii_hexdigit())
+            (target.len() == 40 || target.len() == 64)
+                && target.chars().all(|ch| ch.is_ascii_hexdigit())
         }) else {
             return;
         };
-        let Some((tab, identity)) = self.session() else { return };
-        let Some(status) = self.workspace.current().and_then(|session| session.snapshot.status.clone()) else { return };
+        let Some((tab, identity)) = self.session() else {
+            return;
+        };
+        let Some(status) = self
+            .workspace
+            .current()
+            .and_then(|session| session.snapshot.status.clone())
+        else {
+            return;
+        };
         if self.busy.is_busy(Some(tab))
             || !status.operations.is_empty()
-            || status.entries.iter().any(|entry| entry.kind == NativeStatusEntryKind::Unmerged)
+            || status
+                .entries
+                .iter()
+                .any(|entry| entry.kind == NativeStatusEntryKind::Unmerged)
         {
             return;
         }
@@ -247,7 +346,15 @@ impl RewriteService {
             reset_mode: None,
             checkout: false,
         };
-        let checkout = match self.calls.repository_session_ref_mutation_preview(identity.native_id, identity.generation, request).await {
+        let checkout = match self
+            .calls
+            .repository_session_ref_mutation_preview(
+                identity.native_id,
+                identity.generation,
+                request,
+            )
+            .await
+        {
             Ok(result) => match result.preview {
                 Some(preview) if result.failure.is_none() => preview,
                 _ => return self.notices.error("refMutationFailed", Value::Null),
@@ -257,7 +364,9 @@ impl RewriteService {
         if !self.current(tab, identity) {
             return;
         }
-        let dirty = checkout.warnings.contains(&NativeRefMutationWarning::DirtyCheckout);
+        let dirty = checkout
+            .warnings
+            .contains(&NativeRefMutationWarning::DirtyCheckout);
         let stash_request = |kind| NativeStashRequest {
             kind,
             message: None,
@@ -269,8 +378,20 @@ impl RewriteService {
             target_branch: None,
         };
         let (stash, reapply) = if dirty {
-            let stash = self.stash_preview(identity, stash_request(NativeStashKind::StashCheckoutCommit)).await.ok();
-            let reapply = self.stash_preview(identity, stash_request(NativeStashKind::AutoStashCheckoutCommit)).await.ok();
+            let stash = self
+                .stash_preview(
+                    identity,
+                    stash_request(NativeStashKind::StashCheckoutCommit),
+                )
+                .await
+                .ok();
+            let reapply = self
+                .stash_preview(
+                    identity,
+                    stash_request(NativeStashKind::AutoStashCheckoutCommit),
+                )
+                .await
+                .ok();
             (stash, reapply)
         } else {
             (None, None)
@@ -291,7 +412,9 @@ impl RewriteService {
                 }),
             )
             .await;
-        let Some(choice) = choice.as_ref().and_then(Value::as_str).map(str::to_owned) else { return };
+        let Some(choice) = choice.as_ref().and_then(Value::as_str).map(str::to_owned) else {
+            return;
+        };
         if !self.current(tab, identity) || self.busy.is_busy(Some(tab)) {
             return;
         }
@@ -306,12 +429,18 @@ impl RewriteService {
                     BusyActivity::CommitCheckout,
                     true,
                     None,
-                    self.calls.repository_session_ref_mutation_execute(identity.native_id, identity.generation, checkout.token),
+                    self.calls.repository_session_ref_mutation_execute(
+                        identity.native_id,
+                        identity.generation,
+                        checkout.token,
+                    ),
                 )
                 .await;
             let key = match result.map(|result| result.state) {
                 Ok(NativeRefMutationExecutionState::Completed) => "refMutationCompleted",
-                Ok(NativeRefMutationExecutionState::ReconciledWithWarning) => "refMutationWarningResult",
+                Ok(NativeRefMutationExecutionState::ReconciledWithWarning) => {
+                    "refMutationWarningResult"
+                }
                 Ok(NativeRefMutationExecutionState::Stale) => "refMutationStale",
                 Ok(NativeRefMutationExecutionState::OutcomeUncertain) => "mutationOutcomeUncertain",
                 _ => "refMutationFailed",
@@ -327,7 +456,9 @@ impl RewriteService {
                         self.navigator.select_pane(Pane::Changes, Some(tab));
                     }
                 }
-                Err(error) => self.report_refused(json!({"failure": crate::changes::failure_reason_key(error.code())})),
+                Err(error) => self.report_refused(
+                    json!({"failure": crate::changes::failure_reason_key(error.code())}),
+                ),
             }
         }
     }

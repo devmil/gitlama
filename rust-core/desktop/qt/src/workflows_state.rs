@@ -34,11 +34,19 @@ mod workflows_state {
 
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
-        qproperty!("fileBrowser", Member = file_browser, Notify = file_browser_changed);
+        qproperty!(
+            "fileBrowser",
+            Member = file_browser,
+            Notify = file_browser_changed
+        );
         qproperty!("archive", Member = archive, Notify = archive_changed);
         qproperty!("snapshots", Member = snapshots, Notify = snapshots_changed);
 
-        qproperty!("powerTools", Member = power_tools, Notify = power_tools_changed);
+        qproperty!(
+            "powerTools",
+            Member = power_tools,
+            Notify = power_tools_changed
+        );
 
         #[qsignal]
         pub fn snapshots_changed(&mut self);
@@ -64,7 +72,11 @@ mod workflows_state {
             });
         }
 
-        qproperty!("extensions", Member = extensions, Notify = extensions_changed);
+        qproperty!(
+            "extensions",
+            Member = extensions,
+            Notify = extensions_changed
+        );
 
         #[qsignal]
         pub fn extensions_changed(&mut self);
@@ -97,7 +109,9 @@ mod workflows_state {
                     "load" => rt::spawn_detached(async move { extensions.load().await }),
                     "createWorktree" => {
                         let (path, reference) = (text("path"), text("reference"));
-                        rt::spawn_detached(async move { extensions.create_worktree(path, reference).await })
+                        rt::spawn_detached(async move {
+                            extensions.create_worktree(path, reference).await
+                        })
                     }
                     "lfsTrack" | "lfsUntrack" | "lfsPull" => {
                         let kind = match action.as_str() {
@@ -127,14 +141,21 @@ mod workflows_state {
                     "open" => rt::spawn_detached(async move { tools.open(owner).await }),
                     "close" => tools.close(owner),
                     "search" => {
-                        let (query, case, current) =
-                            (text("query"), options["caseSensitive"].as_bool() == Some(true), options["currentBranch"].as_bool() == Some(true));
+                        let (query, case, current) = (
+                            text("query"),
+                            options["caseSensitive"].as_bool() == Some(true),
+                            options["currentBranch"].as_bool() == Some(true),
+                        );
                         rt::spawn_detached(async move { tools.search(query, case, current).await })
                     }
                     "cancelSearch" => tools.cancel_search(),
                     "statistics" => rt::spawn_detached(async move { tools.statistics().await }),
                     "bisect" => {
-                        let Some(step) = gitlama_workbench::power_tools::bisect_action(&text("step")) else { return };
+                        let Some(step) =
+                            gitlama_workbench::power_tools::bisect_action(&text("step"))
+                        else {
+                            return;
+                        };
                         let (good, bad) = (text("good"), text("bad"));
                         rt::spawn_detached(async move { tools.bisect(step, good, bad).await })
                     }
@@ -163,11 +184,19 @@ mod workflows_state {
                         let name = options["name"].as_str().unwrap_or_default().to_owned();
                         let untracked = options["includeUntracked"].as_bool().unwrap_or(true);
                         let keep = options["keepIndex"].as_bool().unwrap_or(false);
-                        rt::spawn_detached(async move { snapshots.create(name, untracked, keep).await })
+                        rt::spawn_detached(
+                            async move { snapshots.create(name, untracked, keep).await },
+                        )
                     }
-                    ("restore", Some(id)) => rt::spawn_detached(async move { snapshots.restore(id).await }),
-                    ("branch", Some(id)) => rt::spawn_detached(async move { snapshots.branch(id).await }),
-                    ("delete", Some(id)) => rt::spawn_detached(async move { snapshots.delete(id).await }),
+                    ("restore", Some(id)) => {
+                        rt::spawn_detached(async move { snapshots.restore(id).await })
+                    }
+                    ("branch", Some(id)) => {
+                        rt::spawn_detached(async move { snapshots.branch(id).await })
+                    }
+                    ("delete", Some(id)) => {
+                        rt::spawn_detached(async move { snapshots.delete(id).await })
+                    }
                     _ => {}
                 }
             });
@@ -210,16 +239,27 @@ mod workflows_state {
         #[qslot]
         fn file_menu(&self, subject: Value, selection: Value, host: Value) -> Value {
             use gitlama_workbench::file_actions::{FileAction, Host, Selection, Subject, menu};
-            let Some(subject) = Subject::from_value(&subject) else { return Value::Array(Vec::new()) };
-            let selection = selection.get("count").and_then(Value::as_u64).map(|count| Selection {
-                count: count as usize,
-                staged: selection["staged"].as_bool().unwrap_or(false),
-                clean: selection["clean"].as_bool(),
-            });
+            let Some(subject) = Subject::from_value(&subject) else {
+                return Value::Array(Vec::new());
+            };
+            let selection = selection
+                .get("count")
+                .and_then(Value::as_u64)
+                .map(|count| Selection {
+                    count: count as usize,
+                    staged: selection["staged"].as_bool().unwrap_or(false),
+                    clean: selection["clean"].as_bool(),
+                });
             let host = Host {
                 capabilities: host["capabilities"]
                     .as_array()
-                    .map(|names| names.iter().filter_map(Value::as_str).filter_map(FileAction::parse).collect())
+                    .map(|names| {
+                        names
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .filter_map(FileAction::parse)
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 file_browser: self.file_browser.clone(),
                 inspection_reason: host["inspectionReason"].as_str().map(str::to_owned),
@@ -228,7 +268,9 @@ mod workflows_state {
                     .map(|reasons| {
                         reasons
                             .iter()
-                            .filter_map(|(name, reason)| Some((FileAction::parse(name)?, reason.as_str()?.to_owned())))
+                            .filter_map(|(name, reason)| {
+                                Some((FileAction::parse(name)?, reason.as_str()?.to_owned()))
+                            })
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -243,7 +285,9 @@ mod workflows_state {
         #[qslot]
         fn open_tool(&self, kind: String, path: String) {
             use gitlama_workbench::integrations::{Target, parse_kind};
-            let Some(kind) = parse_kind(&kind) else { return };
+            let Some(kind) = parse_kind(&kind) else {
+                return;
+            };
             self.with_services(move |services| {
                 let integrations = Rc::clone(&services.integrations);
                 let target = (!path.is_empty()).then_some(Target::Relative(path));
@@ -258,9 +302,17 @@ mod workflows_state {
             self.with_services(move |services| {
                 let integrations = Rc::clone(&services.integrations);
                 let folder = if cfg!(windows) {
-                    NativePathIdentity { platform: NativePathPlatform::Windows, units: path.encode_utf16().collect(), remote: None }
+                    NativePathIdentity {
+                        platform: NativePathPlatform::Windows,
+                        units: path.encode_utf16().collect(),
+                        remote: None,
+                    }
                 } else {
-                    NativePathIdentity { platform: NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+                    NativePathIdentity {
+                        platform: NativePathPlatform::Unix,
+                        units: path.bytes().map(u16::from).collect(),
+                        remote: None,
+                    }
                 };
                 rt::spawn_detached(async move { integrations.open_folder(folder).await });
             });
@@ -271,7 +323,9 @@ mod workflows_state {
         fn ignore_path(&self, path: String, directory: bool, tracked: bool) {
             self.with_services(move |services| {
                 let extensions = Rc::clone(&services.extensions);
-                rt::spawn_detached(async move { extensions.ignore(path, directory, tracked).await });
+                rt::spawn_detached(
+                    async move { extensions.ignore(path, directory, tracked).await },
+                );
             });
         }
 
@@ -283,12 +337,25 @@ mod workflows_state {
             self.with_services(move |services| {
                 let integrations = Rc::clone(&services.integrations);
                 let file = if cfg!(windows) {
-                    NativePathIdentity { platform: NativePathPlatform::Windows, units: path.encode_utf16().collect(), remote: None }
+                    NativePathIdentity {
+                        platform: NativePathPlatform::Windows,
+                        units: path.encode_utf16().collect(),
+                        remote: None,
+                    }
                 } else {
-                    NativePathIdentity { platform: NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+                    NativePathIdentity {
+                        platform: NativePathPlatform::Unix,
+                        units: path.bytes().map(u16::from).collect(),
+                        remote: None,
+                    }
                 };
                 rt::spawn_detached(async move {
-                    integrations.open(gitlama_contract::integrations::NativeIntegrationKind::FileManager, Some(Target::Absolute(file))).await
+                    integrations
+                        .open(
+                            gitlama_contract::integrations::NativeIntegrationKind::FileManager,
+                            Some(Target::Absolute(file)),
+                        )
+                        .await
                 });
             });
         }
@@ -296,7 +363,9 @@ mod workflows_state {
         /// Deletes linked worktree `index` of the sidebar after a confirmation.
         #[qslot]
         fn delete_worktree(&self, index: i32) {
-            let Ok(index) = usize::try_from(index) else { return };
+            let Ok(index) = usize::try_from(index) else {
+                return;
+            };
             self.with_services(move |services| {
                 let extensions = Rc::clone(&services.extensions);
                 rt::spawn_detached(async move { extensions.delete_worktree(index).await });
@@ -326,7 +395,9 @@ mod workflows_state {
         /// `options` may carry initialRemote, initialBranch, initialForce.
         #[qslot]
         fn transfer(&self, kind: String, options: Value) {
-            let Some(kind) = parse_kind(&kind) else { return };
+            let Some(kind) = parse_kind(&kind) else {
+                return;
+            };
             self.with_services(move |services| {
                 let mut draft = Draft::new(kind);
                 draft.initial_remote = options["initialRemote"].as_str().map(str::to_owned);
@@ -341,7 +412,9 @@ mod workflows_state {
         /// `options` may carry initialName and initialTarget.
         #[qslot]
         fn reference(&self, kind: String, options: Value) {
-            let Some(kind) = gitlama_workbench::refs::parse_kind(&kind) else { return };
+            let Some(kind) = gitlama_workbench::refs::parse_kind(&kind) else {
+                return;
+            };
             self.with_services(move |services| {
                 let refs = Rc::clone(&services.refs);
                 let name = options["initialName"].as_str().map(str::to_owned);
@@ -386,12 +459,22 @@ mod workflows_state {
         /// targetBranch.
         #[qslot]
         fn stash(&self, kind: String, options: Value) {
-            let Some(kind) = gitlama_workbench::rewrite::parse_stash_kind(&kind) else { return };
+            let Some(kind) = gitlama_workbench::rewrite::parse_stash_kind(&kind) else {
+                return;
+            };
             self.with_services(move |services| {
                 let rewrite = Rc::clone(&services.rewrite);
-                let text = |key: &str| options[key].as_str().filter(|text| !text.is_empty()).map(str::to_owned);
-                let (selector, object_id, target) = (text("selector"), text("objectId"), text("targetBranch"));
-                rt::spawn_detached(async move { rewrite.stash(kind, selector, object_id, target).await });
+                let text = |key: &str| {
+                    options[key]
+                        .as_str()
+                        .filter(|text| !text.is_empty())
+                        .map(str::to_owned)
+                };
+                let (selector, object_id, target) =
+                    (text("selector"), text("objectId"), text("targetBranch"));
+                rt::spawn_detached(async move {
+                    rewrite.stash(kind, selector, object_id, target).await
+                });
             });
         }
 
@@ -410,7 +493,9 @@ mod workflows_state {
         #[qslot]
         fn mutate_history(&self, kind: String, source_name: String, target: String) {
             self.with_services(move |services| {
-                let Some(kind) = gitlama_workbench::history_mutations::parse_kind(&kind) else { return };
+                let Some(kind) = gitlama_workbench::history_mutations::parse_kind(&kind) else {
+                    return;
+                };
                 let mutations = Rc::clone(&services.history_mutations);
                 let source = (!source_name.is_empty()).then_some(source_name);
                 let target = (!target.is_empty()).then_some(target);

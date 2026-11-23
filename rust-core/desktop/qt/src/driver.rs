@@ -2,21 +2,21 @@
 //! thread, then projects what changed onto the QObjects, one borrow at a time.
 
 use crate::app_state::AppState;
-use crate::projection;
-use crate::workspace_state::WorkspaceState;
-use crate::row_model::RowModel;
-use crate::sidebar_state::SidebarState;
-use crate::history_model::{HistoryModel, HistorySource};
-use crate::history_state::HistoryState;
-use crate::diff_model::DiffModel;
-use crate::inspector_state::InspectorState;
 use crate::changes_state::ChangesState;
 use crate::commit_state::CommitState;
-use crate::settings_state::SettingsState;
-use gitlama_workbench::history_rows::ReferenceContext;
+use crate::diff_model::DiffModel;
+use crate::history_model::{HistoryModel, HistorySource};
+use crate::history_state::HistoryState;
+use crate::inspector_state::InspectorState;
 use crate::json::to_value;
 use crate::plumbing::{Commands, PumpWaker};
+use crate::projection;
+use crate::row_model::RowModel;
+use crate::settings_state::SettingsState;
+use crate::sidebar_state::SidebarState;
+use crate::workspace_state::WorkspaceState;
 use gitlama_workbench::app::{App, StartupPhase};
+use gitlama_workbench::history_rows::ReferenceContext;
 use gitlama_workbench::notify::Topics;
 use gitlama_workbench::rt::Runtime;
 use qtbridge::qobject;
@@ -37,7 +37,12 @@ pub struct Driver {
     pub history: Rc<RefCell<HistoryState>>,
     pub history_rows: Rc<RefCell<HistoryModel>>,
     /// The reference context of the last snapshot History showed.
-    pub history_context: RefCell<Option<(Rc<gitlama_contract::dto::NativeRepositorySnapshot>, Rc<ReferenceContext>)>>,
+    pub history_context: RefCell<
+        Option<(
+            Rc<gitlama_contract::dto::NativeRepositorySnapshot>,
+            Rc<ReferenceContext>,
+        )>,
+    >,
     /// What History last published: generation, total, head, context.
     pub history_published: RefCell<Option<(u64, u64, u64, Option<String>, usize)>>,
     pub inspector: Rc<RefCell<InspectorState>>,
@@ -114,21 +119,34 @@ impl Driver {
                 state.startup = phase.to_owned();
                 state.startup_changed();
             }
-            let activation = self.app.services().map_or(0, |services| services.cli.activations() as i64);
+            let activation = self
+                .app
+                .services()
+                .map_or(0, |services| services.cli.activations() as i64);
             if state.activation != activation {
                 state.activation = activation;
                 state.activation_changed();
             }
         }
-        if changed.intersects(Topics::HOSTING | Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION | Topics::STARTUP) {
+        if changed.intersects(
+            Topics::HOSTING
+                | Topics::SETTINGS
+                | Topics::WORKSPACE
+                | Topics::SESSION
+                | Topics::STARTUP,
+        ) {
             self.project_hosting();
         }
         if changed.intersects(Topics::EVENTS | Topics::SETTINGS)
             && let Some(services) = self.app.services()
         {
             services.avatars.sync();
-            let images: serde_json::Map<String, serde_json::Value> =
-                services.avatars.images().into_iter().map(|(hash, url)| (hash, serde_json::Value::String(url))).collect();
+            let images: serde_json::Map<String, serde_json::Value> = services
+                .avatars
+                .images()
+                .into_iter()
+                .map(|(hash, url)| (hash, serde_json::Value::String(url)))
+                .collect();
             let images = serde_json::Value::Object(images);
             let mut workflows = self.workflows.borrow_mut();
             if workflows.avatars != images {
@@ -139,16 +157,27 @@ impl Driver {
         if changed.intersects(Topics::EVENTS) {
             self.emit_events();
         }
-        if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS | Topics::OPERATIONS) {
+        if changed
+            .intersects(Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS | Topics::OPERATIONS)
+        {
             self.project_workspace(changed);
         }
-        if changed.intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION | Topics::HOSTING) {
+        if changed
+            .intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION | Topics::HOSTING)
+        {
             self.project_history();
         }
         if changed.intersects(Topics::INSPECTOR) {
             self.project_inspector();
         }
-        if changed.intersects(Topics::CHANGES | Topics::SESSION | Topics::WORKSPACE | Topics::DIFF | Topics::OPERATIONS | Topics::SETTINGS) {
+        if changed.intersects(
+            Topics::CHANGES
+                | Topics::SESSION
+                | Topics::WORKSPACE
+                | Topics::DIFF
+                | Topics::OPERATIONS
+                | Topics::SETTINGS,
+        ) {
             self.project_changes();
         }
         if changed.intersects(Topics::OPERATIONS)
@@ -172,12 +201,14 @@ impl Driver {
                 workflows.snapshots = snapshots;
                 workflows.snapshots_changed();
             }
-            let extensions = gitlama_workbench::extensions::panel_value(&services.extensions.panel());
+            let extensions =
+                gitlama_workbench::extensions::panel_value(&services.extensions.panel());
             if workflows.extensions != extensions {
                 workflows.extensions = extensions;
                 workflows.extensions_changed();
             }
-            let power_tools = gitlama_workbench::power_tools::panel_value(&services.power_tools.panel());
+            let power_tools =
+                gitlama_workbench::power_tools::panel_value(&services.power_tools.panel());
             if workflows.power_tools != power_tools {
                 workflows.power_tools = power_tools;
                 workflows.power_tools_changed();
@@ -187,22 +218,31 @@ impl Driver {
             && let Some(services) = self.app.services()
         {
             let snapshot = services.operations.current();
-            let center = crate::operations_state::project(&snapshot, &services, |session, generation| {
-                services.workspace.with_tabs(|tabs, _, _| {
-                    tabs.iter()
-                        .find(|tab| tab.session.as_ref().is_some_and(|open| open.identity.native_id == session && open.identity.generation == generation))
-                        .map(|tab| tab.label.clone())
-                })
-            });
+            let center =
+                crate::operations_state::project(&snapshot, &services, |session, generation| {
+                    services.workspace.with_tabs(|tabs, _, _| {
+                        tabs.iter()
+                            .find(|tab| {
+                                tab.session.as_ref().is_some_and(|open| {
+                                    open.identity.native_id == session
+                                        && open.identity.generation == generation
+                                })
+                            })
+                            .map(|tab| tab.label.clone())
+                    })
+                });
             let mut operations = self.operations.borrow_mut();
             if operations.center != center {
                 operations.center = center;
                 operations.center_changed();
             }
         }
-        if changed.intersects(Topics::CONFLICTS | Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS)
+        if changed
+            .intersects(Topics::CONFLICTS | Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS)
             && let Some(services) = self.app.services()
-            && let Some((mut state, text, revision, rows)) = services.conflicts.with_active(|session| crate::conflicts_state::project(session))
+            && let Some((mut state, text, revision, rows)) = services
+                .conflicts
+                .with_active(|session| crate::conflicts_state::project(session))
         {
             // The configured merge tools, for the external merge action.
             state["mergeTools"] = services.settings.with(|document| {
@@ -258,8 +298,13 @@ impl Driver {
                 settings.updates_changed();
             }
         }
-        if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::OPERATIONS | Topics::SESSION | Topics::INSPECTOR)
-            && let Some(services) = self.app.services()
+        if changed.intersects(
+            Topics::SETTINGS
+                | Topics::WORKSPACE
+                | Topics::OPERATIONS
+                | Topics::SESSION
+                | Topics::INSPECTOR,
+        ) && let Some(services) = self.app.services()
         {
             let renderer = services.diff_renderers.value();
             if self.settings.borrow().renderer != renderer {
@@ -289,8 +334,14 @@ impl Driver {
         if changed.intersects(Topics::SETTINGS)
             && let Some(services) = self.app.services()
         {
-            let other_refs = services.settings.with(|document| document.appearance.history_other_refs);
-            if self.history_other_refs.replace(Some(other_refs)).is_some_and(|previous| previous != other_refs) {
+            let other_refs = services
+                .settings
+                .with(|document| document.appearance.history_other_refs);
+            if self
+                .history_other_refs
+                .replace(Some(other_refs))
+                .is_some_and(|previous| previous != other_refs)
+            {
                 services.workspace.reload_shown_history();
             }
         }
@@ -298,17 +349,23 @@ impl Driver {
             && let Some(services) = self.app.services()
         {
             services.auto_fetch.sync();
-            let options = services
-                .settings
-                .with(|document| gitlama_workbench::inspector::DiffOptions::of(&document.appearance));
+            let options = services.settings.with(|document| {
+                gitlama_workbench::inspector::DiffOptions::of(&document.appearance)
+            });
             // Context widened by Show more context lasts until the stored
             // preferences change.
-            if changed.intersects(Topics::SETTINGS) && services.working_detail.options() != options {
-                services.working_detail.set_options(options, services.working_detail.force_text());
+            if changed.intersects(Topics::SETTINGS) && services.working_detail.options() != options
+            {
+                services
+                    .working_detail
+                    .set_options(options, services.working_detail.force_text());
             }
-            if changed.intersects(Topics::SETTINGS) && services.inspector.diff_options() != options {
+            if changed.intersects(Topics::SETTINGS) && services.inspector.diff_options() != options
+            {
                 let inspector = Rc::clone(&services.inspector);
-                gitlama_workbench::rt::spawn_detached(async move { inspector.update_diff_options(options).await });
+                gitlama_workbench::rt::spawn_detached(async move {
+                    inspector.update_diff_options(options).await
+                });
             }
             let page = crate::settings_state::project(&services);
             let mut settings = self.settings.borrow_mut();
@@ -329,7 +386,11 @@ impl Driver {
             let appearance = self
                 .app
                 .services()
-                .map(|services| services.settings.with(|document| to_value(&document.appearance)))
+                .map(|services| {
+                    services
+                        .settings
+                        .with(|document| to_value(&document.appearance))
+                })
                 .unwrap_or(Value::Null);
             let shortcuts = self
                 .app
@@ -365,8 +426,11 @@ impl Driver {
     pub(crate) fn publish_line_selection(&self) {
         let (state, rows) = {
             let selection = self.line_selection.borrow();
-            let rows: Vec<Value> =
-                selection.rows.iter().map(|row| crate::line_selection_state::row_value(row, &selection.selection)).collect();
+            let rows: Vec<Value> = selection
+                .rows
+                .iter()
+                .map(|row| crate::line_selection_state::row_value(row, &selection.selection))
+                .collect();
             (selection.project(), rows)
         };
         {
@@ -402,16 +466,24 @@ impl Driver {
 
     /// The mark editor's image: its path and, once read, its preview.
     pub(crate) fn project_appearance_edit(&self) {
-        let Some(services) = self.app.services() else { return };
+        let Some(services) = self.app.services() else {
+            return;
+        };
         let mut state = self.workspace.borrow_mut();
         if state.appearance_edit.is_null() {
             return;
         }
         let image = state.appearance_image.clone();
-        let url = image.as_ref().and_then(|path| services.appearances.image_at(path));
-        let failed = image.as_ref().is_some_and(|path| services.appearances.image_failed(path));
+        let url = image
+            .as_ref()
+            .and_then(|path| services.appearances.image_at(path));
+        let failed = image
+            .as_ref()
+            .is_some_and(|path| services.appearances.image_failed(path));
         let mut next = state.appearance_edit.clone();
-        next["image"] = image.as_ref().map_or(Value::Null, |path| Value::from(gitlama_workbench::session::display_path(path)));
+        next["image"] = image.as_ref().map_or(Value::Null, |path| {
+            Value::from(gitlama_workbench::session::display_path(path))
+        });
         next["imageUrl"] = url.map_or(Value::Null, |url| Value::from(url.as_ref()));
         next["imageFailed"] = Value::from(failed);
         if next != state.appearance_edit {
@@ -421,11 +493,15 @@ impl Driver {
     }
 
     fn project_workspace(&self, changed: Topics) {
-        let Some(services) = self.app.services() else { return };
+        let Some(services) = self.app.services() else {
+            return;
+        };
         if changed.intersects(Topics::WORKSPACE) {
             self.project_appearance_edit();
         }
-        if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::OPERATIONS | Topics::SETTINGS) {
+        if changed
+            .intersects(Topics::WORKSPACE | Topics::SESSION | Topics::OPERATIONS | Topics::SETTINGS)
+        {
             let details = crate::workspace_state::details(&services);
             let mut workspace = self.workspace.borrow_mut();
             if workspace.details != details {
@@ -444,10 +520,16 @@ impl Driver {
             }
         }
         if changed.intersects(Topics::WORKSPACE | Topics::SESSION) {
-            services.entry.follow_session(services.workspace.current().as_ref());
+            services
+                .entry
+                .follow_session(services.workspace.current().as_ref());
             let (tabs, active, groups) = services.workspace.with_tabs(|tabs, active, groups| {
                 (
-                    Value::Array(tabs.iter().map(|tab| projection::tab(tab, &services.appearances)).collect()),
+                    Value::Array(
+                        tabs.iter()
+                            .map(|tab| projection::tab(tab, &services.appearances))
+                            .collect(),
+                    ),
                     active.map_or(-1, |id| id as i64),
                     Value::Array(groups.iter().map(projection::group).collect()),
                 )
@@ -472,7 +554,10 @@ impl Driver {
                 workspace.active = active_projection;
                 workspace.active_changed();
             }
-            if workspace.tabs != tabs || workspace.active_tab_id != active || workspace.groups != groups {
+            if workspace.tabs != tabs
+                || workspace.active_tab_id != active
+                || workspace.groups != groups
+            {
                 workspace.tabs = tabs;
                 workspace.active_tab_id = active;
                 workspace.groups = groups;
@@ -494,7 +579,9 @@ impl Driver {
 
     fn project_sidebar(&self, services: &gitlama_workbench::app::Services) {
         services.navigator.follow_workspace();
-        let selected = services.navigator.selected_reference(services.workspace.active_tab_id());
+        let selected = services
+            .navigator
+            .selected_reference(services.workspace.active_tab_id());
         let projection = services.sidebar.project(selected.as_deref());
         self.sidebar_rows.borrow_mut().publish(projection.rows);
         let mut sidebar = self.sidebar.borrow_mut();
@@ -505,7 +592,9 @@ impl Driver {
     }
 
     fn project_history(&self) {
-        let Some(services) = self.app.services() else { return };
+        let Some(services) = self.app.services() else {
+            return;
+        };
         let history = &services.workspace.history;
         let state = crate::history_state::project(history);
         {
@@ -526,25 +615,32 @@ impl Driver {
                     .map(|(_, context)| Rc::clone(context));
                 cached.unwrap_or_else(|| {
                     let context = Rc::new(ReferenceContext::new(&session.snapshot.refs));
-                    *self.history_context.borrow_mut() = Some((Rc::clone(&session.snapshot), Rc::clone(&context)));
+                    *self.history_context.borrow_mut() =
+                        Some((Rc::clone(&session.snapshot), Rc::clone(&context)));
                     self.history.borrow_mut().snapshot = Some(Rc::clone(&session.snapshot));
                     context
                 })
             }
             None => Rc::new(ReferenceContext::default()),
         };
-        let head = session.as_ref().and_then(|session| {
-            match session.snapshot.status.as_ref() {
+        let head = session
+            .as_ref()
+            .and_then(|session| match session.snapshot.status.as_ref() {
                 Some(status) => status.head_object_id.clone(),
-                None => session.snapshot.identity.as_ref().and_then(|identity| identity.head_object_id.clone()),
-            }
-        });
+                None => session
+                    .snapshot
+                    .identity
+                    .as_ref()
+                    .and_then(|identity| identity.head_object_id.clone()),
+            });
         let current = history.current();
         let total = current.page.as_ref().map_or(0, |page| page.total_rows);
         let key = (
             history.pages_generation(),
             // Pull requests learned for the branch chips refresh the rows too.
-            history.revision().wrapping_add(services.repository_hosting.revision() << 32),
+            history
+                .revision()
+                .wrapping_add(services.repository_hosting.revision() << 32),
             total,
             head.clone(),
             Rc::as_ptr(&context) as usize,
@@ -555,7 +651,12 @@ impl Driver {
         *self.history_published.borrow_mut() = Some(key);
         let total = i32::try_from(total).unwrap_or(i32::MAX);
         self.history_rows.borrow_mut().publish(
-            HistorySource { history: Some(Rc::clone(history)), context, head, hosting: Some(Rc::clone(&services.repository_hosting)) },
+            HistorySource {
+                history: Some(Rc::clone(history)),
+                context,
+                head,
+                hosting: Some(Rc::clone(&services.repository_hosting)),
+            },
             total,
         );
     }
@@ -563,7 +664,9 @@ impl Driver {
     /// The accounts page, the active repository's hosting and its linked
     /// pull requests; follows the active repository and its remotes.
     fn project_hosting(&self) {
-        let Some(services) = self.app.services() else { return };
+        let Some(services) = self.app.services() else {
+            return;
+        };
         {
             let mut state = self.hosting.borrow_mut();
             if state.hosting.is_none() {
@@ -592,9 +695,14 @@ impl Driver {
                     .collect()
             })
             .unwrap_or_default();
-        services.repository_hosting.update(services.workspace.active_canonical(), remotes);
+        services
+            .repository_hosting
+            .update(services.workspace.active_canonical(), remotes);
         self.publish_pull_request_rows(&services);
-        let accounts = crate::hosting_state::accounts_value(&services.hosting, &services.hosting.credentials());
+        let accounts = crate::hosting_state::accounts_value(
+            &services.hosting,
+            &services.hosting.credentials(),
+        );
         let repository = services.repository_hosting.state_value();
         let linked = serde_json::Value::Array(
             services
@@ -629,17 +737,44 @@ impl Driver {
         use gitlama_workbench::sidebar::{Entry, PullRequestRow};
         let session = services.workspace.current();
         let binding = services.repository_hosting.binding();
-        let remote = binding.as_ref().map(|binding| binding.remote.clone()).unwrap_or_default();
-        let (branches, local_heads): (std::collections::HashSet<String>, std::collections::HashMap<String, String>) = session
+        let remote = binding
+            .as_ref()
+            .map(|binding| binding.remote.clone())
+            .unwrap_or_default();
+        let (branches, local_heads): (
+            std::collections::HashSet<String>,
+            std::collections::HashMap<String, String>,
+        ) = session
             .as_ref()
             .map(|session| {
                 let refs = &session.snapshot.refs;
-                let mut names: std::collections::HashSet<String> =
-                    refs.branches.iter().map(|branch| String::from_utf8_lossy(&branch.name).into_owned()).collect();
-                for remote_refs in refs.remotes.iter().filter(|candidate| candidate.name == remote) {
-                    names.extend(remote_refs.branches.iter().map(|branch| String::from_utf8_lossy(&branch.name).into_owned()));
+                let mut names: std::collections::HashSet<String> = refs
+                    .branches
+                    .iter()
+                    .map(|branch| String::from_utf8_lossy(&branch.name).into_owned())
+                    .collect();
+                for remote_refs in refs
+                    .remotes
+                    .iter()
+                    .filter(|candidate| candidate.name == remote)
+                {
+                    names.extend(
+                        remote_refs
+                            .branches
+                            .iter()
+                            .map(|branch| String::from_utf8_lossy(&branch.name).into_owned()),
+                    );
                 }
-                let heads = refs.branches.iter().map(|branch| (String::from_utf8_lossy(&branch.name).into_owned(), branch.target.clone())).collect();
+                let heads = refs
+                    .branches
+                    .iter()
+                    .map(|branch| {
+                        (
+                            String::from_utf8_lossy(&branch.name).into_owned(),
+                            branch.target.clone(),
+                        )
+                    })
+                    .collect();
                 (names, heads)
             })
             .unwrap_or_default();
@@ -662,16 +797,28 @@ impl Driver {
                     } else {
                         pull.source_branch.clone()
                     },
-                    icon: Some(if merged { "git-merge" } else if linked.authored { "user" } else { "git-pull-request" }),
+                    icon: Some(if merged {
+                        "git-merge"
+                    } else if linked.authored {
+                        "user"
+                    } else {
+                        "git-pull-request"
+                    }),
                     target: local_heads.get(&pull.source_branch).cloned(),
                     pull_request: Some(PullRequestRow {
                         web_url: pull.web_url.clone(),
-                        checks: (pull.checks.state != gitlama_contract::hosting::NativeHostingCheckState::Unknown)
-                            .then(|| gitlama_workbench::hosting::check_state_name(pull.checks.state)),
-                        conflicting: pull.mergeability == gitlama_contract::hosting::NativeHostingMergeability::Conflicting,
+                        checks: (pull.checks.state
+                            != gitlama_contract::hosting::NativeHostingCheckState::Unknown)
+                            .then(|| {
+                                gitlama_workbench::hosting::check_state_name(pull.checks.state)
+                            }),
+                        conflicting: pull.mergeability
+                            == gitlama_contract::hosting::NativeHostingMergeability::Conflicting,
                         branches: (pull.source_branch.clone(), pull.target_branch.clone()),
-                        checkout: (pull.state == State::Open && !pull.source_branch.is_empty() && !pull.head_sha.is_empty())
-                            .then(|| (pull.source_branch.clone(), pull.head_sha.clone())),
+                        checkout: (pull.state == State::Open
+                            && !pull.source_branch.is_empty()
+                            && !pull.head_sha.is_empty())
+                        .then(|| (pull.source_branch.clone(), pull.head_sha.clone())),
                     }),
                     ..Entry::default()
                 }
@@ -690,13 +837,22 @@ impl Driver {
     }
 
     pub(crate) fn project_inspector(&self) {
-        let Some(services) = self.app.services() else { return };
-        let tree = services.settings.with(|document| document.appearance.commit_files_mode == "tree");
+        let Some(services) = self.app.services() else {
+            return;
+        };
+        let tree = services
+            .settings
+            .with(|document| document.appearance.commit_files_mode == "tree");
         let collapsed = {
             let inspector = self.inspector.borrow();
             let mut folded = inspector.collapsed.borrow_mut();
             // Another commit starts with every folder open.
-            let commit = services.inspector.current().location.map(|location| location.target.commit().to_owned()).unwrap_or_default();
+            let commit = services
+                .inspector
+                .current()
+                .location
+                .map(|location| location.target.commit().to_owned())
+                .unwrap_or_default();
             if folded.0 != commit {
                 *folded = (commit, Default::default());
             }
@@ -712,11 +868,15 @@ impl Driver {
         }
         let diff = services.inspector.current().diff;
         self.inspector_diff.borrow_mut().publish(diff);
-        self.inspector_blame.borrow_mut().publish(services.inspector.current().blame);
+        self.inspector_blame
+            .borrow_mut()
+            .publish(services.inspector.current().blame);
     }
 
     pub(crate) fn project_changes(&self) {
-        let Some(services) = self.app.services() else { return };
+        let Some(services) = self.app.services() else {
+            return;
+        };
         services.changes.sync();
         services.working_detail.follow();
         let filter = self.changes.borrow().filter.borrow().clone();
@@ -724,12 +884,16 @@ impl Driver {
         let projection = crate::changes_state::project(&services, &filter, &collapsed);
         self.unstaged_rows.borrow_mut().publish(projection.unstaged);
         self.staged_rows.borrow_mut().publish(projection.staged);
-        self.working_diff.borrow_mut().publish(services.working_detail.document());
+        self.working_diff
+            .borrow_mut()
+            .publish(services.working_detail.document());
         // The editor shows the active worktree's draft when the tab changes.
         let tab = services.workspace.active_tab();
         let tab_id = tab.as_ref().map_or(-1, |tab| tab.id as i64);
         if self.commit.borrow().draft["tabId"].as_i64() != Some(tab_id) {
-            let draft = services.commit.draft(tab.as_ref().and_then(|tab| tab.canonical_identity()));
+            let draft = services
+                .commit
+                .draft(tab.as_ref().and_then(|tab| tab.canonical_identity()));
             let mut commit = self.commit.borrow_mut();
             commit.draft = serde_json::json!({"tabId": tab_id, "subject": draft.subject, "description": draft.description});
             commit.draft_changed();
@@ -743,14 +907,26 @@ impl Driver {
         for effect in effects {
             use gitlama_workbench::changes::{ChangesEffect, side_name};
             let (kind, payload) = match effect {
-                ChangesEffect::MoveStarted { tab, side, keys, single } => {
-                    ("moveStarted", serde_json::json!({"tab": tab, "side": side_name(side), "keys": keys, "single": single}))
+                ChangesEffect::MoveStarted {
+                    tab,
+                    side,
+                    keys,
+                    single,
+                } => (
+                    "moveStarted",
+                    serde_json::json!({"tab": tab, "side": side_name(side), "keys": keys, "single": single}),
+                ),
+                ChangesEffect::MoveEnded { tab, moved } => {
+                    ("moveEnded", serde_json::json!({"tab": tab, "moved": moved}))
                 }
-                ChangesEffect::MoveEnded { tab, moved } => ("moveEnded", serde_json::json!({"tab": tab, "moved": moved})),
-                ChangesEffect::ActionFailed { tab, side } => ("actionFailed", serde_json::json!({"tab": tab, "side": side_name(side)})),
-                ChangesEffect::DiffSelectionRequested { tab, discard } => {
-                    ("diffSelectionRequested", serde_json::json!({"tab": tab, "discard": discard}))
-                }
+                ChangesEffect::ActionFailed { tab, side } => (
+                    "actionFailed",
+                    serde_json::json!({"tab": tab, "side": side_name(side)}),
+                ),
+                ChangesEffect::DiffSelectionRequested { tab, discard } => (
+                    "diffSelectionRequested",
+                    serde_json::json!({"tab": tab, "discard": discard}),
+                ),
             };
             changes.effect(kind.to_owned(), payload.to_string());
         }

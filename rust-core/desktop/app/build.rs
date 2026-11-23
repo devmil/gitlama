@@ -68,7 +68,10 @@ fn main() {
         // Sparkle, loaded at run time from the bundle (sparkle_bridge.m).
         let bridge = manifest.join("src/native/sparkle_bridge.m");
         println!("cargo:rerun-if-changed={}", bridge.display());
-        cc::Build::new().file(&bridge).flag("-fobjc-arc").compile("gitlama_sparkle_bridge");
+        cc::Build::new()
+            .file(&bridge)
+            .flag("-fobjc-arc")
+            .compile("gitlama_sparkle_bridge");
         println!("cargo:rustc-link-lib=framework=Foundation");
         // Qt frameworks are linked by @rpath: the app bundle's Frameworks
         // folder, and Qt's own for development runs (packaging removes it).

@@ -70,28 +70,33 @@ pub struct Services {
 }
 
 impl Services {
-    async fn start(notifier: &Notifier, prompts: Rc<Prompts>, notices: Rc<Notices>) -> Result<Self, &'static str> {
+    async fn start(
+        notifier: &Notifier,
+        prompts: Rc<Prompts>,
+        notices: Rc<Notices>,
+    ) -> Result<Self, &'static str> {
         let info = rt::blocking(gitlama_core::api::core_info).await;
         if info.protocol_version != 1 {
             return Err("native_protocol_mismatch");
         }
-        let settings = SettingsService::new(Rc::new(NativeSettingsStore::default()), notifier.clone());
-        settings
-            .initialize()
-            .await
-            .map_err(|_| "settings")?;
+        let settings =
+            SettingsService::new(Rc::new(NativeSettingsStore::default()), notifier.clone());
+        settings.initialize().await.map_err(|_| "settings")?;
         let calls: Rc<dyn SessionCalls> = Rc::new(LocalCalls);
         let view_cache: Rc<dyn SessionViewCache> = Rc::new(NoViewCache);
         let history = HistoryService::new(Rc::clone(&calls), notifier.clone());
         let workspace = WorkspaceService::new(
-            Rc::new(LocalLifecycle { calls: Rc::clone(&calls) }),
+            Rc::new(LocalLifecycle {
+                calls: Rc::clone(&calls),
+            }),
             Rc::clone(&history),
             Some(Rc::clone(&settings)),
             Rc::clone(&view_cache),
             Rc::new(NoRemotes),
             notifier.clone(),
         );
-        let entry = EntryWorkflows::new(Rc::clone(&workspace), Rc::clone(&prompts), notifier.clone());
+        let entry =
+            EntryWorkflows::new(Rc::clone(&workspace), Rc::clone(&prompts), notifier.clone());
         let appearances = AppearanceService::new(Rc::clone(&settings), notifier.clone());
         {
             let weak = Rc::downgrade(&workspace);
@@ -107,9 +112,15 @@ impl Services {
                     cache.history(tab.canonical_identity()?)
                 })),
                 on_first_page: Some(Box::new(move |session, page| {
-                    let Some(workspace) = first_page_workspace.upgrade() else { return };
-                    let Some(tab) = workspace.tab_for_session(session) else { return };
-                    let Some(repository) = tab.canonical_identity() else { return };
+                    let Some(workspace) = first_page_workspace.upgrade() else {
+                        return;
+                    };
+                    let Some(tab) = workspace.tab_for_session(session) else {
+                        return;
+                    };
+                    let Some(repository) = tab.canonical_identity() else {
+                        return;
+                    };
                     // A branch revealed from the sidebar is gone on the next visit.
                     if crate::history::BranchFilter::of_page(page) != tab.navigation.branch_filter {
                         return;
@@ -122,7 +133,9 @@ impl Services {
                     };
                     workspace
                         .tab_for_session(session)
-                        .map_or(crate::history::BranchFilter::NONE, |tab| workspace.shown_branch_filter(tab.id))
+                        .map_or(crate::history::BranchFilter::NONE, |tab| {
+                            workspace.shown_branch_filter(tab.id)
+                        })
                 })),
                 other_refs: Some(Box::new(move || {
                     other_refs_settings.with(|document| document.appearance.history_other_refs)
@@ -145,7 +158,10 @@ impl Services {
                 on_session_closed: None,
             });
         }
-        workspace.restore_workspace().await.map_err(|_| "workspace")?;
+        workspace
+            .restore_workspace()
+            .await
+            .map_err(|_| "workspace")?;
         let navigator = crate::navigator::Navigator::new(Rc::clone(&workspace), notifier.clone());
         let sidebar = crate::sidebar::SidebarService::new(
             Rc::clone(&workspace),
@@ -153,7 +169,8 @@ impl Services {
             Rc::clone(&calls),
             notifier.clone(),
         );
-        let inspector = crate::inspector::InspectorService::new(Rc::clone(&calls), notifier.clone());
+        let inspector =
+            crate::inspector::InspectorService::new(Rc::clone(&calls), notifier.clone());
         inspector.follow(&history);
         let busy = crate::busy::BusyService::new(notifier.clone());
         let changes = crate::changes::ChangesService::new(
@@ -186,8 +203,11 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
-        let auto_fetch =
-            crate::auto_fetch::AutoFetchScheduler::new(Rc::clone(&settings), Rc::clone(&workspace), Rc::clone(&transfers));
+        let auto_fetch = crate::auto_fetch::AutoFetchScheduler::new(
+            Rc::clone(&settings),
+            Rc::clone(&workspace),
+            Rc::clone(&transfers),
+        );
         let refs = crate::refs::RefService::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -215,7 +235,13 @@ impl Services {
                 selected_history
                     .current()
                     .page
-                    .map(|page| page.selected_object_ids.iter().filter(|id| id.as_str() != "wip").cloned().collect())
+                    .map(|page| {
+                        page.selected_object_ids
+                            .iter()
+                            .filter(|id| id.as_str() != "wip")
+                            .cloned()
+                            .collect()
+                    })
                     .unwrap_or_default()
             }),
         );
@@ -252,8 +278,18 @@ impl Services {
             Rc::clone(&prompts),
             Rc::clone(&notices),
         );
-        let patches = crate::patches::PatchService::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&history), Rc::clone(&changes));
-        let archives = crate::archive::ArchiveService::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&notices), notifier.clone());
+        let patches = crate::patches::PatchService::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&history),
+            Rc::clone(&changes),
+        );
+        let archives = crate::archive::ArchiveService::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
         let snapshots = crate::snapshots::SnapshotService::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -272,13 +308,19 @@ impl Services {
             notifier.clone(),
         );
         // Commands forwarded from the command line; this window owns the instance.
-        let cli = crate::cli::CliForwarding::start(Rc::clone(&workspace), Rc::clone(&transfers), notifier.clone())
-            .await
-            .map_err(|_| "cli_forwarding")?;
+        let cli = crate::cli::CliForwarding::start(
+            Rc::clone(&workspace),
+            Rc::clone(&transfers),
+            notifier.clone(),
+        )
+        .await
+        .map_err(|_| "cli_forwarding")?;
         let avatars = crate::avatars::Avatars::new(Rc::clone(&settings), notifier.clone());
         let hosting = crate::hosting::Hosting::new(Rc::clone(&settings), notifier.clone()).await;
-        let repository_hosting = crate::hosting::RepositoryHosting::new(Rc::clone(&hosting), notifier.clone());
-        let updates = crate::updates::UpdateService::new(Rc::clone(&settings), notifier.clone()).await;
+        let repository_hosting =
+            crate::hosting::RepositoryHosting::new(Rc::clone(&hosting), notifier.clone());
+        let updates =
+            crate::updates::UpdateService::new(Rc::clone(&settings), notifier.clone()).await;
         let diff_renderers = crate::diff_renderer::DiffRenderers::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -287,7 +329,11 @@ impl Services {
             Rc::clone(&prompts),
             notifier.clone(),
         );
-        let acceleration = crate::acceleration::Acceleration::new(Rc::clone(&calls), Rc::clone(&workspace), notifier.clone());
+        let acceleration = crate::acceleration::Acceleration::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            notifier.clone(),
+        );
         let tools = crate::tools::ToolsPage::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -295,16 +341,16 @@ impl Services {
             Rc::clone(&prompts),
             notifier.clone(),
         );
-        let extensions =
-            crate::extensions::Extensions::new(
-                Rc::clone(&calls),
-                Rc::clone(&workspace),
-                Rc::clone(&sidebar),
-                Rc::clone(&prompts),
-                Rc::clone(&notices),
-                notifier.clone(),
-            );
-        let operations = crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
+        let extensions = crate::extensions::Extensions::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&sidebar),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
+        let operations =
+            crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
         operations.start();
         Ok(Self {
             integrations,
@@ -408,7 +454,13 @@ impl App {
         self.set_phase(StartupPhase::Loading);
         let app = Rc::clone(self);
         rt::spawn_detached(async move {
-            match Services::start(&app.notifier, Rc::clone(&app.prompts), Rc::clone(&app.notices)).await {
+            match Services::start(
+                &app.notifier,
+                Rc::clone(&app.prompts),
+                Rc::clone(&app.notices),
+            )
+            .await
+            {
                 Ok(services) => {
                     if app.attempt.get() != attempt {
                         services.dispose().await;

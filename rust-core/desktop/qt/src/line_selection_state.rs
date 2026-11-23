@@ -4,7 +4,10 @@
 
 use crate::plumbing::Commands;
 use gitlama_contract::diff::{NativeDiffLayout, NativeDiffRow, NativeDiffRowKind};
-use gitlama_contract::dto::{NativeDiffWhitespace, NativeStagingScope, NativeStagingSide, NativeStatusEntry, NativeStatusEntryKind, NativeWorkingDiffOptions};
+use gitlama_contract::dto::{
+    NativeDiffWhitespace, NativeStagingScope, NativeStagingSide, NativeStatusEntry,
+    NativeStatusEntryKind, NativeWorkingDiffOptions,
+};
 use gitlama_workbench::changes::{change_key, diff_paths, entries_on};
 use gitlama_workbench::diff_doc::DIFF_PAGE_ROWS;
 use gitlama_workbench::line_selection::LineSelection;
@@ -15,7 +18,9 @@ use serde_json::{Value, json};
 use std::rc::Rc;
 
 /// The roles of the dialog's rows.
-pub const LINE_ROLES: &[&str] = &["rowId", "kind", "text", "oldLine", "newLine", "pickable", "checked"];
+pub const LINE_ROLES: &[&str] = &[
+    "rowId", "kind", "text", "oldLine", "newLine", "pickable", "checked",
+];
 
 fn kind_name(kind: NativeDiffRowKind) -> &'static str {
     match kind {
@@ -36,7 +41,13 @@ fn kind_name(kind: NativeDiffRowKind) -> &'static str {
 /// One row as the dialog shows it; `checked` is null on a partly picked hunk.
 pub fn row_value(row: &NativeDiffRow, selection: &LineSelection) -> Value {
     let hunk = row.kind == NativeDiffRowKind::Hunk;
-    let checked = if hunk { selection.hunk_checked(&row.stable_id).map_or(Value::Null, Value::Bool) } else { json!(selection.line_checked(&row.stable_id)) };
+    let checked = if hunk {
+        selection
+            .hunk_checked(&row.stable_id)
+            .map_or(Value::Null, Value::Bool)
+    } else {
+        json!(selection.line_checked(&row.stable_id))
+    };
     json!({
         "rowId": row.stable_id,
         "kind": kind_name(row.kind),
@@ -80,14 +91,33 @@ mod line_selection_state {
         /// Loads the diff of the Changes file `key` on `side`.
         #[qslot]
         fn begin(&self, side: String, key: String) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(tab) = services.workspace.active_tab() else { return };
-                let Some(session) = tab.session.as_ref() else { return };
-                let side = if side == "staged" { NativeStagingSide::Staged } else { NativeStagingSide::Unstaged };
-                let Some(status) = session.snapshot.status.as_ref() else { return };
-                let Some(entry) = entries_on(status, side).into_iter().find(|entry| change_key(entry) == key) else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(tab) = services.workspace.active_tab() else {
+                    return;
+                };
+                let Some(session) = tab.session.as_ref() else {
+                    return;
+                };
+                let side = if side == "staged" {
+                    NativeStagingSide::Staged
+                } else {
+                    NativeStagingSide::Unstaged
+                };
+                let Some(status) = session.snapshot.status.as_ref() else {
+                    return;
+                };
+                let Some(entry) = entries_on(status, side)
+                    .into_iter()
+                    .find(|entry| change_key(entry) == key)
+                else {
+                    return;
+                };
                 services.changes.focus(tab.id, side);
                 let identity = session.identity;
                 let shared = Rc::clone(&driver.line_selection);
@@ -121,8 +151,16 @@ mod line_selection_state {
                 let calls = Rc::clone(&services.calls);
                 let commands = driver.commands.clone();
                 rt::spawn_detached(async move {
-                    let result = calls.repository_session_working_diff_load(identity.native_id, identity.generation, request).await;
-                    let page = result.ok().and_then(|result| result.page.filter(|_| result.failure.is_none()));
+                    let result = calls
+                        .repository_session_working_diff_load(
+                            identity.native_id,
+                            identity.generation,
+                            request,
+                        )
+                        .await;
+                    let page = result
+                        .ok()
+                        .and_then(|result| result.page.filter(|_| result.failure.is_none()));
                     commands.post(move |driver| {
                         {
                             let mut state = driver.line_selection.borrow_mut();
@@ -150,26 +188,46 @@ mod line_selection_state {
         /// Loads the next page of rows.
         #[qslot]
         fn load_more(&self) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let (identity, request_id, offset, sequence) = {
                     let mut state = driver.line_selection.borrow_mut();
-                    let (Some(identity), Some(request_id)) = (state.identity, state.request_id) else { return };
+                    let (Some(identity), Some(request_id)) = (state.identity, state.request_id)
+                    else {
+                        return;
+                    };
                     if state.loading || state.rows.len() as u64 >= state.total {
                         return;
                     }
                     state.loading = true;
-                    (identity, request_id, state.rows.len() as u64, state.sequence)
+                    (
+                        identity,
+                        request_id,
+                        state.rows.len() as u64,
+                        state.sequence,
+                    )
                 };
                 driver.publish_line_selection();
                 let calls = Rc::clone(&services.calls);
                 let commands = driver.commands.clone();
                 rt::spawn_detached(async move {
                     let result = calls
-                        .repository_session_working_diff_page(identity.native_id, identity.generation, request_id, offset, DIFF_PAGE_ROWS as u32)
+                        .repository_session_working_diff_page(
+                            identity.native_id,
+                            identity.generation,
+                            request_id,
+                            offset,
+                            DIFF_PAGE_ROWS as u32,
+                        )
                         .await;
-                    let page = result.ok().and_then(|result| result.page.filter(|_| result.failure.is_none()));
+                    let page = result
+                        .ok()
+                        .and_then(|result| result.page.filter(|_| result.failure.is_none()));
                     commands.post(move |driver| {
                         {
                             let mut state = driver.line_selection.borrow_mut();
@@ -196,7 +254,9 @@ mod line_selection_state {
         #[qslot]
         fn toggle(&self, id: String, value: bool) {
             self.update(move |state| {
-                let Some(row) = state.rows.iter().find(|row| row.stable_id == id) else { return };
+                let Some(row) = state.rows.iter().find(|row| row.stable_id == id) else {
+                    return;
+                };
                 let hunk = row.kind == NativeDiffRowKind::Hunk;
                 // Only hunks and change lines can be picked.
                 if !hunk && !row.selectable {
@@ -228,7 +288,17 @@ mod line_selection_state {
             self.finish(|services, tab, side, entry, request, rows| {
                 let changes = Rc::clone(&services.changes);
                 rt::spawn_detached(async move {
-                    changes.stage(tab, side, NativeStagingScope::Rows, vec![entry], Some(request), rows, None).await
+                    changes
+                        .stage(
+                            tab,
+                            side,
+                            NativeStagingScope::Rows,
+                            vec![entry],
+                            Some(request),
+                            rows,
+                            None,
+                        )
+                        .await
                 });
             });
         }
@@ -238,7 +308,9 @@ mod line_selection_state {
         fn discard(&self) {
             self.finish(|services, tab, _, entry, request, rows| {
                 let changes = Rc::clone(&services.changes);
-                rt::spawn_detached(async move { changes.discard(tab, vec![entry], Some(request), rows).await });
+                rt::spawn_detached(async move {
+                    changes.discard(tab, vec![entry], Some(request), rows).await
+                });
             });
         }
 
@@ -256,7 +328,9 @@ mod line_selection_state {
         /// The dialog closed: later answers are dropped.
         #[qslot]
         fn end(&self) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(|driver| {
                 {
                     let mut state = driver.line_selection.borrow_mut();
@@ -273,7 +347,9 @@ mod line_selection_state {
 
     impl LineSelectionState {
         fn update(&self, change: impl FnOnce(&mut LineSelectionState) + 'static) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
                 change(&mut driver.line_selection.borrow_mut());
                 driver.publish_line_selection();
@@ -282,14 +358,27 @@ mod line_selection_state {
 
         fn finish(
             &self,
-            run: impl FnOnce(&gitlama_workbench::app::Services, u64, NativeStagingSide, NativeStatusEntry, u64, Vec<String>) + 'static,
+            run: impl FnOnce(
+                &gitlama_workbench::app::Services,
+                u64,
+                NativeStagingSide,
+                NativeStatusEntry,
+                u64,
+                Vec<String>,
+            ) + 'static,
         ) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let (tab, side, entry, request, rows) = {
                     let state = driver.line_selection.borrow();
-                    let (Some(tab), Some(side), Some(entry), Some(request)) = (state.tab, state.side, state.entry.clone(), state.request_id) else {
+                    let (Some(tab), Some(side), Some(entry), Some(request)) =
+                        (state.tab, state.side, state.entry.clone(), state.request_id)
+                    else {
                         return;
                     };
                     if state.selection.is_empty() {

@@ -40,7 +40,9 @@ pub fn has_conflict_markers(text: &str) -> bool {
 
 /// How many conflicts `text` still opens (`<<<<<<<` at a line start).
 pub fn marker_count(text: &str) -> usize {
-    text.split('\n').filter(|line| line.starts_with("<<<<<<<")).count()
+    text.split('\n')
+        .filter(|line| line.starts_with("<<<<<<<"))
+        .count()
 }
 
 /// `value` split after each newline, keeping the newlines.
@@ -81,8 +83,22 @@ pub struct Row {
 }
 
 impl Row {
-    fn new(current: Text, incoming: Text, current_line: Option<usize>, incoming_line: Option<usize>, block: Option<usize>, different: bool) -> Self {
-        Self { current, incoming, current_line, incoming_line, block, different }
+    fn new(
+        current: Text,
+        incoming: Text,
+        current_line: Option<usize>,
+        incoming_line: Option<usize>,
+        block: Option<usize>,
+        different: bool,
+    ) -> Self {
+        Self {
+            current,
+            incoming,
+            current_line,
+            incoming_line,
+            block,
+            different,
+        }
     }
 }
 
@@ -95,15 +111,25 @@ pub struct MergeDraft {
 
 impl MergeDraft {
     pub fn from_file(file: &NativeConflictFile) -> Self {
-        let text = utf16(&String::from_utf8_lossy(file.result.as_deref().unwrap_or_default()));
+        let text = utf16(&String::from_utf8_lossy(
+            file.result.as_deref().unwrap_or_default(),
+        ));
         let mut blocks: Vec<Block> = Vec::new();
         let mut rows = Vec::new();
         let all = lines(&text);
-        let (mut cursor, mut offset, mut current_line, mut incoming_line) = (0usize, 0usize, 1usize, 1usize);
+        let (mut cursor, mut offset, mut current_line, mut incoming_line) =
+            (0usize, 0usize, 1usize, 1usize);
         while cursor < all.len() {
             let line = &all[cursor];
             if !starts_with(line, "<<<<<<<") {
-                rows.push(Row::new(line.clone(), line.clone(), Some(current_line), Some(incoming_line), None, false));
+                rows.push(Row::new(
+                    line.clone(),
+                    line.clone(),
+                    Some(current_line),
+                    Some(incoming_line),
+                    None,
+                    false,
+                ));
                 current_line += 1;
                 incoming_line += 1;
                 offset += line.len();
@@ -121,7 +147,14 @@ impl MergeDraft {
                 end += 1;
             }
             if separator >= all.len() || end >= all.len() {
-                rows.push(Row::new(line.clone(), line.clone(), Some(current_line), Some(incoming_line), None, false));
+                rows.push(Row::new(
+                    line.clone(),
+                    line.clone(),
+                    Some(current_line),
+                    Some(incoming_line),
+                    None,
+                    false,
+                ));
                 current_line += 1;
                 incoming_line += 1;
                 offset += line.len();
@@ -129,7 +162,9 @@ impl MergeDraft {
                 continue;
             }
             // Diff3 adds ancestor lines between ||||||| and =======.
-            let current_end = (first..separator).find(|index| starts_with(&all[*index], "|||||||")).unwrap_or(separator);
+            let current_end = (first..separator)
+                .find(|index| starts_with(&all[*index], "|||||||"))
+                .unwrap_or(separator);
             let current: Text = all[first..current_end].concat();
             let incoming: Text = all[separator + 1..end].concat();
             let original: Text = all[cursor..=end].concat();
@@ -155,7 +190,15 @@ impl MergeDraft {
                     false,
                 ));
             }
-            blocks.push(Block { index, start, end: start + original.len(), current, incoming, original, choice: None });
+            blocks.push(Block {
+                index,
+                start,
+                end: start + original.len(),
+                current,
+                incoming,
+                original,
+                choice: None,
+            });
             offset += all[cursor..=end].iter().map(Vec::len).sum::<usize>();
             cursor = end + 1;
         }
@@ -168,7 +211,9 @@ impl MergeDraft {
         let mut first = vec![0; self.blocks.len()];
         let mut count = vec![0; self.blocks.len()];
         for (index, row) in self.rows.iter().enumerate() {
-            let Some(block) = row.block.filter(|block| *block < self.blocks.len()) else { continue };
+            let Some(block) = row.block.filter(|block| *block < self.blocks.len()) else {
+                continue;
+            };
             if count[block] == 0 {
                 first[block] = index;
             }
@@ -178,7 +223,10 @@ impl MergeDraft {
     }
 
     pub fn resolved_count(&self) -> usize {
-        self.blocks.iter().filter(|block| block.choice.is_some()).count()
+        self.blocks
+            .iter()
+            .filter(|block| block.choice.is_some())
+            .count()
     }
 
     pub fn unresolved_count(&self) -> usize {
@@ -189,9 +237,13 @@ impl MergeDraft {
     /// both. Returns the new text.
     pub fn take(&mut self, index: usize, choice: NativeConflictRegionChoice) -> &[u16] {
         use NativeConflictRegionChoice::{Both, Current, Incoming};
-        let Some(block) = self.blocks.get(index) else { return &self.text };
+        let Some(block) = self.blocks.get(index) else {
+            return &self.text;
+        };
         let next = match (block.choice, choice) {
-            (Some(Current), Current) | (Some(Incoming), Incoming) | (Some(Both), Both) => block.choice,
+            (Some(Current), Current) | (Some(Incoming), Incoming) | (Some(Both), Both) => {
+                block.choice
+            }
             (Some(Current), Incoming) | (Some(Incoming), Current) => Some(Both),
             (Some(Both), Current) | (Some(Both), Incoming) => Some(Both),
             _ => Some(choice),
@@ -202,7 +254,9 @@ impl MergeDraft {
     /// Takes `choice` back out of block `index`.
     pub fn remove(&mut self, index: usize, choice: NativeConflictRegionChoice) -> &[u16] {
         use NativeConflictRegionChoice::{Both, Current, Incoming};
-        let Some(block) = self.blocks.get(index) else { return &self.text };
+        let Some(block) = self.blocks.get(index) else {
+            return &self.text;
+        };
         let current = block.choice;
         let next = match (current, choice) {
             (Some(Both), Current) => Some(Incoming),
@@ -218,7 +272,9 @@ impl MergeDraft {
         let replacement = match next {
             Some(NativeConflictRegionChoice::Current) => block.current.clone(),
             Some(NativeConflictRegionChoice::Incoming) => block.incoming.clone(),
-            Some(NativeConflictRegionChoice::Both) => [block.current.clone(), block.incoming.clone()].concat(),
+            Some(NativeConflictRegionChoice::Both) => {
+                [block.current.clone(), block.incoming.clone()].concat()
+            }
             None => block.original.clone(),
         };
         let (start, end) = (block.start, block.end);
@@ -260,7 +316,14 @@ impl MergeDraft {
         self.shift_ranges(start, end, replacement.len(), Some(selected), new_length);
     }
 
-    fn shift_ranges(&mut self, start: usize, end: usize, replacement_length: usize, selected: Option<usize>, new_length: usize) {
+    fn shift_ranges(
+        &mut self,
+        start: usize,
+        end: usize,
+        replacement_length: usize,
+        selected: Option<usize>,
+        new_length: usize,
+    ) {
         let delta = replacement_length as isize - (end - start) as isize;
         let shift = |value: usize| (value as isize + delta).max(0) as usize;
         for block in &mut self.blocks {
@@ -289,8 +352,12 @@ fn stage_rows(file: &NativeConflictFile, blocks: &[Block]) -> Option<Vec<Row>> {
         return None;
     }
     let decode = |bytes: &[u8]| std::str::from_utf8(bytes).ok().map(utf16);
-    let current = lines(&decode(file.current.content.as_deref().unwrap_or_default())?);
-    let incoming = lines(&decode(file.incoming.content.as_deref().unwrap_or_default())?);
+    let current = lines(&decode(
+        file.current.content.as_deref().unwrap_or_default(),
+    )?);
+    let incoming = lines(&decode(
+        file.incoming.content.as_deref().unwrap_or_default(),
+    )?);
     let mut rows = Vec::new();
     let (mut left, mut right) = (0, 0);
     for (region, conflict) in file.regions.iter().enumerate() {
@@ -302,7 +369,15 @@ fn stage_rows(file: &NativeConflictFile, blocks: &[Block]) -> Option<Vec<Row>> {
         }
         let left_start = find_lines(&current, &left_conflict, left)?;
         let right_start = find_lines(&incoming, &right_conflict, right)?;
-        align_lines(&mut rows, &current, &incoming, left, left_start, right, right_start);
+        align_lines(
+            &mut rows,
+            &current,
+            &incoming,
+            left,
+            left_start,
+            right,
+            right_start,
+        );
         for row in 0..left_conflict.len().max(right_conflict.len()) {
             rows.push(Row::new(
                 left_conflict.get(row).cloned().unwrap_or_default(),
@@ -316,29 +391,67 @@ fn stage_rows(file: &NativeConflictFile, blocks: &[Block]) -> Option<Vec<Row>> {
         left = left_start + left_conflict.len();
         right = right_start + right_conflict.len();
     }
-    align_lines(&mut rows, &current, &incoming, left, current.len(), right, incoming.len());
+    align_lines(
+        &mut rows,
+        &current,
+        &incoming,
+        left,
+        current.len(),
+        right,
+        incoming.len(),
+    );
     Some(rows)
 }
 
 fn find_lines(haystack: &[Text], needle: &[Text], start: usize) -> Option<usize> {
-    (start..=haystack.len().saturating_sub(needle.len()))
-        .find(|index| index + needle.len() <= haystack.len() && haystack[*index..*index + needle.len()] == *needle)
+    (start..=haystack.len().saturating_sub(needle.len())).find(|index| {
+        index + needle.len() <= haystack.len() && haystack[*index..*index + needle.len()] == *needle
+    })
 }
 
-fn align_lines(rows: &mut Vec<Row>, current: &[Text], incoming: &[Text], mut left: usize, left_end: usize, mut right: usize, right_end: usize) {
+fn align_lines(
+    rows: &mut Vec<Row>,
+    current: &[Text],
+    incoming: &[Text],
+    mut left: usize,
+    left_end: usize,
+    mut right: usize,
+    right_end: usize,
+) {
     while left < left_end || right < right_end {
         if left >= left_end {
-            rows.push(Row::new(Vec::new(), incoming[right].clone(), None, Some(right + 1), None, true));
+            rows.push(Row::new(
+                Vec::new(),
+                incoming[right].clone(),
+                None,
+                Some(right + 1),
+                None,
+                true,
+            ));
             right += 1;
             continue;
         }
         if right >= right_end {
-            rows.push(Row::new(current[left].clone(), Vec::new(), Some(left + 1), None, None, true));
+            rows.push(Row::new(
+                current[left].clone(),
+                Vec::new(),
+                Some(left + 1),
+                None,
+                None,
+                true,
+            ));
             left += 1;
             continue;
         }
         if current[left] == incoming[right] {
-            rows.push(Row::new(current[left].clone(), incoming[right].clone(), Some(left + 1), Some(right + 1), None, false));
+            rows.push(Row::new(
+                current[left].clone(),
+                incoming[right].clone(),
+                Some(left + 1),
+                Some(right + 1),
+                None,
+                false,
+            ));
             left += 1;
             right += 1;
             continue;
@@ -348,13 +461,34 @@ fn align_lines(rows: &mut Vec<Row>, current: &[Text], incoming: &[Text], mut lef
         if let Some(found) = left_match
             && right_match.is_none_or(|other| found - left <= other - right)
         {
-            rows.push(Row::new(current[left].clone(), Vec::new(), Some(left + 1), None, None, true));
+            rows.push(Row::new(
+                current[left].clone(),
+                Vec::new(),
+                Some(left + 1),
+                None,
+                None,
+                true,
+            ));
             left += 1;
         } else if right_match.is_some() {
-            rows.push(Row::new(Vec::new(), incoming[right].clone(), None, Some(right + 1), None, true));
+            rows.push(Row::new(
+                Vec::new(),
+                incoming[right].clone(),
+                None,
+                Some(right + 1),
+                None,
+                true,
+            ));
             right += 1;
         } else {
-            rows.push(Row::new(current[left].clone(), incoming[right].clone(), Some(left + 1), Some(right + 1), None, true));
+            rows.push(Row::new(
+                current[left].clone(),
+                incoming[right].clone(),
+                Some(left + 1),
+                Some(right + 1),
+                None,
+                true,
+            ));
             left += 1;
             right += 1;
         }
@@ -368,8 +502,10 @@ fn look_ahead(lines: &[Text], start: usize, end: usize, value: &[u16]) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gitlama_contract::conflict::{NativeConflictFileKind, NativeConflictRegion, NativeConflictSide};
     use NativeConflictRegionChoice::{Both, Current, Incoming};
+    use gitlama_contract::conflict::{
+        NativeConflictFileKind, NativeConflictRegion, NativeConflictSide,
+    };
 
     fn side(content: Option<&str>) -> NativeConflictSide {
         NativeConflictSide {
@@ -380,7 +516,12 @@ mod tests {
         }
     }
 
-    fn file(result: &str, current: Option<&str>, incoming: Option<&str>, regions: Vec<(&str, &str)>) -> NativeConflictFile {
+    fn file(
+        result: &str,
+        current: Option<&str>,
+        incoming: Option<&str>,
+        regions: Vec<(&str, &str)>,
+    ) -> NativeConflictFile {
         NativeConflictFile {
             path: b"f.txt".to_vec(),
             kind: NativeConflictFileKind::Text,
@@ -424,10 +565,19 @@ mod tests {
         let block = &draft.blocks[0];
         assert_eq!(string(&block.current), "ours\n");
         assert_eq!(string(&block.incoming), "theirs\n");
-        assert_eq!((block.start, block.end), (2, 2 + "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\n".len()));
+        assert_eq!(
+            (block.start, block.end),
+            (
+                2,
+                2 + "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\n".len()
+            )
+        );
         assert_eq!(draft.rows.len(), 3);
         assert_eq!(draft.rows[1].block, Some(0));
-        assert_eq!((draft.rows[2].current_line, draft.rows[2].incoming_line), (Some(3), Some(3)));
+        assert_eq!(
+            (draft.rows[2].current_line, draft.rows[2].incoming_line),
+            (Some(3), Some(3))
+        );
         assert_eq!(draft.block_rows(), vec![(1, 1)]);
     }
 
@@ -444,7 +594,8 @@ mod tests {
 
     #[test]
     fn a_hand_edit_moves_the_regions_after_it() {
-        let text = "<<<<<<< a\n1\n=======\n2\n>>>>>>> b\nmid\n<<<<<<< a\n3\n=======\n4\n>>>>>>> b\n";
+        let text =
+            "<<<<<<< a\n1\n=======\n2\n>>>>>>> b\nmid\n<<<<<<< a\n3\n=======\n4\n>>>>>>> b\n";
         let mut draft = MergeDraft::from_file(&file(text, None, None, vec![]));
         let second = draft.blocks[1].start;
         let mut edited = utf16("XX");
@@ -459,13 +610,24 @@ mod tests {
     fn rows_align_to_the_files_own_lines() {
         let current = "a\nkeep\nours\nz\n";
         let incoming = "a\ntheirs\nz\nextra\n";
-        let draft = MergeDraft::from_file(&file(RESULT, Some(current), Some(incoming), vec![("ours\n", "theirs\n")]));
-        let shown: Vec<(String, String, Option<usize>)> =
-            draft.rows.iter().map(|row| (string(&row.current), string(&row.incoming), row.block)).collect();
+        let draft = MergeDraft::from_file(&file(
+            RESULT,
+            Some(current),
+            Some(incoming),
+            vec![("ours\n", "theirs\n")],
+        ));
+        let shown: Vec<(String, String, Option<usize>)> = draft
+            .rows
+            .iter()
+            .map(|row| (string(&row.current), string(&row.incoming), row.block))
+            .collect();
         assert_eq!(shown[0], ("a\n".into(), "a\n".into(), None));
         assert_eq!(shown[1], ("keep\n".into(), String::new(), None));
         assert_eq!(shown[2], ("ours\n".into(), "theirs\n".into(), Some(0)));
-        assert_eq!(shown.last().unwrap(), &(String::new(), "extra\n".into(), None));
+        assert_eq!(
+            shown.last().unwrap(),
+            &(String::new(), "extra\n".into(), None)
+        );
         assert!(draft.rows[1].different);
     }
 }

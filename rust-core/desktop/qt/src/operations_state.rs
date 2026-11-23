@@ -5,7 +5,8 @@
 use crate::plumbing::Commands;
 use gitlama_contract::activity::{NativeActivityRecord, NativeActivityStatus};
 use gitlama_contract::dto::{
-    NativeOperationCenterAction, NativeOperationCenterOrigin, NativeOperationCenterSnapshot, NativeOperationCenterState,
+    NativeOperationCenterAction, NativeOperationCenterOrigin, NativeOperationCenterSnapshot,
+    NativeOperationCenterState,
 };
 use gitlama_workbench::app::Services;
 use gitlama_workbench::operations::{entry_key, present};
@@ -42,7 +43,9 @@ fn status_name(status: NativeActivityStatus) -> &'static str {
         NativeActivityStatus::Running => "running",
         NativeActivityStatus::Succeeded => "succeeded",
         NativeActivityStatus::Canceled => "canceled",
-        NativeActivityStatus::Failed | NativeActivityStatus::TimedOut | NativeActivityStatus::LaunchError => "failed",
+        NativeActivityStatus::Failed
+        | NativeActivityStatus::TimedOut
+        | NativeActivityStatus::LaunchError => "failed",
     }
 }
 
@@ -67,7 +70,11 @@ pub fn record_value(record: &NativeActivityRecord) -> Value {
 
 /// The logbook's rows: entries in center order, quiet background fetches
 /// folded together; `label` names an entry's repository.
-pub fn project(snapshot: &NativeOperationCenterSnapshot, services: &Services, label: impl Fn(u64, u64) -> Option<String>) -> Value {
+pub fn project(
+    snapshot: &NativeOperationCenterSnapshot,
+    services: &Services,
+    label: impl Fn(u64, u64) -> Option<String>,
+) -> Value {
     let rows: Vec<Value> = present(&snapshot.entries)
         .into_iter()
         .map(|(index, count)| {
@@ -184,20 +191,43 @@ mod operations_state {
         /// Loads an entry's command and output.
         #[qslot]
         fn load_details(&self, key: String) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Ok(numeric) = key.parse::<u64>() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Ok(numeric) = key.parse::<u64>() else {
+                    return;
+                };
                 let snapshot = services.operations.current();
-                let Some(entry) = snapshot.entries.iter().find(|entry| entry_key(entry) == numeric).cloned() else { return };
-                let (Some(session), Some(activity)) = (entry.session_id, entry.activity_id) else { return };
+                let Some(entry) = snapshot
+                    .entries
+                    .iter()
+                    .find(|entry| entry_key(entry) == numeric)
+                    .cloned()
+                else {
+                    return;
+                };
+                let (Some(session), Some(activity)) = (entry.session_id, entry.activity_id) else {
+                    return;
+                };
                 let calls = Rc::clone(&services.calls);
                 let state = Rc::clone(&driver.operations);
                 rt::spawn_detached(async move {
-                    let result = calls.repository_session_activity_record(session, entry.generation, activity).await;
+                    let result = calls
+                        .repository_session_activity_record(session, entry.generation, activity)
+                        .await;
                     let page = result.ok().and_then(|result| result.page);
-                    let record = page.as_ref().and_then(|page| page.records.iter().find(|record| record.id == activity));
-                    let expired = record.is_none() && page.as_ref().and_then(|page| page.evicted_through_id).is_some_and(|through| activity <= through);
+                    let record = page
+                        .as_ref()
+                        .and_then(|page| page.records.iter().find(|record| record.id == activity));
+                    let expired = record.is_none()
+                        && page
+                            .as_ref()
+                            .and_then(|page| page.evicted_through_id)
+                            .is_some_and(|through| activity <= through);
                     let value = record.map_or(Value::Null, record_value);
                     state.borrow_mut().details_loaded(key, value, expired);
                 });
@@ -207,11 +237,16 @@ mod operations_state {
         /// Reads the active repository's recent activity.
         #[qslot]
         fn load_activity(&self) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let state = Rc::clone(&driver.operations);
-                let Some(identity) = services.workspace.current().map(|session| session.identity) else {
+                let Some(identity) = services.workspace.current().map(|session| session.identity)
+                else {
                     let mut shown = state.borrow_mut();
                     shown.activity = json!([]);
                     shown.activity_changed();
@@ -219,7 +254,12 @@ mod operations_state {
                 };
                 let calls = Rc::clone(&services.calls);
                 rt::spawn_detached(async move {
-                    let Ok(result) = calls.repository_session_activity(identity.native_id, identity.generation, 64).await else { return };
+                    let Ok(result) = calls
+                        .repository_session_activity(identity.native_id, identity.generation, 64)
+                        .await
+                    else {
+                        return;
+                    };
                     let Some(page) = result.page else { return };
                     let records = Value::Array(page.records.iter().map(record_value).collect());
                     let mut shown = state.borrow_mut();

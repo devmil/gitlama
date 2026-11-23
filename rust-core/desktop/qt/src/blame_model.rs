@@ -72,7 +72,10 @@ mod blame_model {
                 return QVariant::default();
             }
             let row = self.row(line);
-            let name = ROLES.get((role - FIRST_ROLE) as usize).copied().unwrap_or_default();
+            let name = ROLES
+                .get((role - FIRST_ROLE) as usize)
+                .copied()
+                .unwrap_or_default();
             let Some(row) = row else {
                 return match name {
                     "loading" => QVariant::from(true),
@@ -83,16 +86,28 @@ mod blame_model {
             match name {
                 "loading" => QVariant::from(false),
                 "line" => QVariant::from(row.final_line as i32),
-                "content" => QVariant::from(&text(&row.content).trim_end_matches(['\n', '\r']).replace('\t', "    ")),
+                "content" => QVariant::from(
+                    &text(&row.content)
+                        .trim_end_matches(['\n', '\r'])
+                        .replace('\t', "    "),
+                ),
                 "commit" => QVariant::from(row.commit.as_deref().unwrap_or_default()),
                 "author" => QVariant::from(&text(&row.author)),
                 "summary" => QVariant::from(&text(&row.summary)),
                 "authorTime" => QVariant::from(row.author_time as f64),
                 "boundary" => QVariant::from(row.boundary),
-                "groupStart" => QVariant::from(line == 0 || self.row(line - 1).is_none_or(|previous| previous.commit != row.commit)),
-                "groupEnd" => {
-                    QVariant::from(line + 1 >= self.total || self.row(line + 1).is_none_or(|next| next.commit != row.commit))
-                }
+                "groupStart" => QVariant::from(
+                    line == 0
+                        || self
+                            .row(line - 1)
+                            .is_none_or(|previous| previous.commit != row.commit),
+                ),
+                "groupEnd" => QVariant::from(
+                    line + 1 >= self.total
+                        || self
+                            .row(line + 1)
+                            .is_none_or(|next| next.commit != row.commit),
+                ),
                 _ => QVariant::default(),
             }
         }
@@ -120,7 +135,9 @@ mod blame_model {
             } {
                 return;
             }
-            let total = view.as_ref().map_or(0, |view| view.total_rows.min(i32::MAX as u64) as i32);
+            let total = view
+                .as_ref()
+                .map_or(0, |view| view.total_rows.min(i32::MAX as u64) as i32);
             let same_file = match (&self.view, &view) {
                 (Some(old), Some(new)) => old.request_id == new.request_id,
                 _ => false,

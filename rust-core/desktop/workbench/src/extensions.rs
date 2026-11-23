@@ -10,8 +10,9 @@ use crate::session::{SessionIdentity, display_path, local_path};
 use crate::sidebar::{SidebarService, worktree_deletion_protected};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::extensions::{
-    NativeExtensionFailureKind, NativeExtensionInventory, NativeLfsPathState, NativeSubmoduleState, NativeWorktreeEntry, NativeExtensionMutationKind, NativeExtensionMutationRequest, NativeExtensionMutationResult,
-    NativeExtensionMutationState,
+    NativeExtensionFailureKind, NativeExtensionInventory, NativeExtensionMutationKind,
+    NativeExtensionMutationRequest, NativeExtensionMutationResult, NativeExtensionMutationState,
+    NativeLfsPathState, NativeSubmoduleState, NativeWorktreeEntry,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -38,15 +39,21 @@ pub enum PanelAction {
 }
 
 /// The failure a mutation reports, unless its outcome is uncertain.
-pub fn reported_failure(result: &NativeExtensionMutationResult) -> Option<NativeExtensionFailureKind> {
+pub fn reported_failure(
+    result: &NativeExtensionMutationResult,
+) -> Option<NativeExtensionFailureKind> {
     if result.state == NativeExtensionMutationState::OutcomeUncertain {
         return None;
     }
-    result.failure.as_ref().map(|failure| failure.kind).or(match result.state {
-        NativeExtensionMutationState::Failed => Some(NativeExtensionFailureKind::Git),
-        NativeExtensionMutationState::Canceled => Some(NativeExtensionFailureKind::Canceled),
-        _ => None,
-    })
+    result
+        .failure
+        .as_ref()
+        .map(|failure| failure.kind)
+        .or(match result.state {
+            NativeExtensionMutationState::Failed => Some(NativeExtensionFailureKind::Git),
+            NativeExtensionMutationState::Canceled => Some(NativeExtensionFailureKind::Canceled),
+            _ => None,
+        })
 }
 
 /// What a failed extension change says (the Dart extensionFailureLabel).
@@ -66,7 +73,11 @@ pub fn failure_key(kind: NativeExtensionFailureKind) -> &'static str {
 
 /// The field error of the ignore dialog for `kind`.
 pub fn ignore_failure_key(kind: NativeExtensionFailureKind) -> &'static str {
-    if kind == NativeExtensionFailureKind::InvalidRequest { "ignoreFailureInvalid" } else { "ignoreFailureWrite" }
+    if kind == NativeExtensionFailureKind::InvalidRequest {
+        "ignoreFailureInvalid"
+    } else {
+        "ignoreFailureWrite"
+    }
 }
 
 pub struct Extensions {
@@ -88,7 +99,15 @@ impl Extensions {
         notices: Rc<Notices>,
         notifier: Notifier,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, sidebar, prompts, notices, notifier, panel: RefCell::new(Panel::default()) })
+        Rc::new(Self {
+            calls,
+            workspace,
+            sidebar,
+            prompts,
+            notices,
+            notifier,
+            panel: RefCell::new(Panel::default()),
+        })
     }
 
     pub fn panel(&self) -> Panel {
@@ -103,18 +122,27 @@ impl Extensions {
     /// Runs `request` for the active repository. Deleting a worktree first
     /// closes its other tabs and reopens them when the deletion does not
     /// happen (the Dart ExtensionCommands.execute).
-    async fn execute(&self, identity: SessionIdentity, request: NativeExtensionMutationRequest) -> Result<NativeExtensionMutationResult, ()> {
+    async fn execute(
+        &self,
+        identity: SessionIdentity,
+        request: NativeExtensionMutationRequest,
+    ) -> Result<NativeExtensionMutationResult, ()> {
         let mut closed = Vec::new();
         if request.kind == NativeExtensionMutationKind::WorktreeDelete
             && let Some(root) = &request.worktree_root
         {
             closed = self.workspace.close_worktree_tabs(root, identity).await;
         }
-        let result = self.calls.repository_session_extension_execute(identity.native_id, identity.generation, request).await;
+        let result = self
+            .calls
+            .repository_session_extension_execute(identity.native_id, identity.generation, request)
+            .await;
         let restore = match &result {
             Ok(result) => matches!(
                 result.state,
-                NativeExtensionMutationState::Failed | NativeExtensionMutationState::Canceled | NativeExtensionMutationState::OutcomeUncertain
+                NativeExtensionMutationState::Failed
+                    | NativeExtensionMutationState::Canceled
+                    | NativeExtensionMutationState::OutcomeUncertain
             ),
             Err(_) => true,
         };
@@ -126,19 +154,26 @@ impl Extensions {
 
     /// Reads the inventory again.
     pub async fn load(&self) {
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         self.update(|panel| {
             panel.busy = true;
             panel.failure = None;
         });
-        let result = self.calls.repository_session_extensions(identity.native_id, identity.generation).await;
+        let result = self
+            .calls
+            .repository_session_extensions(identity.native_id, identity.generation)
+            .await;
         self.update(|panel| {
             panel.busy = false;
             match result {
                 Ok(result) => match (result.inventory, result.failure) {
                     (Some(inventory), None) => panel.inventory = Some(inventory),
                     (_, failure) => {
-                        panel.failure = Some(failure_key(failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind)))
+                        panel.failure = Some(failure_key(
+                            failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind),
+                        ))
                     }
                 },
                 Err(_) => panel.failure = Some(failure_key(NativeExtensionFailureKind::Stale)),
@@ -151,9 +186,19 @@ impl Extensions {
         let names = self
             .workspace
             .current()
-            .map(|session| crate::power_tools::reference_choices(&session.snapshot).into_iter().map(|(name, _)| name).collect())
+            .map(|session| {
+                crate::power_tools::reference_choices(&session.snapshot)
+                    .into_iter()
+                    .map(|(name, _)| name)
+                    .collect()
+            })
             .unwrap_or_default();
-        self.update(|panel| *panel = Panel { names, ..Panel::default() });
+        self.update(|panel| {
+            *panel = Panel {
+                names,
+                ..Panel::default()
+            }
+        });
         self.load().await;
     }
 
@@ -163,7 +208,9 @@ impl Extensions {
         if self.panel.borrow().busy {
             return;
         }
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         self.update(|panel| {
             panel.busy = true;
             panel.failure = None;
@@ -178,7 +225,9 @@ impl Extensions {
             panel.failure = failure.map(failure_key);
         });
         if failure.is_none() {
-            if result.is_ok_and(|result| result.state == NativeExtensionMutationState::OutcomeUncertain) {
+            if result
+                .is_ok_and(|result| result.state == NativeExtensionMutationState::OutcomeUncertain)
+            {
                 self.notices.error("mutationOutcomeUncertain", Value::Null);
             }
             self.sidebar.reload_worktrees();
@@ -187,7 +236,13 @@ impl Extensions {
     }
 
     fn request(kind: NativeExtensionMutationKind) -> NativeExtensionMutationRequest {
-        NativeExtensionMutationRequest { kind, path: None, worktree_root: None, pattern: None, reference: None }
+        NativeExtensionMutationRequest {
+            kind,
+            path: None,
+            worktree_root: None,
+            pattern: None,
+            reference: None,
+        }
     }
 
     /// Adds a worktree at `path` (a folder on this computer) checked out at
@@ -213,21 +268,34 @@ impl Extensions {
 
     /// Runs `action` on its row of the inventory.
     pub async fn act(&self, action: PanelAction) {
-        let Some(inventory) = self.panel.borrow().inventory.clone() else { return };
+        let Some(inventory) = self.panel.borrow().inventory.clone() else {
+            return;
+        };
         match action {
             PanelAction::OpenWorktree(index) => {
-                if let Some(entry) = inventory.worktrees.get(index).filter(|entry| !entry.current) {
+                if let Some(entry) = inventory
+                    .worktrees
+                    .get(index)
+                    .filter(|entry| !entry.current)
+                {
                     // A failed tab stays visible with its error.
-                    let _ = self.workspace.open_recent(entry.worktree_root.clone()).await;
+                    let _ = self
+                        .workspace
+                        .open_recent(entry.worktree_root.clone())
+                        .await;
                 }
             }
             PanelAction::DeleteWorktree(index) => {
-                let Some(entry) = inventory.worktrees.get(index).cloned() else { return };
+                let Some(entry) = inventory.worktrees.get(index).cloned() else {
+                    return;
+                };
                 if worktree_deletion_protected(&inventory, &entry) {
                     return;
                 }
                 let payload = json!({"path": display_path(&entry.worktree_root)});
-                if self.prompts.ask("confirmWorktreeDelete", payload).await != Some(Value::Bool(true)) {
+                if self.prompts.ask("confirmWorktreeDelete", payload).await
+                    != Some(Value::Bool(true))
+                {
                     return;
                 }
                 let mut request = Self::request(NativeExtensionMutationKind::WorktreeDelete);
@@ -235,7 +303,9 @@ impl Extensions {
                 self.run(request).await;
             }
             PanelAction::Submodule(index) => {
-                let Some(entry) = inventory.submodules.get(index) else { return };
+                let Some(entry) = inventory.submodules.get(index) else {
+                    return;
+                };
                 let kind = if entry.state == NativeSubmoduleState::Uninitialized {
                     NativeExtensionMutationKind::SubmoduleInit
                 } else {
@@ -246,17 +316,34 @@ impl Extensions {
                 self.run(request).await;
             }
             PanelAction::EnterSubmodule(index) => {
-                let Some(entry) = inventory.submodules.get(index).filter(|entry| entry.state != NativeSubmoduleState::Uninitialized) else {
+                let Some(entry) = inventory
+                    .submodules
+                    .get(index)
+                    .filter(|entry| entry.state != NativeSubmoduleState::Uninitialized)
+                else {
                     return;
                 };
-                let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
-                let failure = match self.calls.repository_session_submodule_enter(identity.native_id, identity.generation, entry.path.clone()).await {
+                let Some(identity) = self.workspace.current().map(|session| session.identity)
+                else {
+                    return;
+                };
+                let failure = match self
+                    .calls
+                    .repository_session_submodule_enter(
+                        identity.native_id,
+                        identity.generation,
+                        entry.path.clone(),
+                    )
+                    .await
+                {
                     Ok(result) => match (result.worktree_root, result.failure) {
                         (Some(root), None) => {
                             let _ = self.workspace.open_recent(root).await;
                             None
                         }
-                        (_, failure) => Some(failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind)),
+                        (_, failure) => Some(
+                            failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind),
+                        ),
                     },
                     Err(_) => Some(NativeExtensionFailureKind::Stale),
                 };
@@ -265,9 +352,22 @@ impl Extensions {
                 }
             }
             PanelAction::InspectPointer(index) => {
-                let Some(entry) = inventory.lfs_entries.get(index) else { return };
-                let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
-                match self.calls.repository_session_lfs_pointer(identity.native_id, identity.generation, entry.path.clone()).await {
+                let Some(entry) = inventory.lfs_entries.get(index) else {
+                    return;
+                };
+                let Some(identity) = self.workspace.current().map(|session| session.identity)
+                else {
+                    return;
+                };
+                match self
+                    .calls
+                    .repository_session_lfs_pointer(
+                        identity.native_id,
+                        identity.generation,
+                        entry.path.clone(),
+                    )
+                    .await
+                {
                     Ok(result) if result.failure.is_none() => {
                         let payload = json!({
                             "path": String::from_utf8_lossy(&entry.path),
@@ -277,10 +377,16 @@ impl Extensions {
                         self.prompts.ask("lfsPointer", payload).await;
                     }
                     Ok(result) => {
-                        let key = failure_key(result.failure.map_or(NativeExtensionFailureKind::Git, |failure| failure.kind));
+                        let key = failure_key(
+                            result
+                                .failure
+                                .map_or(NativeExtensionFailureKind::Git, |failure| failure.kind),
+                        );
                         self.update(|panel| panel.failure = Some(key));
                     }
-                    Err(_) => self.update(|panel| panel.failure = Some(failure_key(NativeExtensionFailureKind::Stale))),
+                    Err(_) => self.update(|panel| {
+                        panel.failure = Some(failure_key(NativeExtensionFailureKind::Stale))
+                    }),
                 }
             }
         }
@@ -289,12 +395,18 @@ impl Extensions {
     /// Deletes linked worktree `index` of the sidebar's inventory after a
     /// confirmation (the Dart sidebar _delete).
     pub async fn delete_worktree(&self, index: usize) {
-        let Some(inventory) = self.sidebar.worktrees() else { return };
-        let Some(entry) = inventory.worktrees.get(index).cloned() else { return };
+        let Some(inventory) = self.sidebar.worktrees() else {
+            return;
+        };
+        let Some(entry) = inventory.worktrees.get(index).cloned() else {
+            return;
+        };
         if worktree_deletion_protected(&inventory, &entry) {
             return;
         }
-        let Some(session) = self.workspace.current() else { return };
+        let Some(session) = self.workspace.current() else {
+            return;
+        };
         let identity = session.identity;
         let payload = json!({"path": display_path(&entry.worktree_root)});
         if self.prompts.ask("confirmWorktreeDelete", payload).await != Some(Value::Bool(true)) {
@@ -331,14 +443,25 @@ impl Extensions {
     /// the entry the person confirms; a failed write asks again with the
     /// entry kept and the failure shown.
     pub async fn ignore(&self, path: String, directory: bool, tracked: bool) {
-        let Some(session) = self.workspace.current() else { return };
+        let Some(session) = self.workspace.current() else {
+            return;
+        };
         let identity = session.identity;
-        let mut entry = gitlama_core::api::ignore_exact_pattern(path.into_bytes(), directory).unwrap_or_default();
+        let mut entry = gitlama_core::api::ignore_exact_pattern(path.into_bytes(), directory)
+            .unwrap_or_default();
         let mut failure: Option<&'static str> = None;
         loop {
             let payload = json!({"entry": entry, "directory": directory, "tracked": tracked, "failure": failure});
-            let Some(answer) = self.prompts.ask("ignorePath", payload).await else { return };
-            let Some(pattern) = answer.as_str().map(str::to_owned).filter(|pattern| !pattern.trim().is_empty()) else { return };
+            let Some(answer) = self.prompts.ask("ignorePath", payload).await else {
+                return;
+            };
+            let Some(pattern) = answer
+                .as_str()
+                .map(str::to_owned)
+                .filter(|pattern| !pattern.trim().is_empty())
+            else {
+                return;
+            };
             if self.workspace.current().map(|session| session.identity) != Some(identity) {
                 return;
             }
@@ -349,7 +472,15 @@ impl Extensions {
                 pattern: Some(pattern.clone()),
                 reference: None,
             };
-            match self.calls.repository_session_extension_execute(identity.native_id, identity.generation, request).await {
+            match self
+                .calls
+                .repository_session_extension_execute(
+                    identity.native_id,
+                    identity.generation,
+                    request,
+                )
+                .await
+            {
                 Ok(result) => {
                     if let Some(kind) = reported_failure(&result) {
                         entry = pattern;
@@ -372,14 +503,19 @@ impl Extensions {
 
 /// The last part of `path`, or all of it.
 fn folder_name(path: &str) -> String {
-    path.split(['/', '\\']).rfind(|part| !part.is_empty()).unwrap_or(path).to_owned()
+    path.split(['/', '\\'])
+        .rfind(|part| !part.is_empty())
+        .unwrap_or(path)
+        .to_owned()
 }
 
 fn worktree_value(inventory: &NativeExtensionInventory, entry: &NativeWorktreeEntry) -> Value {
     let path = display_path(&entry.worktree_root);
     let branch = entry.branch.as_deref().map(|branch| {
         let name = String::from_utf8_lossy(branch).into_owned();
-        name.strip_prefix("refs/heads/").map(str::to_owned).unwrap_or(name)
+        name.strip_prefix("refs/heads/")
+            .map(str::to_owned)
+            .unwrap_or(name)
     });
     json!({
         "title": branch.clone().unwrap_or_else(|| folder_name(&path)),
@@ -425,22 +561,50 @@ mod tests {
     use super::*;
     use gitlama_contract::extensions::NativeExtensionFailure;
 
-    fn result(state: NativeExtensionMutationState, failure: Option<NativeExtensionFailureKind>) -> NativeExtensionMutationResult {
-        NativeExtensionMutationResult { state, activity_ids: vec![], failure: failure.map(|kind| NativeExtensionFailure { kind }) }
+    fn result(
+        state: NativeExtensionMutationState,
+        failure: Option<NativeExtensionFailureKind>,
+    ) -> NativeExtensionMutationResult {
+        NativeExtensionMutationResult {
+            state,
+            activity_ids: vec![],
+            failure: failure.map(|kind| NativeExtensionFailure { kind }),
+        }
     }
 
     #[test]
     fn failures_are_reported_unless_the_outcome_is_uncertain() {
         use NativeExtensionMutationState::*;
         assert_eq!(reported_failure(&result(Completed, None)), None);
-        assert_eq!(reported_failure(&result(Failed, None)), Some(NativeExtensionFailureKind::Git));
-        assert_eq!(reported_failure(&result(Canceled, None)), Some(NativeExtensionFailureKind::Canceled));
         assert_eq!(
-            reported_failure(&result(Failed, Some(NativeExtensionFailureKind::InvalidRequest))),
+            reported_failure(&result(Failed, None)),
+            Some(NativeExtensionFailureKind::Git)
+        );
+        assert_eq!(
+            reported_failure(&result(Canceled, None)),
+            Some(NativeExtensionFailureKind::Canceled)
+        );
+        assert_eq!(
+            reported_failure(&result(
+                Failed,
+                Some(NativeExtensionFailureKind::InvalidRequest)
+            )),
             Some(NativeExtensionFailureKind::InvalidRequest)
         );
-        assert_eq!(reported_failure(&result(OutcomeUncertain, Some(NativeExtensionFailureKind::Git))), None);
-        assert_eq!(ignore_failure_key(NativeExtensionFailureKind::InvalidRequest), "ignoreFailureInvalid");
-        assert_eq!(ignore_failure_key(NativeExtensionFailureKind::Locked), "ignoreFailureWrite");
+        assert_eq!(
+            reported_failure(&result(
+                OutcomeUncertain,
+                Some(NativeExtensionFailureKind::Git)
+            )),
+            None
+        );
+        assert_eq!(
+            ignore_failure_key(NativeExtensionFailureKind::InvalidRequest),
+            "ignoreFailureInvalid"
+        );
+        assert_eq!(
+            ignore_failure_key(NativeExtensionFailureKind::Locked),
+            "ignoreFailureWrite"
+        );
     }
 }

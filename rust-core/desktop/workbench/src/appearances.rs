@@ -43,7 +43,10 @@ impl AppearanceService {
         })
     }
 
-    pub fn appearance_for(&self, identity: Option<&NativePathIdentity>) -> Option<NativeRepositoryAppearance> {
+    pub fn appearance_for(
+        &self,
+        identity: Option<&NativePathIdentity>,
+    ) -> Option<NativeRepositoryAppearance> {
         let identity = identity?;
         self.settings.with(|document| {
             document
@@ -56,11 +59,16 @@ impl AppearanceService {
 
     /// The name the user gave the tab, or None for the folder's.
     pub fn name_for(&self, identity: Option<&NativePathIdentity>) -> Option<String> {
-        self.appearance_for(identity).and_then(|appearance| appearance.name)
+        self.appearance_for(identity)
+            .and_then(|appearance| appearance.name)
     }
 
     /// Names the tab; a blank name restores the folder's name.
-    pub async fn rename(&self, identity: NativePathIdentity, name: Option<String>) -> Result<(), SettingsError> {
+    pub async fn rename(
+        &self,
+        identity: NativePathIdentity,
+        name: Option<String>,
+    ) -> Result<(), SettingsError> {
         let normalized = name.as_deref().and_then(normalize_tab_name);
         let mut current = self
             .appearance_for(Some(&identity))

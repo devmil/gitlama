@@ -50,8 +50,16 @@ impl From<NativeSettingsFailure> for SettingsError {
 
 /// Where and how the settings document is stored.
 pub trait SettingsStore {
-    fn load(&self) -> LocalBoxFuture<'static, Result<(NativeSettingsLoadState, NativeSettingsDocument), SettingsError>>;
-    fn save(&self, document: NativeSettingsDocument) -> LocalBoxFuture<'static, Result<(), SettingsError>>;
+    fn load(
+        &self,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<(NativeSettingsLoadState, NativeSettingsDocument), SettingsError>,
+    >;
+    fn save(
+        &self,
+        document: NativeSettingsDocument,
+    ) -> LocalBoxFuture<'static, Result<(), SettingsError>>;
 }
 
 /// The native store at the platform's settings path.
@@ -76,7 +84,12 @@ impl NativeSettingsStore {
 }
 
 impl SettingsStore for NativeSettingsStore {
-    fn load(&self) -> LocalBoxFuture<'static, Result<(NativeSettingsLoadState, NativeSettingsDocument), SettingsError>> {
+    fn load(
+        &self,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<(NativeSettingsLoadState, NativeSettingsDocument), SettingsError>,
+    > {
         let cell = Rc::clone(&self.path);
         async move {
             let path = Self::path(cell).await?;
@@ -94,7 +107,10 @@ impl SettingsStore for NativeSettingsStore {
         .boxed_local()
     }
 
-    fn save(&self, mut document: NativeSettingsDocument) -> LocalBoxFuture<'static, Result<(), SettingsError>> {
+    fn save(
+        &self,
+        mut document: NativeSettingsDocument,
+    ) -> LocalBoxFuture<'static, Result<(), SettingsError>> {
         let cell = Rc::clone(&self.path);
         async move {
             let path = Self::path(cell).await?;
@@ -298,7 +314,10 @@ impl SettingsService {
         Ok(())
     }
 
-    pub async fn save_durable(&self, document: NativeSettingsDocument) -> Result<(), SettingsError> {
+    pub async fn save_durable(
+        &self,
+        document: NativeSettingsDocument,
+    ) -> Result<(), SettingsError> {
         self.ensure_active()?;
         self.publish(document)?;
         self.flush().await
@@ -403,12 +422,25 @@ mod tests {
     }
 
     impl SettingsStore for MemoryStore {
-        fn load(&self) -> LocalBoxFuture<'static, Result<(NativeSettingsLoadState, NativeSettingsDocument), SettingsError>> {
-            async { Ok((NativeSettingsLoadState::Absent, NativeSettingsDocument::default())) }
-                .boxed_local()
+        fn load(
+            &self,
+        ) -> LocalBoxFuture<
+            'static,
+            Result<(NativeSettingsLoadState, NativeSettingsDocument), SettingsError>,
+        > {
+            async {
+                Ok((
+                    NativeSettingsLoadState::Absent,
+                    NativeSettingsDocument::default(),
+                ))
+            }
+            .boxed_local()
         }
 
-        fn save(&self, document: NativeSettingsDocument) -> LocalBoxFuture<'static, Result<(), SettingsError>> {
+        fn save(
+            &self,
+            document: NativeSettingsDocument,
+        ) -> LocalBoxFuture<'static, Result<(), SettingsError>> {
             let saved = Rc::clone(&self.saved);
             let fail = self.fail.get();
             async move {

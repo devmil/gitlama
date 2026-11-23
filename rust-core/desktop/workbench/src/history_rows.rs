@@ -4,7 +4,10 @@
 
 use crate::history::{HistoryService, WORKTREE_OBJECT_ID, is_worktree};
 use crate::sidebar::{branch_reference, display_reference, remote_branch_reference};
-use gitlama_contract::dto::{NativeHistoryMetadataFailure, NativeHistoryNodeShape, NativeHistorySegmentKind, NativeRepositoryRefs};
+use gitlama_contract::dto::{
+    NativeHistoryMetadataFailure, NativeHistoryNodeShape, NativeHistorySegmentKind,
+    NativeRepositoryRefs,
+};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -30,12 +33,17 @@ impl ReferenceContext {
         let mut remote_targets = HashMap::new();
         for remote in &refs.remotes {
             for branch in &remote.branches {
-                remote_targets.insert(remote_branch_reference(remote, branch), branch.target.clone());
+                remote_targets.insert(
+                    remote_branch_reference(remote, branch),
+                    branch.target.clone(),
+                );
             }
         }
         let mut aligned_upstreams = HashMap::new();
         for branch in &refs.branches {
-            let Some(upstream) = &branch.upstream else { continue };
+            let Some(upstream) = &branch.upstream else {
+                continue;
+            };
             let upstream = String::from_utf8_lossy(upstream).into_owned();
             if !upstream.starts_with("refs/remotes/") {
                 continue;
@@ -47,7 +55,11 @@ impl ReferenceContext {
         }
         Self {
             aligned_upstreams,
-            checked_out: refs.branches.iter().find(|branch| branch.head).map(branch_reference),
+            checked_out: refs
+                .branches
+                .iter()
+                .find(|branch| branch.head)
+                .map(branch_reference),
             sync_counts: refs
                 .branches
                 .iter()
@@ -101,7 +113,11 @@ struct DisplayReference {
 /// The row's references as chips: a local branch and its aligned upstream
 /// share one chip; the checked-out branch comes first, then local, remote,
 /// tags, the stash and the rest.
-fn display_references(refs: &[String], context: &ReferenceContext, current: bool) -> Vec<DisplayReference> {
+fn display_references(
+    refs: &[String],
+    context: &ReferenceContext,
+    current: bool,
+) -> Vec<DisplayReference> {
     let present: HashSet<&str> = refs.iter().map(String::as_str).collect();
     let mut merged_remotes = HashSet::new();
     for reference in refs {
@@ -122,17 +138,29 @@ fn display_references(refs: &[String], context: &ReferenceContext, current: bool
                 .filter(|upstream| present.contains(upstream.as_str()))
                 .filter(|_| matches!(kind, Kind::Local | Kind::Remote | Kind::Tag))
                 .cloned();
-            DisplayReference { raw: reference.clone(), kind, tracking }
+            DisplayReference {
+                raw: reference.clone(),
+                kind,
+                tracking,
+            }
         })
         .collect();
     let checked_out = context.checked_out.as_deref().filter(|_| current);
     if let Some(checked_out) = checked_out
         && !refs.iter().any(|reference| reference == checked_out)
     {
-        shown.push(DisplayReference { raw: checked_out.to_owned(), kind: Kind::Local, tracking: None });
+        shown.push(DisplayReference {
+            raw: checked_out.to_owned(),
+            kind: Kind::Local,
+            tracking: None,
+        });
     }
     let rank = |reference: &DisplayReference| {
-        if Some(reference.raw.as_str()) == checked_out { 0 } else { 1 + reference.kind as u8 }
+        if Some(reference.raw.as_str()) == checked_out {
+            0
+        } else {
+            1 + reference.kind as u8
+        }
     };
     shown.sort_by_key(rank);
     shown
@@ -201,7 +229,12 @@ pub struct RowView {
 }
 
 /// Builds row `index`, or a placeholder (asking History to load it).
-pub fn row_view(history: &Rc<HistoryService>, index: u64, context: &ReferenceContext, head: Option<&str>) -> RowView {
+pub fn row_view(
+    history: &Rc<HistoryService>,
+    index: u64,
+    context: &ReferenceContext,
+    head: Option<&str>,
+) -> RowView {
     let Some(row) = history.row_at(index) else {
         history.ensure_index(index);
         return RowView {
@@ -228,11 +261,15 @@ pub fn row_view(history: &Rc<HistoryService>, index: u64, context: &ReferenceCon
         };
     };
     let segments = history.segments_for(&row.object_id);
-    let occupied_lane = segments
-        .iter()
-        .fold(row.lane, |lane, segment| lane.max(segment.from_lane).max(segment.to_lane));
+    let occupied_lane = segments.iter().fold(row.lane, |lane, segment| {
+        lane.max(segment.from_lane).max(segment.to_lane)
+    });
     let current = head == Some(row.object_id.as_str());
-    let refs: Vec<String> = row.refs.iter().map(|bytes| String::from_utf8_lossy(bytes).into_owned()).collect();
+    let refs: Vec<String> = row
+        .refs
+        .iter()
+        .map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+        .collect();
     let display = display_references(&refs, context, current);
     let detached = current && context.checked_out.is_none();
     let visible = MAX_REF_CHIPS - usize::from(detached);
@@ -242,7 +279,11 @@ pub fn row_view(history: &Rc<HistoryService>, index: u64, context: &ReferenceCon
         .map(|reference| {
             let head_chip = current && Some(&reference.raw) == context.checked_out.as_ref();
             let (ahead, behind) = if reference.tracking.is_none() {
-                context.sync_counts.get(&reference.raw).copied().unwrap_or_default()
+                context
+                    .sync_counts
+                    .get(&reference.raw)
+                    .copied()
+                    .unwrap_or_default()
             } else {
                 (0, 0)
             };
@@ -286,7 +327,11 @@ pub fn row_view(history: &Rc<HistoryService>, index: u64, context: &ReferenceCon
                 .collect::<Vec<_>>(),
         }),
         occupied_lane,
-        subject: if worktree { String::new() } else { String::from_utf8_lossy(&row.subject).into_owned() },
+        subject: if worktree {
+            String::new()
+        } else {
+            String::from_utf8_lossy(&row.subject).into_owned()
+        },
         worktree,
         author: String::from_utf8_lossy(&row.author).into_owned(),
         avatar_hash: row.avatar_hash.clone(),
@@ -318,7 +363,10 @@ mod tests {
 
     fn context() -> ReferenceContext {
         ReferenceContext {
-            aligned_upstreams: HashMap::from([("refs/heads/main".to_owned(), "refs/remotes/origin/main".to_owned())]),
+            aligned_upstreams: HashMap::from([(
+                "refs/heads/main".to_owned(),
+                "refs/remotes/origin/main".to_owned(),
+            )]),
             checked_out: Some("refs/heads/main".to_owned()),
             sync_counts: HashMap::new(),
         }
@@ -326,11 +374,21 @@ mod tests {
 
     #[test]
     fn an_aligned_upstream_shares_its_branch_chip() {
-        let refs = vec!["refs/tags/v1".to_owned(), "refs/remotes/origin/main".to_owned(), "refs/heads/main".to_owned()];
+        let refs = vec![
+            "refs/tags/v1".to_owned(),
+            "refs/remotes/origin/main".to_owned(),
+            "refs/heads/main".to_owned(),
+        ];
         let shown = display_references(&refs, &context(), true);
-        let raws: Vec<&str> = shown.iter().map(|reference| reference.raw.as_str()).collect();
+        let raws: Vec<&str> = shown
+            .iter()
+            .map(|reference| reference.raw.as_str())
+            .collect();
         assert_eq!(raws, ["refs/heads/main", "refs/tags/v1"]);
-        assert_eq!(shown[0].tracking.as_deref(), Some("refs/remotes/origin/main"));
+        assert_eq!(
+            shown[0].tracking.as_deref(),
+            Some("refs/remotes/origin/main")
+        );
     }
 
     #[test]

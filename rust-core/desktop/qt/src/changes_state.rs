@@ -5,9 +5,14 @@
 use crate::inspector_state::parse_whitespace;
 use crate::plumbing::Commands;
 use gitlama_contract::diff::NativeDiffLayout;
-use gitlama_contract::dto::{NativeChangeKind, NativeStagingPhase, NativeStagingScope, NativeStagingSide, NativeStatusEntry, NativeStatusEntryKind};
+use gitlama_contract::dto::{
+    NativeChangeKind, NativeStagingPhase, NativeStagingScope, NativeStagingSide, NativeStatusEntry,
+    NativeStatusEntryKind,
+};
 use gitlama_workbench::app::Services;
-use gitlama_workbench::changes::{change_key, display_identity, entries_on, is_staged, is_unstaged, side_name};
+use gitlama_workbench::changes::{
+    change_key, display_identity, entries_on, is_staged, is_unstaged, side_name,
+};
 use gitlama_workbench::inspector::DiffOptions;
 use gitlama_workbench::rt;
 use qtbridge::qobject;
@@ -18,8 +23,21 @@ use std::rc::Rc;
 
 /// The roles of a Changes file list.
 pub const FILE_ROLES: &[&str] = &[
-    "key", "path", "label", "depth", "directory", "expanded", "keys", "status", "partial", "conflicted", "untracked", "discardable", "source",
-    "selected", "pending",
+    "key",
+    "path",
+    "label",
+    "depth",
+    "directory",
+    "expanded",
+    "keys",
+    "status",
+    "partial",
+    "conflicted",
+    "untracked",
+    "discardable",
+    "source",
+    "selected",
+    "pending",
 ];
 
 /// A Changes file's label: its path, or "old → new" for a rename; as base
@@ -27,7 +45,11 @@ pub const FILE_ROLES: &[&str] = &[
 fn file_label(entry: &NativeStatusEntry, basename: bool) -> String {
     let shown = |path: &gitlama_contract::dto::NativePathIdentity| {
         let value = gitlama_workbench::session::display_path(path).replace('\\', "/");
-        if basename { value.rsplit('/').next().unwrap_or_default().to_owned() } else { value }
+        if basename {
+            value.rsplit('/').next().unwrap_or_default().to_owned()
+        } else {
+            value
+        }
     };
     let target = shown(&entry.path);
     match &entry.source {
@@ -50,7 +72,11 @@ pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'stat
     if entry.kind == NativeStatusEntryKind::Rename {
         return "R";
     }
-    match if side == NativeStagingSide::Staged { entry.index } else { entry.worktree } {
+    match if side == NativeStagingSide::Staged {
+        entry.index
+    } else {
+        entry.worktree
+    } {
         NativeChangeKind::Added => "A",
         NativeChangeKind::Deleted => "D",
         NativeChangeKind::Renamed => "R",
@@ -64,11 +90,18 @@ pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'stat
 /// Whether `entry` matches every whitespace-separated term of `query`.
 pub fn filter_matches(entry: &NativeStatusEntry, query: &str) -> bool {
     let path = display_identity(entry).to_lowercase();
-    query.to_lowercase().split_whitespace().all(|term| path.contains(term))
+    query
+        .to_lowercase()
+        .split_whitespace()
+        .all(|term| path.contains(term))
 }
 
 pub fn parse_side(name: &str) -> NativeStagingSide {
-    if name == "staged" { NativeStagingSide::Staged } else { NativeStagingSide::Unstaged }
+    if name == "staged" {
+        NativeStagingSide::Staged
+    } else {
+        NativeStagingSide::Unstaged
+    }
 }
 
 fn phase_name(phase: NativeStagingPhase) -> &'static str {
@@ -92,11 +125,22 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
     let detail = &services.working_detail;
     let active = services.workspace.active_tab();
     let Some(tab) = active.as_ref() else {
-        return Projection { state: json!({"hasStatus": false}), unstaged: Vec::new(), staged: Vec::new() };
+        return Projection {
+            state: json!({"hasStatus": false}),
+            unstaged: Vec::new(),
+            staged: Vec::new(),
+        };
     };
-    let status = tab.session.as_ref().and_then(|session| session.snapshot.status.clone());
+    let status = tab
+        .session
+        .as_ref()
+        .and_then(|session| session.snapshot.status.clone());
     let Some(status) = status else {
-        return Projection { state: json!({"hasStatus": false, "tabId": tab.id}), unstaged: Vec::new(), staged: Vec::new() };
+        return Projection {
+            state: json!({"hasStatus": false, "tabId": tab.id}),
+            unstaged: Vec::new(),
+            staged: Vec::new(),
+        };
     };
     let selection = changes.selection_of(tab.id);
     let filtering = !filter.trim().is_empty();
@@ -106,62 +150,86 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
         let pending = changes.pending_keys(tab.id, side);
         let selected = selection.of(side);
         let tree = services.settings.with(|document| {
-            let mode = if side == NativeStagingSide::Staged { &document.appearance.changes_staged_mode } else { &document.appearance.changes_unstaged_mode };
+            let mode = if side == NativeStagingSide::Staged {
+                &document.appearance.changes_staged_mode
+            } else {
+                &document.appearance.changes_unstaged_mode
+            };
             mode == "tree"
         });
         let file = |entry: &NativeStatusEntry, depth: usize| {
-                let key = change_key(entry);
-                json!({
-                    "key": key,
-                    "path": display_identity(entry),
-                    "label": file_label(entry, tree),
-                    "depth": depth,
-                    "directory": false,
-                    "expanded": false,
-                    "keys": [],
-                    "status": status_code(entry, side),
-                    "partial": is_staged(entry) && is_unstaged(entry),
-                    "conflicted": entry.kind == NativeStatusEntryKind::Unmerged,
-                    "untracked": entry.kind == NativeStatusEntryKind::Untracked,
-                    "discardable": gitlama_workbench::changes::discardable(entry),
-                    "source": entry.source.as_ref().map(gitlama_workbench::session::display_path),
-                    "selected": selected.contains(&key),
-                    "pending": pending.contains(&key),
-                })
+            let key = change_key(entry);
+            json!({
+                "key": key,
+                "path": display_identity(entry),
+                "label": file_label(entry, tree),
+                "depth": depth,
+                "directory": false,
+                "expanded": false,
+                "keys": [],
+                "status": status_code(entry, side),
+                "partial": is_staged(entry) && is_unstaged(entry),
+                "conflicted": entry.kind == NativeStatusEntryKind::Unmerged,
+                "untracked": entry.kind == NativeStatusEntryKind::Untracked,
+                "discardable": gitlama_workbench::changes::discardable(entry),
+                "source": entry.source.as_ref().map(gitlama_workbench::session::display_path),
+                "selected": selected.contains(&key),
+                "pending": pending.contains(&key),
+            })
         };
-        let visible: Vec<&NativeStatusEntry> = all.iter().filter(|entry| !filtering || filter_matches(entry, filter)).collect();
+        let visible: Vec<&NativeStatusEntry> = all
+            .iter()
+            .filter(|entry| !filtering || filter_matches(entry, filter))
+            .collect();
         if !tree {
-            return (visible.into_iter().map(|entry| file(entry, 0)).collect(), total);
+            return (
+                visible.into_iter().map(|entry| file(entry, 0)).collect(),
+                total,
+            );
         }
         let folded = &collapsed[usize::from(side == NativeStagingSide::Staged)];
-        let shown = gitlama_workbench::path_tree::flatten(visible, |entry| display_identity(entry), folded, true, None)
-            .into_iter()
-            .map(|row| match row.item {
-                Some(entry) => file(entry, row.depth),
-                None => {
-                    let keys: Vec<String> = row.descendants.iter().map(|entry| change_key(entry)).collect();
-                    let entries: Vec<NativeStatusEntry> = row.descendants.iter().map(|entry| (*entry).clone()).collect();
-                    let discard = gitlama_workbench::changes::discard_kind_of(&entries);
-                    json!({
-                        "key": format!("dir:{}", row.identity),
-                        "path": row.identity,
-                        "label": row.label,
-                        "depth": row.depth,
-                        "directory": true,
-                        "expanded": !folded.contains(&row.identity),
-                        "keys": keys,
-                        "status": "",
-                        "partial": false,
-                        "conflicted": false,
-                        "untracked": discard == Some(gitlama_contract::dto::NativeDiscardKind::Clean),
-                        "discardable": discard.is_some(),
-                        "source": null,
-                        "selected": !keys.is_empty() && keys.iter().all(|key| selected.contains(key)),
-                        "pending": false,
-                    })
-                }
-            })
-            .collect();
+        let shown = gitlama_workbench::path_tree::flatten(
+            visible,
+            |entry| display_identity(entry),
+            folded,
+            true,
+            None,
+        )
+        .into_iter()
+        .map(|row| match row.item {
+            Some(entry) => file(entry, row.depth),
+            None => {
+                let keys: Vec<String> = row
+                    .descendants
+                    .iter()
+                    .map(|entry| change_key(entry))
+                    .collect();
+                let entries: Vec<NativeStatusEntry> = row
+                    .descendants
+                    .iter()
+                    .map(|entry| (*entry).clone())
+                    .collect();
+                let discard = gitlama_workbench::changes::discard_kind_of(&entries);
+                json!({
+                    "key": format!("dir:{}", row.identity),
+                    "path": row.identity,
+                    "label": row.label,
+                    "depth": row.depth,
+                    "directory": true,
+                    "expanded": !folded.contains(&row.identity),
+                    "keys": keys,
+                    "status": "",
+                    "partial": false,
+                    "conflicted": false,
+                    "untracked": discard == Some(gitlama_contract::dto::NativeDiscardKind::Clean),
+                    "discardable": discard.is_some(),
+                    "source": null,
+                    "selected": !keys.is_empty() && keys.iter().all(|key| selected.contains(key)),
+                    "pending": false,
+                })
+            }
+        })
+        .collect();
         (shown, total)
     };
     let (unstaged, unstaged_total) = rows(NativeStagingSide::Unstaged);
@@ -208,7 +276,11 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
             },
         },
     });
-    Projection { state, unstaged, staged }
+    Projection {
+        state,
+        unstaged,
+        staged,
+    }
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -249,10 +321,21 @@ mod changes_state {
             let filter = Rc::clone(&self.filter);
             self.with_services(move |services| {
                 *filter.borrow_mut() = text.clone();
-                let Some(tab) = services.workspace.active_tab() else { return };
-                let Some(status) = tab.session.and_then(|session| session.snapshot.status.clone()) else { return };
-                let shown: HashSet<String> =
-                    status.entries.iter().filter(|entry| filter_matches(entry, &text)).map(change_key).collect();
+                let Some(tab) = services.workspace.active_tab() else {
+                    return;
+                };
+                let Some(status) = tab
+                    .session
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
+                    return;
+                };
+                let shown: HashSet<String> = status
+                    .entries
+                    .iter()
+                    .filter(|entry| filter_matches(entry, &text))
+                    .map(change_key)
+                    .collect();
                 services.changes.retain(tab.id, &shown);
             });
         }
@@ -261,15 +344,23 @@ mod changes_state {
         /// `diff_searched` (matches null when the search failed).
         #[qslot]
         fn search_diff(&self, query: String, case_sensitive: bool) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(document) = services.working_detail.document() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(document) = services.working_detail.document() else {
+                    return;
+                };
                 let shared = Rc::clone(&driver.changes);
                 rt::spawn_detached(async move {
                     let matches = document.search(&query, case_sensitive).await;
                     let value = matches.map_or(Value::Null, |rows| Value::from(rows));
-                    shared.borrow_mut().diff_searched(query, case_sensitive, value);
+                    shared
+                        .borrow_mut()
+                        .diff_searched(query, case_sensitive, value);
                 });
             });
         }
@@ -278,22 +369,41 @@ mod changes_state {
         /// `image_diff_loaded` with `key`.
         #[qslot]
         fn load_image_diff(&self, key: String) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let detail = &services.working_detail;
-                let (Some(entry), Some(detail_key)) = (detail.entry(), detail.key()) else { return };
-                let Some(identity) = services.workspace.current().map(|session| session.identity) else { return };
-                let (old_path, new_path) = gitlama_workbench::changes::diff_paths(&entry, detail_key.side);
+                let (Some(entry), Some(detail_key)) = (detail.entry(), detail.key()) else {
+                    return;
+                };
+                let Some(identity) = services.workspace.current().map(|session| session.identity)
+                else {
+                    return;
+                };
+                let (old_path, new_path) =
+                    gitlama_workbench::changes::diff_paths(&entry, detail_key.side);
                 let calls = Rc::clone(&services.calls);
                 let shared = Rc::clone(&driver.changes);
                 let side = detail_key.side;
                 rt::spawn_detached(async move {
                     let result = calls
-                        .repository_session_working_image_diff(identity.native_id, identity.generation, side, old_path, new_path, 8 * 1024 * 1024)
+                        .repository_session_working_image_diff(
+                            identity.native_id,
+                            identity.generation,
+                            side,
+                            old_path,
+                            new_path,
+                            8 * 1024 * 1024,
+                        )
                         .await
                         .ok();
-                    let value = rt::blocking(move || gitlama_workbench::images::image_diff_value(result)).await;
+                    let value =
+                        rt::blocking(move || gitlama_workbench::images::image_diff_value(result))
+                            .await;
                     shared.borrow_mut().image_diff_loaded(key, value);
                 });
             });
@@ -302,10 +412,16 @@ mod changes_state {
         /// Every hunk header row of the shown diff: answered by `hunks_loaded`.
         #[qslot]
         fn load_hunks(&self) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(document) = services.working_detail.document() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(document) = services.working_detail.document() else {
+                    return;
+                };
                 let shared = Rc::clone(&driver.changes);
                 rt::spawn_detached(async move {
                     let rows = document.hunks().await;
@@ -318,7 +434,9 @@ mod changes_state {
         #[qslot]
         fn toggle_folder(&self, side: String, identity: String) {
             let collapsed = Rc::clone(&self.collapsed);
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
                 {
                     let mut folded = collapsed.borrow_mut();
@@ -335,7 +453,9 @@ mod changes_state {
         #[qslot]
         fn select(&self, side: String, keys: Vec<String>) {
             self.with_tab(move |services, tab| {
-                services.changes.select(tab, parse_side(&side), keys.into_iter().collect());
+                services
+                    .changes
+                    .select(tab, parse_side(&side), keys.into_iter().collect());
             });
         }
 
@@ -350,14 +470,31 @@ mod changes_state {
             self.with_tab(move |services, tab| {
                 let side = parse_side(&side);
                 let keys: HashSet<String> = keys.into_iter().collect();
-                let Some(status) = services.workspace.tab(tab).and_then(|tab| tab.session).and_then(|session| session.snapshot.status.clone()) else {
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
                     return;
                 };
-                let entries: Vec<NativeStatusEntry> =
-                    entries_on(&status, side).into_iter().filter(|entry| keys.contains(&change_key(entry))).collect();
+                let entries: Vec<NativeStatusEntry> = entries_on(&status, side)
+                    .into_iter()
+                    .filter(|entry| keys.contains(&change_key(entry)))
+                    .collect();
                 let changes = Rc::clone(&services.changes);
                 rt::spawn_detached(async move {
-                    changes.stage(tab, side, NativeStagingScope::Files, entries, None, Vec::new(), None).await
+                    changes
+                        .stage(
+                            tab,
+                            side,
+                            NativeStagingScope::Files,
+                            entries,
+                            None,
+                            Vec::new(),
+                            None,
+                        )
+                        .await
                 });
             });
         }
@@ -368,19 +505,47 @@ mod changes_state {
             let filter = self.filter.borrow().clone();
             self.with_tab(move |services, tab| {
                 let side = parse_side(&side);
-                let Some(status) = services.workspace.tab(tab).and_then(|tab| tab.session).and_then(|session| session.snapshot.status.clone()) else {
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
                     return;
                 };
                 let all = entries_on(&status, side);
                 let changes = Rc::clone(&services.changes);
                 if filter.trim().is_empty() {
                     rt::spawn_detached(async move {
-                        changes.stage(tab, side, NativeStagingScope::All, all, None, Vec::new(), None).await
+                        changes
+                            .stage(
+                                tab,
+                                side,
+                                NativeStagingScope::All,
+                                all,
+                                None,
+                                Vec::new(),
+                                None,
+                            )
+                            .await
                     });
                 } else {
-                    let shown = all.into_iter().filter(|entry| filter_matches(entry, &filter)).collect();
+                    let shown = all
+                        .into_iter()
+                        .filter(|entry| filter_matches(entry, &filter))
+                        .collect();
                     rt::spawn_detached(async move {
-                        changes.stage(tab, side, NativeStagingScope::Files, shown, None, Vec::new(), None).await
+                        changes
+                            .stage(
+                                tab,
+                                side,
+                                NativeStagingScope::Files,
+                                shown,
+                                None,
+                                Vec::new(),
+                                None,
+                            )
+                            .await
                     });
                 }
             });
@@ -389,7 +554,9 @@ mod changes_state {
         /// Stages the selection of `side` (its chosen lines, or its files).
         #[qslot]
         fn stage_selection(&self, side: String) {
-            self.with_tab(move |services, tab| services.changes.stage_selection(tab, parse_side(&side)));
+            self.with_tab(move |services, tab| {
+                services.changes.stage_selection(tab, parse_side(&side))
+            });
         }
 
         /// Space: stages or unstages what the focused list selects.
@@ -403,15 +570,23 @@ mod changes_state {
         fn discard_files(&self, keys: Vec<String>) {
             self.with_tab(move |services, tab| {
                 let keys: HashSet<String> = keys.into_iter().collect();
-                let Some(status) = services.workspace.tab(tab).and_then(|tab| tab.session).and_then(|session| session.snapshot.status.clone()) else {
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
                     return;
                 };
-                let entries: Vec<NativeStatusEntry> = entries_on(&status, NativeStagingSide::Unstaged)
-                    .into_iter()
-                    .filter(|entry| keys.contains(&change_key(entry)))
-                    .collect();
+                let entries: Vec<NativeStatusEntry> =
+                    entries_on(&status, NativeStagingSide::Unstaged)
+                        .into_iter()
+                        .filter(|entry| keys.contains(&change_key(entry)))
+                        .collect();
                 let changes = Rc::clone(&services.changes);
-                rt::spawn_detached(async move { changes.discard(tab, entries, None, Vec::new()).await });
+                rt::spawn_detached(
+                    async move { changes.discard(tab, entries, None, Vec::new()).await },
+                );
             });
         }
 
@@ -426,7 +601,9 @@ mod changes_state {
         fn stage_rows(&self) {
             self.with_tab(|services, tab| {
                 let detail = &services.working_detail;
-                let (Some(key), Some(entry), Some(document)) = (detail.key(), detail.entry(), detail.document()) else {
+                let (Some(key), Some(entry), Some(document)) =
+                    (detail.key(), detail.entry(), detail.document())
+                else {
                     return;
                 };
                 let rows: Vec<String> = detail.selected_rows().into_iter().collect();
@@ -437,7 +614,15 @@ mod changes_state {
                 let request = document.request_id();
                 rt::spawn_detached(async move {
                     changes
-                        .stage(tab, key.side, NativeStagingScope::Rows, vec![entry], Some(request), rows, Some(key.identity))
+                        .stage(
+                            tab,
+                            key.side,
+                            NativeStagingScope::Rows,
+                            vec![entry],
+                            Some(request),
+                            rows,
+                            Some(key.identity),
+                        )
                         .await
                 });
             });
@@ -448,21 +633,29 @@ mod changes_state {
         fn discard_rows(&self) {
             self.with_tab(|services, tab| {
                 let detail = &services.working_detail;
-                let (Some(entry), Some(document)) = (detail.entry(), detail.document()) else { return };
+                let (Some(entry), Some(document)) = (detail.entry(), detail.document()) else {
+                    return;
+                };
                 let rows: Vec<String> = detail.selected_rows().into_iter().collect();
                 if rows.is_empty() {
                     return;
                 }
                 let changes = Rc::clone(&services.changes);
                 let request = document.request_id();
-                rt::spawn_detached(async move { changes.discard(tab, vec![entry], Some(request), rows).await });
+                rt::spawn_detached(async move {
+                    changes.discard(tab, vec![entry], Some(request), rows).await
+                });
             });
         }
 
         /// Chooses the diff's selected lines.
         #[qslot]
         fn set_selected_rows(&self, rows: Vec<String>) {
-            self.with_services(move |services| services.working_detail.set_selected_rows(rows.into_iter().collect()));
+            self.with_services(move |services| {
+                services
+                    .working_detail
+                    .set_selected_rows(rows.into_iter().collect())
+            });
         }
 
         #[qslot]
@@ -472,14 +665,28 @@ mod changes_state {
 
         /// Loads the diff with these options (`forceText` shows a binary file as text).
         #[qslot]
-        fn set_diff_options(&self, context_lines: i32, whitespace: String, layout: String, force_text: bool) {
+        fn set_diff_options(
+            &self,
+            context_lines: i32,
+            whitespace: String,
+            layout: String,
+            force_text: bool,
+        ) {
             self.with_services(move |services| {
                 let options = DiffOptions {
                     context_lines: context_lines.clamp(0, 100) as u32,
                     whitespace: parse_whitespace(&whitespace),
-                    layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+                    layout: if layout == "sideBySide" {
+                        NativeDiffLayout::SideBySide
+                    } else {
+                        NativeDiffLayout::Unified
+                    },
                 };
-                drop(services.settings.update(|document| options.store(&mut document.appearance)));
+                drop(
+                    services
+                        .settings
+                        .update(|document| options.store(&mut document.appearance)),
+                );
                 services.working_detail.set_options(options, force_text);
             });
         }

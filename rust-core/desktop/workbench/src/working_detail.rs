@@ -13,7 +13,9 @@ use crate::rt;
 use crate::session::{FailureCode, SessionError, SessionIdentity};
 use crate::workspace::{Pane, WorkspaceService};
 use gitlama_contract::diff::NativeDiffSyntaxOrigin;
-use gitlama_contract::dto::{NativeRepositorySnapshot, NativeStagingSide, NativeStatusEntry, NativeWorkingDiffOptions};
+use gitlama_contract::dto::{
+    NativeRepositorySnapshot, NativeStagingSide, NativeStatusEntry, NativeWorkingDiffOptions,
+};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::rc::{Rc, Weak};
@@ -139,7 +141,8 @@ impl WorkingDetail {
             let current = self.options.get();
             (
                 current == options && state.force_text == force_text,
-                current.context_lines == options.context_lines && current.whitespace == options.whitespace,
+                current.context_lines == options.context_lines
+                    && current.whitespace == options.whitespace,
             )
         };
         if same {
@@ -154,12 +157,24 @@ impl WorkingDetail {
     /// session and Changes changes).
     pub fn follow(&self) {
         let active = self.workspace.active_tab();
-        let target = active.as_ref().filter(|tab| tab.navigation.pane == Pane::Changes).and_then(|tab| {
-            let session = tab.session.as_ref()?;
-            let identity = self.changes.detail_identity(tab.id, tab.navigation.selected_identity.clone())?;
-            let side = self.changes.selection_of(tab.id).focused;
-            Some((DetailKey { tab: tab.id, identity, side }, Rc::clone(&session.snapshot)))
-        });
+        let target = active
+            .as_ref()
+            .filter(|tab| tab.navigation.pane == Pane::Changes)
+            .and_then(|tab| {
+                let session = tab.session.as_ref()?;
+                let identity = self
+                    .changes
+                    .detail_identity(tab.id, tab.navigation.selected_identity.clone())?;
+                let side = self.changes.selection_of(tab.id).focused;
+                Some((
+                    DetailKey {
+                        tab: tab.id,
+                        identity,
+                        side,
+                    },
+                    Rc::clone(&session.snapshot),
+                ))
+            });
         let (key_changed, status_changed) = {
             let state = self.state.borrow();
             let key = target.as_ref().map(|(key, _)| key);
@@ -198,7 +213,11 @@ impl WorkingDetail {
             if !keep_selection {
                 state.selected_rows.clear();
             }
-            state.quiet = if state.queued { state.quiet && quiet } else { quiet };
+            state.quiet = if state.queued {
+                state.quiet && quiet
+            } else {
+                quiet
+            };
             state.queued = true;
             !state.in_flight
         };
@@ -226,19 +245,30 @@ impl WorkingDetail {
 
     fn entry_for(&self, key: &DetailKey) -> Option<NativeStatusEntry> {
         let snapshot = self.state.borrow().snapshot.clone()?;
-        snapshot.status.as_ref()?.entries.iter().find(|entry| display_identity(entry) == key.identity).cloned()
+        snapshot
+            .status
+            .as_ref()?
+            .entries
+            .iter()
+            .find(|entry| display_identity(entry) == key.identity)
+            .cloned()
     }
 
     fn session(&self, tab: u64) -> Option<SessionIdentity> {
-        self.workspace.tab(tab)?.session.map(|session| session.identity)
+        self.workspace
+            .tab(tab)?
+            .session
+            .map(|session| session.identity)
     }
 
     async fn load(&self, generation: u64, quiet: bool) {
         let key = self.state.borrow().key.clone();
         let entry = key.as_ref().and_then(|key| self.entry_for(key));
-        let (Some(key), Some(entry), Some(identity)) =
-            (key.clone(), entry, key.as_ref().and_then(|key| self.session(key.tab)))
-        else {
+        let (Some(key), Some(entry), Some(identity)) = (
+            key.clone(),
+            entry,
+            key.as_ref().and_then(|key| self.session(key.tab)),
+        ) else {
             let previous = {
                 let mut state = self.state.borrow_mut();
                 state.entry = None;
@@ -260,7 +290,9 @@ impl WorkingDetail {
             NativeStagingSide::Staged
         };
         let (old_path, new_path) = diff_paths(&entry, side);
-        let in_place = quiet && self.state.borrow().document.is_some() && self.state.borrow().failure.is_none();
+        let in_place = quiet
+            && self.state.borrow().document.is_some()
+            && self.state.borrow().failure.is_none();
         {
             let mut state = self.state.borrow_mut();
             state.entry = Some(entry.clone());
@@ -303,7 +335,11 @@ impl WorkingDetail {
         let result = loop {
             let result = self
                 .calls
-                .repository_session_working_diff_load(identity.native_id, identity.generation, request.clone())
+                .repository_session_working_diff_load(
+                    identity.native_id,
+                    identity.generation,
+                    request.clone(),
+                )
                 .await;
             let timed_out = matches!(&result, Ok(result) if result.failure.as_ref().map(FailureCode::from) == Some(FailureCode::TimedOut));
             if timed_out && self.state.borrow().generation == generation {
@@ -355,7 +391,14 @@ impl WorkingDetail {
                     offsets.insert((index / DIFF_PAGE_ROWS) * DIFF_PAGE_ROWS);
                 });
                 offsets.remove(&0);
-                document.preload(offsets.into_iter().filter(|offset| *offset < document.total()).collect()).await;
+                document
+                    .preload(
+                        offsets
+                            .into_iter()
+                            .filter(|offset| *offset < document.total())
+                            .collect(),
+                    )
+                    .await;
                 if self.state.borrow().generation != generation {
                     return;
                 }

@@ -13,7 +13,11 @@ use gitlama_contract::dto::{NativeRepositoryEvent, NativeRepositoryOpenResult};
 use std::rc::Rc;
 
 pub trait SessionLifecycle {
-    fn open(&self, path: String, generation: u64) -> LocalBoxFuture<'static, SessionResult<OpenedSession>>;
+    fn open(
+        &self,
+        path: String,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, SessionResult<OpenedSession>>;
     fn open_identity(
         &self,
         identity: NativePathIdentity,
@@ -36,7 +40,10 @@ pub trait SessionLifecycle {
     fn close(&self, identity: SessionIdentity) -> LocalBoxFuture<'static, SessionResult<bool>>;
 }
 
-fn opened(result: NativeRepositoryOpenResult, backend: BackendKind) -> SessionResult<OpenedSession> {
+fn opened(
+    result: NativeRepositoryOpenResult,
+    backend: BackendKind,
+) -> SessionResult<OpenedSession> {
     check(&result.failure)?;
     let session = required(result.session)?;
     Ok(OpenedSession {
@@ -56,7 +63,11 @@ pub struct LocalLifecycle {
 }
 
 impl SessionLifecycle for LocalLifecycle {
-    fn open(&self, path: String, generation: u64) -> LocalBoxFuture<'static, SessionResult<OpenedSession>> {
+    fn open(
+        &self,
+        path: String,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, SessionResult<OpenedSession>> {
         let call = self.calls.repository_session_open(path, generation);
         async move { opened(call.await?, BackendKind::Local) }.boxed_local()
     }
@@ -66,7 +77,9 @@ impl SessionLifecycle for LocalLifecycle {
         identity: NativePathIdentity,
         generation: u64,
     ) -> LocalBoxFuture<'static, SessionResult<OpenedSession>> {
-        let call = self.calls.repository_session_open_identity(identity, generation);
+        let call = self
+            .calls
+            .repository_session_open_identity(identity, generation);
         async move { opened(call.await?, BackendKind::Local) }.boxed_local()
     }
 

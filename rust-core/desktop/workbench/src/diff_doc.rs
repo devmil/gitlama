@@ -7,7 +7,10 @@ use crate::backend::SessionCalls;
 use crate::notify::{Notifier, Topics};
 use crate::rt;
 use crate::session::SessionIdentity;
-use gitlama_contract::diff::{NativeDiffLayout, NativeDiffPage, NativeDiffRow, NativeDiffSyntaxOrigin, NativeDiffSyntaxRequest, NativeDiffSyntaxRow};
+use gitlama_contract::diff::{
+    NativeDiffLayout, NativeDiffPage, NativeDiffRow, NativeDiffSyntaxOrigin,
+    NativeDiffSyntaxRequest, NativeDiffSyntaxRow,
+};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
@@ -146,17 +149,25 @@ impl DiffDocument {
             )
             .await
             .ok()?;
-        (result.failure.is_none() && result.request_id == self.request_id && !self.retired.get()).then_some(result.matches)
+        (result.failure.is_none() && result.request_id == self.request_id && !self.retired.get())
+            .then_some(result.matches)
     }
 
     /// The rows of every hunk header, loaded or not.
     pub async fn hunks(&self) -> Vec<u32> {
         match self
             .calls
-            .repository_session_diff_hunks(self.identity.native_id, self.identity.generation, self.request_id, 10_000)
+            .repository_session_diff_hunks(
+                self.identity.native_id,
+                self.identity.generation,
+                self.request_id,
+                10_000,
+            )
             .await
         {
-            Ok(result) if result.failure.is_none() && result.request_id == self.request_id => result.positions,
+            Ok(result) if result.failure.is_none() && result.request_id == self.request_id => {
+                result.positions
+            }
             _ => Vec::new(),
         }
     }
@@ -257,7 +268,10 @@ impl DiffDocument {
         let last = last.min(self.total - 1);
         let mut offset = (first / SYNTAX_PAGE_ROWS) * SYNTAX_PAGE_ROWS;
         while offset <= last {
-            let loaded = self.pages.borrow().contains_key(&((offset / DIFF_PAGE_ROWS) * DIFF_PAGE_ROWS));
+            let loaded = self
+                .pages
+                .borrow()
+                .contains_key(&((offset / DIFF_PAGE_ROWS) * DIFF_PAGE_ROWS));
             if loaded && self.syntax_requested.borrow_mut().insert(offset) {
                 self.request_syntax(offset);
             }
@@ -270,11 +284,16 @@ impl DiffDocument {
         let request = NativeDiffSyntaxRequest {
             origin: self.origin,
             diff_request_id: self.request_id,
-            syntax_request_id: NEXT_SYNTAX_REQUEST.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            syntax_request_id: NEXT_SYNTAX_REQUEST
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             offset,
             maximum_rows: SYNTAX_PAGE_ROWS as u32,
         };
-        let call = self.calls.repository_session_diff_syntax_page(identity.native_id, identity.generation, request);
+        let call = self.calls.repository_session_diff_syntax_page(
+            identity.native_id,
+            identity.generation,
+            request,
+        );
         let this = Rc::clone(self);
         rt::spawn_detached(async move {
             let result = call.await;

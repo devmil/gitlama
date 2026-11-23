@@ -35,7 +35,11 @@ impl Navigator {
             return;
         }
         if let Some(previous) = self.active_tab.get()
-            && self.selected_references.borrow_mut().remove(&previous).is_some()
+            && self
+                .selected_references
+                .borrow_mut()
+                .remove(&previous)
+                .is_some()
         {
             self.notifier.notify(Topics::WORKSPACE);
         }
@@ -50,8 +54,12 @@ impl Navigator {
     /// Selects the sidebar row `reference` in the active tab; `reveal` is the
     /// reference History shows while it is selected.
     pub fn select_reference(&self, reference: String, reveal: Option<String>) {
-        let Some(tab_id) = self.workspace.active_tab_id() else { return };
-        self.selected_references.borrow_mut().insert(tab_id, reference);
+        let Some(tab_id) = self.workspace.active_tab_id() else {
+            return;
+        };
+        self.selected_references
+            .borrow_mut()
+            .insert(tab_id, reference);
         self.notifier.notify(Topics::WORKSPACE);
         let workspace = Rc::clone(&self.workspace);
         rt::spawn_detached(async move { workspace.reveal_reference(tab_id, reveal).await });
@@ -76,10 +84,19 @@ impl Navigator {
         }
         let workspace = Rc::clone(&self.workspace);
         match pane {
-            Pane::History => rt::spawn_detached(async move { workspace.show_history(tab.id).await }),
+            Pane::History => {
+                rt::spawn_detached(async move { workspace.show_history(tab.id).await })
+            }
             Pane::Changes => {
                 let history = Rc::clone(&workspace.history);
-                rt::spawn_detached(history.select(None, false, false, false, 0, SelectionOrigin::Graph));
+                rt::spawn_detached(history.select(
+                    None,
+                    false,
+                    false,
+                    false,
+                    0,
+                    SelectionOrigin::Graph,
+                ));
             }
         }
     }
@@ -95,7 +112,9 @@ impl Navigator {
 
     /// Selects `identity` (a commit or a path) in the active tab.
     pub fn select_identity(&self, identity: String) {
-        let Some(active) = self.remember(&identity) else { return };
+        let Some(active) = self.remember(&identity) else {
+            return;
+        };
         if active == Pane::History {
             rt::spawn_detached(self.workspace.history.select(
                 Some(identity),
@@ -151,9 +170,19 @@ impl Navigator {
     /// Shows History in the active tab with `commit` selected and revealed;
     /// with `base` it compares them. Without `reload` a shown History keeps
     /// its rows.
-    pub async fn show_commit(&self, commit: String, base: Option<String>, focus: bool, reload: bool) {
-        let Some(active) = self.workspace.active_tab() else { return };
-        let Some(session) = active.session.clone() else { return };
+    pub async fn show_commit(
+        &self,
+        commit: String,
+        base: Option<String>,
+        focus: bool,
+        reload: bool,
+    ) {
+        let Some(active) = self.workspace.active_tab() else {
+            return;
+        };
+        let Some(session) = active.session.clone() else {
+            return;
+        };
         let needs_history = reload || active.navigation.pane != Pane::History;
         let mut navigation = active.navigation.clone();
         navigation.pane = Pane::History;
@@ -165,10 +194,18 @@ impl Navigator {
             history.load(session.identity, Vec::new()).await;
         }
         match base {
-            None => history.select(Some(commit), false, true, focus, 0, SelectionOrigin::Graph).await,
+            None => {
+                history
+                    .select(Some(commit), false, true, focus, 0, SelectionOrigin::Graph)
+                    .await
+            }
             Some(base) => {
-                history.select(Some(base), false, true, true, 0, SelectionOrigin::Graph).await;
-                history.select(Some(commit), true, false, true, 0, SelectionOrigin::Graph).await;
+                history
+                    .select(Some(base), false, true, true, 0, SelectionOrigin::Graph)
+                    .await;
+                history
+                    .select(Some(commit), true, false, true, 0, SelectionOrigin::Graph)
+                    .await;
             }
         }
     }
@@ -187,9 +224,29 @@ impl Navigator {
             return false;
         }
         let history = Rc::clone(&self.workspace.history);
-        history.select(None, false, false, true, 0, SelectionOrigin::Graph).await;
-        history.select(Some(selected[0].clone()), true, false, true, 0, SelectionOrigin::Graph).await;
-        history.select(Some(selected[1].clone()), true, false, true, 0, SelectionOrigin::Graph).await;
+        history
+            .select(None, false, false, true, 0, SelectionOrigin::Graph)
+            .await;
+        history
+            .select(
+                Some(selected[0].clone()),
+                true,
+                false,
+                true,
+                0,
+                SelectionOrigin::Graph,
+            )
+            .await;
+        history
+            .select(
+                Some(selected[1].clone()),
+                true,
+                false,
+                true,
+                0,
+                SelectionOrigin::Graph,
+            )
+            .await;
         true
     }
 }

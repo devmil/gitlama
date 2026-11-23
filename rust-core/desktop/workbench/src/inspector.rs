@@ -10,12 +10,15 @@
 
 use crate::backend::SessionCalls;
 use crate::diff_doc::{DIFF_PAGE_ROWS, DiffDocument};
-use crate::history::{HistoryService, HistorySelection, SelectionOrigin};
+use crate::history::{HistorySelection, HistoryService, SelectionOrigin};
 use crate::notify::{Notifier, Topics};
 use crate::rt;
 use crate::session::{FailureCode, SessionError, SessionIdentity, SessionResult, check, required};
 use gitlama_contract::diff::{NativeDiffLayout, NativeDiffSyntaxOrigin};
-use gitlama_contract::dto::{NativeCommitDiffOptions, NativeCommitFile, NativeCommitInspection, NativeDiffWhitespace, NativeFileChangeKind};
+use gitlama_contract::dto::{
+    NativeCommitDiffOptions, NativeCommitFile, NativeCommitInspection, NativeDiffWhitespace,
+    NativeFileChangeKind,
+};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc, Weak};
@@ -169,7 +172,8 @@ impl Navigation {
     }
 
     fn can_forward(&self) -> bool {
-        self.index.is_some_and(|index| index + 1 < self.entries.len())
+        self.index
+            .is_some_and(|index| index + 1 < self.entries.len())
     }
 
     fn push(&mut self, location: Location) {
@@ -224,7 +228,11 @@ pub struct DiffOptions {
 
 impl Default for DiffOptions {
     fn default() -> Self {
-        Self { context_lines: 3, whitespace: NativeDiffWhitespace::Preserve, layout: NativeDiffLayout::Unified }
+        Self {
+            context_lines: 3,
+            whitespace: NativeDiffWhitespace::Preserve,
+            layout: NativeDiffLayout::Unified,
+        }
     }
 }
 
@@ -234,7 +242,11 @@ impl DiffOptions {
         Self {
             context_lines: appearance.diff_context_lines.min(100),
             whitespace: whitespace_of(&appearance.diff_whitespace),
-            layout: if appearance.diff_layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+            layout: if appearance.diff_layout == "sideBySide" {
+                NativeDiffLayout::SideBySide
+            } else {
+                NativeDiffLayout::Unified
+            },
         }
     }
 
@@ -311,7 +323,9 @@ pub struct TreeDirectory {
 
 /// The tree key of a folder path (None is the root).
 pub fn tree_key(directory: Option<&[u8]>) -> String {
-    directory.map(|path| String::from_utf8_lossy(path).into_owned()).unwrap_or_default()
+    directory
+        .map(|path| String::from_utf8_lossy(path).into_owned())
+        .unwrap_or_default()
 }
 
 /// Entries per page of a folder (as in Flutter).
@@ -353,7 +367,10 @@ const GITLINK_MODE: u32 = 0xE000;
 const MODE_TYPE: u32 = 0xF000;
 
 /// Which lenses can show `change` (the Dart lensAvailability).
-pub fn lens_availability(directory: bool, change: Option<&NativeCommitFile>) -> Vec<(Lens, Option<Unavailable>)> {
+pub fn lens_availability(
+    directory: bool,
+    change: Option<&NativeCommitFile>,
+) -> Vec<(Lens, Option<Unavailable>)> {
     if directory {
         return vec![
             (Lens::Diff, Some(Unavailable::Directory)),
@@ -365,19 +382,32 @@ pub fn lens_availability(directory: bool, change: Option<&NativeCommitFile>) -> 
     let kind = change.map(|change| change.kind);
     let mode = change.map(|change| change.new_mode);
     let kind_of_mode = mode.map(|mode| mode & MODE_TYPE);
-    let submodule = kind == Some(NativeFileChangeKind::Submodule) || kind_of_mode == Some(GITLINK_MODE);
+    let submodule =
+        kind == Some(NativeFileChangeKind::Submodule) || kind_of_mode == Some(GITLINK_MODE);
     let symlink = kind_of_mode == Some(SYMLINK_MODE);
     let (contents, blame) = if kind == Some(NativeFileChangeKind::Deleted) {
         (Some(Unavailable::Deleted), Some(Unavailable::Deleted))
     } else if submodule {
         (Some(Unavailable::Submodule), Some(Unavailable::Submodule))
-    } else if symlink || matches!(kind, Some(NativeFileChangeKind::Binary | NativeFileChangeKind::Image)) {
+    } else if symlink
+        || matches!(
+            kind,
+            Some(NativeFileChangeKind::Binary | NativeFileChangeKind::Image)
+        )
+    {
         (None, Some(Unavailable::NeedsText))
     } else {
         (None, None)
     };
     vec![
-        (Lens::Diff, if change.is_some() { None } else { Some(Unavailable::NotChanged) }),
+        (
+            Lens::Diff,
+            if change.is_some() {
+                None
+            } else {
+                Some(Unavailable::NotChanged)
+            },
+        ),
         (Lens::Contents, contents),
         (Lens::Blame, blame),
         (Lens::History, None),
@@ -385,7 +415,9 @@ pub fn lens_availability(directory: bool, change: Option<&NativeCommitFile>) -> 
 }
 
 fn available(availability: &[(Lens, Option<Unavailable>)], lens: Lens) -> bool {
-    availability.iter().any(|(candidate, reason)| *candidate == lens && reason.is_none())
+    availability
+        .iter()
+        .any(|(candidate, reason)| *candidate == lens && reason.is_none())
 }
 
 /// The requested lens when it can show the file, else the first that can.
@@ -401,7 +433,11 @@ pub fn sticky_lens(requested: Lens, availability: &[(Lens, Option<Unavailable>)]
 
 /// The path a change is listed under.
 pub fn change_path(change: &NativeCommitFile) -> &[u8] {
-    if change.new_path.is_empty() { &change.old_path } else { &change.new_path }
+    if change.new_path.is_empty() {
+        &change.old_path
+    } else {
+        &change.new_path
+    }
 }
 
 struct Inner {
@@ -550,7 +586,13 @@ impl InspectorService {
     /// Shows `location`; `push` adds it after the current entry, otherwise
     /// it replaces the current entry. `from_host` marks a navigation the
     /// graph asked for, which is not echoed back to it.
-    pub async fn navigate(&self, location: Location, push: bool, from_host: bool, parent_hint: Option<Vec<String>>) {
+    pub async fn navigate(
+        &self,
+        location: Location,
+        push: bool,
+        from_host: bool,
+        parent_hint: Option<Vec<String>>,
+    ) {
         if let Some(next) = self.record(location, push) {
             self.show(next, !from_host, parent_hint, false).await;
         }
@@ -588,10 +630,17 @@ impl InspectorService {
     /// link's navigation starts synchronously, and shown unless another
     /// navigation replaced it meanwhile.
     fn navigate_for_graph(self: &Rc<Self>, location: Location, parent_hint: Option<Vec<String>>) {
-        let Some(next) = self.record(location, true) else { return };
+        let Some(next) = self.record(location, true) else {
+            return;
+        };
         let shown = Rc::clone(self);
         rt::spawn_detached(async move {
-            let current = shown.inner.borrow().navigation.current().is_some_and(|location| location.same_as(&next));
+            let current = shown
+                .inner
+                .borrow()
+                .navigation
+                .current()
+                .is_some_and(|location| location.same_as(&next));
             if current {
                 shown.show(next, false, parent_hint, false).await;
             }
@@ -600,7 +649,9 @@ impl InspectorService {
 
     /// Loads the current location again, after a failure.
     pub async fn retry(&self) {
-        let Some(location) = self.inner.borrow().navigation.current().cloned() else { return };
+        let Some(location) = self.inner.borrow().navigation.current().cloned() else {
+            return;
+        };
         self.show(location, false, None, true).await;
     }
 
@@ -617,20 +668,46 @@ impl InspectorService {
     pub async fn up(&self) -> bool {
         let (location, availability) = {
             let inner = self.inner.borrow();
-            (inner.navigation.current().cloned(), inner.current.lens_availability.clone())
+            (
+                inner.navigation.current().cloned(),
+                inner.current.lens_availability.clone(),
+            )
         };
-        let Some(location) = location else { return false };
+        let Some(location) = location else {
+            return false;
+        };
         let next = if location.path.is_none() {
             if location.scope != Scope::All {
                 return false;
             }
-            Location { scope: Scope::Changed, anchor: 0, ..location }
+            Location {
+                scope: Scope::Changed,
+                anchor: 0,
+                ..location
+            }
         } else if location.lens == Lens::History && location.lines.is_some() {
-            Location { lines: None, history_commit: None, anchor: 0, ..location }
-        } else if location.lens != Lens::Diff && available(&availability, Lens::Diff) && !availability.is_empty() {
-            Location { lens: Lens::Diff, anchor: 0, ..location }
+            Location {
+                lines: None,
+                history_commit: None,
+                anchor: 0,
+                ..location
+            }
+        } else if location.lens != Lens::Diff
+            && available(&availability, Lens::Diff)
+            && !availability.is_empty()
+        {
+            Location {
+                lens: Lens::Diff,
+                anchor: 0,
+                ..location
+            }
         } else {
-            Location { path: None, directory: false, anchor: 0, ..location }
+            Location {
+                path: None,
+                directory: false,
+                anchor: 0,
+                ..location
+            }
         };
         self.navigate(next, true, false, None).await;
         true
@@ -639,13 +716,20 @@ impl InspectorService {
     /// Records the first visible row so Back and Forward restore it.
     pub fn report_anchor(&self, anchor: u64) {
         let mut inner = self.inner.borrow_mut();
-        let Some(mut location) = inner.navigation.current().cloned() else { return };
+        let Some(mut location) = inner.navigation.current().cloned() else {
+            return;
+        };
         if location.anchor == anchor {
             return;
         }
         location.anchor = anchor;
         inner.navigation.replace(location.clone());
-        if inner.current.location.as_ref().is_some_and(|shown| shown.same_as(&location)) {
+        if inner
+            .current
+            .location
+            .as_ref()
+            .is_some_and(|shown| shown.same_as(&location))
+        {
             inner.current.location = Some(location);
         }
     }
@@ -655,8 +739,16 @@ impl InspectorService {
         inner.identity == Some(identity) && inner.token == token
     }
 
-    async fn show(&self, location: Location, emit_target: bool, parent_hint: Option<Vec<String>>, force: bool) {
-        let Some(identity) = self.inner.borrow().identity else { return };
+    async fn show(
+        &self,
+        location: Location,
+        emit_target: bool,
+        parent_hint: Option<Vec<String>>,
+        force: bool,
+    ) {
+        let Some(identity) = self.inner.borrow().identity else {
+            return;
+        };
         let (token, previous, can_back, can_forward) = {
             let mut inner = self.inner.borrow_mut();
             inner.token += 1;
@@ -664,16 +756,24 @@ impl InspectorService {
             if let Some(diff) = inner.current.diff.take() {
                 diff.retire();
             }
-            (inner.token, inner.current.clone(), inner.navigation.can_back(), inner.navigation.can_forward())
+            (
+                inner.token,
+                inner.current.clone(),
+                inner.navigation.can_back(),
+                inner.navigation.can_forward(),
+            )
         };
         let target_changed = force
             || previous.inspection.is_none()
             || previous.phase == Phase::Failed
-            || previous.location.as_ref().map(|location| &location.target) != Some(&location.target);
+            || previous.location.as_ref().map(|location| &location.target)
+                != Some(&location.target);
         if target_changed {
             self.inner.borrow_mut().tree_token += 1;
         }
-        if target_changed && emit_target && previous.location.as_ref().map(|location| &location.target) != Some(&location.target)
+        if target_changed
+            && emit_target
+            && previous.location.as_ref().map(|location| &location.target) != Some(&location.target)
         {
             if let Some(listener) = self.on_target.borrow().as_ref() {
                 listener(&location.target);
@@ -681,19 +781,41 @@ impl InspectorService {
         }
         self.publish(InspectorState {
             location: Some(location.clone()),
-            phase: if target_changed { Phase::Loading } else { Phase::Ready },
-            inspection: if target_changed { None } else { previous.inspection.clone() },
+            phase: if target_changed {
+                Phase::Loading
+            } else {
+                Phase::Ready
+            },
+            inspection: if target_changed {
+                None
+            } else {
+                previous.inspection.clone()
+            },
             content_loading: true,
             can_back,
             can_forward,
-            all_changes_too_large: if target_changed { false } else { previous.all_changes_too_large },
-            tree: if target_changed { HashMap::new() } else { previous.tree.clone() },
-            expanded: if target_changed { Default::default() } else { previous.expanded.clone() },
+            all_changes_too_large: if target_changed {
+                false
+            } else {
+                previous.all_changes_too_large
+            },
+            tree: if target_changed {
+                HashMap::new()
+            } else {
+                previous.tree.clone()
+            },
+            expanded: if target_changed {
+                Default::default()
+            } else {
+                previous.expanded.clone()
+            },
             ..InspectorState::default()
         });
         let result: SessionResult<()> = async {
             let inspection = if target_changed {
-                let (inspection, first_parent) = self.load_target(identity, &location.target, parent_hint).await?;
+                let (inspection, first_parent) = self
+                    .load_target(identity, &location.target, parent_hint)
+                    .await?;
                 if !self.accepts(identity, token) {
                     return Ok(());
                 }
@@ -704,13 +826,21 @@ impl InspectorService {
                 });
                 inspection
             } else {
-                previous.inspection.clone().expect("a shown target has its inspection")
+                previous
+                    .inspection
+                    .clone()
+                    .expect("a shown target has its inspection")
             };
             let mut shown = location.clone();
             let change = shown
                 .path
                 .as_ref()
-                .and_then(|path| inspection.files.iter().find(|file| change_path(file) == path.as_slice()))
+                .and_then(|path| {
+                    inspection
+                        .files
+                        .iter()
+                        .find(|file| change_path(file) == path.as_slice())
+                })
                 .cloned();
             // A file the target did not change is only listed in All files.
             if shown.path.is_some()
@@ -744,7 +874,10 @@ impl InspectorService {
                 state.lens_availability = availability;
             });
             match shown.lens {
-                Lens::Diff => self.load_target_diff(identity, token, &shown, &inspection, change.as_ref()).await,
+                Lens::Diff => {
+                    self.load_target_diff(identity, token, &shown, &inspection, change.as_ref())
+                        .await
+                }
                 Lens::Contents => self.load_contents(identity, token, &shown).await,
                 Lens::Blame => self.load_blame(identity, token, &shown).await,
                 Lens::History => self.load_history(identity, token, shown).await,
@@ -771,7 +904,9 @@ impl InspectorService {
     /// the shown path, opening them.
     async fn ensure_tree(&self, identity: SessionIdentity, token: u64, location: &Location) {
         self.load_directory(identity, None, false).await;
-        let Some(path) = location.path.clone() else { return };
+        let Some(path) = location.path.clone() else {
+            return;
+        };
         let mut expanded = self.inner.borrow().current.expanded.clone();
         for (index, byte) in path.iter().enumerate() {
             if *byte != b'/' || index == 0 {
@@ -796,7 +931,9 @@ impl InspectorService {
     /// Shows `directory`'s entries in the All files tree, loading them once
     /// or again after a failure. None is the root.
     pub async fn expand_directory(&self, directory: Option<Vec<u8>>) {
-        let Some(identity) = self.inner.borrow().identity else { return };
+        let Some(identity) = self.inner.borrow().identity else {
+            return;
+        };
         if self.inner.borrow().current.inspection.is_none() {
             return;
         }
@@ -817,34 +954,72 @@ impl InspectorService {
     }
 
     pub async fn load_more_directory(&self, directory: Option<Vec<u8>>) {
-        let Some(identity) = self.inner.borrow().identity else { return };
+        let Some(identity) = self.inner.borrow().identity else {
+            return;
+        };
         self.load_directory(identity, directory, true).await;
     }
 
-    async fn load_directory(&self, identity: SessionIdentity, directory: Option<Vec<u8>>, more: bool) {
-        let Some(commit) = self.inner.borrow().current.location.as_ref().map(|location| location.target.commit().to_owned()) else {
+    async fn load_directory(
+        &self,
+        identity: SessionIdentity,
+        directory: Option<Vec<u8>>,
+        more: bool,
+    ) {
+        let Some(commit) = self
+            .inner
+            .borrow()
+            .current
+            .location
+            .as_ref()
+            .map(|location| location.target.commit().to_owned())
+        else {
             return;
         };
         let key = tree_key(directory.as_deref());
         let loaded = self.inner.borrow().current.tree.get(&key).cloned();
         if let Some(loaded) = &loaded
-            && (loaded.loading || (!more && !loaded.failed) || (more && loaded.next_offset.is_none()))
+            && (loaded.loading
+                || (!more && !loaded.failed)
+                || (more && loaded.next_offset.is_none()))
         {
             return;
         }
         let token = self.inner.borrow().tree_token;
-        let offset = if more { loaded.as_ref().and_then(|loaded| loaded.next_offset).unwrap_or(0) } else { 0 };
-        let previous_entries = loaded.as_ref().map(|loaded| loaded.entries.clone()).unwrap_or_default();
+        let offset = if more {
+            loaded
+                .as_ref()
+                .and_then(|loaded| loaded.next_offset)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let previous_entries = loaded
+            .as_ref()
+            .map(|loaded| loaded.entries.clone())
+            .unwrap_or_default();
         let previous_next = loaded.as_ref().and_then(|loaded| loaded.next_offset);
         self.update(|state| {
             state.tree.insert(
                 key.clone(),
-                Rc::new(TreeDirectory { entries: previous_entries.clone(), next_offset: previous_next, loading: true, failed: false }),
+                Rc::new(TreeDirectory {
+                    entries: previous_entries.clone(),
+                    next_offset: previous_next,
+                    loading: true,
+                    failed: false,
+                }),
             );
         });
         let result = self
             .calls
-            .repository_session_tree(identity.native_id, identity.generation, commit, directory, offset, TREE_PAGE_ROWS)
+            .repository_session_tree(
+                identity.native_id,
+                identity.generation,
+                commit,
+                directory,
+                offset,
+                TREE_PAGE_ROWS,
+            )
             .await;
         let page = match result {
             Ok(result) if result.failure.is_none() => result.page,
@@ -861,9 +1036,19 @@ impl InspectorService {
                 Some(page) => {
                     let mut entries = if more { previous_entries } else { Vec::new() };
                     entries.extend(page.entries);
-                    TreeDirectory { entries, next_offset: page.next_offset, loading: false, failed: false }
+                    TreeDirectory {
+                        entries,
+                        next_offset: page.next_offset,
+                        loading: false,
+                        failed: false,
+                    }
                 }
-                None => TreeDirectory { entries: previous_entries, next_offset: previous_next, loading: false, failed: true },
+                None => TreeDirectory {
+                    entries: previous_entries,
+                    next_offset: previous_next,
+                    loading: false,
+                    failed: true,
+                },
             };
             state.tree.insert(key, Rc::new(folder));
         });
@@ -876,10 +1061,14 @@ impl InspectorService {
         parent_hint: Option<Vec<String>>,
     ) -> SessionResult<(Rc<NativeCommitInspection>, Option<String>)> {
         if let Some(base) = target.base() {
-            let inspection = self.inspect(identity, target.commit(), Some(base.to_owned()), None).await?;
+            let inspection = self
+                .inspect(identity, target.commit(), Some(base.to_owned()), None)
+                .await?;
             return Ok((inspection, Some(base.to_owned())));
         }
-        let inspection = self.inspect(identity, target.commit(), None, parent_hint).await?;
+        let inspection = self
+            .inspect(identity, target.commit(), None, parent_hint)
+            .await?;
         let first_parent = inspection.detail.parents.first().cloned();
         Ok((inspection, first_parent))
     }
@@ -890,7 +1079,11 @@ impl InspectorService {
 
     fn remember(&self, key: String, inspection: &Rc<NativeCommitInspection>) {
         let mut inner = self.inner.borrow_mut();
-        if inner.inspections.insert(key.clone(), Rc::clone(inspection)).is_none() {
+        if inner
+            .inspections
+            .insert(key.clone(), Rc::clone(inspection))
+            .is_none()
+        {
             inner.inspection_order.push_back(key);
             while inner.inspection_order.len() > INSPECTION_CACHE {
                 if let Some(oldest) = inner.inspection_order.pop_front() {
@@ -909,14 +1102,19 @@ impl InspectorService {
         first_parent: Option<String>,
         parent_hint: Option<Vec<String>>,
     ) -> SessionResult<Rc<NativeCommitInspection>> {
-        let parent = first_parent.or_else(|| parent_hint.as_ref().and_then(|hint| hint.first().cloned()));
+        let parent =
+            first_parent.or_else(|| parent_hint.as_ref().and_then(|hint| hint.first().cloned()));
         let key = format!("{}:{commit}", parent.clone().unwrap_or_default());
         if let Some(cached) = self.cached(&key) {
             return Ok(cached);
         }
         let read = |parent: Option<String>| {
-            self.calls
-                .repository_session_commit_inspection(identity.native_id, identity.generation, commit.to_owned(), parent)
+            self.calls.repository_session_commit_inspection(
+                identity.native_id,
+                identity.generation,
+                commit.to_owned(),
+                parent,
+            )
         };
         if parent.is_some() || parent_hint.is_some() {
             let result = read(parent).await?;
@@ -944,12 +1142,25 @@ impl InspectorService {
         Ok(inspection)
     }
 
-    fn diff_request(&self, commit: &str, first_parent: Option<String>, change: Option<&NativeCommitFile>) -> NativeCommitDiffOptions {
+    fn diff_request(
+        &self,
+        commit: &str,
+        first_parent: Option<String>,
+        change: Option<&NativeCommitFile>,
+    ) -> NativeCommitDiffOptions {
         let options = self.options.get();
         let (old_path, new_path) = match change {
             Some(file) => (
-                Some(if file.old_path.is_empty() { file.new_path.clone() } else { file.old_path.clone() }),
-                Some(if file.new_path.is_empty() { file.old_path.clone() } else { file.new_path.clone() }),
+                Some(if file.old_path.is_empty() {
+                    file.new_path.clone()
+                } else {
+                    file.old_path.clone()
+                }),
+                Some(if file.new_path.is_empty() {
+                    file.old_path.clone()
+                } else {
+                    file.new_path.clone()
+                }),
             ),
             None => (None, None),
         };
@@ -966,11 +1177,23 @@ impl InspectorService {
         }
     }
 
-    async fn load_contents(&self, identity: SessionIdentity, token: u64, location: &Location) -> SessionResult<()> {
-        let Some(path) = location.path.clone() else { return Ok(()) };
+    async fn load_contents(
+        &self,
+        identity: SessionIdentity,
+        token: u64,
+        location: &Location,
+    ) -> SessionResult<()> {
+        let Some(path) = location.path.clone() else {
+            return Ok(());
+        };
         let result = self
             .calls
-            .repository_session_commit_file_content(identity.native_id, identity.generation, location.target.commit().to_owned(), path)
+            .repository_session_commit_file_content(
+                identity.native_id,
+                identity.generation,
+                location.target.commit().to_owned(),
+                path,
+            )
             .await?;
         check(&result.failure)?;
         let bytes = required(result.bytes)?;
@@ -983,8 +1206,15 @@ impl InspectorService {
         Ok(())
     }
 
-    async fn load_blame(&self, identity: SessionIdentity, token: u64, location: &Location) -> SessionResult<()> {
-        let Some(path) = location.path.clone() else { return Ok(()) };
+    async fn load_blame(
+        &self,
+        identity: SessionIdentity,
+        token: u64,
+        location: &Location,
+    ) -> SessionResult<()> {
+        let Some(path) = location.path.clone() else {
+            return Ok(());
+        };
         let options = gitlama_contract::dto::NativeBlameOptions {
             revision: location.target.commit().to_owned(),
             path,
@@ -994,7 +1224,10 @@ impl InspectorService {
             detect_copies: true,
             maximum_rows: BLAME_PAGE_ROWS,
         };
-        let result = self.calls.repository_session_blame_load(identity.native_id, identity.generation, options).await?;
+        let result = self
+            .calls
+            .repository_session_blame_load(identity.native_id, identity.generation, options)
+            .await?;
         check(&result.failure)?;
         let page = required(result.page)?;
         if self.accepts(identity, token) {
@@ -1022,7 +1255,9 @@ impl InspectorService {
             let inner = self.inner.borrow();
             (inner.identity, inner.token, inner.current.blame.clone())
         };
-        let (Some(identity), Some(blame)) = (identity, blame) else { return };
+        let (Some(identity), Some(blame)) = (identity, blame) else {
+            return;
+        };
         if index >= blame.total_rows || blame.rows.contains_key(&index) {
             return;
         }
@@ -1032,11 +1267,19 @@ impl InspectorService {
         }
         let result = self
             .calls
-            .repository_session_blame_page(identity.native_id, identity.generation, blame.request_id, offset, BLAME_PAGE_ROWS)
+            .repository_session_blame_page(
+                identity.native_id,
+                identity.generation,
+                blame.request_id,
+                offset,
+                BLAME_PAGE_ROWS,
+            )
             .await;
         self.inner.borrow_mut().loading_blame_pages.remove(&offset);
         let Ok(result) = result else { return };
-        let Some(page) = result.page.filter(|_| result.failure.is_none()) else { return };
+        let Some(page) = result.page.filter(|_| result.failure.is_none()) else {
+            return;
+        };
         if !self.accepts(identity, token) {
             return;
         }
@@ -1058,12 +1301,27 @@ impl InspectorService {
     pub async fn blame_before(&self, line: u64) {
         let (identity, row) = {
             let inner = self.inner.borrow();
-            (inner.identity, inner.current.blame.as_ref().and_then(|blame| blame.rows.get(&line).cloned()))
+            (
+                inner.identity,
+                inner
+                    .current
+                    .blame
+                    .as_ref()
+                    .and_then(|blame| blame.rows.get(&line).cloned()),
+            )
         };
-        let (Some(identity), Some(row)) = (identity, row) else { return };
-        let Some(commit) = row.commit.clone().filter(|_| !row.boundary) else { return };
-        let Ok(inspection) = self.inspect(identity, &commit, None, None).await else { return };
-        let Some(parent) = inspection.detail.parents.first().cloned() else { return };
+        let (Some(identity), Some(row)) = (identity, row) else {
+            return;
+        };
+        let Some(commit) = row.commit.clone().filter(|_| !row.boundary) else {
+            return;
+        };
+        let Ok(inspection) = self.inspect(identity, &commit, None, None).await else {
+            return;
+        };
+        let Some(parent) = inspection.detail.parents.first().cloned() else {
+            return;
+        };
         if self.inner.borrow().identity != Some(identity) {
             return;
         }
@@ -1078,12 +1336,25 @@ impl InspectorService {
     pub async fn line_history(&self, first: u64, last: u64) {
         let location = self.inner.borrow().navigation.current().cloned();
         let Some(location) = location else { return };
-        let next = Location { lens: Lens::History, lines: Some((first, last)), history_commit: None, anchor: 0, ..location };
+        let next = Location {
+            lens: Lens::History,
+            lines: Some((first, last)),
+            history_commit: None,
+            anchor: 0,
+            ..location
+        };
         self.navigate(next, true, false, None).await;
     }
 
-    async fn load_history(&self, identity: SessionIdentity, token: u64, location: Location) -> SessionResult<()> {
-        let Some(path) = location.path.clone() else { return Ok(()) };
+    async fn load_history(
+        &self,
+        identity: SessionIdentity,
+        token: u64,
+        location: Location,
+    ) -> SessionResult<()> {
+        let Some(path) = location.path.clone() else {
+            return Ok(());
+        };
         let commit = location.target.commit().to_owned();
         let list = if let Some((first, last)) = location.lines {
             let result = self
@@ -1124,7 +1395,10 @@ impl InspectorService {
         if !self.accepts(identity, token) {
             return Ok(());
         }
-        let selected = location.history_commit.clone().or_else(|| list.entries.first().map(|entry| entry.commit.clone()));
+        let selected = location
+            .history_commit
+            .clone()
+            .or_else(|| list.entries.first().map(|entry| entry.commit.clone()));
         self.update(|state| state.history = Some(Rc::new(list)));
         let Some(selected) = selected else {
             self.update(|state| state.content_loading = false);
@@ -1136,7 +1410,8 @@ impl InspectorService {
             self.inner.borrow_mut().navigation.replace(shown.clone());
             self.update(|state| state.location = Some(shown.clone()));
         }
-        self.load_history_entry(identity, token, &shown, &selected).await
+        self.load_history_entry(identity, token, &shown, &selected)
+            .await
     }
 
     async fn path_history(
@@ -1154,7 +1429,10 @@ impl InspectorService {
             maximum_rows: HISTORY_PAGE_ROWS,
             rename_hops_before,
         };
-        let result = self.calls.repository_session_path_history(identity.native_id, identity.generation, options).await?;
+        let result = self
+            .calls
+            .repository_session_path_history(identity.native_id, identity.generation, options)
+            .await?;
         check(&result.failure)?;
         required(result.page)
     }
@@ -1163,11 +1441,19 @@ impl InspectorService {
     pub async fn select_history_entry(&self, commit: String) {
         let (identity, location, token) = {
             let mut inner = self.inner.borrow_mut();
-            let Some(location) = inner.navigation.current().cloned() else { return };
-            if location.lens != Lens::History || location.history_commit.as_deref() == Some(commit.as_str()) {
+            let Some(location) = inner.navigation.current().cloned() else {
+                return;
+            };
+            if location.lens != Lens::History
+                || location.history_commit.as_deref() == Some(commit.as_str())
+            {
                 return;
             }
-            let shown = Location { history_commit: Some(commit.clone()), anchor: 0, ..location };
+            let shown = Location {
+                history_commit: Some(commit.clone()),
+                anchor: 0,
+                ..location
+            };
             inner.navigation.replace(shown.clone());
             inner.diff_token += 1;
             if let Some(diff) = inner.current.diff.take() {
@@ -1182,7 +1468,9 @@ impl InspectorService {
             state.content_failure = None;
             state.content_loading = true;
         });
-        if let Err(error) = self.load_history_entry(identity, token, &location, &commit).await
+        if let Err(error) = self
+            .load_history_entry(identity, token, &location, &commit)
+            .await
             && self.accepts(identity, token)
         {
             self.update(|state| {
@@ -1192,13 +1480,20 @@ impl InspectorService {
         }
     }
 
-    async fn load_history_entry(&self, identity: SessionIdentity, token: u64, location: &Location, commit: &str) -> SessionResult<()> {
+    async fn load_history_entry(
+        &self,
+        identity: SessionIdentity,
+        token: u64,
+        location: &Location,
+        commit: &str,
+    ) -> SessionResult<()> {
         let history_token = {
             let mut inner = self.inner.borrow_mut();
             inner.history_token += 1;
             inner.history_token
         };
-        let current = || self.accepts(identity, token) && self.inner.borrow().history_token == history_token;
+        let current =
+            || self.accepts(identity, token) && self.inner.borrow().history_token == history_token;
         let inspection = self.inspect(identity, commit, None, None).await?;
         if !current() {
             return Ok(());
@@ -1217,9 +1512,20 @@ impl InspectorService {
             .current
             .history
             .as_ref()
-            .and_then(|history| history.entries.iter().find(|item| item.commit == commit).cloned());
-        let new_path = entry.as_ref().and_then(|entry| entry.path.clone()).unwrap_or(path);
-        let old_path = entry.and_then(|entry| entry.old_path).unwrap_or_else(|| new_path.clone());
+            .and_then(|history| {
+                history
+                    .entries
+                    .iter()
+                    .find(|item| item.commit == commit)
+                    .cloned()
+            });
+        let new_path = entry
+            .as_ref()
+            .and_then(|entry| entry.path.clone())
+            .unwrap_or(path);
+        let old_path = entry
+            .and_then(|entry| entry.old_path)
+            .unwrap_or_else(|| new_path.clone());
         let first_parent = inspection.detail.parents.first().cloned();
         let options = self.options.get();
         let request = NativeCommitDiffOptions {
@@ -1233,7 +1539,10 @@ impl InspectorService {
             maximum_rows: DIFF_PAGE_ROWS as u32,
             force_text: false,
         };
-        let result = self.calls.repository_session_commit_diff_load(identity.native_id, identity.generation, request).await?;
+        let result = self
+            .calls
+            .repository_session_commit_diff_load(identity.native_id, identity.generation, request)
+            .await?;
         check(&result.failure)?;
         let page = required(result.page)?;
         if !current() {
@@ -1260,10 +1569,20 @@ impl InspectorService {
     pub async fn load_more_history(&self) {
         let (identity, location, history, token) = {
             let inner = self.inner.borrow();
-            (inner.identity, inner.navigation.current().cloned(), inner.current.history.clone(), inner.token)
+            (
+                inner.identity,
+                inner.navigation.current().cloned(),
+                inner.current.history.clone(),
+                inner.token,
+            )
         };
-        let (Some(identity), Some(location), Some(history)) = (identity, location, history) else { return };
-        let Some(offset) = history.next_offset.filter(|_| location.lens == Lens::History && location.lines.is_none()) else {
+        let (Some(identity), Some(location), Some(history)) = (identity, location, history) else {
+            return;
+        };
+        let Some(offset) = history
+            .next_offset
+            .filter(|_| location.lens == Lens::History && location.lines.is_none())
+        else {
             return;
         };
         if self.inner.borrow().current.history_loading_more {
@@ -1273,7 +1592,9 @@ impl InspectorService {
             state.history_loading_more = true;
             state.history_more_failed = false;
         });
-        let result = self.path_history(identity, &location, offset, history.rename_hops).await;
+        let result = self
+            .path_history(identity, &location, offset, history.rename_hops)
+            .await;
         if !self.accepts(identity, token) {
             return;
         }
@@ -1316,15 +1637,26 @@ impl InspectorService {
         };
         let mut result = load(change).await?;
         if change.is_none()
-            && result.failure.as_ref().map(|failure| FailureCode::from(failure)) == Some(FailureCode::TooLarge)
+            && result
+                .failure
+                .as_ref()
+                .map(|failure| FailureCode::from(failure))
+                == Some(FailureCode::TooLarge)
         {
             // Two distant commits can differ by more than one patch may hold;
             // their file list still loads, and so does each file's diff.
-            let Some(file) = inspection.files.first() else { return check(&result.failure) };
+            let Some(file) = inspection.files.first() else {
+                return check(&result.failure);
+            };
             if !self.accepts(identity, token) {
                 return Ok(());
             }
-            let focused = Location { path: Some(change_path(file).to_vec()), lens: Lens::Diff, ..location.clone() }.normalized();
+            let focused = Location {
+                path: Some(change_path(file).to_vec()),
+                lens: Lens::Diff,
+                ..location.clone()
+            }
+            .normalized();
             self.inner.borrow_mut().navigation.replace(focused.clone());
             self.update(|state| {
                 state.location = Some(focused);
@@ -1355,14 +1687,26 @@ impl InspectorService {
     }
 
     /// The images of an image change of the shown diff, for the image diff.
-    pub async fn image_diff(&self, old_path: Vec<u8>, new_path: Vec<u8>) -> Option<gitlama_contract::dto::NativeImageDiffResult> {
+    pub async fn image_diff(
+        &self,
+        old_path: Vec<u8>,
+        new_path: Vec<u8>,
+    ) -> Option<gitlama_contract::dto::NativeImageDiffResult> {
         let (identity, source) = {
             let inner = self.inner.borrow();
             (inner.identity?, inner.diff_source.clone()?)
         };
         let (commit, first_parent) = source;
         self.calls
-            .repository_session_image_diff(identity.native_id, identity.generation, first_parent, commit, old_path, new_path, 8 * 1024 * 1024)
+            .repository_session_image_diff(
+                identity.native_id,
+                identity.generation,
+                first_parent,
+                commit,
+                old_path,
+                new_path,
+                8 * 1024 * 1024,
+            )
             .await
             .ok()
     }
@@ -1386,10 +1730,12 @@ impl InspectorService {
         else {
             return;
         };
-        let change = location
-            .path
-            .as_ref()
-            .and_then(|path| inspection.files.iter().find(|file| change_path(file) == path.as_slice()));
+        let change = location.path.as_ref().and_then(|path| {
+            inspection
+                .files
+                .iter()
+                .find(|file| change_path(file) == path.as_slice())
+        });
         let result = self
             .calls
             .repository_session_commit_diff_load(
@@ -1399,8 +1745,11 @@ impl InspectorService {
             )
             .await;
         let Ok(result) = result else { return };
-        let Some(page) = result.page.filter(|_| result.failure.is_none()) else { return };
-        if self.inner.borrow().identity != Some(identity) || self.inner.borrow().diff_token != token {
+        let Some(page) = result.page.filter(|_| result.failure.is_none()) else {
+            return;
+        };
+        if self.inner.borrow().identity != Some(identity) || self.inner.borrow().diff_token != token
+        {
             return;
         }
         let document = DiffDocument::new(
@@ -1427,7 +1776,9 @@ impl InspectorService {
             if selection.origin == SelectionOrigin::Inspector {
                 return;
             }
-            let (Some(inspector), Some(history)) = (inspector.upgrade(), history_for_selection.upgrade()) else {
+            let (Some(inspector), Some(history)) =
+                (inspector.upgrade(), history_for_selection.upgrade())
+            else {
                 return;
             };
             let Some(identity) = history.identity() else {
@@ -1444,21 +1795,54 @@ impl InspectorService {
                 Some(base) => Target::Comparison { base, commit },
                 None => Target::Commit(commit),
             };
-            let parents = if matches!(target, Target::Commit(_)) { selection.parents.clone() } else { None };
+            let parents = if matches!(target, Target::Commit(_)) {
+                selection.parents.clone()
+            } else {
+                None
+            };
             inspector.navigate_for_graph(Location::of(target), parents);
         });
         let graph = Rc::downgrade(history);
         self.on_target(move |target| {
-            let Some(history) = graph.upgrade() else { return };
+            let Some(history) = graph.upgrade() else {
+                return;
+            };
             let target = target.clone();
             rt::spawn_detached(async move {
                 match target {
                     Target::Comparison { base, commit } => {
-                        history.select(Some(base), false, true, false, 0, SelectionOrigin::Inspector).await;
-                        history.select(Some(commit), true, false, false, 0, SelectionOrigin::Inspector).await;
+                        history
+                            .select(
+                                Some(base),
+                                false,
+                                true,
+                                false,
+                                0,
+                                SelectionOrigin::Inspector,
+                            )
+                            .await;
+                        history
+                            .select(
+                                Some(commit),
+                                true,
+                                false,
+                                false,
+                                0,
+                                SelectionOrigin::Inspector,
+                            )
+                            .await;
                     }
                     Target::Commit(commit) => {
-                        history.select(Some(commit), false, true, false, 0, SelectionOrigin::Inspector).await;
+                        history
+                            .select(
+                                Some(commit),
+                                false,
+                                true,
+                                false,
+                                0,
+                                SelectionOrigin::Inspector,
+                            )
+                            .await;
                     }
                 }
             });

@@ -76,7 +76,9 @@ mod sidebar_state {
         fn reveal_target(&self, commit: String) {
             self.with_services(move |services| {
                 let navigator = Rc::clone(&services.navigator);
-                rt::spawn_detached(async move { navigator.show_commit(commit, None, false, false).await });
+                rt::spawn_detached(async move {
+                    navigator.show_commit(commit, None, false, false).await
+                });
             });
         }
 
@@ -84,7 +86,11 @@ mod sidebar_state {
         #[qslot]
         fn select_pane(&self, pane: String) {
             self.with_services(move |services| {
-                let pane = if pane == "history" { Pane::History } else { Pane::Changes };
+                let pane = if pane == "history" {
+                    Pane::History
+                } else {
+                    Pane::Changes
+                };
                 services.navigator.select_pane(pane, None);
             });
         }
@@ -116,8 +122,13 @@ mod sidebar_state {
         #[qslot]
         fn open_worktree(&self, index: i32) {
             self.with_services(move |services| {
-                let Some(inventory) = services.sidebar.worktrees() else { return };
-                let Some(worktree) = usize::try_from(index).ok().and_then(|index| inventory.worktrees.get(index)) else {
+                let Some(inventory) = services.sidebar.worktrees() else {
+                    return;
+                };
+                let Some(worktree) = usize::try_from(index)
+                    .ok()
+                    .and_then(|index| inventory.worktrees.get(index))
+                else {
                     return;
                 };
                 let path = gitlama_workbench::session::display_path(&worktree.worktree_root);
@@ -130,10 +141,14 @@ mod sidebar_state {
         #[qslot]
         fn set_branch_filter(&self, references: Vec<String>) {
             self.with_services(move |services| {
-                let Some(tab) = services.workspace.active_tab_id() else { return };
+                let Some(tab) = services.workspace.active_tab_id() else {
+                    return;
+                };
                 let workspace = Rc::clone(&services.workspace);
                 rt::spawn_detached(async move {
-                    workspace.set_branch_filter(tab, BranchFilter::new(references)).await
+                    workspace
+                        .set_branch_filter(tab, BranchFilter::new(references))
+                        .await
                 });
             });
         }

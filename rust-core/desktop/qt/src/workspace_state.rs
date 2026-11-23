@@ -13,13 +13,31 @@ pub fn details(services: &gitlama_workbench::app::Services) -> Value {
     use gitlama_contract::dto::{NativeHeadKind, NativeOperationKind, NativeRepositoryKind};
     use gitlama_contract::dto::{NativeOperationCenterOrigin, NativeOperationCenterState};
     let workspace = services.workspace.workspace();
-    let Some(tab) = workspace.active_tab_id.and_then(|id| workspace.tabs.iter().find(|tab| tab.id == id)) else { return Value::Null };
+    let Some(tab) = workspace
+        .active_tab_id
+        .and_then(|id| workspace.tabs.iter().find(|tab| tab.id == id))
+    else {
+        return Value::Null;
+    };
     let text = |bytes: &Vec<u8>| String::from_utf8_lossy(bytes).into_owned();
-    let snapshot = tab.session.as_ref().map(|session| Rc::clone(&session.snapshot));
-    let identity = snapshot.as_ref().and_then(|snapshot| snapshot.identity.clone());
-    let status = snapshot.as_ref().and_then(|snapshot| snapshot.status.clone());
-    let group = workspace.group(tab.group_id).map(|group| group.name.clone()).filter(|name| !name.is_empty());
-    let path = tab.canonical_identity().or(tab.requested_identity.as_ref()).map(gitlama_workbench::session::display_path);
+    let snapshot = tab
+        .session
+        .as_ref()
+        .map(|session| Rc::clone(&session.snapshot));
+    let identity = snapshot
+        .as_ref()
+        .and_then(|snapshot| snapshot.identity.clone());
+    let status = snapshot
+        .as_ref()
+        .and_then(|snapshot| snapshot.status.clone());
+    let group = workspace
+        .group(tab.group_id)
+        .map(|group| group.name.clone())
+        .filter(|name| !name.is_empty());
+    let path = tab
+        .canonical_identity()
+        .or(tab.requested_identity.as_ref())
+        .map(gitlama_workbench::session::display_path);
     let branch = match &status {
         Some(status) => status.branch_name.as_ref().map(text),
         None => identity
@@ -35,7 +53,10 @@ pub fn details(services: &gitlama_workbench::app::Services) -> Value {
         .iter()
         .filter(|entry| {
             entry.state == NativeOperationCenterState::Running
-                && session.is_some_and(|session| entry.session_id == Some(session.native_id) && entry.generation == session.generation)
+                && session.is_some_and(|session| {
+                    entry.session_id == Some(session.native_id)
+                        && entry.generation == session.generation
+                })
         })
         .collect();
     let operation = running.iter().find(|entry| entry.origin == NativeOperationCenterOrigin::User).or(running.first()).map(|entry| {
@@ -125,7 +146,11 @@ mod workspace_state {
         qproperty!("entry", Member = entry, Notify = entry_changed);
         qproperty!("recents", Member = recents, Notify = recents_changed);
         qproperty!("active", Member = active, Notify = active_changed);
-        qproperty!("appearanceEdit", Member = appearance_edit, Notify = appearance_edit_changed);
+        qproperty!(
+            "appearanceEdit",
+            Member = appearance_edit,
+            Notify = appearance_edit_changed
+        );
         qproperty!("details", Member = details, Notify = details_changed);
 
         #[qsignal]
@@ -140,14 +165,22 @@ mod workspace_state {
         /// Starts editing the mark of tab `tab_id`'s repository.
         #[qslot]
         fn edit_tab_appearance(&self, tab_id: i64) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(tab) = services.workspace.tab(tab_id as u64) else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(tab) = services.workspace.tab(tab_id as u64) else {
+                    return;
+                };
                 let identity = tab.canonical_identity().cloned();
                 let appearance = services.appearances.appearance_for(identity.as_ref());
                 let mut state = driver.workspace.borrow_mut();
-                state.appearance_image = appearance.as_ref().and_then(|appearance| appearance.image.clone());
+                state.appearance_image = appearance
+                    .as_ref()
+                    .and_then(|appearance| appearance.image.clone());
                 state.appearance_edit = serde_json::json!({
                     "tabId": tab_id,
                     "name": tab.label,
@@ -162,10 +195,15 @@ mod workspace_state {
         /// Uses the image file at `path` (empty removes the image).
         #[qslot]
         fn set_appearance_image(&self, path: String) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let image = (!path.is_empty()).then(|| gitlama_workbench::session::local_path(&path));
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let image =
+                    (!path.is_empty()).then(|| gitlama_workbench::session::local_path(&path));
                 if let Some(image) = &image {
                     // A file chosen again is read again.
                     services.appearances.forget_image(image);
@@ -178,12 +216,19 @@ mod workspace_state {
         /// Saves the edited mark: `icon` and `color` keys (empty for none).
         #[qslot]
         fn save_tab_appearance(&self, icon: String, color: String) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let (tab_id, image) = {
                     let state = driver.workspace.borrow();
-                    (state.appearance_edit["tabId"].as_i64(), state.appearance_image.clone())
+                    (
+                        state.appearance_edit["tabId"].as_i64(),
+                        state.appearance_image.clone(),
+                    )
                 };
                 let Some(identity) = tab_id
                     .and_then(|tab| services.workspace.tab(tab as u64))
@@ -191,15 +236,16 @@ mod workspace_state {
                 else {
                     return;
                 };
-                let mut appearance = services.appearances.appearance_for(Some(&identity)).unwrap_or(
-                    gitlama_contract::storage::NativeRepositoryAppearance {
+                let mut appearance = services
+                    .appearances
+                    .appearance_for(Some(&identity))
+                    .unwrap_or(gitlama_contract::storage::NativeRepositoryAppearance {
                         identity: identity.clone(),
                         icon: None,
                         color: None,
                         image: None,
                         name: None,
-                    },
-                );
+                    });
                 appearance.icon = (!icon.is_empty()).then_some(icon);
                 appearance.color = (!color.is_empty()).then_some(color);
                 appearance.image = image;
@@ -215,7 +261,9 @@ mod workspace_state {
         /// Ends the mark editor.
         #[qslot]
         fn end_tab_appearance(&self) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(|driver| {
                 let mut state = driver.workspace.borrow_mut();
                 state.appearance_edit = Value::Null;
@@ -257,7 +305,16 @@ mod workspace_state {
         /// Opens the local paths dropped on the window.
         #[qslot]
         fn open_dropped(&self, paths: Value) {
-            let paths: Vec<String> = paths.as_array().map(|paths| paths.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
+            let paths: Vec<String> = paths
+                .as_array()
+                .map(|paths| {
+                    paths
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default();
             self.with_services(move |services| {
                 let entry = std::rc::Rc::clone(&services.entry);
                 let notices = std::rc::Rc::clone(&services.notices);
@@ -359,14 +416,18 @@ mod workspace_state {
         #[qslot]
         fn move_tab_group(&self, group: i64, index: i32) {
             self.with_services(move |services| {
-                services.workspace.move_tab_group(group as u64, index.max(0) as usize)
+                services
+                    .workspace
+                    .move_tab_group(group as u64, index.max(0) as usize)
             });
         }
 
         #[qslot]
         fn move_worktree_tab(&self, tab_id: i64, index: i32) {
             self.with_services(move |services| {
-                services.workspace.move_worktree_tab(tab_id as u64, i64::from(index))
+                services
+                    .workspace
+                    .move_worktree_tab(tab_id as u64, i64::from(index))
             });
         }
 
@@ -435,17 +496,25 @@ mod workspace_state {
 
         #[qslot]
         fn add_tab_to_group(&self, tab_id: i64, group: i64) {
-            self.with_services(move |services| services.workspace.add_tab_to_group(tab_id as u64, group as u64));
+            self.with_services(move |services| {
+                services
+                    .workspace
+                    .add_tab_to_group(tab_id as u64, group as u64)
+            });
         }
 
         #[qslot]
         fn remove_tab_from_group(&self, tab_id: i64) {
-            self.with_services(move |services| services.workspace.remove_tab_from_group(tab_id as u64));
+            self.with_services(move |services| {
+                services.workspace.remove_tab_from_group(tab_id as u64)
+            });
         }
 
         #[qslot]
         fn rename_tab_group(&self, group: i64, name: String) {
-            self.with_services(move |services| services.workspace.rename_tab_group(group as u64, &name));
+            self.with_services(move |services| {
+                services.workspace.rename_tab_group(group as u64, &name)
+            });
         }
 
         #[qslot]
@@ -462,7 +531,11 @@ mod workspace_state {
 
         #[qslot]
         fn set_tab_group_collapsed(&self, group: i64, collapsed: bool) {
-            self.with_services(move |services| services.workspace.set_tab_group_collapsed(group as u64, collapsed));
+            self.with_services(move |services| {
+                services
+                    .workspace
+                    .set_tab_group_collapsed(group as u64, collapsed)
+            });
         }
 
         #[qslot]
@@ -494,7 +567,10 @@ mod workspace_state {
                 let recent = (recent_index >= 0)
                     .then(|| {
                         services.settings.with(|document| {
-                            document.recent_repositories.get(recent_index as usize).cloned()
+                            document
+                                .recent_repositories
+                                .get(recent_index as usize)
+                                .cloned()
                         })
                     })
                     .flatten();

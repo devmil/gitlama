@@ -63,26 +63,36 @@ pub fn project(history: &gitlama_workbench::history::HistoryService) -> Value {
 /// The branches the graph can be filtered to: local branches (the main
 /// branch first, the checked-out one next), then each remote's.
 pub fn branch_filter_choices(snapshot: &gitlama_contract::dto::NativeRepositorySnapshot) -> Value {
-    use gitlama_workbench::sidebar::{branch_reference, filter_upstream, main_branch_first, remote_branch_reference};
+    use gitlama_workbench::sidebar::{
+        branch_reference, filter_upstream, main_branch_first, remote_branch_reference,
+    };
     let refs = &snapshot.refs;
     let ordered = main_branch_first(&refs.branches);
-    let (main, others) = ordered.split_first().map_or((None, &[][..]), |(main, others)| (Some(*main), others));
+    let (main, others) = ordered
+        .split_first()
+        .map_or((None, &[][..]), |(main, others)| (Some(*main), others));
     let mut choices = Vec::new();
     let locals = main
         .into_iter()
         .chain(others.iter().copied().filter(|branch| branch.head))
         .chain(others.iter().copied().filter(|branch| !branch.head));
     for branch in locals {
-        let Ok(name) = std::str::from_utf8(&branch.name) else { continue };
+        let Ok(name) = std::str::from_utf8(&branch.name) else {
+            continue;
+        };
         choices.push(json!({
             "reference": branch_reference(branch), "label": name, "name": name, "remote": null,
             "current": branch.head, "upstream": filter_upstream(branch),
         }));
     }
     for remote in &refs.remotes {
-        let Ok(remote_name) = std::str::from_utf8(&remote.name) else { continue };
+        let Ok(remote_name) = std::str::from_utf8(&remote.name) else {
+            continue;
+        };
         for branch in main_branch_first(&remote.branches) {
-            let Ok(name) = std::str::from_utf8(&branch.name) else { continue };
+            let Ok(name) = std::str::from_utf8(&branch.name) else {
+                continue;
+            };
             if name == "HEAD" {
                 continue;
             }
@@ -97,10 +107,21 @@ pub fn branch_filter_choices(snapshot: &gitlama_contract::dto::NativeRepositoryS
 
 /// The checked-out branch's upstream when it has commits the branch lacks.
 pub fn stale_upstream(snapshot: &gitlama_contract::dto::NativeRepositorySnapshot) -> Value {
-    let Some(branch) = snapshot.refs.branches.iter().find(|branch| branch.head) else { return Value::Null };
-    let Some(upstream) = branch.upstream.as_ref().filter(|_| branch.behind > 0 && !branch.upstream_gone) else { return Value::Null };
+    let Some(branch) = snapshot.refs.branches.iter().find(|branch| branch.head) else {
+        return Value::Null;
+    };
+    let Some(upstream) = branch
+        .upstream
+        .as_ref()
+        .filter(|_| branch.behind > 0 && !branch.upstream_gone)
+    else {
+        return Value::Null;
+    };
     let upstream = String::from_utf8_lossy(upstream).into_owned();
-    let shown = upstream.strip_prefix("refs/remotes/").map(str::to_owned).unwrap_or(upstream);
+    let shown = upstream
+        .strip_prefix("refs/remotes/")
+        .map(str::to_owned)
+        .unwrap_or(upstream);
     json!({"reference": shown, "behind": branch.behind})
 }
 
@@ -127,7 +148,9 @@ mod history_state {
         fn select(&self, object_id: String) {
             self.with_services(move |services| {
                 if object_id == WORKTREE_OBJECT_ID {
-                    services.navigator.select_pane(gitlama_workbench::workspace::Pane::Changes, None);
+                    services
+                        .navigator
+                        .select_pane(gitlama_workbench::workspace::Pane::Changes, None);
                 } else {
                     services.navigator.select_identity(object_id);
                 }
@@ -139,7 +162,9 @@ mod history_state {
         fn toggle(&self, object_id: String) {
             self.with_services(move |services| {
                 if object_id == WORKTREE_OBJECT_ID {
-                    services.navigator.select_pane(gitlama_workbench::workspace::Pane::Changes, None);
+                    services
+                        .navigator
+                        .select_pane(gitlama_workbench::workspace::Pane::Changes, None);
                 } else {
                     services.navigator.toggle_identity(object_id);
                 }
@@ -157,7 +182,9 @@ mod history_state {
         /// filterUpstream, commands, current}}].
         #[qslot]
         fn references_at(&self, object_id: String) -> Value {
-            let Some(snapshot) = self.snapshot.as_ref() else { return Value::Array(Vec::new()) };
+            let Some(snapshot) = self.snapshot.as_ref() else {
+                return Value::Array(Vec::new());
+            };
             Value::Array(
                 gitlama_workbench::sidebar::entries_at(&snapshot.refs, &object_id)
                     .into_iter()
@@ -212,13 +239,17 @@ mod history_state {
         /// Goes to the next (or previous) search match.
         #[qslot]
         fn navigate_search(&self, backwards: bool) {
-            self.with_services(move |services| services.workspace.history.navigate_search(backwards));
+            self.with_services(move |services| {
+                services.workspace.history.navigate_search(backwards)
+            });
         }
 
         /// Collapses or expands the merge `object_id`'s side branch.
         #[qslot]
         fn toggle_collapse(&self, object_id: String) {
-            self.with_services(move |services| services.workspace.history.toggle_collapse(object_id, 0));
+            self.with_services(move |services| {
+                services.workspace.history.toggle_collapse(object_id, 0)
+            });
         }
 
         /// The branches the graph can be filtered to (the Dart
@@ -226,7 +257,9 @@ mod history_state {
         /// current, upstream}, the main branch first.
         #[qslot]
         fn branch_filter_choices(&self) -> Value {
-            self.snapshot.as_deref().map_or(Value::Array(Vec::new()), branch_filter_choices)
+            self.snapshot
+                .as_deref()
+                .map_or(Value::Array(Vec::new()), branch_filter_choices)
         }
 
         /// The new commits of the checked-out branch's upstream:
@@ -240,12 +273,24 @@ mod history_state {
         /// commit, short}], retainedAfterFailure} or {failed: true}.
         #[qslot]
         fn load_reflog(&self) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             let reply = commands.clone();
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(identity) = services.workspace.current().map(|session| session.identity) else { return };
-                let request = services.calls.repository_session_reflog(identity.native_id, identity.generation, 0, 256);
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(identity) = services.workspace.current().map(|session| session.identity)
+                else {
+                    return;
+                };
+                let request = services.calls.repository_session_reflog(
+                    identity.native_id,
+                    identity.generation,
+                    0,
+                    256,
+                );
                 rt::spawn_detached(async move {
                     let value = match request.await {
                         Ok(result) if result.failure.is_none() => json!({
@@ -270,7 +315,10 @@ mod history_state {
         #[qslot]
         fn reload(&self) {
             self.with_services(|services| {
-                let Some(identity) = services.workspace.current().map(|session| session.identity) else { return };
+                let Some(identity) = services.workspace.current().map(|session| session.identity)
+                else {
+                    return;
+                };
                 let history = Rc::clone(&services.workspace.history);
                 rt::spawn_detached(async move { history.load(identity, Vec::new()).await });
             });
@@ -281,7 +329,9 @@ mod history_state {
         fn show_commit(&self, object_id: String) {
             self.with_services(move |services| {
                 let navigator = Rc::clone(&services.navigator);
-                rt::spawn_detached(async move { navigator.show_commit(object_id, None, true, false).await });
+                rt::spawn_detached(async move {
+                    navigator.show_commit(object_id, None, true, false).await
+                });
             });
         }
 

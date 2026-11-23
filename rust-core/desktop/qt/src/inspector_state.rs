@@ -4,7 +4,9 @@
 use crate::plumbing::Commands;
 use gitlama_contract::diff::NativeDiffLayout;
 use gitlama_contract::dto::NativeFileChangeKind;
-use gitlama_workbench::inspector::{DiffOptions, InspectorService, Lens, Location, Phase, Scope, Target, change_path};
+use gitlama_workbench::inspector::{
+    DiffOptions, InspectorService, Lens, Location, Phase, Scope, Target, change_path,
+};
 use gitlama_workbench::rt;
 use qtbridge::qobject;
 use serde_json::{Value, json};
@@ -37,8 +39,18 @@ pub use gitlama_workbench::inspector::whitespace_of as parse_whitespace;
 /// The inspector's state as QML reads it.
 /// The changed files as list or tree rows: {key, path, label, depth,
 /// directory, expanded, kind, mode, oldPath}.
-fn file_rows(files: &[gitlama_contract::dto::NativeCommitFile], tree: bool, collapsed: &std::collections::HashSet<String>) -> Vec<Value> {
-    let rows = gitlama_workbench::path_tree::flatten(files.iter(), |file| text(change_path(file)), collapsed, tree, None);
+fn file_rows(
+    files: &[gitlama_contract::dto::NativeCommitFile],
+    tree: bool,
+    collapsed: &std::collections::HashSet<String>,
+) -> Vec<Value> {
+    let rows = gitlama_workbench::path_tree::flatten(
+        files.iter(),
+        |file| text(change_path(file)),
+        collapsed,
+        tree,
+        None,
+    );
     rows.into_iter()
         .map(|row| match row.item {
             Some(file) => json!({
@@ -81,11 +93,18 @@ fn tree_kind_name(kind: gitlama_contract::dto::NativeTreeEntryKind) -> &'static 
 /// folder, then a retry or "load more" row where a folder needs one.
 fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> {
     use gitlama_workbench::inspector::tree_key;
-    let changed: std::collections::HashMap<String, &gitlama_contract::dto::NativeCommitFile> = state
-        .inspection
-        .as_ref()
-        .map(|inspection| inspection.files.iter().map(|file| (text(change_path(file)), file)).collect())
-        .unwrap_or_default();
+    let changed: std::collections::HashMap<String, &gitlama_contract::dto::NativeCommitFile> =
+        state
+            .inspection
+            .as_ref()
+            .map(|inspection| {
+                inspection
+                    .files
+                    .iter()
+                    .map(|file| (text(change_path(file)), file))
+                    .collect()
+            })
+            .unwrap_or_default();
     let mut rows = Vec::new();
     fn add(
         state: &gitlama_workbench::inspector::InspectorState,
@@ -95,13 +114,16 @@ fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> 
         rows: &mut Vec<Value>,
     ) {
         let key = tree_key(directory);
-        let Some(folder) = state.tree.get(&key) else { return };
+        let Some(folder) = state.tree.get(&key) else {
+            return;
+        };
         for entry in &folder.entries {
             let path = text(&entry.path);
             let name = path.rsplit('/').next().unwrap_or_default().to_owned();
             if entry.kind == gitlama_contract::dto::NativeTreeEntryKind::Directory {
                 let expanded = state.expanded.contains(&path);
-                let loading = expanded && state.tree.get(&path).is_some_and(|loaded| loaded.loading);
+                let loading =
+                    expanded && state.tree.get(&path).is_some_and(|loaded| loaded.loading);
                 rows.push(json!({"key": format!("dir:{path}"), "rowKind": "folder", "path": path, "label": name, "depth": depth,
                     "expanded": expanded, "loading": loading, "kind": "", "treeKind": "directory", "mode": entry.mode}));
                 if expanded {
@@ -129,7 +151,11 @@ fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> 
     rows
 }
 
-pub fn project(inspector: &InspectorService, tree: bool, collapsed: &std::collections::HashSet<String>) -> Value {
+pub fn project(
+    inspector: &InspectorService,
+    tree: bool,
+    collapsed: &std::collections::HashSet<String>,
+) -> Value {
     let state = inspector.current();
     let location = state.location.as_ref().map(|location| {
         json!({
@@ -330,10 +356,22 @@ mod inspector_state {
         #[qslot]
         fn select_file(&self, path: String) {
             self.with_inspector(move |inspector| async move {
-                let Some(location) = inspector.current().location else { return };
+                let Some(location) = inspector.current().location else {
+                    return;
+                };
                 let path = (!path.is_empty()).then(|| path.into_bytes());
                 inspector
-                    .navigate(Location { path, directory: false, anchor: 0, ..location }, true, false, None)
+                    .navigate(
+                        Location {
+                            path,
+                            directory: false,
+                            anchor: 0,
+                            ..location
+                        },
+                        true,
+                        false,
+                        None,
+                    )
                     .await;
             });
         }
@@ -342,14 +380,27 @@ mod inspector_state {
         #[qslot]
         fn select_lens(&self, lens: String) {
             self.with_inspector(move |inspector| async move {
-                let Some(location) = inspector.current().location else { return };
+                let Some(location) = inspector.current().location else {
+                    return;
+                };
                 let lens = match lens.as_str() {
                     "contents" => Lens::Contents,
                     "blame" => Lens::Blame,
                     "history" => Lens::History,
                     _ => Lens::Diff,
                 };
-                inspector.navigate(Location { lens, anchor: 0, ..location }, true, false, None).await;
+                inspector
+                    .navigate(
+                        Location {
+                            lens,
+                            anchor: 0,
+                            ..location
+                        },
+                        true,
+                        false,
+                        None,
+                    )
+                    .await;
             });
         }
 
@@ -357,15 +408,23 @@ mod inspector_state {
         /// `diff_searched` (matches null when the search failed).
         #[qslot]
         fn search_diff(&self, query: String, case_sensitive: bool) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(document) = services.inspector.current().diff else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(document) = services.inspector.current().diff else {
+                    return;
+                };
                 let shared = Rc::clone(&driver.inspector);
                 rt::spawn_detached(async move {
                     let matches = document.search(&query, case_sensitive).await;
                     let value = matches.map_or(Value::Null, |rows| Value::from(rows));
-                    shared.borrow_mut().diff_searched(query, case_sensitive, value);
+                    shared
+                        .borrow_mut()
+                        .diff_searched(query, case_sensitive, value);
                 });
             });
         }
@@ -374,16 +433,32 @@ mod inspector_state {
         /// by `image_diff_loaded` with `key`.
         #[qslot]
         fn load_image_diff(&self, key: String, old_path: String, new_path: String) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let inspector = Rc::clone(&services.inspector);
                 let shared = Rc::clone(&driver.inspector);
                 rt::spawn_detached(async move {
-                    let old = if old_path.is_empty() { new_path.clone() } else { old_path };
-                    let new = if new_path.is_empty() { old.clone() } else { new_path };
-                    let result = inspector.image_diff(old.into_bytes(), new.into_bytes()).await;
-                    let value = rt::blocking(move || gitlama_workbench::images::image_diff_value(result)).await;
+                    let old = if old_path.is_empty() {
+                        new_path.clone()
+                    } else {
+                        old_path
+                    };
+                    let new = if new_path.is_empty() {
+                        old.clone()
+                    } else {
+                        new_path
+                    };
+                    let result = inspector
+                        .image_diff(old.into_bytes(), new.into_bytes())
+                        .await;
+                    let value =
+                        rt::blocking(move || gitlama_workbench::images::image_diff_value(result))
+                            .await;
                     shared.borrow_mut().image_diff_loaded(key, value);
                 });
             });
@@ -392,10 +467,16 @@ mod inspector_state {
         /// Every hunk header row of the shown diff: answered by `hunks_loaded`.
         #[qslot]
         fn load_hunks(&self) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(document) = services.inspector.current().diff else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(document) = services.inspector.current().diff else {
+                    return;
+                };
                 let shared = Rc::clone(&driver.inspector);
                 rt::spawn_detached(async move {
                     let rows = document.hunks().await;
@@ -408,7 +489,9 @@ mod inspector_state {
         #[qslot]
         fn toggle_folder(&self, identity: String) {
             let collapsed = Rc::clone(&self.collapsed);
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
                 {
                     let mut folded = collapsed.borrow_mut();
@@ -424,21 +507,27 @@ mod inspector_state {
         #[qslot]
         fn expand_directory(&self, path: String) {
             self.with_inspector(move |inspector| async move {
-                inspector.expand_directory((!path.is_empty()).then(|| path.into_bytes())).await
+                inspector
+                    .expand_directory((!path.is_empty()).then(|| path.into_bytes()))
+                    .await
             });
         }
 
         /// Closes folder `path` of the All files tree.
         #[qslot]
         fn collapse_directory(&self, path: String) {
-            self.with_inspector(move |inspector| async move { inspector.collapse_directory(path.as_bytes()) });
+            self.with_inspector(move |inspector| async move {
+                inspector.collapse_directory(path.as_bytes())
+            });
         }
 
         /// Loads the next entries of folder `path` ("" is the root).
         #[qslot]
         fn load_more_directory(&self, path: String) {
             self.with_inspector(move |inspector| async move {
-                inspector.load_more_directory((!path.is_empty()).then(|| path.into_bytes())).await
+                inspector
+                    .load_more_directory((!path.is_empty()).then(|| path.into_bytes()))
+                    .await
             });
         }
 
@@ -446,7 +535,9 @@ mod inspector_state {
         /// {canOpenWorkingCopy, remote, hasDiffTool}.
         #[qslot]
         fn file_host(&self) -> Value {
-            let Some(actions) = &self.actions else { return json!({}) };
+            let Some(actions) = &self.actions else {
+                return json!({});
+            };
             json!({
                 "canOpenWorkingCopy": actions.can_open_working_copy(),
                 "remote": actions.remote(),
@@ -457,7 +548,9 @@ mod inspector_state {
         /// Whether the repository-relative `path` exists in the working tree.
         #[qslot]
         fn exists_in_working_tree(&self, path: String) -> bool {
-            self.actions.as_ref().is_some_and(|actions| actions.exists_in_working_tree(&path))
+            self.actions
+                .as_ref()
+                .is_some_and(|actions| actions.exists_in_working_tree(&path))
         }
 
         /// Shows lens `lens` of `path` (a folder when `directory`) in
@@ -468,11 +561,18 @@ mod inspector_state {
             self.with_inspector(move |inspector| async move {
                 let shown = inspector.current().location;
                 let target = match &shown {
-                    Some(location) if revision.is_empty() || location.target.commit() == revision => location.target.clone(),
+                    Some(location)
+                        if revision.is_empty() || location.target.commit() == revision =>
+                    {
+                        location.target.clone()
+                    }
                     _ if revision.is_empty() => return,
                     _ => Target::Commit(revision),
                 };
-                let scope = shown.as_ref().filter(|location| location.target == target).map_or(Scope::Changed, |location| location.scope);
+                let scope = shown
+                    .as_ref()
+                    .filter(|location| location.target == target)
+                    .map_or(Scope::Changed, |location| location.scope);
                 let lens = if directory {
                     Lens::History
                 } else {
@@ -483,7 +583,13 @@ mod inspector_state {
                         _ => Lens::Diff,
                     }
                 };
-                let location = Location { scope, path: Some(path.into_bytes()), directory, lens, ..Location::of(target) };
+                let location = Location {
+                    scope,
+                    path: Some(path.into_bytes()),
+                    directory,
+                    lens,
+                    ..Location::of(target)
+                };
                 inspector.navigate(location, true, false, None).await;
             });
         }
@@ -491,9 +597,13 @@ mod inspector_state {
         /// Restores `path` to its content in `commit` after a preview.
         #[qslot]
         fn restore_file(&self, path: String, commit: String) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let actions = Rc::clone(&services.inspector_actions);
                 rt::spawn_detached(async move { actions.restore(path, commit).await });
             });
@@ -501,13 +611,27 @@ mod inspector_state {
 
         /// Opens a change in the configured diff tool.
         #[qslot]
-        fn external_diff(&self, old_revision: String, new_revision: String, old_path: String, new_path: String) {
-            let Some(commands) = &self.commands else { return };
+        fn external_diff(
+            &self,
+            old_revision: String,
+            new_revision: String,
+            old_path: String,
+            new_path: String,
+        ) {
+            let Some(commands) = &self.commands else {
+                return;
+            };
             let old_revision = (!old_revision.is_empty()).then_some(old_revision);
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let actions = Rc::clone(&services.inspector_actions);
-                rt::spawn_detached(async move { actions.external_diff(old_revision, new_revision, old_path, new_path).await });
+                rt::spawn_detached(async move {
+                    actions
+                        .external_diff(old_revision, new_revision, old_path, new_path)
+                        .await
+                });
             });
         }
 
@@ -515,18 +639,29 @@ mod inspector_state {
         /// `directory`) at the current commit in the History inspector.
         #[qslot]
         fn inspect_working_file(&self, path: String, lens: String, directory: bool) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let head = services.workspace.current().and_then(|session| session.snapshot.status.as_ref()?.head_object_id.clone());
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let head = services
+                    .workspace
+                    .current()
+                    .and_then(|session| session.snapshot.status.as_ref()?.head_object_id.clone());
                 let Some(head) = head else {
-                    services.notices.status("commandContextUnavailable", Value::Null);
+                    services
+                        .notices
+                        .status("commandContextUnavailable", Value::Null);
                     return;
                 };
                 let navigator = Rc::clone(&services.navigator);
                 let inspector = Rc::clone(&services.inspector);
                 rt::spawn_detached(async move {
-                    navigator.show_commit(head.clone(), None, false, false).await;
+                    navigator
+                        .show_commit(head.clone(), None, false, false)
+                        .await;
                     let lens = match lens.as_str() {
                         "blame" => Lens::Blame,
                         "contents" => Lens::Contents,
@@ -547,7 +682,9 @@ mod inspector_state {
         #[qslot]
         fn show_commit(&self, commit: String) {
             self.with_inspector(move |inspector| async move {
-                inspector.navigate(Location::of(Target::Commit(commit)), true, false, None).await;
+                inspector
+                    .navigate(Location::of(Target::Commit(commit)), true, false, None)
+                    .await;
             });
         }
 
@@ -555,9 +692,22 @@ mod inspector_state {
         #[qslot]
         fn set_all_files(&self, all: bool) {
             self.with_inspector(move |inspector| async move {
-                let Some(location) = inspector.current().location else { return };
+                let Some(location) = inspector.current().location else {
+                    return;
+                };
                 let scope = if all { Scope::All } else { Scope::Changed };
-                inspector.navigate(Location { scope, anchor: 0, ..location }, true, false, None).await;
+                inspector
+                    .navigate(
+                        Location {
+                            scope,
+                            anchor: 0,
+                            ..location
+                        },
+                        true,
+                        false,
+                        None,
+                    )
+                    .await;
             });
         }
 
@@ -567,14 +717,22 @@ mod inspector_state {
             let options = DiffOptions {
                 context_lines: context_lines.clamp(0, 100) as u32,
                 whitespace: parse_whitespace(&whitespace),
-                layout: if layout == "sideBySide" { NativeDiffLayout::SideBySide } else { NativeDiffLayout::Unified },
+                layout: if layout == "sideBySide" {
+                    NativeDiffLayout::SideBySide
+                } else {
+                    NativeDiffLayout::Unified
+                },
             };
             // The stored preferences are the source; the driver reloads
             // every diff that shows other options.
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {
                     if let Some(services) = driver.app.services() {
-                        drop(services.settings.update(|document| options.store(&mut document.appearance)));
+                        drop(
+                            services
+                                .settings
+                                .update(|document| options.store(&mut document.appearance)),
+                        );
                     }
                 });
             }
@@ -594,26 +752,34 @@ mod inspector_state {
         /// Loads the blame page holding line `index` (0-based).
         #[qslot]
         fn ensure_blame_row(&self, index: i32) {
-            self.with_inspector(move |inspector| async move { inspector.ensure_blame_row(index.max(0) as u64).await });
+            self.with_inspector(move |inspector| async move {
+                inspector.ensure_blame_row(index.max(0) as u64).await
+            });
         }
 
         /// Blames line `index`'s file in the parent of its commit.
         #[qslot]
         fn blame_before(&self, index: i32) {
-            self.with_inspector(move |inspector| async move { inspector.blame_before(index.max(0) as u64).await });
+            self.with_inspector(move |inspector| async move {
+                inspector.blame_before(index.max(0) as u64).await
+            });
         }
 
         /// The history of lines `first`…`last` (1-based).
         #[qslot]
         fn line_history(&self, first: i32, last: i32) {
             self.with_inspector(move |inspector| async move {
-                inspector.line_history(first.max(1) as u64, last.max(first).max(1) as u64).await
+                inspector
+                    .line_history(first.max(1) as u64, last.max(first).max(1) as u64)
+                    .await
             });
         }
 
         #[qslot]
         fn select_history_entry(&self, commit: String) {
-            self.with_inspector(move |inspector| async move { inspector.select_history_entry(commit).await });
+            self.with_inspector(move |inspector| async move {
+                inspector.select_history_entry(commit).await
+            });
         }
 
         #[qslot]

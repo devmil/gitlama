@@ -13,8 +13,8 @@ use crate::rt;
 use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::diff_renderer::{
-    NativeDiffRendererDefinition, NativeDiffRendererFailureKind, NativeDiffRendererPreview, NativeDiffRendererResult,
-    NativeDiffRendererSettings, NativeDiffRendererState,
+    NativeDiffRendererDefinition, NativeDiffRendererFailureKind, NativeDiffRendererPreview,
+    NativeDiffRendererResult, NativeDiffRendererSettings, NativeDiffRendererState,
 };
 use gitlama_contract::dto::{NativePathIdentity, NativePathPlatform};
 use serde_json::{Value, json};
@@ -68,7 +68,10 @@ pub struct Form {
     pub arguments: String,
 }
 
-pub fn form_definition(form: &Form, platform: NativePathPlatform) -> Option<NativeDiffRendererDefinition> {
+pub fn form_definition(
+    form: &Form,
+    platform: NativePathPlatform,
+) -> Option<NativeDiffRendererDefinition> {
     let (id, title, executable) = (form.id.trim(), form.title.trim(), form.executable.trim());
     if id.is_empty() || title.is_empty() || executable.is_empty() {
         return None;
@@ -80,8 +83,17 @@ pub fn form_definition(form: &Form, platform: NativePathPlatform) -> Option<Nati
     Some(NativeDiffRendererDefinition {
         id: id.to_owned(),
         title: title.to_owned(),
-        executable: NativePathIdentity { platform, units, remote: None },
-        arguments: form.arguments.split('\n').filter(|line| !line.is_empty()).map(str::to_owned).collect(),
+        executable: NativePathIdentity {
+            platform,
+            units,
+            remote: None,
+        },
+        arguments: form
+            .arguments
+            .split('\n')
+            .filter(|line| !line.is_empty())
+            .map(str::to_owned)
+            .collect(),
     })
 }
 
@@ -142,7 +154,8 @@ impl DiffRenderers {
     }
 
     pub fn configured(&self) -> Option<NativeDiffRendererSettings> {
-        self.settings.with(|document| document.diff_renderer.clone())
+        self.settings
+            .with(|document| document.diff_renderer.clone())
     }
 
     fn set_result(&self, sequence: u64, request_id: u64, result: NativeDiffRendererResult) {
@@ -159,15 +172,23 @@ impl DiffRenderers {
             text: None,
             accessibility_text: None,
             activity_ids: Vec::new(),
-            failure: Some(gitlama_contract::diff_renderer::NativeDiffRendererFailure { kind: failure }),
+            failure: Some(gitlama_contract::diff_renderer::NativeDiffRendererFailure {
+                kind: failure,
+            }),
         }
     }
 
     /// Renders the inspected diff with the configured renderer.
     pub async fn render(&self) {
-        let Some(settings) = self.configured() else { return };
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
-        let Some(request_id) = self.inspector.current().diff.map(|diff| diff.request_id()) else { return };
+        let Some(settings) = self.configured() else {
+            return;
+        };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
+        let Some(request_id) = self.inspector.current().diff.map(|diff| diff.request_id()) else {
+            return;
+        };
         let sequence = self.sequence.get() + 1;
         self.sequence.set(sequence);
         let (session, generation) = (identity.native_id, identity.generation);
@@ -177,33 +198,67 @@ impl DiffRenderers {
             executable: settings.executable,
             arguments: settings.arguments,
         };
-        let preview = match self.calls.repository_session_diff_renderer_preview(session, generation, request_id, definition).await {
+        let preview = match self
+            .calls
+            .repository_session_diff_renderer_preview(session, generation, request_id, definition)
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
                 (_, failure) => {
-                    let kind = failure.map_or(NativeDiffRendererFailureKind::Stale, |failure| failure.kind);
+                    let kind = failure
+                        .map_or(NativeDiffRendererFailureKind::Stale, |failure| failure.kind);
                     return self.set_result(sequence, request_id, Self::fallback(kind));
                 }
             },
-            Err(_) => return self.set_result(sequence, request_id, Self::fallback(NativeDiffRendererFailureKind::Stale)),
+            Err(_) => {
+                return self.set_result(
+                    sequence,
+                    request_id,
+                    Self::fallback(NativeDiffRendererFailureKind::Stale),
+                );
+            }
         };
-        let answer = self.prompts.ask("confirmRenderer", preview_value(&preview, true)).await;
+        let answer = self
+            .prompts
+            .ask("confirmRenderer", preview_value(&preview, true))
+            .await;
         if answer != Some(Value::Bool(true)) || self.sequence.get() != sequence {
-            let _ = self.calls.repository_session_diff_renderer_cancel(session, generation, preview.token).await;
+            let _ = self
+                .calls
+                .repository_session_diff_renderer_cancel(session, generation, preview.token)
+                .await;
             return;
         }
-        let mut result = match self.calls.repository_session_diff_renderer_execute(session, generation, preview.token).await {
+        let mut result = match self
+            .calls
+            .repository_session_diff_renderer_execute(session, generation, preview.token)
+            .await
+        {
             Ok(result) => result,
-            Err(_) => return self.set_result(sequence, request_id, Self::fallback(NativeDiffRendererFailureKind::Stale)),
+            Err(_) => {
+                return self.set_result(
+                    sequence,
+                    request_id,
+                    Self::fallback(NativeDiffRendererFailureKind::Stale),
+                );
+            }
         };
         self.set_result(sequence, request_id, result.clone());
         while result.state == NativeDiffRendererState::Pending {
             rt::sleep(POLL).await;
             if self.sequence.get() != sequence {
-                let _ = self.calls.repository_session_diff_renderer_cancel(session, generation, preview.token).await;
+                let _ = self
+                    .calls
+                    .repository_session_diff_renderer_cancel(session, generation, preview.token)
+                    .await;
                 return;
             }
-            result = match self.calls.repository_session_diff_renderer_poll(session, generation, preview.token).await {
+            result = match self
+                .calls
+                .repository_session_diff_renderer_poll(session, generation, preview.token)
+                .await
+            {
                 Ok(result) => result,
                 Err(_) => Self::fallback(NativeDiffRendererFailureKind::Stale),
             };
@@ -223,17 +278,30 @@ impl DiffRenderers {
         if self.card.borrow().busy {
             return;
         }
-        let Some(root) = self.workspace.active_canonical() else { return };
+        let Some(root) = self.workspace.active_canonical() else {
+            return;
+        };
         let Some(definition) = form_definition(&form, root.platform) else {
-            self.card.borrow_mut().failure = Some(failure_key(Some(NativeDiffRendererFailureKind::InvalidDefinition)));
+            self.card.borrow_mut().failure = Some(failure_key(Some(
+                NativeDiffRendererFailureKind::InvalidDefinition,
+            )));
             return self.changed();
         };
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
-        *self.card.borrow_mut() = Card { busy: true, failure: None };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
+        *self.card.borrow_mut() = Card {
+            busy: true,
+            failure: None,
+        };
         self.changed();
         let validated = self
             .calls
-            .repository_session_diff_renderer_validate(identity.native_id, identity.generation, definition.clone())
+            .repository_session_diff_renderer_validate(
+                identity.native_id,
+                identity.generation,
+                definition.clone(),
+            )
             .await;
         let preview = match validated {
             Ok(result) => match (result.preview, result.failure) {
@@ -245,7 +313,12 @@ impl DiffRenderers {
         let failure = match preview {
             Err(key) => Some(key),
             Ok(preview) => {
-                if self.prompts.ask("confirmRendererSave", preview_value(&preview, false)).await == Some(Value::Bool(true)) {
+                if self
+                    .prompts
+                    .ask("confirmRendererSave", preview_value(&preview, false))
+                    .await
+                    == Some(Value::Bool(true))
+                {
                     let stored = NativeDiffRendererSettings {
                         id: definition.id,
                         title: definition.title,
@@ -255,7 +328,9 @@ impl DiffRenderers {
                     self.settings
                         .update_durable(
                             |document| document.diff_renderer = Some(stored.clone()),
-                            |current, previous| current.diff_renderer = previous.diff_renderer.clone(),
+                            |current, previous| {
+                                current.diff_renderer = previous.diff_renderer.clone()
+                            },
                         )
                         .await
                         .err()
@@ -265,7 +340,10 @@ impl DiffRenderers {
                 }
             }
         };
-        *self.card.borrow_mut() = Card { busy: false, failure };
+        *self.card.borrow_mut() = Card {
+            busy: false,
+            failure,
+        };
         self.changed();
     }
 
@@ -285,21 +363,24 @@ impl DiffRenderers {
     pub fn value(&self) -> Value {
         let request_id = self.inspector.current().diff.map(|diff| diff.request_id());
         let run = self.run.borrow();
-        let result = run.as_ref().filter(|run| Some(run.request_id) == request_id).map(|run| {
-            let result = &run.result;
-            json!({
-                "state": match result.state {
-                    NativeDiffRendererState::Pending => "pending",
-                    NativeDiffRendererState::Ready => "ready",
-                    NativeDiffRendererState::Fallback => "fallback",
-                    NativeDiffRendererState::Canceled => "canceled",
-                },
-                "title": result.title,
-                "text": result.text,
-                "accessibilityText": result.accessibility_text,
-                "failure": failure_key(result.failure.as_ref().map(|failure| failure.kind)),
-            })
-        });
+        let result = run
+            .as_ref()
+            .filter(|run| Some(run.request_id) == request_id)
+            .map(|run| {
+                let result = &run.result;
+                json!({
+                    "state": match result.state {
+                        NativeDiffRendererState::Pending => "pending",
+                        NativeDiffRendererState::Ready => "ready",
+                        NativeDiffRendererState::Fallback => "fallback",
+                        NativeDiffRendererState::Canceled => "canceled",
+                    },
+                    "title": result.title,
+                    "text": result.text,
+                    "accessibilityText": result.accessibility_text,
+                    "failure": failure_key(result.failure.as_ref().map(|failure| failure.kind)),
+                })
+            });
         let configured = self.configured();
         let card = self.card.borrow();
         json!({
@@ -323,16 +404,33 @@ mod tests {
 
     #[test]
     fn a_complete_form_describes_a_renderer() {
-        let form = Form { id: " plain ".into(), title: "Plain".into(), executable: "/usr/bin/cat".into(), arguments: "-\n\n".into() };
+        let form = Form {
+            id: " plain ".into(),
+            title: "Plain".into(),
+            executable: "/usr/bin/cat".into(),
+            arguments: "-\n\n".into(),
+        };
         let definition = form_definition(&form, NativePathPlatform::Unix).unwrap();
         assert_eq!(definition.id, "plain");
         assert_eq!(definition.arguments, ["-"]);
-        assert!(form_definition(&Form { title: " ".into(), ..form }, NativePathPlatform::Unix).is_none());
+        assert!(
+            form_definition(
+                &Form {
+                    title: " ".into(),
+                    ..form
+                },
+                NativePathPlatform::Unix
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn failures_name_their_messages() {
         assert_eq!(failure_key(None), "diffRendererStale");
-        assert_eq!(failure_key(Some(NativeDiffRendererFailureKind::TimedOut)), "diffRendererTimedOut");
+        assert_eq!(
+            failure_key(Some(NativeDiffRendererFailureKind::TimedOut)),
+            "diffRendererTimedOut"
+        );
     }
 }

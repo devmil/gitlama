@@ -52,16 +52,26 @@ pub struct HistorySource {
 /// pull request stands at its head commit; when no chip of the branch is
 /// there it stands on the remote-tracking chip, marked outdated, and the
 /// branch is looked up again. Branches not looked up yet are asked for.
-fn chips_with_pulls(chips: &Value, object_id: &str, hosting: &Rc<gitlama_workbench::hosting::RepositoryHosting>) -> Value {
-    let Some(list) = chips.as_array() else { return chips.clone() };
+fn chips_with_pulls(
+    chips: &Value,
+    object_id: &str,
+    hosting: &Rc<gitlama_workbench::hosting::RepositoryHosting>,
+) -> Value {
+    let Some(list) = chips.as_array() else {
+        return chips.clone();
+    };
     let mut branches = Vec::new();
     let mut out: Vec<Value> = list.clone();
     for chip in &mut out {
         let raw = chip["raw"].as_str().unwrap_or_default().to_owned();
         let tracking = chip["tracking"].as_str().map(str::to_owned);
-        let Some(branch) = hosting.branch_for(&raw, tracking.as_deref()) else { continue };
+        let Some(branch) = hosting.branch_for(&raw, tracking.as_deref()) else {
+            continue;
+        };
         branches.push(branch.clone());
-        let Some(pull) = hosting.shown_pull(&branch) else { continue };
+        let Some(pull) = hosting.shown_pull(&branch) else {
+            continue;
+        };
         let at_head = !pull.head_sha.is_empty() && pull.head_sha == object_id;
         let remote_tracking = raw.starts_with("refs/remotes/");
         if !at_head && !(remote_tracking && !pull.head_sha.is_empty()) {
@@ -116,7 +126,11 @@ mod history_model {
         #[qslot]
         fn object_id_at(&self, index: i32) -> String {
             let row = self.view(index);
-            if row.loading { String::new() } else { row.object_id.clone() }
+            if row.loading {
+                String::new()
+            } else {
+                row.object_id.clone()
+            }
         }
     }
 
@@ -146,11 +160,19 @@ mod history_model {
                 return QVariant::default();
             }
             let view = self.view(row);
-            match ROLES.get((role - FIRST_ROLE) as usize).copied().unwrap_or_default() {
+            match ROLES
+                .get((role - FIRST_ROLE) as usize)
+                .copied()
+                .unwrap_or_default()
+            {
                 "objectId" => QVariant::from(&view.object_id),
                 "loading" => QVariant::from(view.loading),
                 "lit" => QVariant::from(view.lit),
-                "incomingLit" => QVariant::from(if row == 0 { view.lit } else { self.view(row - 1).lit }),
+                "incomingLit" => QVariant::from(if row == 0 {
+                    view.lit
+                } else {
+                    self.view(row - 1).lit
+                }),
                 "graph" => to_qvariant(&view.graph),
                 "occupiedLane" => QVariant::from(view.occupied_lane as i32),
                 "subject" => QVariant::from(&view.subject),
@@ -158,9 +180,14 @@ mod history_model {
                 "author" => QVariant::from(&view.author),
                 "avatarHash" => QVariant::from(&view.avatar_hash),
                 "authorTime" => QVariant::from(view.author_time as f64),
-                "metadataFailure" => view.metadata_failure.map(QVariant::from).unwrap_or_default(),
+                "metadataFailure" => view
+                    .metadata_failure
+                    .map(QVariant::from)
+                    .unwrap_or_default(),
                 "chips" => match &self.source.hosting {
-                    Some(hosting) => to_qvariant(&chips_with_pulls(&view.chips, &view.object_id, hosting)),
+                    Some(hosting) => {
+                        to_qvariant(&chips_with_pulls(&view.chips, &view.object_id, hosting))
+                    }
                     None => to_qvariant(&view.chips),
                 },
                 "overflow" => to_qvariant(&view.overflow),
@@ -192,7 +219,12 @@ mod history_model {
             let Some(history) = &self.source.history else {
                 return Rc::new(row_view_placeholder(row));
             };
-            let view = Rc::new(row_view(history, row as u64, &self.source.context, self.source.head.as_deref()));
+            let view = Rc::new(row_view(
+                history,
+                row as u64,
+                &self.source.context,
+                self.source.head.as_deref(),
+            ));
             // Placeholders are asked again once their page arrives.
             if !view.loading {
                 self.rows.borrow_mut().insert(row, Rc::clone(&view));

@@ -287,7 +287,10 @@ mod tests {
 
     #[test]
     fn redaction_hides_paths_addresses_and_secrets() {
-        assert_eq!(redact("open /home/someone/repo failed"), "open <redacted-path> failed");
+        assert_eq!(
+            redact("open /home/someone/repo failed"),
+            "open <redacted-path> failed"
+        );
         assert_eq!(redact("see https://example.com/x"), "see <redacted-uri>");
         assert_eq!(redact("a@b.example"), "<redacted-email>");
         assert_eq!(redact("token=abc"), "<redacted>");
@@ -301,6 +304,10 @@ mod tests {
         debug("Test", "fine_event", &[]);
         assert!(!snapshot().iter().any(|line| line.contains("fine_event")));
         info("Test", "info_event", &[("count", 3_u64.into())]);
-        assert!(snapshot().iter().any(|line| line.ends_with("Test: info_event count=3")));
+        assert!(
+            snapshot()
+                .iter()
+                .any(|line| line.ends_with("Test: info_event count=3"))
+        );
     }
 }

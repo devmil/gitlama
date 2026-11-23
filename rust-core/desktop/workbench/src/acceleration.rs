@@ -24,7 +24,10 @@ pub fn can_improve(acceleration: &NativeStatusAcceleration) -> bool {
 
 /// The last scan was slow and enabling would change a setting.
 pub fn worth_offering(acceleration: &NativeStatusAcceleration) -> bool {
-    acceleration.last_scan_millis.is_some_and(|millis| millis >= SLOW_SCAN_MILLIS) && can_improve(acceleration)
+    acceleration
+        .last_scan_millis
+        .is_some_and(|millis| millis >= SLOW_SCAN_MILLIS)
+        && can_improve(acceleration)
 }
 
 type Key = (u64, u64);
@@ -68,8 +71,17 @@ pub struct Acceleration {
 }
 
 impl Acceleration {
-    pub fn new(calls: Rc<dyn SessionCalls>, workspace: Rc<WorkspaceService>, notifier: Notifier) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, notifier, inner: RefCell::new(Inner::default()) })
+    pub fn new(
+        calls: Rc<dyn SessionCalls>,
+        workspace: Rc<WorkspaceService>,
+        notifier: Notifier,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            calls,
+            workspace,
+            notifier,
+            inner: RefCell::new(Inner::default()),
+        })
     }
 
     fn changed(&self) {
@@ -79,7 +91,9 @@ impl Acceleration {
     /// Checks once per session, after its first status scan, whether the
     /// active repository's slow status is worth speeding up.
     pub fn check_offer(self: &Rc<Self>) {
-        let Some(session) = self.workspace.current() else { return };
+        let Some(session) = self.workspace.current() else {
+            return;
+        };
         if session.identity.backend != BackendKind::Local || session.snapshot.status.is_none() {
             return;
         }
@@ -88,7 +102,9 @@ impl Acceleration {
             return;
         }
         let this = Rc::clone(self);
-        let request = self.calls.repository_session_status_acceleration(key.0, key.1);
+        let request = self
+            .calls
+            .repository_session_status_acceleration(key.0, key.1);
         crate::rt::spawn_detached(async move {
             let acceleration = request.await.ok().and_then(|result| result.acceleration);
             let mut inner = this.inner.borrow_mut();
@@ -103,7 +119,9 @@ impl Acceleration {
 
     /// Hides the offer for the active session.
     pub fn dismiss(&self) {
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         let key = key(identity);
         let mut inner = self.inner.borrow_mut();
         inner.dismissed.insert(key);
@@ -114,14 +132,23 @@ impl Acceleration {
 
     /// Reads the active repository's accelerators for the settings.
     pub async fn read(&self) {
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         let key = key(identity);
-        self.inner.borrow_mut().view = View { session: Some(key), loading: identity.backend == BackendKind::Local, ..View::default() };
+        self.inner.borrow_mut().view = View {
+            session: Some(key),
+            loading: identity.backend == BackendKind::Local,
+            ..View::default()
+        };
         self.changed();
         if identity.backend != BackendKind::Local {
             return;
         }
-        let result = self.calls.repository_session_status_acceleration(key.0, key.1).await;
+        let result = self
+            .calls
+            .repository_session_status_acceleration(key.0, key.1)
+            .await;
         let mut inner = self.inner.borrow_mut();
         if inner.view.session != Some(key) {
             return;
@@ -138,7 +165,9 @@ impl Acceleration {
     /// Enables the missing accelerators of the active repository, from the
     /// offer or the settings; both then show the settings in effect.
     pub async fn enable(&self, from_settings: bool) {
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         let key = key(identity);
         {
             let mut inner = self.inner.borrow_mut();
@@ -152,13 +181,18 @@ impl Acceleration {
             }
         }
         self.changed();
-        let result = self.calls.repository_session_enable_status_acceleration(key.0, key.1).await;
+        let result = self
+            .calls
+            .repository_session_enable_status_acceleration(key.0, key.1)
+            .await;
         let enabled = result.ok().and_then(|result| result.acceleration);
         let mut inner = self.inner.borrow_mut();
         if from_settings {
             inner.view.enabling = false;
             match &enabled {
-                Some(acceleration) if inner.view.session == Some(key) => inner.view.acceleration = Some(acceleration.clone()),
+                Some(acceleration) if inner.view.session == Some(key) => {
+                    inner.view.acceleration = Some(acceleration.clone())
+                }
                 Some(_) => {}
                 None => inner.view.enable_failed = true,
             }
@@ -181,19 +215,22 @@ impl Acceleration {
     pub fn value(&self) -> Value {
         let identity = self.workspace.current().map(|session| session.identity);
         let inner = self.inner.borrow();
-        let offer = identity.and_then(|identity| inner.offers.get(&key(identity))).and_then(|offer| {
-            let acceleration = offer.acceleration.as_ref()?;
-            if !offer.failed && !offer.enabling && !worth_offering(acceleration) {
-                return None;
-            }
-            let seconds = (acceleration.last_scan_millis.unwrap_or(0) as f64 / 1000.0).round() as u64;
-            Some(json!({
-                "failed": offer.failed,
-                "enabling": offer.enabling,
-                "seconds": seconds,
-                "monitor": acceleration.fsmonitor_available && !acceleration.fsmonitor,
-            }))
-        });
+        let offer = identity
+            .and_then(|identity| inner.offers.get(&key(identity)))
+            .and_then(|offer| {
+                let acceleration = offer.acceleration.as_ref()?;
+                if !offer.failed && !offer.enabling && !worth_offering(acceleration) {
+                    return None;
+                }
+                let seconds =
+                    (acceleration.last_scan_millis.unwrap_or(0) as f64 / 1000.0).round() as u64;
+                Some(json!({
+                    "failed": offer.failed,
+                    "enabling": offer.enabling,
+                    "seconds": seconds,
+                    "monitor": acceleration.fsmonitor_available && !acceleration.fsmonitor,
+                }))
+            });
         let view = &inner.view;
         let settings = (view.session.is_some() && view.session == identity.map(key)).then(|| {
             json!({
@@ -219,17 +256,52 @@ impl Acceleration {
 mod tests {
     use super::*;
 
-    fn acceleration(untracked: bool, monitor: bool, available: bool, scan: Option<u64>) -> NativeStatusAcceleration {
-        NativeStatusAcceleration { untracked_cache: untracked, fsmonitor: monitor, fsmonitor_available: available, last_scan_millis: scan }
+    fn acceleration(
+        untracked: bool,
+        monitor: bool,
+        available: bool,
+        scan: Option<u64>,
+    ) -> NativeStatusAcceleration {
+        NativeStatusAcceleration {
+            untracked_cache: untracked,
+            fsmonitor: monitor,
+            fsmonitor_available: available,
+            last_scan_millis: scan,
+        }
     }
 
     #[test]
     fn only_slow_scans_that_can_improve_are_offered() {
-        assert!(worth_offering(&acceleration(false, false, false, Some(3_000))));
-        assert!(!worth_offering(&acceleration(false, false, false, Some(2_999))));
-        assert!(!worth_offering(&acceleration(true, false, false, Some(9_000))));
-        assert!(worth_offering(&acceleration(true, false, true, Some(9_000))));
-        assert!(!worth_offering(&acceleration(true, true, true, Some(9_000))));
+        assert!(worth_offering(&acceleration(
+            false,
+            false,
+            false,
+            Some(3_000)
+        )));
+        assert!(!worth_offering(&acceleration(
+            false,
+            false,
+            false,
+            Some(2_999)
+        )));
+        assert!(!worth_offering(&acceleration(
+            true,
+            false,
+            false,
+            Some(9_000)
+        )));
+        assert!(worth_offering(&acceleration(
+            true,
+            false,
+            true,
+            Some(9_000)
+        )));
+        assert!(!worth_offering(&acceleration(
+            true,
+            true,
+            true,
+            Some(9_000)
+        )));
         assert!(!worth_offering(&acceleration(false, false, true, None)));
     }
 }

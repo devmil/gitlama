@@ -4,7 +4,9 @@
 
 use crate::plumbing::Commands;
 use gitlama_contract::dto::NativeStagingSide;
-use gitlama_workbench::patches::{PatchService, Source, apply_message, export_message, format_key, scope_key};
+use gitlama_workbench::patches::{
+    PatchService, Source, apply_message, export_message, format_key, scope_key,
+};
 use gitlama_workbench::rt;
 use gitlama_workbench::session::SessionIdentity;
 use qtbridge::qobject;
@@ -15,25 +17,67 @@ use std::rc::Rc;
 /// files, commit, base, paths, side, requestId, rows}.
 pub fn parse_source(value: &Value) -> Option<Source> {
     let paths = || -> Vec<Vec<u8>> {
-        value["paths"].as_array().map(|paths| paths.iter().filter_map(Value::as_str).map(|path| path.as_bytes().to_vec()).collect()).unwrap_or_default()
+        value["paths"]
+            .as_array()
+            .map(|paths| {
+                paths
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(|path| path.as_bytes().to_vec())
+                    .collect()
+            })
+            .unwrap_or_default()
     };
-    let side = || if value["side"] == "staged" { NativeStagingSide::Staged } else { NativeStagingSide::Unstaged };
+    let side = || {
+        if value["side"] == "staged" {
+            NativeStagingSide::Staged
+        } else {
+            NativeStagingSide::Unstaged
+        }
+    };
     Some(match value["kind"].as_str()? {
-        "history" => Source::History { commit: value["commit"].as_str().filter(|commit| !commit.is_empty()).map(str::to_owned) },
+        "history" => Source::History {
+            commit: value["commit"]
+                .as_str()
+                .filter(|commit| !commit.is_empty())
+                .map(str::to_owned),
+        },
         "diff" => Source::Diff {
-            base: value["base"].as_str().filter(|base| !base.is_empty()).map(str::to_owned),
+            base: value["base"]
+                .as_str()
+                .filter(|base| !base.is_empty())
+                .map(str::to_owned),
             commit: value["commit"].as_str()?.to_owned(),
             paths: paths(),
         },
         "selection" => Source::Selection,
         "lines" => Source::Lines {
             request_id: value["requestId"].as_str()?.parse().ok()?,
-            rows: value["rows"].as_array().map(|rows| rows.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default(),
+            rows: value["rows"]
+                .as_array()
+                .map(|rows| {
+                    rows.iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default(),
         },
-        "files" => Source::Files { side: side(), paths: paths() },
+        "files" => Source::Files {
+            side: side(),
+            paths: paths(),
+        },
         "keys" => Source::Keys {
             side: side(),
-            keys: value["keys"].as_array().map(|keys| keys.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default(),
+            keys: value["keys"]
+                .as_array()
+                .map(|keys| {
+                    keys.iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default(),
         },
         _ => return None,
     })
@@ -66,14 +110,20 @@ mod patch_state {
         /// Starts a dialog for `source` in `mode` (create or apply).
         #[qslot]
         fn begin(&self, source: Value, mode: String) {
-            let Some(source) = parse_source(&source) else { return };
+            let Some(source) = parse_source(&source) else {
+                return;
+            };
             self.with_state(move |state, services| {
                 state.sequence += 1;
                 state.source = Some(source);
                 state.identity = services.patches.session();
                 state.export_token = None;
                 state.apply_token = None;
-                let label = services.workspace.active_tab().map(|tab| tab.label).unwrap_or_default();
+                let label = services
+                    .workspace
+                    .active_tab()
+                    .map(|tab| tab.label)
+                    .unwrap_or_default();
                 state.state = json!({
                     "mode": if mode == "apply" { "apply" } else { "create" },
                     "busy": false,
@@ -147,7 +197,9 @@ mod patch_state {
         /// Checks the patch file `path`.
         #[qslot]
         fn choose_file(&self, path: String) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
                 let Some(services) = driver.app.services() else { return };
                 let shared = Rc::clone(&driver.patches);
@@ -191,25 +243,29 @@ mod patch_state {
         /// Applies the checked patch.
         #[qslot]
         fn apply(&self) {
-            self.run(|state| state.apply_token, |patches, identity, token, sequence, shared| async move {
-                let result = patches.execute_apply(identity, token).await;
-                let mut state = shared.borrow_mut();
-                if state.sequence != sequence {
-                    return;
-                }
-                state.apply_token = None;
-                state.state["busy"] = json!(false);
-                state.state["apply"] = Value::Null;
-                match result {
-                    Ok(result) => {
-                        let (key, tone) = apply_message(result.state);
-                        state.state["failed"] = json!(tone == "error");
-                        state.state["completion"] = json!({"key": key, "tone": tone, "path": null});
+            self.run(
+                |state| state.apply_token,
+                |patches, identity, token, sequence, shared| async move {
+                    let result = patches.execute_apply(identity, token).await;
+                    let mut state = shared.borrow_mut();
+                    if state.sequence != sequence {
+                        return;
                     }
-                    Err(_) => state.state["failed"] = json!(true),
-                }
-                state.state_changed();
-            });
+                    state.apply_token = None;
+                    state.state["busy"] = json!(false);
+                    state.state["apply"] = Value::Null;
+                    match result {
+                        Ok(result) => {
+                            let (key, tone) = apply_message(result.state);
+                            state.state["failed"] = json!(tone == "error");
+                            state.state["completion"] =
+                                json!({"key": key, "tone": tone, "path": null});
+                        }
+                        Err(_) => state.state["failed"] = json!(true),
+                    }
+                    state.state_changed();
+                },
+            );
         }
 
         /// The dialog closed: later answers are dropped.
@@ -226,24 +282,37 @@ mod patch_state {
     }
 
     impl PatchState {
-        fn with_state(&self, action: impl FnOnce(&mut PatchState, &gitlama_workbench::app::Services) + 'static) {
-            let Some(commands) = &self.commands else { return };
+        fn with_state(
+            &self,
+            action: impl FnOnce(&mut PatchState, &gitlama_workbench::app::Services) + 'static,
+        ) {
+            let Some(commands) = &self.commands else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 action(&mut driver.patches.borrow_mut(), &services);
             });
         }
 
         fn preview_export(&self, overwrite: bool) {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let shared = Rc::clone(&driver.patches);
                 let (identity, request, sequence) = {
                     let mut state = shared.borrow_mut();
-                    let (Some(identity), Some(source), Some(destination)) =
-                        (state.identity, state.source.clone(), state.state["destination"].as_str().map(str::to_owned))
-                    else {
+                    let (Some(identity), Some(source), Some(destination)) = (
+                        state.identity,
+                        state.source.clone(),
+                        state.state["destination"].as_str().map(str::to_owned),
+                    ) else {
                         return;
                     };
                     if state.state["busy"] == true {
@@ -255,11 +324,19 @@ mod patch_state {
                     state.state["failed"] = json!(false);
                     state.state["completion"] = Value::Null;
                     state.state_changed();
-                    (identity, services.patches.request(&source, destination, overwrite), state.sequence)
+                    (
+                        identity,
+                        services.patches.request(&source, destination, overwrite),
+                        state.sequence,
+                    )
                 };
                 let patches = Rc::clone(&services.patches);
                 rt::spawn_detached(async move {
-                    let result = if patches.active(identity) { patches.preview_export(identity, request).await.ok() } else { None };
+                    let result = if patches.active(identity) {
+                        patches.preview_export(identity, request).await.ok()
+                    } else {
+                        None
+                    };
                     let mut state = shared.borrow_mut();
                     if state.sequence != sequence {
                         return;
@@ -289,16 +366,29 @@ mod patch_state {
         fn run<T, F, Fut>(&self, token_of: T, step: F)
         where
             T: FnOnce(&PatchState) -> Option<u64> + 'static,
-            F: FnOnce(Rc<PatchService>, SessionIdentity, u64, u64, Rc<std::cell::RefCell<PatchState>>) -> Fut + 'static,
+            F: FnOnce(
+                    Rc<PatchService>,
+                    SessionIdentity,
+                    u64,
+                    u64,
+                    Rc<std::cell::RefCell<PatchState>>,
+                ) -> Fut
+                + 'static,
             Fut: std::future::Future<Output = ()> + 'static,
         {
-            let Some(commands) = self.commands.clone() else { return };
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let shared = Rc::clone(&driver.patches);
                 let (identity, token, sequence) = {
                     let mut state = shared.borrow_mut();
-                    let (Some(identity), Some(token)) = (state.identity, token_of(&state)) else { return };
+                    let (Some(identity), Some(token)) = (state.identity, token_of(&state)) else {
+                        return;
+                    };
                     if state.state["busy"] == true || !services.patches.active(identity) {
                         return;
                     }
@@ -308,7 +398,13 @@ mod patch_state {
                     state.state_changed();
                     (identity, token, state.sequence)
                 };
-                rt::spawn_detached(step(Rc::clone(&services.patches), identity, token, sequence, shared));
+                rt::spawn_detached(step(
+                    Rc::clone(&services.patches),
+                    identity,
+                    token,
+                    sequence,
+                    shared,
+                ));
             });
         }
     }
@@ -322,19 +418,37 @@ mod tests {
 
     #[test]
     fn sources_read_from_the_presentation() {
-        assert_eq!(parse_source(&json!({"kind": "history"})), Some(Source::History { commit: None }));
-        assert_eq!(parse_source(&json!({"kind": "history", "commit": "c"})), Some(Source::History { commit: Some("c".into()) }));
+        assert_eq!(
+            parse_source(&json!({"kind": "history"})),
+            Some(Source::History { commit: None })
+        );
+        assert_eq!(
+            parse_source(&json!({"kind": "history", "commit": "c"})),
+            Some(Source::History {
+                commit: Some("c".into())
+            })
+        );
         assert_eq!(
             parse_source(&json!({"kind": "diff", "base": "", "commit": "c", "paths": ["a"]})),
-            Some(Source::Diff { base: None, commit: "c".into(), paths: vec![b"a".to_vec()] })
+            Some(Source::Diff {
+                base: None,
+                commit: "c".into(),
+                paths: vec![b"a".to_vec()]
+            })
         );
         assert_eq!(
             parse_source(&json!({"kind": "files", "side": "staged", "paths": ["x"]})),
-            Some(Source::Files { side: NativeStagingSide::Staged, paths: vec![b"x".to_vec()] })
+            Some(Source::Files {
+                side: NativeStagingSide::Staged,
+                paths: vec![b"x".to_vec()]
+            })
         );
         assert_eq!(
             parse_source(&json!({"kind": "lines", "requestId": "7", "rows": ["r1"]})),
-            Some(Source::Lines { request_id: 7, rows: vec!["r1".into()] })
+            Some(Source::Lines {
+                request_id: 7,
+                rows: vec!["r1".into()]
+            })
         );
         assert_eq!(parse_source(&json!({"kind": "other"})), None);
     }

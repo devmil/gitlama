@@ -4,6 +4,8 @@
 //! sends calls over a helper connection. [`BackendRouter`] picks the backend
 //! of each session by its location, never by a path string.
 
+// Generated (tooling/remote_wire/generate_calls.py): kept as generated.
+#[rustfmt::skip]
 pub mod calls;
 pub mod lifecycle;
 
@@ -39,7 +41,11 @@ pub type CallResult<T> = Result<T, CallError>;
 /// A remote helper connection's read channel.
 pub trait WireTransport {
     /// Sends one read request and returns its JSON result.
-    fn invoke_read(&self, method: &'static str, args: Value) -> LocalBoxFuture<'static, CallResult<Value>>;
+    fn invoke_read(
+        &self,
+        method: &'static str,
+        args: Value,
+    ) -> LocalBoxFuture<'static, CallResult<Value>>;
 
     /// The helper's session for an application session identifier.
     fn helper_session(&self, session_id: u64) -> CallResult<u64>;

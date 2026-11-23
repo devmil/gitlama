@@ -11,8 +11,9 @@ use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::dto::{NativePathIdentity, NativePathPlatform};
 use gitlama_contract::integrations::{
-    NativeIntegrationCandidate, NativeIntegrationDefinition, NativeIntegrationExecution, NativeIntegrationExecutionState,
-    NativeIntegrationFailureKind, NativeIntegrationKind, NativeIntegrationLaunchMode, NativeIntegrationRequest, NativeIntegrationSettings,
+    NativeIntegrationCandidate, NativeIntegrationDefinition, NativeIntegrationExecution,
+    NativeIntegrationExecutionState, NativeIntegrationFailureKind, NativeIntegrationKind,
+    NativeIntegrationLaunchMode, NativeIntegrationRequest, NativeIntegrationSettings,
     NativeIntegrationVariables,
 };
 use serde_json::{Value, json};
@@ -80,7 +81,10 @@ pub struct ToolsPage {
 
 /// The tool `form` describes for a repository on `platform`, or None while
 /// a field is missing or the timeout is not a number.
-pub fn form_definition(form: &Form, platform: NativePathPlatform) -> Option<NativeIntegrationDefinition> {
+pub fn form_definition(
+    form: &Form,
+    platform: NativePathPlatform,
+) -> Option<NativeIntegrationDefinition> {
     let id = form.id.trim();
     let executable = form.executable.trim();
     let timeout = form.timeout.trim().parse::<u32>().ok()?;
@@ -88,16 +92,33 @@ pub fn form_definition(form: &Form, platform: NativePathPlatform) -> Option<Nati
         return None;
     }
     let executable = match platform {
-        NativePathPlatform::Windows => NativePathIdentity { platform, units: executable.encode_utf16().collect(), remote: None },
-        NativePathPlatform::Unix => NativePathIdentity { platform, units: executable.bytes().map(u16::from).collect(), remote: None },
+        NativePathPlatform::Windows => NativePathIdentity {
+            platform,
+            units: executable.encode_utf16().collect(),
+            remote: None,
+        },
+        NativePathPlatform::Unix => NativePathIdentity {
+            platform,
+            units: executable.bytes().map(u16::from).collect(),
+            remote: None,
+        },
     };
     let kind = parse_kind(&form.kind).unwrap_or(NativeIntegrationKind::Custom);
     Some(NativeIntegrationDefinition {
         id: id.to_owned(),
         kind,
         executable,
-        arguments: form.arguments.split('\n').filter(|line| !line.is_empty()).map(str::to_owned).collect(),
-        execution: if form.explicit_shell { NativeIntegrationExecution::ExplicitShell } else { NativeIntegrationExecution::Direct },
+        arguments: form
+            .arguments
+            .split('\n')
+            .filter(|line| !line.is_empty())
+            .map(str::to_owned)
+            .collect(),
+        execution: if form.explicit_shell {
+            NativeIntegrationExecution::ExplicitShell
+        } else {
+            NativeIntegrationExecution::Direct
+        },
         // A custom command always waits for its result.
         launch_mode: if form.wait || kind == NativeIntegrationKind::Custom {
             NativeIntegrationLaunchMode::Wait
@@ -130,7 +151,14 @@ impl ToolsPage {
         prompts: Rc<Prompts>,
         notifier: Notifier,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, settings, prompts, notifier, page: RefCell::new(Page::default()) })
+        Rc::new(Self {
+            calls,
+            workspace,
+            settings,
+            prompts,
+            notifier,
+            page: RefCell::new(Page::default()),
+        })
     }
 
     pub fn page(&self) -> Page {
@@ -151,12 +179,19 @@ impl ToolsPage {
     /// path (the Dart panel's _variables).
     fn variables(&self) -> NativeIntegrationVariables {
         let root = self.workspace.active_canonical();
-        let status = self.workspace.current().and_then(|session| session.snapshot.status.clone());
+        let status = self
+            .workspace
+            .current()
+            .and_then(|session| session.snapshot.status.clone());
         NativeIntegrationVariables {
             url: Some("https://example.invalid/".to_owned()),
             file: root.clone(),
-            current_branch: status.as_ref().and_then(|status| status.branch_name.clone()),
-            selected_commit: status.as_ref().and_then(|status| status.head_object_id.clone()),
+            current_branch: status
+                .as_ref()
+                .and_then(|status| status.branch_name.clone()),
+            selected_commit: status
+                .as_ref()
+                .and_then(|status| status.head_object_id.clone()),
             diff_left: root.clone(),
             diff_right: root.clone(),
             merge_base: root.clone(),
@@ -188,36 +223,76 @@ impl ToolsPage {
         if self.page.borrow().busy {
             return;
         }
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         self.update(|page| {
             page.busy = true;
             page.failure = None;
         });
-        let failure = self.preview_and_run(identity.native_id, identity.generation, request).await;
+        let failure = self
+            .preview_and_run(identity.native_id, identity.generation, request)
+            .await;
         self.update(|page| {
             page.busy = false;
             page.failure = failure;
         });
     }
 
-    async fn preview_and_run(&self, session: u64, generation: u64, request: NativeIntegrationRequest) -> Option<&'static str> {
-        let preview = match self.calls.repository_session_integration_preview(session, generation, request).await {
+    async fn preview_and_run(
+        &self,
+        session: u64,
+        generation: u64,
+        request: NativeIntegrationRequest,
+    ) -> Option<&'static str> {
+        let preview = match self
+            .calls
+            .repository_session_integration_preview(session, generation, request)
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
-                (_, failure) => return Some(failure_key(failure.map_or(NativeIntegrationFailureKind::Launch, |failure| failure.kind))),
+                (_, failure) => {
+                    return Some(failure_key(
+                        failure
+                            .map_or(NativeIntegrationFailureKind::Launch, |failure| failure.kind),
+                    ));
+                }
             },
             Err(_) => return Some(failure_key(NativeIntegrationFailureKind::Stale)),
         };
-        let commands: Vec<String> = std::iter::once(preview.executable.clone()).chain(preview.arguments.iter().cloned()).collect();
-        let answer = self.prompts.ask("confirmIntegration", json!({"commands": commands, "summary": "integrationRunSummary"})).await;
+        let commands: Vec<String> = std::iter::once(preview.executable.clone())
+            .chain(preview.arguments.iter().cloned())
+            .collect();
+        let answer = self
+            .prompts
+            .ask(
+                "confirmIntegration",
+                json!({"commands": commands, "summary": "integrationRunSummary"}),
+            )
+            .await;
         if answer != Some(Value::Bool(true)) {
-            let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
+            let _ = self
+                .calls
+                .repository_session_integration_cancel(session, generation, preview.token)
+                .await;
             return None;
         }
-        match self.calls.repository_session_integration_execute(session, generation, preview.token, true).await {
+        match self
+            .calls
+            .repository_session_integration_execute(session, generation, preview.token, true)
+            .await
+        {
             Ok(result) => match result.failure {
                 Some(failure) => Some(failure_key(failure.kind)),
-                None if matches!(result.state, NativeIntegrationExecutionState::Completed | NativeIntegrationExecutionState::Detached) => None,
+                None if matches!(
+                    result.state,
+                    NativeIntegrationExecutionState::Completed
+                        | NativeIntegrationExecutionState::Detached
+                ) =>
+                {
+                    None
+                }
                 None => Some(failure_key(NativeIntegrationFailureKind::Launch)),
             },
             Err(_) => Some(failure_key(NativeIntegrationFailureKind::Stale)),
@@ -226,7 +301,9 @@ impl ToolsPage {
 
     /// Runs discovered tool `index`.
     pub async fn run_discovered(&self, index: usize) {
-        let Some(candidate) = self.page.borrow().discovered.get(index).cloned() else { return };
+        let Some(candidate) = self.page.borrow().discovered.get(index).cloned() else {
+            return;
+        };
         let request = NativeIntegrationRequest {
             kind: candidate.kind,
             discovered_id: Some(candidate.id),
@@ -238,13 +315,21 @@ impl ToolsPage {
 
     /// Runs the stored tool `id`.
     pub async fn run_configured(&self, id: &str) {
-        let Some(definition) =
-            self.settings.with(|document| document.integrations.iter().find(|tool| tool.id == id).and_then(crate::integrations::definition))
-        else {
+        let Some(definition) = self.settings.with(|document| {
+            document
+                .integrations
+                .iter()
+                .find(|tool| tool.id == id)
+                .and_then(crate::integrations::definition)
+        }) else {
             return;
         };
-        let request =
-            NativeIntegrationRequest { kind: definition.kind, discovered_id: None, configured: Some(definition), variables: self.variables() };
+        let request = NativeIntegrationRequest {
+            kind: definition.kind,
+            discovered_id: None,
+            configured: Some(definition),
+            variables: self.variables(),
+        };
         self.run(request).await;
     }
 
@@ -254,9 +339,15 @@ impl ToolsPage {
         if self.page.borrow().busy {
             return;
         }
-        let Some(root) = self.workspace.active_canonical() else { return };
-        let Some(definition) = form_definition(&form, root.platform) else { return };
-        let Some(identity) = self.workspace.current().map(|session| session.identity) else { return };
+        let Some(root) = self.workspace.active_canonical() else {
+            return;
+        };
+        let Some(definition) = form_definition(&form, root.platform) else {
+            return;
+        };
+        let Some(identity) = self.workspace.current().map(|session| session.identity) else {
+            return;
+        };
         self.update(|page| {
             page.busy = true;
             page.failure = None;
@@ -267,10 +358,25 @@ impl ToolsPage {
             configured: Some(definition.clone()),
             variables: self.variables(),
         };
-        let failure = match self.calls.repository_session_integration_preview(identity.native_id, identity.generation, request).await {
+        let failure = match self
+            .calls
+            .repository_session_integration_preview(
+                identity.native_id,
+                identity.generation,
+                request,
+            )
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => {
-                    let _ = self.calls.repository_session_integration_cancel(identity.native_id, identity.generation, preview.token).await;
+                    let _ = self
+                        .calls
+                        .repository_session_integration_cancel(
+                            identity.native_id,
+                            identity.generation,
+                            preview.token,
+                        )
+                        .await;
                     let value = stored(&definition);
                     let saved = self
                         .settings
@@ -279,12 +385,18 @@ impl ToolsPage {
                                 document.integrations.retain(|tool| tool.id != value.id);
                                 document.integrations.push(value.clone());
                             },
-                            |current, previous| current.integrations = previous.integrations.clone(),
+                            |current, previous| {
+                                current.integrations = previous.integrations.clone()
+                            },
                         )
                         .await;
                     saved.err().map(|_| "settingsSaveFailed")
                 }
-                (_, failure) => Some(failure_key(failure.map_or(NativeIntegrationFailureKind::InvalidRequest, |failure| failure.kind))),
+                (_, failure) => Some(failure_key(
+                    failure.map_or(NativeIntegrationFailureKind::InvalidRequest, |failure| {
+                        failure.kind
+                    }),
+                )),
             },
             Err(_) => Some(failure_key(NativeIntegrationFailureKind::Stale)),
         };
@@ -310,7 +422,11 @@ impl ToolsPage {
 }
 
 /// The page as the presentation shows it.
-pub fn page_value(page: &Page, configured: &[NativeIntegrationSettings], repository: bool) -> Value {
+pub fn page_value(
+    page: &Page,
+    configured: &[NativeIntegrationSettings],
+    repository: bool,
+) -> Value {
     json!({
         "repository": repository,
         "busy": page.busy,
@@ -355,14 +471,47 @@ mod tests {
 
     #[test]
     fn an_incomplete_form_describes_nothing() {
-        assert!(form_definition(&Form { timeout: "soon".into(), ..form() }, NativePathPlatform::Unix).is_none());
-        assert!(form_definition(&Form { id: " ".into(), ..form() }, NativePathPlatform::Unix).is_none());
-        assert!(form_definition(&Form { executable: String::new(), ..form() }, NativePathPlatform::Unix).is_none());
+        assert!(
+            form_definition(
+                &Form {
+                    timeout: "soon".into(),
+                    ..form()
+                },
+                NativePathPlatform::Unix
+            )
+            .is_none()
+        );
+        assert!(
+            form_definition(
+                &Form {
+                    id: " ".into(),
+                    ..form()
+                },
+                NativePathPlatform::Unix
+            )
+            .is_none()
+        );
+        assert!(
+            form_definition(
+                &Form {
+                    executable: String::new(),
+                    ..form()
+                },
+                NativePathPlatform::Unix
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn failures_name_their_messages() {
-        assert_eq!(failure_key(NativeIntegrationFailureKind::Canceled), "operationStateCanceled");
-        assert_eq!(failure_key(NativeIntegrationFailureKind::NonZeroExit), "integrationNonZero");
+        assert_eq!(
+            failure_key(NativeIntegrationFailureKind::Canceled),
+            "operationStateCanceled"
+        );
+        assert_eq!(
+            failure_key(NativeIntegrationFailureKind::NonZeroExit),
+            "integrationNonZero"
+        );
     }
 }

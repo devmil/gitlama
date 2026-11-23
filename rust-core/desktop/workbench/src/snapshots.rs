@@ -9,7 +9,8 @@ use crate::notify::{Notifier, Topics};
 use crate::prompts::Prompts;
 use crate::workspace::{Pane, WorkspaceService};
 use gitlama_contract::named_snapshot::{
-    NativeNamedSnapshot, NativeNamedSnapshotExecutionResult, NativeNamedSnapshotExecutionState, NativeNamedSnapshotFailureKind,
+    NativeNamedSnapshot, NativeNamedSnapshotExecutionResult, NativeNamedSnapshotExecutionState,
+    NativeNamedSnapshotFailureKind,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -69,7 +70,15 @@ impl SnapshotService {
         notices: Rc<Notices>,
         notifier: Notifier,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, navigator, prompts, notices, notifier, panel: RefCell::new(Panel::default()) })
+        Rc::new(Self {
+            calls,
+            workspace,
+            navigator,
+            prompts,
+            notices,
+            notifier,
+            panel: RefCell::new(Panel::default()),
+        })
     }
 
     pub fn panel(&self) -> Panel {
@@ -82,7 +91,9 @@ impl SnapshotService {
     }
 
     fn session(&self) -> Option<(u64, u64)> {
-        self.workspace.current().map(|session| (session.identity.native_id, session.identity.generation))
+        self.workspace
+            .current()
+            .map(|session| (session.identity.native_id, session.identity.generation))
     }
 
     pub fn select(&self, id: u64) {
@@ -91,13 +102,17 @@ impl SnapshotService {
 
     /// Reads the first page again, or the next one.
     pub async fn load(&self, reset: bool) {
-        let offset = if reset { 0 } else {
+        let offset = if reset {
+            0
+        } else {
             match self.panel.borrow().next_offset {
                 Some(offset) => offset,
                 None => return,
             }
         };
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         self.update(|panel| {
             panel.loading = true;
             panel.failure = None;
@@ -106,7 +121,10 @@ impl SnapshotService {
                 panel.next_offset = None;
             }
         });
-        let result = self.calls.repository_session_named_snapshots(session, generation, offset, PAGE).await;
+        let result = self
+            .calls
+            .repository_session_named_snapshots(session, generation, offset, PAGE)
+            .await;
         self.update(|panel| {
             panel.loading = false;
             match result {
@@ -116,18 +134,29 @@ impl SnapshotService {
                     }
                     panel.entries.extend(result.entries);
                     panel.next_offset = result.next_offset;
-                    if panel.selected.is_none_or(|selected| !panel.entries.iter().any(|entry| entry.id == selected)) {
+                    if panel.selected.is_none_or(|selected| {
+                        !panel.entries.iter().any(|entry| entry.id == selected)
+                    }) {
                         panel.selected = panel.entries.first().map(|entry| entry.id);
                     }
                 }
-                Ok(result) => panel.failure = Some(failure_key(result.failure.map_or(NativeNamedSnapshotFailureKind::Git, |failure| failure.kind))),
+                Ok(result) => {
+                    panel.failure = Some(failure_key(
+                        result
+                            .failure
+                            .map_or(NativeNamedSnapshotFailureKind::Git, |failure| failure.kind),
+                    ))
+                }
                 Err(_) => panel.failure = Some("namedSnapshotStale"),
             }
         });
     }
 
     /// Reports the outcome of a change; true when it went through.
-    fn settle(&self, result: Result<NativeNamedSnapshotExecutionResult, ()>) -> Option<NativeNamedSnapshotExecutionResult> {
+    fn settle(
+        &self,
+        result: Result<NativeNamedSnapshotExecutionResult, ()>,
+    ) -> Option<NativeNamedSnapshotExecutionResult> {
         match result {
             Ok(result) => {
                 if result.state == NativeNamedSnapshotExecutionState::Conflict {
@@ -140,7 +169,11 @@ impl SnapshotService {
                     self.notices.error("mutationOutcomeUncertain", Value::Null);
                 }
                 if let Some(failure) = &result.failure
-                    && !matches!(result.state, NativeNamedSnapshotExecutionState::Completed | NativeNamedSnapshotExecutionState::ReconciledWithWarning)
+                    && !matches!(
+                        result.state,
+                        NativeNamedSnapshotExecutionState::Completed
+                            | NativeNamedSnapshotExecutionState::ReconciledWithWarning
+                    )
                 {
                     let key = failure_key(failure.kind);
                     self.update(|panel| panel.failure = Some(key));
@@ -160,14 +193,22 @@ impl SnapshotService {
         if name.is_empty() || self.panel.borrow().busy {
             return;
         }
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         self.update(|panel| {
             panel.busy = true;
             panel.failure = None;
         });
         let result = self
             .calls
-            .repository_session_named_snapshot_create(session, generation, name, include_untracked, keep_index)
+            .repository_session_named_snapshot_create(
+                session,
+                generation,
+                name,
+                include_untracked,
+                keep_index,
+            )
             .await
             .map_err(|_| ());
         let settled = self.settle(result);
@@ -181,18 +222,25 @@ impl SnapshotService {
     }
 
     pub async fn restore(&self, id: u64) {
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         self.update(|panel| {
             panel.busy = true;
             panel.failure = None;
         });
-        let preview = self.calls.repository_session_named_snapshot_restore_preview(session, generation, id).await;
+        let preview = self
+            .calls
+            .repository_session_named_snapshot_restore_preview(session, generation, id)
+            .await;
         self.update(|panel| panel.busy = false);
         let preview = match preview {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
                 (_, failure) => {
-                    let key = failure_key(failure.map_or(NativeNamedSnapshotFailureKind::Git, |failure| failure.kind));
+                    let key = failure_key(
+                        failure.map_or(NativeNamedSnapshotFailureKind::Git, |failure| failure.kind),
+                    );
                     return self.update(|panel| panel.failure = Some(key));
                 }
             },
@@ -204,7 +252,14 @@ impl SnapshotService {
             "truncated": preview.replacement_paths_truncated,
         });
         if self.prompts.ask("confirmSnapshotRestore", payload).await != Some(Value::Bool(true)) {
-            let _ = self.calls.repository_session_named_snapshot_restore_cancel(session, generation, preview.token).await;
+            let _ = self
+                .calls
+                .repository_session_named_snapshot_restore_cancel(
+                    session,
+                    generation,
+                    preview.token,
+                )
+                .await;
             return;
         }
         self.update(|panel| panel.busy = true);
@@ -223,14 +278,37 @@ impl SnapshotService {
     }
 
     pub async fn branch(&self, id: u64) {
-        let Some((session, generation)) = self.session() else { return };
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
         let branches: Vec<String> = self
             .workspace
             .current()
-            .map(|session| session.snapshot.refs.branches.iter().map(|branch| text(&branch.name)).collect())
+            .map(|session| {
+                session
+                    .snapshot
+                    .refs
+                    .branches
+                    .iter()
+                    .map(|branch| text(&branch.name))
+                    .collect()
+            })
             .unwrap_or_default();
-        let Some(answer) = self.prompts.ask("chooseSnapshotBranch", json!({"branches": branches})).await else { return };
-        let Some(name) = answer.as_str().map(str::trim).filter(|name| !name.is_empty()).map(str::to_owned) else { return };
+        let Some(answer) = self
+            .prompts
+            .ask("chooseSnapshotBranch", json!({"branches": branches}))
+            .await
+        else {
+            return;
+        };
+        let Some(name) = answer
+            .as_str()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .map(str::to_owned)
+        else {
+            return;
+        };
         self.update(|panel| {
             panel.busy = true;
             panel.failure = None;
@@ -245,21 +323,40 @@ impl SnapshotService {
         }
         self.update(|panel| panel.busy = false);
         if self.settle(result).is_some() {
-            self.notices.status("namedSnapshotBranchCreated", Value::Null);
+            self.notices
+                .status("namedSnapshotBranchCreated", Value::Null);
         }
     }
 
     pub async fn delete(&self, id: u64) {
-        let Some((session, generation)) = self.session() else { return };
-        let name = self.panel.borrow().entries.iter().find(|entry| entry.id == id).map(|entry| entry.name.clone()).unwrap_or_default();
-        if self.prompts.ask("confirmSnapshotDelete", json!({"name": name})).await != Some(Value::Bool(true)) {
+        let Some((session, generation)) = self.session() else {
+            return;
+        };
+        let name = self
+            .panel
+            .borrow()
+            .entries
+            .iter()
+            .find(|entry| entry.id == id)
+            .map(|entry| entry.name.clone())
+            .unwrap_or_default();
+        if self
+            .prompts
+            .ask("confirmSnapshotDelete", json!({"name": name}))
+            .await
+            != Some(Value::Bool(true))
+        {
             return;
         }
         self.update(|panel| {
             panel.busy = true;
             panel.failure = None;
         });
-        let result = self.calls.repository_session_named_snapshot_delete(session, generation, id).await.map_err(|_| ());
+        let result = self
+            .calls
+            .repository_session_named_snapshot_delete(session, generation, id)
+            .await
+            .map_err(|_| ());
         if let Some(session) = self.workspace.current() {
             let _ = self.workspace.refresh_if_open(session.identity).await;
         }
@@ -300,7 +397,13 @@ mod tests {
 
     #[test]
     fn failures_name_their_messages() {
-        assert_eq!(failure_key(NativeNamedSnapshotFailureKind::NothingToCapture), "namedSnapshotNothingToCapture");
-        assert_eq!(failure_key(NativeNamedSnapshotFailureKind::Write), "namedSnapshotFailed");
+        assert_eq!(
+            failure_key(NativeNamedSnapshotFailureKind::NothingToCapture),
+            "namedSnapshotNothingToCapture"
+        );
+        assert_eq!(
+            failure_key(NativeNamedSnapshotFailureKind::Write),
+            "namedSnapshotFailed"
+        );
     }
 }

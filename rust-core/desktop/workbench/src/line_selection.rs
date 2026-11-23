@@ -47,7 +47,10 @@ impl LineSelection {
     }
 
     fn lines(&self, hunk: &str) -> &[String] {
-        self.lines_of.iter().find(|(id, _)| id == hunk).map_or(&[], |(_, lines)| lines.as_slice())
+        self.lines_of
+            .iter()
+            .find(|(id, _)| id == hunk)
+            .map_or(&[], |(_, lines)| lines.as_slice())
     }
 
     /// Indexes `rows`, the loaded rows of a diff of `total_rows` rows.
@@ -74,7 +77,11 @@ impl LineSelection {
                     let Some(current) = &hunk else { continue };
                     self.hunk_of.insert(row.stable_id.clone(), current.clone());
                     if row.selectable {
-                        self.lines_of.last_mut().expect("a hunk was opened").1.push(row.stable_id.clone());
+                        self.lines_of
+                            .last_mut()
+                            .expect("a hunk was opened")
+                            .1
+                            .push(row.stable_id.clone());
                     }
                 }
             }
@@ -143,7 +150,11 @@ impl LineSelection {
 
     /// Whether every loaded hunk is picked.
     pub fn all_checked(&self) -> bool {
-        !self.lines_of.is_empty() && self.lines_of.iter().all(|(hunk, _)| self.hunk_checked(hunk) == Some(true))
+        !self.lines_of.is_empty()
+            && self
+                .lines_of
+                .iter()
+                .all(|(hunk, _)| self.hunk_checked(hunk) == Some(true))
     }
 
     pub fn select_all(&mut self) {
@@ -186,7 +197,10 @@ mod tests {
             new_line: None,
             text: Vec::new(),
             text_truncated: false,
-            selectable: matches!(kind, NativeDiffRowKind::Addition | NativeDiffRowKind::Deletion),
+            selectable: matches!(
+                kind,
+                NativeDiffRowKind::Addition | NativeDiffRowKind::Deletion
+            ),
             intra_line: Vec::new(),
             syntax: None,
             file_kind: None,

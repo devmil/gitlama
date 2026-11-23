@@ -31,7 +31,11 @@ pub struct EntryWorkflows {
 }
 
 impl EntryWorkflows {
-    pub fn new(workspace: Rc<WorkspaceService>, prompts: Rc<Prompts>, notifier: Notifier) -> Rc<Self> {
+    pub fn new(
+        workspace: Rc<WorkspaceService>,
+        prompts: Rc<Prompts>,
+        notifier: Notifier,
+    ) -> Rc<Self> {
         Rc::new(Self {
             clones: crate::clone::CloneService::new(notifier.clone()),
             workspace,
@@ -89,7 +93,10 @@ impl EntryWorkflows {
     /// Asks the window for a folder.
     pub async fn choose_directory(&self, can_create: bool) -> Option<String> {
         self.prompts
-            .ask("chooseDirectory", json!({ "canCreateDirectories": can_create }))
+            .ask(
+                "chooseDirectory",
+                json!({ "canCreateDirectories": can_create }),
+            )
             .await
             .and_then(|value| value.as_str().map(str::to_owned))
             .filter(|path| !path.is_empty())
@@ -110,13 +117,18 @@ impl EntryWorkflows {
     /// Opens `path` (a dropped folder or a command-line argument).
     pub async fn open_path(self: &Rc<Self>, path: String) {
         let workspace = Rc::clone(&self.workspace);
-        self.run(async move { workspace.open(path).await.map(Some) }).await;
+        self.run(async move { workspace.open(path).await.map(Some) })
+            .await;
     }
 
     /// Opens the folders dropped on the window (the Dart
     /// RepositoryDropService): each folder in turn; anything else is
     /// rejected. Says how many opened, were rejected and failed.
-    pub async fn open_dropped(self: &Rc<Self>, paths: Vec<String>, notices: &crate::notices::Notices) {
+    pub async fn open_dropped(
+        self: &Rc<Self>,
+        paths: Vec<String>,
+        notices: &crate::notices::Notices,
+    ) {
         let (mut opened, mut rejected, mut failed) = (0u64, 0u64, 0u64);
         for path in paths {
             if !std::path::Path::new(&path).is_dir() {
@@ -128,7 +140,10 @@ impl EntryWorkflows {
                 Err(_) => failed += 1,
             }
         }
-        notices.status("repositoryDropSummary", serde_json::json!({"opened": opened, "rejected": rejected, "failed": failed}));
+        notices.status(
+            "repositoryDropSummary",
+            serde_json::json!({"opened": opened, "rejected": rejected, "failed": failed}),
+        );
     }
 
     /// Opens the recent repository `identity` on this computer.
@@ -142,7 +157,11 @@ impl EntryWorkflows {
     /// opens the tab of a finished clone.
     async fn cloning<F>(&self, operation: F)
     where
-        F: Future<Output = crate::clone::CloneResult<Option<(Option<crate::session::OpenedSession>, bool)>>>,
+        F: Future<
+            Output = crate::clone::CloneResult<
+                Option<(Option<crate::session::OpenedSession>, bool)>,
+            >,
+        >,
     {
         if self.state.get().busy {
             return;
@@ -167,13 +186,27 @@ impl EntryWorkflows {
 
     /// Asks for a source and a destination and clones it.
     pub async fn clone_repository(self: &Rc<Self>) {
-        let Some(source) = self.prompts.ask("chooseCloneSource", json!({})).await else { return };
-        let Some(source) = source.as_str().map(str::trim).filter(|source| !source.is_empty()).map(str::to_owned) else { return };
+        let Some(source) = self.prompts.ask("chooseCloneSource", json!({})).await else {
+            return;
+        };
+        let Some(source) = source
+            .as_str()
+            .map(str::trim)
+            .filter(|source| !source.is_empty())
+            .map(str::to_owned)
+        else {
+            return;
+        };
         let this = Rc::clone(self);
         self.cloning(async move {
-            let Some(destination) = this.choose_directory(true).await else { return Ok(None) };
+            let Some(destination) = this.choose_directory(true).await else {
+                return Ok(None);
+            };
             let generation = this.workspace.next_generation();
-            this.clones.start(source, destination, generation).await.map(Some)
+            this.clones
+                .start(source, destination, generation)
+                .await
+                .map(Some)
         })
         .await;
     }
@@ -181,20 +214,36 @@ impl EntryWorkflows {
     /// A new destination when the failed attempt left a partial one.
     async fn retry_destination(&self) -> Result<Option<String>, ()> {
         match self.clones.current() {
-            Some(current) if current.partial_destination => self.choose_directory(true).await.map(Some).ok_or(()),
+            Some(current) if current.partial_destination => {
+                self.choose_directory(true).await.map(Some).ok_or(())
+            }
             _ => Ok(None),
         }
     }
 
     /// Retries the failed clone with credentials the user enters.
     pub async fn retry_clone_with_credentials(self: &Rc<Self>) {
-        let Some(answer) = self.prompts.ask("gitCredentials", json!({"target": "", "allowToken": false})).await else { return };
-        let username = answer["username"].as_str().filter(|name| !name.is_empty()).map(str::to_owned);
+        let Some(answer) = self
+            .prompts
+            .ask("gitCredentials", json!({"target": "", "allowToken": false}))
+            .await
+        else {
+            return;
+        };
+        let username = answer["username"]
+            .as_str()
+            .filter(|name| !name.is_empty())
+            .map(str::to_owned);
         let secret = answer["secret"].as_str().map(str::to_owned);
         let this = Rc::clone(self);
         self.cloning(async move {
-            let Ok(destination) = this.retry_destination().await else { return Ok(None) };
-            this.clones.retry_with_credentials(username, secret, None, destination).await.map(Some)
+            let Ok(destination) = this.retry_destination().await else {
+                return Ok(None);
+            };
+            this.clones
+                .retry_with_credentials(username, secret, None, destination)
+                .await
+                .map(Some)
         })
         .await;
     }
@@ -225,7 +274,9 @@ impl EntryWorkflows {
             } else {
                 None
             };
-            this.clones.resolve_host_key(&challenge, accept, destination).await
+            this.clones
+                .resolve_host_key(&challenge, accept, destination)
+                .await
         })
         .await;
     }
@@ -238,10 +289,16 @@ impl EntryWorkflows {
     pub async fn initialize(self: &Rc<Self>, initially_bare: bool) {
         let choice = self
             .prompts
-            .ask("initializeRepository", json!({ "initiallyBare": initially_bare }))
+            .ask(
+                "initializeRepository",
+                json!({ "initiallyBare": initially_bare }),
+            )
             .await;
         let Some(choice) = choice else { return };
-        let bare = choice.get("bare").and_then(|value| value.as_bool()).unwrap_or(false);
+        let bare = choice
+            .get("bare")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false);
         let profile = choice
             .get("profileId")
             .and_then(|value| value.as_str())

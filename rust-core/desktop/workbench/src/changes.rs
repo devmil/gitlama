@@ -14,10 +14,10 @@ use crate::session::{FailureCode, SessionIdentity, display_path};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::domain::path_identity::NativePathIdentity;
 use gitlama_contract::dto::{
-    NativeChangeKind, NativeDiscardExecutionState, NativeDiscardKind, NativeDiscardRequest, NativeDiscardScope,
-    NativeOperationKind, NativeRepositoryStatus, NativeStagingExecutionState, NativeStagingFailureCode,
-    NativeStagingPhase, NativeStagingRequest, NativeStagingScope, NativeStagingSide, NativeStatusEntry,
-    NativeStatusEntryKind, NativeWorkingTreeState,
+    NativeChangeKind, NativeDiscardExecutionState, NativeDiscardKind, NativeDiscardRequest,
+    NativeDiscardScope, NativeOperationKind, NativeRepositoryStatus, NativeStagingExecutionState,
+    NativeStagingFailureCode, NativeStagingPhase, NativeStagingRequest, NativeStagingScope,
+    NativeStagingSide, NativeStatusEntry, NativeStatusEntryKind, NativeWorkingTreeState,
 };
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
@@ -71,11 +71,20 @@ pub fn is_unstaged(entry: &NativeStatusEntry) -> bool {
 }
 
 /// The entries of `status` on `side`.
-pub fn entries_on(status: &NativeRepositoryStatus, side: NativeStagingSide) -> Vec<NativeStatusEntry> {
+pub fn entries_on(
+    status: &NativeRepositoryStatus,
+    side: NativeStagingSide,
+) -> Vec<NativeStatusEntry> {
     status
         .entries
         .iter()
-        .filter(|entry| if side == NativeStagingSide::Staged { is_staged(entry) } else { is_unstaged(entry) })
+        .filter(|entry| {
+            if side == NativeStagingSide::Staged {
+                is_staged(entry)
+            } else {
+                is_unstaged(entry)
+            }
+        })
         .cloned()
         .collect()
 }
@@ -84,15 +93,23 @@ pub fn entries_on(status: &NativeRepositoryStatus, side: NativeStagingSide) -> V
 pub fn has_active_conflicts(status: Option<&NativeRepositoryStatus>) -> bool {
     status.is_some_and(|status| {
         status.working_tree == NativeWorkingTreeState::Conflicted
-            || status.entries.iter().any(|entry| entry.kind == NativeStatusEntryKind::Unmerged)
-            || status.operations.iter().any(|operation| operation.kind != NativeOperationKind::Bisect)
+            || status
+                .entries
+                .iter()
+                .any(|entry| entry.kind == NativeStatusEntryKind::Unmerged)
+            || status
+                .operations
+                .iter()
+                .any(|operation| operation.kind != NativeOperationKind::Bisect)
     })
 }
 
 pub fn discardable(entry: &NativeStatusEntry) -> bool {
     matches!(
         entry.kind,
-        NativeStatusEntryKind::Untracked | NativeStatusEntryKind::Ordinary | NativeStatusEntryKind::Rename
+        NativeStatusEntryKind::Untracked
+            | NativeStatusEntryKind::Ordinary
+            | NativeStatusEntryKind::Rename
     )
 }
 
@@ -133,12 +150,19 @@ pub fn unique_command_paths(entries: &[NativeStatusEntry]) -> Vec<Vec<u8>> {
 }
 
 /// The old and new paths of `entry`'s diff on `side`.
-pub fn diff_paths(entry: &NativeStatusEntry, side: NativeStagingSide) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+pub fn diff_paths(
+    entry: &NativeStatusEntry,
+    side: NativeStagingSide,
+) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
     let path = path_bytes(&entry.path);
     if entry.kind == NativeStatusEntryKind::Untracked {
         return (None, Some(path));
     }
-    let change = if side == NativeStagingSide::Staged { entry.index } else { entry.worktree };
+    let change = if side == NativeStagingSide::Staged {
+        entry.index
+    } else {
+        entry.worktree
+    };
     if matches!(change, NativeChangeKind::Renamed | NativeChangeKind::Copied)
         && let Some(source) = &entry.source
     {
@@ -160,23 +184,45 @@ pub struct Selection {
 
 impl Default for Selection {
     fn default() -> Self {
-        Self { staged: HashSet::new(), unstaged: HashSet::new(), focused: NativeStagingSide::Unstaged }
+        Self {
+            staged: HashSet::new(),
+            unstaged: HashSet::new(),
+            focused: NativeStagingSide::Unstaged,
+        }
     }
 }
 
 impl Selection {
     pub fn of(&self, side: NativeStagingSide) -> &HashSet<String> {
-        if side == NativeStagingSide::Staged { &self.staged } else { &self.unstaged }
+        if side == NativeStagingSide::Staged {
+            &self.staged
+        } else {
+            &self.unstaged
+        }
     }
 }
 
 /// One-shot events for the pane's animations.
 #[derive(Clone, Debug)]
 pub enum ChangesEffect {
-    MoveStarted { tab: u64, side: NativeStagingSide, keys: Vec<String>, single: bool },
-    MoveEnded { tab: u64, moved: bool },
-    ActionFailed { tab: u64, side: NativeStagingSide },
-    DiffSelectionRequested { tab: u64, discard: bool },
+    MoveStarted {
+        tab: u64,
+        side: NativeStagingSide,
+        keys: Vec<String>,
+        single: bool,
+    },
+    MoveEnded {
+        tab: u64,
+        moved: bool,
+    },
+    ActionFailed {
+        tab: u64,
+        side: NativeStagingSide,
+    },
+    DiffSelectionRequested {
+        tab: u64,
+        discard: bool,
+    },
 }
 
 struct StageIntent {
@@ -356,7 +402,10 @@ impl ChangesService {
     }
 
     fn identity(&self, tab: u64) -> Option<SessionIdentity> {
-        self.workspace.tab(tab)?.session.map(|session| session.identity)
+        self.workspace
+            .tab(tab)?
+            .session
+            .map(|session| session.identity)
     }
 
     fn status(&self, tab: u64) -> Option<NativeRepositoryStatus> {
@@ -370,10 +419,14 @@ impl ChangesService {
     /// Drops selected files the status no longer lists and pending work of
     /// closed tabs (the Dart `_sync`).
     pub fn sync(&self) {
-        let open: HashSet<u64> = self.workspace.with_tabs(|tabs, _, _| tabs.iter().map(|tab| tab.id).collect());
+        let open: HashSet<u64> = self
+            .workspace
+            .with_tabs(|tabs, _, _| tabs.iter().map(|tab| tab.id).collect());
         let mut changed = false;
         for tab in open.iter().copied() {
-            let Some(status) = self.status(tab) else { continue };
+            let Some(status) = self.status(tab) else {
+                continue;
+            };
             let current: HashSet<String> = status.entries.iter().map(change_key).collect();
             self.with_tab(tab, |state| {
                 let selection = &state.selection;
@@ -403,8 +456,16 @@ impl ChangesService {
         self.with_tab(tab, |state| {
             state.selection_revision += 1;
             state.selection = Selection {
-                staged: if side == NativeStagingSide::Staged { keys.clone() } else { HashSet::new() },
-                unstaged: if side == NativeStagingSide::Unstaged { keys } else { HashSet::new() },
+                staged: if side == NativeStagingSide::Staged {
+                    keys.clone()
+                } else {
+                    HashSet::new()
+                },
+                unstaged: if side == NativeStagingSide::Unstaged {
+                    keys
+                } else {
+                    HashSet::new()
+                },
                 focused: side,
             };
         });
@@ -442,16 +503,25 @@ impl ChangesService {
 
     /// The selected entries of `side`, in status order.
     pub fn selected_entries(&self, tab: u64, side: NativeStagingSide) -> Vec<NativeStatusEntry> {
-        let Some(status) = self.status(tab) else { return Vec::new() };
+        let Some(status) = self.status(tab) else {
+            return Vec::new();
+        };
         let keys = self.with_tab(tab, |state| state.selection.of(side).clone());
-        entries_on(&status, side).into_iter().filter(|entry| keys.contains(&change_key(entry))).collect()
+        entries_on(&status, side)
+            .into_iter()
+            .filter(|entry| keys.contains(&change_key(entry)))
+            .collect()
     }
 
     /// The selection commands with nothing to act on.
     pub fn disabled_selection_commands(&self, tab: u64) -> Vec<&'static str> {
-        let (selection, diff_selected) = self.with_tab(tab, |state| (state.selection.clone(), state.diff_rows_selected));
-        let unstaged = !selection.unstaged.is_empty() || (selection.focused == NativeStagingSide::Unstaged && diff_selected);
-        let staged = !selection.staged.is_empty() || (selection.focused == NativeStagingSide::Staged && diff_selected);
+        let (selection, diff_selected) = self.with_tab(tab, |state| {
+            (state.selection.clone(), state.diff_rows_selected)
+        });
+        let unstaged = !selection.unstaged.is_empty()
+            || (selection.focused == NativeStagingSide::Unstaged && diff_selected);
+        let staged = !selection.staged.is_empty()
+            || (selection.focused == NativeStagingSide::Staged && diff_selected);
         let discard = (selection.focused == NativeStagingSide::Unstaged && diff_selected)
             || discard_kind_of(&self.selected_entries(tab, NativeStagingSide::Unstaged)).is_some();
         let mut disabled = Vec::new();
@@ -473,9 +543,14 @@ impl ChangesService {
     /// The file the diff shows: `selected` when it names a changed file,
     /// else the first highlighted row of the focused list.
     pub fn detail_identity(&self, tab: u64, selected: Option<String>) -> Option<String> {
-        let Some(status) = self.status(tab) else { return selected };
+        let Some(status) = self.status(tab) else {
+            return selected;
+        };
         if let Some(selected) = &selected
-            && status.entries.iter().any(|entry| &display_identity(entry) == selected)
+            && status
+                .entries
+                .iter()
+                .any(|entry| &display_identity(entry) == selected)
         {
             return Some(selected.clone());
         }
@@ -489,25 +564,44 @@ impl ChangesService {
     /// Stages or unstages the selection of `side`: its chosen diff lines
     /// when the diff of that list has some, otherwise its selected files.
     pub fn stage_selection(&self, tab: u64, side: NativeStagingSide) {
-        let (rows, focused) = self.with_tab(tab, |state| (state.diff_rows_selected, state.selection.focused));
+        let (rows, focused) = self.with_tab(tab, |state| {
+            (state.diff_rows_selected, state.selection.focused)
+        });
         if rows && focused == side {
-            self.effect(ChangesEffect::DiffSelectionRequested { tab, discard: false });
+            self.effect(ChangesEffect::DiffSelectionRequested {
+                tab,
+                discard: false,
+            });
             return;
         }
         let entries = self.selected_entries(tab, side);
         if !entries.is_empty() {
             let this = self.this();
             rt::spawn_detached(async move {
-                this.stage(tab, side, NativeStagingScope::Files, entries, None, Vec::new(), None).await
+                this.stage(
+                    tab,
+                    side,
+                    NativeStagingScope::Files,
+                    entries,
+                    None,
+                    Vec::new(),
+                    None,
+                )
+                .await
             });
         }
     }
 
     /// Space: stages or unstages what the focused list selects.
     pub fn toggle_focused(&self, tab: u64) {
-        let (rows, side) = self.with_tab(tab, |state| (state.diff_rows_selected, state.selection.focused));
+        let (rows, side) = self.with_tab(tab, |state| {
+            (state.diff_rows_selected, state.selection.focused)
+        });
         if rows {
-            self.effect(ChangesEffect::DiffSelectionRequested { tab, discard: false });
+            self.effect(ChangesEffect::DiffSelectionRequested {
+                tab,
+                discard: false,
+            });
             return;
         }
         self.stage_selection(tab, side);
@@ -532,11 +626,18 @@ impl ChangesService {
     ) -> Option<String> {
         let source = entries_on(status, side);
         let keys: HashSet<String> = moving.iter().map(change_key).collect();
-        let anchor = source.iter().position(|entry| keys.contains(&change_key(entry)))?;
+        let anchor = source
+            .iter()
+            .position(|entry| keys.contains(&change_key(entry)))?;
         source[anchor..]
             .iter()
             .find(|entry| !keys.contains(&change_key(entry)))
-            .or_else(|| source[..anchor].iter().rev().find(|entry| !keys.contains(&change_key(entry))))
+            .or_else(|| {
+                source[..anchor]
+                    .iter()
+                    .rev()
+                    .find(|entry| !keys.contains(&change_key(entry)))
+            })
             .map(display_identity)
     }
 
@@ -553,8 +654,11 @@ impl ChangesService {
         row_ids: Vec<String>,
         shown_detail: Option<String>,
     ) {
-        let Some(identity) = self.identity(tab) else { return };
-        if self.disposed.get() || self.status(tab).is_none() || self.refused(tab, "stageSelection") {
+        let Some(identity) = self.identity(tab) else {
+            return;
+        };
+        if self.disposed.get() || self.status(tab).is_none() || self.refused(tab, "stageSelection")
+        {
             return;
         }
         if self.busy(tab) && (scope != NativeStagingScope::Files || !self.can_stage_files(tab)) {
@@ -562,14 +666,20 @@ impl ChangesService {
         }
         let reserved = self.pending_keys(tab, side);
         let selected: Vec<NativeStatusEntry> = if scope == NativeStagingScope::Files {
-            entries.into_iter().filter(|entry| !reserved.contains(&change_key(entry))).collect()
+            entries
+                .into_iter()
+                .filter(|entry| !reserved.contains(&change_key(entry)))
+                .collect()
         } else {
             entries
         };
         if scope == NativeStagingScope::Files && selected.is_empty() {
             return;
         }
-        let paths = selected.iter().map(|entry| path_bytes(&entry.path)).collect::<Vec<_>>();
+        let paths = selected
+            .iter()
+            .map(|entry| path_bytes(&entry.path))
+            .collect::<Vec<_>>();
         let revision = self.with_tab(tab, |state| state.selection_revision);
         let start = self.with_tab(tab, |state| {
             state.stopped_pending = 0;
@@ -615,7 +725,8 @@ impl ChangesService {
                             return None;
                         }
                         let intent = state.pending.remove(0);
-                        state.running = Some((intent.side, intent.entries.iter().map(change_key).collect()));
+                        state.running =
+                            Some((intent.side, intent.entries.iter().map(change_key).collect()));
                         state.phase = Some(NativeStagingPhase::Waiting);
                         Some(intent)
                     });
@@ -645,7 +756,9 @@ impl ChangesService {
     }
 
     async fn execute_stage(&self, tab: u64, intent: StageIntent) -> bool {
-        let Some(status) = self.status(tab) else { return false };
+        let Some(status) = self.status(tab) else {
+            return false;
+        };
         let side = intent.side;
         let scope = intent.scope;
         let next = if scope == NativeStagingScope::Rows {
@@ -672,13 +785,17 @@ impl ChangesService {
                     if !polling.get() {
                         break;
                     }
-                    let phase = this.calls.repository_session_staging_phase(identity.native_id, identity.generation).await;
+                    let phase = this
+                        .calls
+                        .repository_session_staging_phase(identity.native_id, identity.generation)
+                        .await;
                     if let Ok(Some(phase)) = phase
                         && phase != NativeStagingPhase::Idle
                         && polling.get()
                         && this.session_open(tab, identity)
                     {
-                        let changed = this.with_tab(tab, |state| state.phase.replace(phase) != Some(phase));
+                        let changed =
+                            this.with_tab(tab, |state| state.phase.replace(phase) != Some(phase));
                         if changed {
                             this.notify();
                         }
@@ -686,10 +803,23 @@ impl ChangesService {
                 }
             });
         }
-        let paths = if scope == NativeStagingScope::Files { intent.paths.clone() } else { Vec::new() };
-        let batches = if paths.is_empty() { 1 } else { paths.len().div_ceil(STAGE_PATHS) };
-        let mut outcome: Result<(NativeStagingExecutionState, Option<NativeStagingFailureCode>), FailureCode> =
-            Ok((NativeStagingExecutionState::Failed, None));
+        let paths = if scope == NativeStagingScope::Files {
+            intent.paths.clone()
+        } else {
+            Vec::new()
+        };
+        let batches = if paths.is_empty() {
+            1
+        } else {
+            paths.len().div_ceil(STAGE_PATHS)
+        };
+        let mut outcome: Result<
+            (
+                NativeStagingExecutionState,
+                Option<NativeStagingFailureCode>,
+            ),
+            FailureCode,
+        > = Ok((NativeStagingExecutionState::Failed, None));
         for batch in 0..batches {
             let slice = if paths.is_empty() {
                 Vec::new()
@@ -705,9 +835,15 @@ impl ChangesService {
             };
             outcome = self.execute_staging(intent.identity, request).await;
             if let Ok((state, _)) = &outcome {
-                moved |= matches!(state, NativeStagingExecutionState::Completed | NativeStagingExecutionState::ReconciledWithWarning);
+                moved |= matches!(
+                    state,
+                    NativeStagingExecutionState::Completed
+                        | NativeStagingExecutionState::ReconciledWithWarning
+                );
             }
-            if !matches!(outcome, Ok((NativeStagingExecutionState::Completed, _))) || !self.session_open(tab, intent.identity) {
+            if !matches!(outcome, Ok((NativeStagingExecutionState::Completed, _)))
+                || !self.session_open(tab, intent.identity)
+            {
                 break;
             }
         }
@@ -717,8 +853,14 @@ impl ChangesService {
         }
         let proceed = match outcome {
             Ok((state, diagnostic)) => {
-                if matches!(state, NativeStagingExecutionState::Completed | NativeStagingExecutionState::ReconciledWithWarning) {
-                    if self.with_tab(tab, |current| current.selection_revision) == intent.selection_revision {
+                if matches!(
+                    state,
+                    NativeStagingExecutionState::Completed
+                        | NativeStagingExecutionState::ReconciledWithWarning
+                ) {
+                    if self.with_tab(tab, |current| current.selection_revision)
+                        == intent.selection_revision
+                    {
                         self.follow_move(tab, &status, side, &intent.entries, next);
                     }
                 } else {
@@ -742,15 +884,33 @@ impl ChangesService {
         &self,
         identity: SessionIdentity,
         request: NativeStagingRequest,
-    ) -> Result<(NativeStagingExecutionState, Option<NativeStagingFailureCode>), FailureCode> {
+    ) -> Result<
+        (
+            NativeStagingExecutionState,
+            Option<NativeStagingFailureCode>,
+        ),
+        FailureCode,
+    > {
         let run = |request: NativeStagingRequest| {
-            self.calls.repository_session_staging_execute(identity.native_id, identity.generation, request)
+            self.calls.repository_session_staging_execute(
+                identity.native_id,
+                identity.generation,
+                request,
+            )
         };
         let scope = request.scope;
-        let retry = NativeStagingRequest { request_id: 0, row_ids: Vec::new(), ..request.clone() };
-        let mut result = run(request).await.map_err(|error| crate::session::SessionError::from(error).code())?;
+        let retry = NativeStagingRequest {
+            request_id: 0,
+            row_ids: Vec::new(),
+            ..request.clone()
+        };
+        let mut result = run(request)
+            .await
+            .map_err(|error| crate::session::SessionError::from(error).code())?;
         if result.state == NativeStagingExecutionState::Stale && scope != NativeStagingScope::Rows {
-            result = run(retry).await.map_err(|error| crate::session::SessionError::from(error).code())?;
+            result = run(retry)
+                .await
+                .map_err(|error| crate::session::SessionError::from(error).code())?;
         }
         if let Some(failure) = &result.failure
             && result.state == NativeStagingExecutionState::Failed
@@ -758,7 +918,10 @@ impl ChangesService {
         {
             return Err(FailureCode::from(failure));
         }
-        Ok((result.state, result.diagnostic.map(|diagnostic| diagnostic.code)))
+        Ok((
+            result.state,
+            result.diagnostic.map(|diagnostic| diagnostic.code),
+        ))
     }
 
     fn follow_move(
@@ -786,7 +949,10 @@ impl ChangesService {
                 } else {
                     staged.clear();
                 }
-                if let Some(entry) = entries_on(status, side).into_iter().find(|entry| &display_identity(entry) == next) {
+                if let Some(entry) = entries_on(status, side)
+                    .into_iter()
+                    .find(|entry| &display_identity(entry) == next)
+                {
                     let keys = HashSet::from([change_key(&entry)]);
                     if side == NativeStagingSide::Staged {
                         staged = keys;
@@ -805,7 +971,11 @@ impl ChangesService {
                 }
                 focused = other_side(side);
             }
-            state.selection = Selection { staged, unstaged, focused };
+            state.selection = Selection {
+                staged,
+                unstaged,
+                focused,
+            };
         });
         self.notify();
         let identity = next.or_else(|| entries.first().map(display_identity));
@@ -821,11 +991,18 @@ impl ChangesService {
         false
     }
 
-    fn report_staging(&self, state: NativeStagingExecutionState, diagnostic: Option<NativeStagingFailureCode>) {
+    fn report_staging(
+        &self,
+        state: NativeStagingExecutionState,
+        diagnostic: Option<NativeStagingFailureCode>,
+    ) {
         let (key, error) = match state {
             NativeStagingExecutionState::Completed => ("stagingCompleted", false),
             NativeStagingExecutionState::Stale => ("stagingStale", true),
-            NativeStagingExecutionState::Failed => (diagnostic.map_or("stagingFailed", staging_failure_key), true),
+            NativeStagingExecutionState::Failed => (
+                diagnostic.map_or("stagingFailed", staging_failure_key),
+                true,
+            ),
             NativeStagingExecutionState::ReconciledWithWarning => ("stagingWarning", false),
             NativeStagingExecutionState::OutcomeUncertain => ("mutationOutcomeUncertain", true),
         };
@@ -853,12 +1030,23 @@ impl ChangesService {
         accepted_request: Option<u64>,
         row_ids: Vec<String>,
     ) {
-        let kind = if accepted_request.is_some() { Some(NativeDiscardKind::Discard) } else { discard_kind_of(&entries) };
-        if kind.is_none() || entries.is_empty() || self.busy(tab) || self.refused(tab, "discardChanges") {
+        let kind = if accepted_request.is_some() {
+            Some(NativeDiscardKind::Discard)
+        } else {
+            discard_kind_of(&entries)
+        };
+        if kind.is_none()
+            || entries.is_empty()
+            || self.busy(tab)
+            || self.refused(tab, "discardChanges")
+        {
             return;
         }
-        let Some(identity) = self.identity(tab) else { return };
-        let current = || self.workspace.active_tab_id() == Some(tab) && self.identity(tab) == Some(identity);
+        let Some(identity) = self.identity(tab) else {
+            return;
+        };
+        let current =
+            || self.workspace.active_tab_id() == Some(tab) && self.identity(tab) == Some(identity);
         if !current() {
             return;
         }
@@ -879,7 +1067,9 @@ impl ChangesService {
                             let clean = part == NativeDiscardKind::Clean;
                             let chosen: Vec<NativeStatusEntry> = entries
                                 .iter()
-                                .filter(|entry| (entry.kind == NativeStatusEntryKind::Untracked) == clean)
+                                .filter(|entry| {
+                                    (entry.kind == NativeStatusEntryKind::Untracked) == clean
+                                })
                                 .cloned()
                                 .collect();
                             (!chosen.is_empty()).then(|| NativeDiscardRequest {
@@ -897,25 +1087,51 @@ impl ChangesService {
                     if !current() {
                         return;
                     }
-                    match this.calls.repository_session_discard_preview(identity.native_id, identity.generation, request).await {
+                    match this
+                        .calls
+                        .repository_session_discard_preview(
+                            identity.native_id,
+                            identity.generation,
+                            request,
+                        )
+                        .await
+                    {
                         Ok(result) => match (result.preview, result.failure) {
                             (Some(preview), None) => previews.push(preview),
-                            (_, Some(failure)) => return this.report_failure(FailureCode::from(&failure), "discardFailed"),
-                            _ => return this.report_failure(FailureCode::InvalidOutput, "discardFailed"),
+                            (_, Some(failure)) => {
+                                return this
+                                    .report_failure(FailureCode::from(&failure), "discardFailed");
+                            }
+                            _ => {
+                                return this
+                                    .report_failure(FailureCode::InvalidOutput, "discardFailed");
+                            }
                         },
                         Err(error) => {
-                            return this.report_failure(crate::session::SessionError::from(error).code(), "discardFailed");
+                            return this.report_failure(
+                                crate::session::SessionError::from(error).code(),
+                                "discardFailed",
+                            );
                         }
                     }
                 }
                 let total: u64 = previews.iter().map(|preview| preview.file_count).sum();
-                let tracked: u64 =
-                    previews.iter().filter(|preview| preview.kind == NativeDiscardKind::Discard).map(|preview| preview.file_count).sum();
-                let untracked: u64 =
-                    previews.iter().filter(|preview| preview.kind == NativeDiscardKind::Clean).map(|preview| preview.file_count).sum();
+                let tracked: u64 = previews
+                    .iter()
+                    .filter(|preview| preview.kind == NativeDiscardKind::Discard)
+                    .map(|preview| preview.file_count)
+                    .sum();
+                let untracked: u64 = previews
+                    .iter()
+                    .filter(|preview| preview.kind == NativeDiscardKind::Clean)
+                    .map(|preview| preview.file_count)
+                    .sum();
                 let answer = this
                     .prompts
-                    .ask("confirmDiscard", json!({"trackedFiles": tracked, "untrackedFiles": untracked}))
+                    .ask(
+                        "confirmDiscard",
+                        json!({"trackedFiles": tracked, "untrackedFiles": untracked}),
+                    )
                     .await;
                 if answer != Some(Value::Bool(true)) || !current() {
                     return;
@@ -936,17 +1152,31 @@ impl ChangesService {
                     if !current() {
                         break;
                     }
-                    let result = this.calls.repository_session_discard_execute(identity.native_id, identity.generation, preview.token).await;
+                    let result = this
+                        .calls
+                        .repository_session_discard_execute(
+                            identity.native_id,
+                            identity.generation,
+                            preview.token,
+                        )
+                        .await;
                     let state = match result {
                         Ok(result) => result.state,
                         Err(error) => {
                             this.report_discard_stop(completed, total, || {
-                                this.report_failure(crate::session::SessionError::from(error).code(), "discardFailed")
+                                this.report_failure(
+                                    crate::session::SessionError::from(error).code(),
+                                    "discardFailed",
+                                )
                             });
                             break;
                         }
                     };
-                    if !matches!(state, NativeDiscardExecutionState::Completed | NativeDiscardExecutionState::ReconciledWithWarning) {
+                    if !matches!(
+                        state,
+                        NativeDiscardExecutionState::Completed
+                            | NativeDiscardExecutionState::ReconciledWithWarning
+                    ) {
                         moved |= state == NativeDiscardExecutionState::OutcomeUncertain;
                         this.report_discard_stop(completed, total, || this.report_discard(state));
                         if started {
@@ -974,7 +1204,10 @@ impl ChangesService {
 
     fn report_discard_stop(&self, completed: u64, total: u64, otherwise: impl FnOnce()) {
         if completed > 0 {
-            self.notices.error("discardPartial", json!({"completed": completed, "total": total}));
+            self.notices.error(
+                "discardPartial",
+                json!({"completed": completed, "total": total}),
+            );
         } else {
             otherwise();
         }
@@ -1004,11 +1237,17 @@ impl ChangesService {
 pub fn staging_failure_key(code: NativeStagingFailureCode) -> &'static str {
     match code {
         NativeStagingFailureCode::IndexLocked => "stagingFailureIndexLocked",
-        NativeStagingFailureCode::IndexChanged | NativeStagingFailureCode::ContentChanged => "stagingStale",
+        NativeStagingFailureCode::IndexChanged | NativeStagingFailureCode::ContentChanged => {
+            "stagingStale"
+        }
         NativeStagingFailureCode::StatusRead => "stagingFailureStatusRead",
-        NativeStagingFailureCode::IndexRead | NativeStagingFailureCode::IndexUnsafe => "stagingFailureIndexRead",
+        NativeStagingFailureCode::IndexRead | NativeStagingFailureCode::IndexUnsafe => {
+            "stagingFailureIndexRead"
+        }
         NativeStagingFailureCode::ContentRead => "stagingFailureContentRead",
-        NativeStagingFailureCode::IndexPrepare | NativeStagingFailureCode::IndexInstall => "stagingFailureIndexWrite",
+        NativeStagingFailureCode::IndexPrepare | NativeStagingFailureCode::IndexInstall => {
+            "stagingFailureIndexWrite"
+        }
         NativeStagingFailureCode::GitLaunch => "gitUnavailable",
         NativeStagingFailureCode::GitTimeout => "operationFailureTimeout",
         NativeStagingFailureCode::GitFailed => "stagingFailureGit",
@@ -1028,7 +1267,9 @@ pub fn failure_reason_key(code: FailureCode) -> &'static str {
         FailureCode::PermissionDenied => "repositoryPermissionDenied",
         FailureCode::MissingGit => "gitUnavailable",
         FailureCode::MissingObject => "operationFailureMissingObject",
-        FailureCode::InvalidOptions | FailureCode::InvalidOutput => "operationFailureInvalidRequest",
+        FailureCode::InvalidOptions | FailureCode::InvalidOutput => {
+            "operationFailureInvalidRequest"
+        }
         FailureCode::Capacity => "operationFailureBusy",
         _ => "operationFailureRead",
     }

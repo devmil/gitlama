@@ -12,8 +12,8 @@ use crate::sidebar::display_reference;
 use crate::transfers::{Draft, TransferService};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::dto::{
-    NativeRefMutationExecutionState, NativeRefMutationKind, NativeRefMutationRequest, NativeRefMutationWarning,
-    NativeRefResetMode, NativeRepositoryRefs,
+    NativeRefMutationExecutionState, NativeRefMutationKind, NativeRefMutationRequest,
+    NativeRefMutationWarning, NativeRefResetMode, NativeRepositoryRefs,
 };
 use gitlama_contract::transfer::{NativePullStrategy, NativeTransferKind, NativeTransferRequest};
 use serde_json::{Value, json};
@@ -84,7 +84,11 @@ pub struct RefRequest {
 
 impl RefRequest {
     pub fn plain(native: NativeRefMutationRequest) -> Self {
-        Self { native, remote_names: Vec::new(), delete_upstream: None }
+        Self {
+            native,
+            remote_names: Vec::new(),
+            delete_upstream: None,
+        }
     }
 
     fn to_value(&self) -> Value {
@@ -111,7 +115,12 @@ impl RefRequest {
     }
 
     pub fn from_value(value: &Value) -> Option<Self> {
-        let text = |key: &str| value[key].as_str().filter(|text| !text.is_empty()).map(str::to_owned);
+        let text = |key: &str| {
+            value[key]
+                .as_str()
+                .filter(|text| !text.is_empty())
+                .map(str::to_owned)
+        };
         Some(Self {
             native: NativeRefMutationRequest {
                 kind: parse_kind(value["kind"].as_str()?)?,
@@ -131,7 +140,12 @@ impl RefRequest {
             },
             remote_names: value["remoteNames"]
                 .as_array()
-                .map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect())
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| item.as_str().map(str::to_owned))
+                        .collect()
+                })
                 .unwrap_or_default(),
             delete_upstream: value["deleteUpstream"]["remote"]
                 .as_str()
@@ -167,7 +181,11 @@ pub struct RefService {
 }
 
 fn done(state: NativeRefMutationExecutionState) -> bool {
-    matches!(state, NativeRefMutationExecutionState::Completed | NativeRefMutationExecutionState::ReconciledWithWarning)
+    matches!(
+        state,
+        NativeRefMutationExecutionState::Completed
+            | NativeRefMutationExecutionState::ReconciledWithWarning
+    )
 }
 
 impl RefService {
@@ -178,7 +196,13 @@ impl RefService {
         prompts: Rc<Prompts>,
         notices: Rc<Notices>,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, transfers, prompts, notices })
+        Rc::new(Self {
+            calls,
+            workspace,
+            transfers,
+            prompts,
+            notices,
+        })
     }
 
     fn identity(&self) -> Option<SessionIdentity> {
@@ -186,19 +210,30 @@ impl RefService {
     }
 
     fn refs(&self) -> NativeRepositoryRefs {
-        self.workspace.current().map(|session| session.snapshot.refs.clone()).unwrap_or_default()
+        self.workspace
+            .current()
+            .map(|session| session.snapshot.refs.clone())
+            .unwrap_or_default()
     }
 
     /// Asks for a reference change of `kind`, runs it, and reopens the
     /// dialog with its input when the target commit went missing.
-    pub async fn mutate(&self, kind: NativeRefMutationKind, initial_name: Option<String>, initial_target: Option<String>) {
+    pub async fn mutate(
+        &self,
+        kind: NativeRefMutationKind,
+        initial_name: Option<String>,
+        initial_target: Option<String>,
+    ) {
         let identity = self.identity();
         let mut previous: Option<RefRequest> = None;
         loop {
-            let head = self
-                .workspace
-                .current()
-                .and_then(|session| session.snapshot.status.as_ref().and_then(|status| status.head_object_id.clone()));
+            let head = self.workspace.current().and_then(|session| {
+                session
+                    .snapshot
+                    .status
+                    .as_ref()
+                    .and_then(|status| status.head_object_id.clone())
+            });
             let payload = json!({
                 "kind": kind_name(kind),
                 "references": references_payload(&self.refs()),
@@ -207,8 +242,12 @@ impl RefService {
                 "initialTarget": initial_target.clone().or(head),
                 "previous": previous.as_ref().map(RefRequest::to_value),
             });
-            let Some(answer) = self.prompts.ask("chooseRefMutation", payload).await else { return };
-            let Some(request) = RefRequest::from_value(&answer) else { return };
+            let Some(answer) = self.prompts.ask("chooseRefMutation", payload).await else {
+                return;
+            };
+            let Some(request) = RefRequest::from_value(&answer) else {
+                return;
+            };
             if self.identity() != identity {
                 self.notices.error("refMutationStale", Value::Null);
                 return;
@@ -232,14 +271,27 @@ impl RefService {
 
     /// Runs `request`; true when its target was missing and may be recovered.
     pub async fn run(&self, request: RefRequest, recover_missing_target: bool) -> bool {
-        let Some(identity) = self.identity() else { return false };
+        let Some(identity) = self.identity() else {
+            return false;
+        };
         let same = || self.identity() == Some(identity);
-        let preview = match self.calls.repository_session_ref_mutation_preview(identity.native_id, identity.generation, request.native.clone()).await {
+        let preview = match self
+            .calls
+            .repository_session_ref_mutation_preview(
+                identity.native_id,
+                identity.generation,
+                request.native.clone(),
+            )
+            .await
+        {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
                 (_, Some(failure)) => {
                     let code = FailureCode::from(&failure);
-                    if recover_missing_target && request.native.target.is_some() && code == FailureCode::MissingObject {
+                    if recover_missing_target
+                        && request.native.target.is_some()
+                        && code == FailureCode::MissingObject
+                    {
                         return true;
                     }
                     self.report_failure(code, false);
@@ -257,7 +309,11 @@ impl RefService {
         };
         let local_tag = if request.native.kind == NativeRefMutationKind::DeleteTag {
             let name = request.native.name.clone().unwrap_or_default();
-            self.refs().tags.iter().find(|tag| text(&tag.name) == name).map(|tag| tag.target.clone())
+            self.refs()
+                .tags
+                .iter()
+                .find(|tag| text(&tag.name) == name)
+                .map(|tag| tag.target.clone())
         } else {
             None
         };
@@ -302,11 +358,20 @@ impl RefService {
                 return false;
             }
             if !succeeded {
-                self.notices.status("deleteTagRemoteFailed", json!({"remote": remote}));
+                self.notices
+                    .status("deleteTagRemoteFailed", json!({"remote": remote}));
                 return false;
             }
         }
-        let result = match self.calls.repository_session_ref_mutation_execute(identity.native_id, identity.generation, preview.token).await {
+        let result = match self
+            .calls
+            .repository_session_ref_mutation_execute(
+                identity.native_id,
+                identity.generation,
+                preview.token,
+            )
+            .await
+        {
             Ok(result) => result,
             Err(error) => {
                 self.report_failure(SessionError::from(error).code(), remote_tag_deleted);
@@ -317,7 +382,11 @@ impl RefService {
             && result.state == NativeRefMutationExecutionState::Failed
         {
             let code = FailureCode::from(failure);
-            if recover_missing_target && request.native.target.is_some() && !remote_tag_deleted && code == FailureCode::MissingObject {
+            if recover_missing_target
+                && request.native.target.is_some()
+                && !remote_tag_deleted
+                && code == FailureCode::MissingObject
+            {
                 return true;
             }
         }
@@ -346,7 +415,8 @@ impl RefService {
                     )
                     .await;
             if !succeeded {
-                self.notices.status("deleteBranchUpstreamFailed", json!({"upstream": label}));
+                self.notices
+                    .status("deleteBranchUpstreamFailed", json!({"upstream": label}));
                 return false;
             }
         }
@@ -362,11 +432,16 @@ impl RefService {
                 NativeRefMutationExecutionState::Completed => "refMutationCompleted",
                 NativeRefMutationExecutionState::Stale => "refMutationStale",
                 NativeRefMutationExecutionState::Failed => "refMutationFailed",
-                NativeRefMutationExecutionState::ReconciledWithWarning => "refMutationWarningResult",
+                NativeRefMutationExecutionState::ReconciledWithWarning => {
+                    "refMutationWarningResult"
+                }
                 NativeRefMutationExecutionState::OutcomeUncertain => "mutationOutcomeUncertain",
             }
         };
-        if matches!(state, NativeRefMutationExecutionState::Failed | NativeRefMutationExecutionState::Stale) {
+        if matches!(
+            state,
+            NativeRefMutationExecutionState::Failed | NativeRefMutationExecutionState::Stale
+        ) {
             self.notices.error(key, Value::Null);
         } else {
             self.notices.status(key, Value::Null);
@@ -374,7 +449,11 @@ impl RefService {
     }
 
     fn report_failure(&self, code: FailureCode, remote_tag_deleted: bool) {
-        let operation = if remote_tag_deleted { "deleteTagLocalFailedAfterRemote" } else { "refMutationFailed" };
+        let operation = if remote_tag_deleted {
+            "deleteTagLocalFailedAfterRemote"
+        } else {
+            "refMutationFailed"
+        };
         self.notices.status(
             "operationFailureWithReason",
             json!({"operation": {"l10n": operation}, "reason": {"l10n": crate::changes::failure_reason_key(code)}}),
@@ -384,10 +463,17 @@ impl RefService {
     /// Renames the branch `initial_name` (the current one by default) and
     /// changes its upstream.
     pub async fn edit_branch(&self, initial_name: Option<String>) {
-        let snapshot = self.workspace.current().map(|session| Rc::clone(&session.snapshot));
-        let current = snapshot
-            .as_ref()
-            .and_then(|snapshot| snapshot.status.as_ref().and_then(|status| status.branch_name.as_deref()).map(text));
+        let snapshot = self
+            .workspace
+            .current()
+            .map(|session| Rc::clone(&session.snapshot));
+        let current = snapshot.as_ref().and_then(|snapshot| {
+            snapshot
+                .status
+                .as_ref()
+                .and_then(|status| status.branch_name.as_deref())
+                .map(text)
+        });
         let (Some(snapshot), Some(branch)) = (snapshot, initial_name.or(current)) else {
             return Box::pin(self.mutate(NativeRefMutationKind::RenameBranch, None, None)).await;
         };
@@ -423,22 +509,50 @@ impl RefService {
             checkout: false,
         };
         if name != branch {
-            requests.push(base(NativeRefMutationKind::RenameBranch, Some(branch.clone()), Some(name.clone())));
+            requests.push(base(
+                NativeRefMutationKind::RenameBranch,
+                Some(branch.clone()),
+                Some(name.clone()),
+            ));
         }
         if chosen != upstream {
             requests.push(match &chosen {
-                None => base(NativeRefMutationKind::UnsetUpstream, Some(name.clone()), None),
-                Some(upstream) => base(NativeRefMutationKind::SetUpstream, Some(name.clone()), Some(upstream.clone())),
+                None => base(
+                    NativeRefMutationKind::UnsetUpstream,
+                    Some(name.clone()),
+                    None,
+                ),
+                Some(upstream) => base(
+                    NativeRefMutationKind::SetUpstream,
+                    Some(name.clone()),
+                    Some(upstream.clone()),
+                ),
             });
         }
-        let Some(identity) = self.identity() else { return };
+        let Some(identity) = self.identity() else {
+            return;
+        };
         let mut state = NativeRefMutationExecutionState::Completed;
         for request in requests {
-            let preview = match self.calls.repository_session_ref_mutation_preview(identity.native_id, identity.generation, request.clone()).await {
+            let preview = match self
+                .calls
+                .repository_session_ref_mutation_preview(
+                    identity.native_id,
+                    identity.generation,
+                    request.clone(),
+                )
+                .await
+            {
                 Ok(result) => match result.preview {
                     Some(preview) if result.failure.is_none() => preview,
                     _ => {
-                        self.report_failure(result.failure.as_ref().map_or(FailureCode::InvalidOutput, FailureCode::from), false);
+                        self.report_failure(
+                            result
+                                .failure
+                                .as_ref()
+                                .map_or(FailureCode::InvalidOutput, FailureCode::from),
+                            false,
+                        );
                         return;
                     }
                 },
@@ -461,7 +575,15 @@ impl RefService {
                     return;
                 }
             }
-            match self.calls.repository_session_ref_mutation_execute(identity.native_id, identity.generation, preview.token).await {
+            match self
+                .calls
+                .repository_session_ref_mutation_execute(
+                    identity.native_id,
+                    identity.generation,
+                    preview.token,
+                )
+                .await
+            {
                 Ok(result) => state = result.state,
                 Err(error) => return self.report_failure(SessionError::from(error).code(), false),
             }
@@ -477,27 +599,51 @@ impl RefService {
     pub async fn checkout(&self, name: Option<String>, reference: Option<String>) {
         let refs = self.refs();
         if let Some(name) = &name {
-            let remote_tracking = reference.as_deref().is_some_and(|reference| reference.starts_with("refs/remotes/"));
-            let local_exists = refs.branches.iter().any(|branch| &text(&branch.name) == name);
+            let remote_tracking = reference
+                .as_deref()
+                .is_some_and(|reference| reference.starts_with("refs/remotes/"));
+            let local_exists = refs
+                .branches
+                .iter()
+                .any(|branch| &text(&branch.name) == name);
             if remote_tracking || (reference.is_none() && !local_exists) {
                 // The longest remote name that prefixes `name`.
                 let split = refs
                     .remotes
                     .iter()
                     .map(|remote| text(&remote.name))
-                    .filter(|remote| name.len() > remote.len() + 1 && name.starts_with(remote.as_str()) && name.as_bytes()[remote.len()] == b'/')
+                    .filter(|remote| {
+                        name.len() > remote.len() + 1
+                            && name.starts_with(remote.as_str())
+                            && name.as_bytes()[remote.len()] == b'/'
+                    })
                     .max_by_key(String::len)
                     .map(|remote| (name[remote.len() + 1..].to_owned(), remote));
                 if let Some((branch, remote)) = split {
                     let remote_ref = format!("refs/remotes/{remote}/{branch}");
                     let tracking = refs.branches.iter().find(|candidate| {
-                        candidate.upstream.as_deref().is_some_and(|upstream| text(upstream) == remote_ref)
+                        candidate
+                            .upstream
+                            .as_deref()
+                            .is_some_and(|upstream| text(upstream) == remote_ref)
                     });
                     return match tracking {
                         Some(local) => {
-                            Box::pin(self.mutate(NativeRefMutationKind::CheckoutBranch, Some(text(&local.name)), None)).await
+                            Box::pin(self.mutate(
+                                NativeRefMutationKind::CheckoutBranch,
+                                Some(text(&local.name)),
+                                None,
+                            ))
+                            .await
                         }
-                        None => Box::pin(self.mutate(NativeRefMutationKind::CreateBranch, Some(branch), Some(remote_ref))).await,
+                        None => {
+                            Box::pin(self.mutate(
+                                NativeRefMutationKind::CreateBranch,
+                                Some(branch),
+                                Some(remote_ref),
+                            ))
+                            .await
+                        }
                     };
                 }
             }
@@ -513,7 +659,9 @@ impl RefService {
             refs.remotes
                 .iter()
                 .map(|remote| text(&remote.name))
-                .filter(|remote| short.len() > remote.len() + 1 && short.starts_with(remote.as_str()))
+                .filter(|remote| {
+                    short.len() > remote.len() + 1 && short.starts_with(remote.as_str())
+                })
                 .max_by_key(String::len)
                 .map(|remote| (short[remote.len() + 1..].to_owned(), remote))
         });

@@ -251,9 +251,17 @@ pub fn basename(identity: &NativePathIdentity) -> String {
 /// name it.
 pub fn local_path(path: &str) -> NativePathIdentity {
     if cfg!(windows) {
-        NativePathIdentity { platform: gitlama_contract::dto::NativePathPlatform::Windows, units: path.encode_utf16().collect(), remote: None }
+        NativePathIdentity {
+            platform: gitlama_contract::dto::NativePathPlatform::Windows,
+            units: path.encode_utf16().collect(),
+            remote: None,
+        }
     } else {
-        NativePathIdentity { platform: gitlama_contract::dto::NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+        NativePathIdentity {
+            platform: gitlama_contract::dto::NativePathPlatform::Unix,
+            units: path.bytes().map(u16::from).collect(),
+            remote: None,
+        }
     }
 }
 

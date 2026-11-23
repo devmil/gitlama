@@ -5,8 +5,8 @@
 
 use crate::plumbing::Commands;
 use gitlama_contract::conflict::{
-    NativeConflictFileKind, NativeConflictOperationKind, NativeConflictRegionChoice, NativeConflictSequencerAction,
-    NativeConflictSideChoice,
+    NativeConflictFileKind, NativeConflictOperationKind, NativeConflictRegionChoice,
+    NativeConflictSequencerAction, NativeConflictSideChoice,
 };
 use gitlama_workbench::app::Services;
 use gitlama_workbench::conflict_draft::{has_conflict_markers, marker_count, string};
@@ -35,7 +35,10 @@ pub fn key(path: &[u8]) -> String {
 }
 
 fn path_of(key: &str) -> Option<Vec<u8>> {
-    (0..key.len()).step_by(2).map(|index| u8::from_str_radix(key.get(index..index + 2)?, 16).ok()).collect()
+    (0..key.len())
+        .step_by(2)
+        .map(|index| u8::from_str_radix(key.get(index..index + 2)?, 16).ok())
+        .collect()
 }
 
 fn text(bytes: &[u8]) -> String {
@@ -132,9 +135,17 @@ pub fn project(session: &ConflictSession) -> (Value, String, u64, Vec<Value>) {
                     .collect::<Vec<_>>()
             });
             if let Some(merge) = &draft.draft {
-                let firsts: Vec<usize> = merge.block_rows().iter().filter(|(_, count)| *count > 0).map(|(first, _)| *first).collect();
+                let firsts: Vec<usize> = merge
+                    .block_rows()
+                    .iter()
+                    .filter(|(_, count)| *count > 0)
+                    .map(|(first, _)| *first)
+                    .collect();
                 for (index, row) in merge.rows.iter().enumerate() {
-                    let choice = row.block.and_then(|block| merge.blocks.get(block)).and_then(|block| block.choice);
+                    let choice = row
+                        .block
+                        .and_then(|block| merge.blocks.get(block))
+                        .and_then(|block| block.choice);
                     rows.push(json!({
                         "key": index.to_string(),
                         "current": string(&row.current).trim_end_matches('\n'),
@@ -156,7 +167,12 @@ pub fn project(session: &ConflictSession) -> (Value, String, u64, Vec<Value>) {
                 && let Some(merge) = &draft.draft
             {
                 let units = &draft.text;
-                let line_at = |offset: usize| units[..offset.min(units.len())].iter().filter(|unit| **unit == b'\n' as u16).count();
+                let line_at = |offset: usize| {
+                    units[..offset.min(units.len())]
+                        .iter()
+                        .filter(|unit| **unit == b'\n' as u16)
+                        .count()
+                };
                 let mut mark = |start: usize, end: usize, kind: &str| {
                     if end > start {
                         marks.push(json!({"first": line_at(start), "last": line_at(end - 1), "kind": kind}));
@@ -254,7 +270,11 @@ mod conflicts_state {
     impl ConflictsState {
         qproperty!("state", Member = state, Notify = state_changed);
         qproperty!("resultText", Member = result_text, Notify = result_changed);
-        qproperty!("textRevision", Member = text_revision, Notify = result_changed);
+        qproperty!(
+            "textRevision",
+            Member = text_revision,
+            Notify = result_changed
+        );
 
         #[qsignal]
         pub fn state_changed(&mut self);
@@ -272,31 +292,47 @@ mod conflicts_state {
 
         #[qslot]
         fn select(&self, index: i32, last_region: bool) {
-            self.with_services(move |services| services.conflicts.select(index.max(0) as usize, last_region));
+            self.with_services(move |services| {
+                services
+                    .conflicts
+                    .select(index.max(0) as usize, last_region)
+            });
         }
 
         /// `choice` is current, incoming or both.
         #[qslot]
         fn take_region(&self, index: i32, choice: String, remove: bool) {
-            let Some(choice) = parse_region_choice(&choice) else { return };
-            self.with_services(move |services| services.conflicts.take_region(index.max(0) as usize, choice, remove));
+            let Some(choice) = parse_region_choice(&choice) else {
+                return;
+            };
+            self.with_services(move |services| {
+                services
+                    .conflicts
+                    .take_region(index.max(0) as usize, choice, remove)
+            });
         }
 
         #[qslot]
         fn take_focused(&self, choice: String) {
-            let Some(choice) = parse_region_choice(&choice) else { return };
+            let Some(choice) = parse_region_choice(&choice) else {
+                return;
+            };
             self.with_services(move |services| services.conflicts.take_focused(choice));
         }
 
         #[qslot]
         fn focus_region(&self, index: i32) {
-            self.with_services(move |services| services.conflicts.focus_region(index.max(0) as usize));
+            self.with_services(move |services| {
+                services.conflicts.focus_region(index.max(0) as usize)
+            });
         }
 
         /// `side` is current or incoming; choosing it again takes it back.
         #[qslot]
         fn choose_side(&self, side: String) {
-            let Some(side) = parse_side(&side) else { return };
+            let Some(side) = parse_side(&side) else {
+                return;
+            };
             self.with_services(move |services| services.conflicts.choose_side(side));
         }
 
@@ -312,7 +348,9 @@ mod conflicts_state {
 
         #[qslot]
         fn set_merge_message(&self, subject: String, description: String) {
-            self.with_services(move |services| services.conflicts.set_merge_message(subject, description));
+            self.with_services(move |services| {
+                services.conflicts.set_merge_message(subject, description)
+            });
         }
 
         /// Saves the shown file's result.
@@ -337,9 +375,16 @@ mod conflicts_state {
                         .integrations
                         .iter()
                         .filter_map(gitlama_workbench::integrations::definition)
-                        .filter(|tool| tool.kind == gitlama_contract::integrations::NativeIntegrationKind::MergeTool)
+                        .filter(|tool| {
+                            tool.kind
+                                == gitlama_contract::integrations::NativeIntegrationKind::MergeTool
+                        })
                         .collect();
-                    if name.is_empty() && tools.len() == 1 { tools.into_iter().next() } else { tools.into_iter().find(|tool| tool.id == name) }
+                    if name.is_empty() && tools.len() == 1 {
+                        tools.into_iter().next()
+                    } else {
+                        tools.into_iter().find(|tool| tool.id == name)
+                    }
                 });
                 async move {
                     if let Some(tool) = tool {
@@ -357,13 +402,31 @@ mod conflicts_state {
         fn tree_rows(&self, paths: Value, collapsed: Value) -> Value {
             let paths: Vec<(usize, String)> = paths
                 .as_array()
-                .map(|paths| paths.iter().enumerate().filter_map(|(index, path)| Some((index, path.as_str()?.to_owned()))).collect())
+                .map(|paths| {
+                    paths
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, path)| Some((index, path.as_str()?.to_owned())))
+                        .collect()
+                })
                 .unwrap_or_default();
             let collapsed: std::collections::HashSet<String> = collapsed
                 .as_array()
-                .map(|names| names.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+                .map(|names| {
+                    names
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_owned)
+                        .collect()
+                })
                 .unwrap_or_default();
-            let rows = gitlama_workbench::path_tree::flatten(paths, |(_, path)| path.clone(), &collapsed, true, None);
+            let rows = gitlama_workbench::path_tree::flatten(
+                paths,
+                |(_, path)| path.clone(),
+                &collapsed,
+                true,
+                None,
+            );
             Value::Array(
                 rows.into_iter()
                     .map(|row| {
@@ -393,8 +456,14 @@ mod conflicts_state {
         /// puts each back.
         #[qslot]
         fn for_each(&self, keys: Value, side: String) {
-            let paths: Vec<Vec<u8>> =
-                keys.as_array().map(|keys| keys.iter().filter_map(|key| path_of(key.as_str()?)).collect()).unwrap_or_default();
+            let paths: Vec<Vec<u8>> = keys
+                .as_array()
+                .map(|keys| {
+                    keys.iter()
+                        .filter_map(|key| path_of(key.as_str()?))
+                        .collect()
+                })
+                .unwrap_or_default();
             let side = parse_side(&side);
             self.spawn(move |services| {
                 let conflicts = Rc::clone(&services.conflicts);

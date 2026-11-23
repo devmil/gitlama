@@ -44,7 +44,11 @@ impl Channel {
 
     /// A prerelease build follows the beta channel until the user chooses.
     pub fn of_version(version: &str) -> Self {
-        if version.contains('-') { Self::Beta } else { Self::Stable }
+        if version.contains('-') {
+            Self::Beta
+        } else {
+            Self::Stable
+        }
     }
 }
 
@@ -84,14 +88,18 @@ pub fn parse_index(bytes: &[u8]) -> Result<Vec<Release>, Failure> {
     if document["schema_version"] != json!(1) || document["product"] != json!("GitLama") {
         return Err(Failure::InvalidIndex);
     }
-    let records = document["releases"].as_array().ok_or(Failure::InvalidIndex)?;
+    let records = document["releases"]
+        .as_array()
+        .ok_or(Failure::InvalidIndex)?;
     if records.is_empty() || records.len() > INDEX_MAXIMUM_RELEASES {
         return Err(Failure::InvalidIndex);
     }
     let mut releases = Vec::new();
     let mut builds = std::collections::HashSet::new();
     for record in records {
-        let version = record["version"].as_str().filter(|version| !version.is_empty() && version.len() <= 128);
+        let version = record["version"]
+            .as_str()
+            .filter(|version| !version.is_empty() && version.len() <= 128);
         let build = record["build"].as_u64().filter(|build| *build >= 1);
         let channel = record["channel"].as_str().and_then(Channel::parse);
         let (Some(version), Some(build), Some(channel)) = (version, build, channel) else {
@@ -100,7 +108,11 @@ pub fn parse_index(bytes: &[u8]) -> Result<Vec<Release>, Failure> {
         if version.contains('-') != (channel == Channel::Beta) || !builds.insert(build) {
             return Err(Failure::InvalidIndex);
         }
-        releases.push(Release { version: version.to_owned(), build, channel });
+        releases.push(Release {
+            version: version.to_owned(),
+            build,
+            channel,
+        });
     }
     releases.sort_by(|left, right| right.build.cmp(&left.build));
     Ok(releases)
@@ -108,7 +120,10 @@ pub fn parse_index(bytes: &[u8]) -> Result<Vec<Release>, Failure> {
 
 /// The newest release a subscriber of `channel` receives.
 pub fn latest(releases: &[Release], channel: Channel) -> Option<&Release> {
-    releases.iter().filter(|release| channel == Channel::Beta || release.channel == Channel::Stable).max_by_key(|release| release.build)
+    releases
+        .iter()
+        .filter(|release| channel == Channel::Beta || release.channel == Channel::Stable)
+        .max_by_key(|release| release.build)
 }
 
 /// Whether this platform reports updates from the public index.
@@ -135,7 +150,8 @@ pub struct UpdateService {
 impl UpdateService {
     pub async fn new(settings: Rc<SettingsService>, notifier: Notifier) -> Rc<Self> {
         let release = rt::blocking(gitlama_core::api::application_release).await;
-        let installed = (!release.version.is_empty() && release.build > 0).then(|| (release.version, u64::from(release.build)));
+        let installed = (!release.version.is_empty() && release.build > 0)
+            .then(|| (release.version, u64::from(release.build)));
         let this = Rc::new(Self {
             settings,
             notifier,
@@ -161,7 +177,11 @@ impl UpdateService {
     pub fn channel(&self) -> Channel {
         self.settings
             .with(|document| document.release_channel.as_deref().and_then(Channel::parse))
-            .or_else(|| self.installed.as_ref().map(|(version, _)| Channel::of_version(version)))
+            .or_else(|| {
+                self.installed
+                    .as_ref()
+                    .map(|(version, _)| Channel::of_version(version))
+            })
             .unwrap_or(Channel::Stable)
     }
 
@@ -200,10 +220,16 @@ impl UpdateService {
     }
 
     async fn run_check(&self) -> Result<Outcome, Failure> {
-        let Some((_, build)) = self.installed.clone() else { return Err(Failure::Unsupported) };
+        let Some((_, build)) = self.installed.clone() else {
+            return Err(Failure::Unsupported);
+        };
         if self.sparkle_available() {
             self.configure_sparkle();
-            return if sparkle::check() { Ok(Outcome::NativeCheckerOpened) } else { Err(Failure::NativeUpdater) };
+            return if sparkle::check() {
+                Ok(Outcome::NativeCheckerOpened)
+            } else {
+                Err(Failure::NativeUpdater)
+            };
         }
         if !INDEX_AVAILABLE {
             return Err(Failure::Unsupported);
@@ -226,9 +252,10 @@ impl UpdateService {
             Some(Ok(Outcome::NativeCheckerOpened)) => (Value::Null, Value::Null),
             Some(Ok(Outcome::UpToDate)) => (json!({"kind": "upToDate"}), Value::Null),
             Some(Ok(Outcome::NoPublishedRelease)) => (json!({"kind": "noRelease"}), Value::Null),
-            Some(Ok(Outcome::Available(release))) => {
-                (json!({"kind": "available", "version": release.version, "build": release.build}), Value::Null)
-            }
+            Some(Ok(Outcome::Available(release))) => (
+                json!({"kind": "available", "version": release.version, "build": release.build}),
+                Value::Null,
+            ),
         };
         json!({
             "supported": self.is_supported(),
@@ -300,7 +327,9 @@ mod sparkle {
     pub fn available() -> bool {
         !cfg!(debug_assertions)
             && std::env::var_os("GITLAMA_PROFILE_ROOT").is_none()
-            && NATIVE_UPDATER.get().is_some_and(|updater| (updater.loaded)())
+            && NATIVE_UPDATER
+                .get()
+                .is_some_and(|updater| (updater.loaded)())
     }
 
     pub fn configure(channel: Channel) {
@@ -310,7 +339,9 @@ mod sparkle {
     }
 
     pub fn check() -> bool {
-        NATIVE_UPDATER.get().is_some_and(|updater| (updater.check)())
+        NATIVE_UPDATER
+            .get()
+            .is_some_and(|updater| (updater.check)())
     }
 }
 
@@ -319,7 +350,10 @@ mod tests {
     use super::*;
 
     fn index(releases: Value) -> Vec<u8> {
-        serde_json::to_vec(&json!({"schema_version": 1, "product": "GitLama", "releases": releases})).unwrap()
+        serde_json::to_vec(
+            &json!({"schema_version": 1, "product": "GitLama", "releases": releases}),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -339,7 +373,12 @@ mod tests {
         assert_eq!(parse_index(b""), Err(Failure::InvalidIndex));
         assert_eq!(parse_index(b"{}"), Err(Failure::InvalidIndex));
         // A stable channel with a prerelease version.
-        assert_eq!(parse_index(&index(json!([{"version": "1.0.0-beta", "build": 1, "channel": "stable"}]))), Err(Failure::InvalidIndex));
+        assert_eq!(
+            parse_index(&index(
+                json!([{"version": "1.0.0-beta", "build": 1, "channel": "stable"}])
+            )),
+            Err(Failure::InvalidIndex)
+        );
         // Duplicate builds.
         assert_eq!(
             parse_index(&index(json!([
@@ -348,7 +387,9 @@ mod tests {
             ]))),
             Err(Failure::InvalidIndex)
         );
-        let other = serde_json::to_vec(&json!({"schema_version": 1, "product": "Other", "releases": []})).unwrap();
+        let other =
+            serde_json::to_vec(&json!({"schema_version": 1, "product": "Other", "releases": []}))
+                .unwrap();
         assert_eq!(parse_index(&other), Err(Failure::InvalidIndex));
     }
 

@@ -3,11 +3,11 @@
 
 mod hooks;
 
-use hooks::PlatformHooks;
 use gitlama_qt::{AppState, Commands, Driver, Pump, PumpWaker, WorkspaceState};
 use gitlama_workbench::app::App;
 use gitlama_workbench::notify::Notifier;
 use gitlama_workbench::rt::Runtime;
+use hooks::PlatformHooks;
 use qtbridge::{QApp, QObjectHolder};
 use serde_json::json;
 use std::cell::RefCell;
@@ -67,7 +67,8 @@ fn forward_or_continue() {
         NativeCliStartupState::Owner => {}
         NativeCliStartupState::Forwarded => std::process::exit(0),
         NativeCliStartupState::Rejected => {
-            if std::env::var_os("GITLAMA_FORWARDING_DIAGNOSTICS").is_some_and(|value| value == "1") {
+            if std::env::var_os("GITLAMA_FORWARDING_DIAGNOSTICS").is_some_and(|value| value == "1")
+            {
                 eprintln!("gitlama_forwarding_failure={:?}", startup.failure);
             }
             eprintln!("{}", forwarding_failed_message());
@@ -82,7 +83,11 @@ fn forwarding_failed_message() -> String {
         .iter()
         .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()))
         .is_some_and(|value| value.to_lowercase().starts_with("de"));
-    let catalog = if german { include_str!("../../../../l10n/app_de.arb") } else { include_str!("../../../../l10n/app_en.arb") };
+    let catalog = if german {
+        include_str!("../../../../l10n/app_de.arb")
+    } else {
+        include_str!("../../../../l10n/app_en.arb")
+    };
     serde_json::from_str::<serde_json::Value>(catalog)
         .ok()
         .and_then(|value| value["cliForwardingFailed"].as_str().map(str::to_owned))
@@ -101,13 +106,19 @@ fn install_native_updater() {
         unsafe { gitlama_sparkle_loaded() }
     }
     fn configure(channel: &str) -> bool {
-        let Ok(channel) = std::ffi::CString::new(channel) else { return false };
+        let Ok(channel) = std::ffi::CString::new(channel) else {
+            return false;
+        };
         unsafe { gitlama_sparkle_configure(channel.as_ptr()) }
     }
     fn check() -> bool {
         unsafe { gitlama_sparkle_check() }
     }
-    gitlama_workbench::updates::set_native_updater(gitlama_workbench::updates::NativeUpdater { loaded, configure, check });
+    gitlama_workbench::updates::set_native_updater(gitlama_workbench::updates::NativeUpdater {
+        loaded,
+        configure,
+        check,
+    });
 }
 
 fn main() {
@@ -158,7 +169,10 @@ fn main() {
     let sidebar = Rc::new(RefCell::new(gitlama_qt::SidebarState::default()));
     gitlama_qt::SidebarState::attach_qobject(&sidebar);
     sidebar.borrow_mut().commands = Some(commands.clone());
-    let sidebar_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::SIDEBAR_ROLES)));
+    let sidebar_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::SIDEBAR_ROLES,
+    )));
     gitlama_qt::RowModel::attach_qobject(&sidebar_rows);
 
     let history = Rc::new(RefCell::new(gitlama_qt::HistoryState::default()));
@@ -176,9 +190,15 @@ fn main() {
     let changes = Rc::new(RefCell::new(gitlama_qt::ChangesState::default()));
     gitlama_qt::ChangesState::attach_qobject(&changes);
     changes.borrow_mut().commands = Some(commands.clone());
-    let unstaged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::FILE_ROLES)));
+    let unstaged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::FILE_ROLES,
+    )));
     gitlama_qt::RowModel::attach_qobject(&unstaged_rows);
-    let staged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::FILE_ROLES)));
+    let staged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::FILE_ROLES,
+    )));
     gitlama_qt::RowModel::attach_qobject(&staged_rows);
     let working_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
     gitlama_qt::DiffModel::attach_qobject(&working_diff);
@@ -198,7 +218,10 @@ fn main() {
     let conflicts = Rc::new(RefCell::new(gitlama_qt::ConflictsState::default()));
     gitlama_qt::ConflictsState::attach_qobject(&conflicts);
     conflicts.borrow_mut().commands = Some(commands.clone());
-    let conflict_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("key", gitlama_qt::CONFLICT_ROW_ROLES)));
+    let conflict_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::CONFLICT_ROW_ROLES,
+    )));
     gitlama_qt::RowModel::attach_qobject(&conflict_rows);
 
     let operations = Rc::new(RefCell::new(gitlama_qt::OperationsState::default()));
@@ -216,7 +239,10 @@ fn main() {
     let line_selection = Rc::new(RefCell::new(gitlama_qt::LineSelectionState::default()));
     gitlama_qt::LineSelectionState::attach_qobject(&line_selection);
     line_selection.borrow_mut().commands = Some(commands.clone());
-    let line_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles("rowId", gitlama_qt::LINE_ROLES)));
+    let line_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "rowId",
+        gitlama_qt::LINE_ROLES,
+    )));
     gitlama_qt::RowModel::attach_qobject(&line_rows);
 
     let inspector_blame = Rc::new(RefCell::new(gitlama_qt::BlameModel::default()));

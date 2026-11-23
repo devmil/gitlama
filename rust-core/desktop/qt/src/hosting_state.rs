@@ -2,11 +2,14 @@
 //! binding and resources, and the pull requests linked to its branches.
 
 use crate::plumbing::Commands;
-use gitlama_contract::hosting::{NativeHostingConnection, NativeHostingCredentialState, NativeHostingResourceKind};
+use gitlama_contract::hosting::{
+    NativeHostingConnection, NativeHostingCredentialState, NativeHostingResourceKind,
+};
 use gitlama_contract::hosting_runtime::NativeHostingOAuthState;
 use gitlama_contract::hosting_settings::NativeHostingBindingSettings;
 use gitlama_workbench::hosting::{
-    Hosting, authentication_name, oauth_failure_name, parse_authentication, parse_preset, preset_name, pull_value,
+    Hosting, authentication_name, oauth_failure_name, parse_authentication, parse_preset,
+    preset_name, pull_value,
 };
 use gitlama_workbench::rt;
 use qtbridge::qobject;
@@ -14,7 +17,10 @@ use serde_json::{Value, json};
 use std::rc::Rc;
 
 /// The accounts page's projection.
-pub fn accounts_value(hosting: &Hosting, credentials: &[(String, NativeHostingCredentialState)]) -> Value {
+pub fn accounts_value(
+    hosting: &Hosting,
+    credentials: &[(String, NativeHostingCredentialState)],
+) -> Value {
     let (github, gitlab) = hosting.cli_available();
     let authorization = hosting.authorization().map(|authorization| {
         let snapshot = authorization.snapshot.as_ref();
@@ -83,7 +89,11 @@ mod hosting_state {
 
     impl HostingState {
         qproperty!("accounts", Member = accounts, Notify = accounts_changed);
-        qproperty!("repository", Member = repository, Notify = repository_changed);
+        qproperty!(
+            "repository",
+            Member = repository,
+            Notify = repository_changed
+        );
         qproperty!("linked", Member = linked, Notify = repository_changed);
         qproperty!("failure", Member = failure, Notify = failure_changed);
 
@@ -99,7 +109,9 @@ mod hosting_state {
         /// authentications} or null.
         #[qslot]
         fn preset_defaults(&self, preset: String, web_base: String) -> Value {
-            let Some(preset) = parse_preset(&preset) else { return Value::Null };
+            let Some(preset) = parse_preset(&preset) else {
+                return Value::Null;
+            };
             let web_base = (!web_base.trim().is_empty()).then(|| web_base.trim().to_owned());
             gitlama_workbench::hosting::preset_defaults_value(preset, web_base)
         }
@@ -110,8 +122,12 @@ mod hosting_state {
         #[qslot]
         fn add_connection(&self, form: Value) {
             let text = |key: &str| form[key].as_str().unwrap_or_default().trim().to_owned();
-            let Some(preset) = parse_preset(&text("preset")) else { return };
-            let Some(authentication) = parse_authentication(&text("authentication")) else { return };
+            let Some(preset) = parse_preset(&text("preset")) else {
+                return;
+            };
+            let Some(authentication) = parse_authentication(&text("authentication")) else {
+                return;
+            };
             let id = text("id");
             let connection = NativeHostingConnection {
                 id: id.clone(),
@@ -125,7 +141,13 @@ mod hosting_state {
                 refresh_enabled: true,
                 capabilities: form["capabilities"]
                     .as_array()
-                    .map(|names| names.iter().filter_map(Value::as_str).filter_map(gitlama_workbench::hosting::parse_capability).collect())
+                    .map(|names| {
+                        names
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .filter_map(gitlama_workbench::hosting::parse_capability)
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 credential_identity: format!("credential:{id}"),
                 allow_split_origin: false,
@@ -137,7 +159,9 @@ mod hosting_state {
         #[qslot]
         fn reauthorize(&self, id: String) {
             self.with(move |hosting, state| {
-                let Some(connection) = hosting.connection(&id) else { return };
+                let Some(connection) = hosting.connection(&id) else {
+                    return;
+                };
                 state.authorize_connection(connection, false);
             });
         }
@@ -150,17 +174,25 @@ mod hosting_state {
 
         #[qslot]
         fn remove_connection(&self, id: String) {
-            self.spawn_reporting(move |hosting| async move { hosting.remove_connection(&id).await.map_err(str::to_owned) });
+            self.spawn_reporting(move |hosting| async move {
+                hosting.remove_connection(&id).await.map_err(str::to_owned)
+            });
         }
 
         /// Turns account `id` on or off, or its background refresh.
         #[qslot]
         fn toggle_connection(&self, id: String, enabled: bool, refresh_enabled: bool) {
             self.spawn_reporting(move |hosting| async move {
-                let Some(mut connection) = hosting.connection(&id) else { return Ok(()) };
+                let Some(mut connection) = hosting.connection(&id) else {
+                    return Ok(());
+                };
                 connection.enabled = enabled;
                 connection.refresh_enabled = refresh_enabled;
-                hosting.save_connection(connection).await.map(|_| ()).map_err(str::to_owned)
+                hosting
+                    .save_connection(connection)
+                    .await
+                    .map(|_| ())
+                    .map_err(str::to_owned)
             });
         }
 
@@ -168,11 +200,17 @@ mod hosting_state {
         /// `connection_id` and provider repository `provider_repository`.
         #[qslot]
         fn save_binding(&self, remote: String, connection_id: String, provider_repository: String) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             let reply = commands.clone();
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(repository) = services.workspace.active_canonical() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(repository) = services.workspace.active_canonical() else {
+                    return;
+                };
                 let hosting = Rc::clone(&services.hosting);
                 let binding = NativeHostingBindingSettings {
                     repository,
@@ -182,7 +220,9 @@ mod hosting_state {
                 };
                 rt::spawn_detached(async move {
                     let result = hosting.save_binding(binding).await;
-                    reply.post(move |driver| driver.hosting_result(result.err().unwrap_or_default().to_owned()));
+                    reply.post(move |driver| {
+                        driver.hosting_result(result.err().unwrap_or_default().to_owned())
+                    });
                 });
             });
         }
@@ -190,15 +230,23 @@ mod hosting_state {
         /// Binds the active repository automatically again.
         #[qslot]
         fn clear_binding(&self) {
-            let Some(commands) = &self.commands else { return };
+            let Some(commands) = &self.commands else {
+                return;
+            };
             let reply = commands.clone();
             commands.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(repository) = services.workspace.active_canonical() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(repository) = services.workspace.active_canonical() else {
+                    return;
+                };
                 let hosting = Rc::clone(&services.hosting);
                 rt::spawn_detached(async move {
                     let result = hosting.clear_binding(repository).await;
-                    reply.post(move |driver| driver.hosting_result(result.err().unwrap_or_default().to_owned()));
+                    reply.post(move |driver| {
+                        driver.hosting_result(result.err().unwrap_or_default().to_owned())
+                    });
                 });
             });
         }
@@ -207,7 +255,9 @@ mod hosting_state {
         #[qslot]
         fn refresh(&self, manual: bool, page: i32) {
             self.with_repository(move |repository| {
-                rt::spawn_detached(async move { repository.refresh(manual, page.max(1) as u32).await });
+                rt::spawn_detached(
+                    async move { repository.refresh(manual, page.max(1) as u32).await },
+                );
             });
         }
 
@@ -215,9 +265,16 @@ mod hosting_state {
         /// changeRequest, createChangeRequest, issue) with `number`, or "".
         #[qslot]
         fn resource_link(&self, kind: String, number: i64) -> String {
-            let (Some(hosting), Some(repository)) = (&self.hosting, &self.repository_hosting) else { return String::new() };
-            let Some(binding) = repository.binding() else { return String::new() };
-            let (Some(connection_id), Some(provider_repository)) = (binding.connection_id, binding.provider_repository) else {
+            let (Some(hosting), Some(repository)) = (&self.hosting, &self.repository_hosting)
+            else {
+                return String::new();
+            };
+            let Some(binding) = repository.binding() else {
+                return String::new();
+            };
+            let (Some(connection_id), Some(provider_repository)) =
+                (binding.connection_id, binding.provider_repository)
+            else {
                 return String::new();
             };
             let kind = match kind.as_str() {
@@ -227,7 +284,14 @@ mod hosting_state {
                 "issue" => NativeHostingResourceKind::Issue,
                 _ => return String::new(),
             };
-            hosting.resource_link(&connection_id, &provider_repository, kind, (number > 0).then_some(number as u64)).unwrap_or_default()
+            hosting
+                .resource_link(
+                    &connection_id,
+                    &provider_repository,
+                    kind,
+                    (number > 0).then_some(number as u64),
+                )
+                .unwrap_or_default()
         }
 
         /// Whether `url` may open in a browser.
@@ -240,16 +304,28 @@ mod hosting_state {
         /// demand): [pull] or null while unknown.
         #[qslot]
         fn pull_requests_for_branch(&self, branch: String) -> Value {
-            let Some(repository) = &self.repository_hosting else { return Value::Null };
+            let Some(repository) = &self.repository_hosting else {
+                return Value::Null;
+            };
             repository.request_branches([branch.clone()]);
-            repository.pull_requests_for_branch(&branch).map_or(Value::Null, |pulls| Value::Array(pulls.iter().map(pull_value).collect()))
+            repository
+                .pull_requests_for_branch(&branch)
+                .map_or(Value::Null, |pulls| {
+                    Value::Array(pulls.iter().map(pull_value).collect())
+                })
         }
 
         /// The CI result of commit `head` (looked up on demand), or "".
         #[qslot]
         fn head_checks(&self, head: String) -> String {
-            let Some(repository) = &self.repository_hosting else { return String::new() };
-            repository.request_head_checks(&head).map(gitlama_workbench::hosting::check_state_name).unwrap_or_default().to_owned()
+            let Some(repository) = &self.repository_hosting else {
+                return String::new();
+            };
+            repository
+                .request_head_checks(&head)
+                .map(gitlama_workbench::hosting::check_state_name)
+                .unwrap_or_default()
+                .to_owned()
         }
 
         /// Looks `branch` up again: its pull request's head is at none of
@@ -263,7 +339,16 @@ mod hosting_state {
 
         #[qslot]
         fn set_expanded_nodes(&self, nodes: Value) {
-            let nodes: Vec<String> = nodes.as_array().map(|nodes| nodes.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
+            let nodes: Vec<String> = nodes
+                .as_array()
+                .map(|nodes| {
+                    nodes
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default();
             if let Some(hosting) = &self.hosting {
                 hosting.set_expanded_nodes(nodes);
             }
@@ -277,7 +362,9 @@ mod hosting_state {
         }
 
         fn authorize_connection(&self, connection: NativeHostingConnection, new_connection: bool) {
-            self.spawn_reporting(move |hosting| async move { hosting.authorize(connection, new_connection).await });
+            self.spawn_reporting(move |hosting| async move {
+                hosting.authorize(connection, new_connection).await
+            });
         }
 
         fn with(&self, action: impl FnOnce(Rc<Hosting>, &Self) + 'static) {
@@ -286,13 +373,19 @@ mod hosting_state {
             }
         }
 
-        fn with_repository(&self, action: impl FnOnce(Rc<gitlama_workbench::hosting::RepositoryHosting>) + 'static) {
+        fn with_repository(
+            &self,
+            action: impl FnOnce(Rc<gitlama_workbench::hosting::RepositoryHosting>) + 'static,
+        ) {
             if let Some(repository) = &self.repository_hosting {
                 action(Rc::clone(repository));
             }
         }
 
-        fn spawn<F: std::future::Future<Output = ()> + 'static>(&self, work: impl FnOnce(Rc<Hosting>, ()) -> F + 'static) {
+        fn spawn<F: std::future::Future<Output = ()> + 'static>(
+            &self,
+            work: impl FnOnce(Rc<Hosting>, ()) -> F + 'static,
+        ) {
             if let Some(hosting) = &self.hosting {
                 rt::spawn_detached(work(Rc::clone(hosting), ()));
             }
@@ -303,7 +396,9 @@ mod hosting_state {
         where
             F: std::future::Future<Output = Result<(), String>> + 'static,
         {
-            let (Some(hosting), Some(commands)) = (&self.hosting, &self.commands) else { return };
+            let (Some(hosting), Some(commands)) = (&self.hosting, &self.commands) else {
+                return;
+            };
             let hosting = Rc::clone(hosting);
             let reply = commands.clone();
             reply.post(|driver| driver.hosting_result(String::new()));

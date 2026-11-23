@@ -31,7 +31,11 @@ struct Node<T> {
 
 impl<T: Clone> Node<T> {
     fn new(identity: String) -> Self {
-        Self { identity, directories: BTreeMap::new(), files: Vec::new() }
+        Self {
+            identity,
+            directories: BTreeMap::new(),
+            files: Vec::new(),
+        }
     }
 
     fn descendants(&self, into: &mut Vec<T>) {
@@ -66,7 +70,14 @@ pub fn flatten<T: Clone>(
             .into_iter()
             .map(|item| {
                 let path = path_of(&item);
-                Row { directory: false, identity: path.clone(), label: path, depth: 0, item: Some(item), descendants: Vec::new() }
+                Row {
+                    directory: false,
+                    identity: path.clone(),
+                    label: path,
+                    depth: 0,
+                    item: Some(item),
+                    descendants: Vec::new(),
+                }
             })
             .collect();
     }
@@ -77,9 +88,16 @@ pub fn flatten<T: Clone>(
         let mut node = &mut root;
         let mut identity = String::new();
         for part in parts.iter().take(parts.len().saturating_sub(1)) {
-            identity = if identity.is_empty() { (*part).to_owned() } else { format!("{identity}/{part}") };
+            identity = if identity.is_empty() {
+                (*part).to_owned()
+            } else {
+                format!("{identity}/{part}")
+            };
             let next = identity.clone();
-            node = node.directories.entry((*part).to_owned()).or_insert_with(|| Node::new(next));
+            node = node
+                .directories
+                .entry((*part).to_owned())
+                .or_insert_with(|| Node::new(next));
         }
         let name = parts.last().copied().unwrap_or_default().to_owned();
         node.files.push((item, name));
@@ -130,17 +148,56 @@ mod tests {
     use super::*;
 
     fn shown(rows: &[Row<&str>]) -> Vec<String> {
-        rows.iter().map(|row| format!("{}{}{}", "  ".repeat(row.depth), row.label, if row.directory { "/" } else { "" })).collect()
+        rows.iter()
+            .map(|row| {
+                format!(
+                    "{}{}{}",
+                    "  ".repeat(row.depth),
+                    row.label,
+                    if row.directory { "/" } else { "" }
+                )
+            })
+            .collect()
     }
 
     #[test]
     fn folders_come_first_then_files_at_every_level() {
-        let items = ["b.txt", "src/main.rs", "src/lib/a.rs", "a.txt", "docs\\guide.md"];
-        let rows = flatten(items, |item| (*item).to_owned(), &HashSet::new(), true, None);
-        assert_eq!(shown(&rows), ["docs/", "  guide.md", "src/", "  lib/", "    a.rs", "  main.rs", "a.txt", "b.txt"]);
+        let items = [
+            "b.txt",
+            "src/main.rs",
+            "src/lib/a.rs",
+            "a.txt",
+            "docs\\guide.md",
+        ];
+        let rows = flatten(
+            items,
+            |item| (*item).to_owned(),
+            &HashSet::new(),
+            true,
+            None,
+        );
+        assert_eq!(
+            shown(&rows),
+            [
+                "docs/",
+                "  guide.md",
+                "src/",
+                "  lib/",
+                "    a.rs",
+                "  main.rs",
+                "a.txt",
+                "b.txt"
+            ]
+        );
         let src = rows.iter().find(|row| row.identity == "src").unwrap();
         assert_eq!(src.descendants, ["src/main.rs", "src/lib/a.rs"]);
-        assert_eq!(rows.iter().find(|row| row.label == "a.rs").unwrap().identity, "src/lib/a.rs");
+        assert_eq!(
+            rows.iter()
+                .find(|row| row.label == "a.rs")
+                .unwrap()
+                .identity,
+            "src/lib/a.rs"
+        );
     }
 
     #[test]
@@ -150,12 +207,21 @@ mod tests {
         let rows = flatten(items, |item| (*item).to_owned(), &collapsed, true, None);
         assert_eq!(shown(&rows), ["src/", "  lib/", "  main.rs", "a.txt"]);
         let all: HashSet<String> = ["src".to_owned()].into();
-        assert_eq!(shown(&flatten(items, |item| (*item).to_owned(), &all, true, None)), ["src/", "a.txt"]);
+        assert_eq!(
+            shown(&flatten(items, |item| (*item).to_owned(), &all, true, None)),
+            ["src/", "a.txt"]
+        );
     }
 
     #[test]
     fn a_list_is_the_sorted_files_with_full_paths() {
-        let rows = flatten(["b/x", "a"], |item| (*item).to_owned(), &HashSet::new(), false, None);
+        let rows = flatten(
+            ["b/x", "a"],
+            |item| (*item).to_owned(),
+            &HashSet::new(),
+            false,
+            None,
+        );
         assert_eq!(shown(&rows), ["a", "b/x"]);
     }
 }

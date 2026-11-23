@@ -12,9 +12,10 @@ use crate::prompts::Prompts;
 use crate::session::SessionIdentity;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::conflict::{
-    NativeConflictContinuationState, NativeConflictFailureKind, NativeConflictFile, NativeConflictFileKind,
-    NativeConflictOperationKind, NativeConflictRegionChoice, NativeConflictSequencerAction, NativeConflictSide,
-    NativeConflictSideChoice, NativeConflictSnapshot, NativeConflictSnapshotResult,
+    NativeConflictContinuationState, NativeConflictFailureKind, NativeConflictFile,
+    NativeConflictFileKind, NativeConflictOperationKind, NativeConflictRegionChoice,
+    NativeConflictSequencerAction, NativeConflictSide, NativeConflictSideChoice,
+    NativeConflictSnapshot, NativeConflictSnapshotResult,
 };
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
@@ -61,7 +62,11 @@ pub fn side_resolution(file: &NativeConflictFile, side: NativeConflictSideChoice
 
 /// Which sides have the file (the Dart ConflictPresence).
 pub fn presence(file: &NativeConflictFile) -> &'static str {
-    match (file.ancestor.present, file.current.present, file.incoming.present) {
+    match (
+        file.ancestor.present,
+        file.current.present,
+        file.incoming.present,
+    ) {
         (true, false, false) => "bothDeleted",
         (false, true, false) => "addedCurrent",
         (true, true, false) => "deletedIncoming",
@@ -82,7 +87,9 @@ pub fn content_difference(file: &NativeConflictFile) -> &'static str {
     if !file.current.present || !file.incoming.present {
         return "missingSide";
     }
-    let (Some(left), Some(right)) = (&file.current.content, &file.incoming.content) else { return "unavailable" };
+    let (Some(left), Some(right)) = (&file.current.content, &file.incoming.content) else {
+        return "unavailable";
+    };
     if left == right {
         return "identical";
     }
@@ -91,9 +98,14 @@ pub fn content_difference(file: &NativeConflictFile) -> &'static str {
     }
     let decode = |bytes: &[u8]| -> Option<String> {
         let text = std::str::from_utf8(if has_bom(bytes) { &bytes[3..] } else { bytes }).ok()?;
-        Some(format!("{}{text}", if has_bom(bytes) { "\u{feff}" } else { "" }))
+        Some(format!(
+            "{}{text}",
+            if has_bom(bytes) { "\u{feff}" } else { "" }
+        ))
     };
-    let (Some(a), Some(b)) = (decode(left), decode(right)) else { return "unavailable" };
+    let (Some(a), Some(b)) = (decode(left), decode(right)) else {
+        return "unavailable";
+    };
     let endings = |value: &str| value.replace("\r\n", "\n").replace('\r', "\n");
     if endings(&a) == endings(&b) {
         return "lineEndings";
@@ -113,7 +125,12 @@ pub fn content_difference(file: &NativeConflictFile) -> &'static str {
     if without_bom(&a) == without_bom(&b) {
         return "byteOrderMark";
     }
-    let compact = |value: &str| value.chars().filter(|ch| !ch.is_whitespace()).collect::<String>();
+    let compact = |value: &str| {
+        value
+            .chars()
+            .filter(|ch| !ch.is_whitespace())
+            .collect::<String>()
+    };
     if compact(&a) == compact(&b) {
         return "whitespace";
     }
@@ -138,7 +155,9 @@ fn entry(side: &NativeConflictSide, size_known: bool) -> Value {
         "mode": side.mode.map(|mode| format!("{mode:06o}")),
         "bytes": size_known.then_some(side.byte_count),
     });
-    let Some(bytes) = &side.content else { return facts };
+    let Some(bytes) = &side.content else {
+        return facts;
+    };
     if bytes.contains(&0) || std::str::from_utf8(bytes).is_err() {
         return facts;
     }
@@ -156,13 +175,21 @@ fn entry(side: &NativeConflictSide, size_known: bool) -> Value {
         }
         index += 1;
     }
-    let kinds: Vec<&str> = [(lf, "LF"), (crlf, "CRLF"), (cr, "CR")].into_iter().filter(|(count, _)| *count > 0).map(|(_, name)| name).collect();
+    let kinds: Vec<&str> = [(lf, "LF"), (crlf, "CRLF"), (cr, "CR")]
+        .into_iter()
+        .filter(|(count, _)| *count > 0)
+        .map(|(_, name)| name)
+        .collect();
     facts["endings"] = json!(match kinds.len() {
         0 => "none",
         1 => kinds[0],
         _ => "mixed",
     });
-    facts["finalNewline"] = json!(bytes.last().is_some_and(|last| *last == b'\n' || *last == b'\r'));
+    facts["finalNewline"] = json!(
+        bytes
+            .last()
+            .is_some_and(|last| *last == b'\n' || *last == b'\r')
+    );
     facts["bom"] = json!(has_bom(bytes));
     facts
 }
@@ -227,7 +254,10 @@ pub struct ConflictSession {
 
 impl ConflictSession {
     fn new() -> Self {
-        Self { loading: true, ..Self::default() }
+        Self {
+            loading: true,
+            ..Self::default()
+        }
     }
 
     pub fn selected_file(&self) -> Option<&NativeConflictFile> {
@@ -241,7 +271,9 @@ impl ConflictSession {
 
     /// The unsaved draft of `file`, when drafted at this version.
     fn draft_of(&self, file: &NativeConflictFile) -> Option<&FileDraft> {
-        self.drafts.get(&file.path).filter(|draft| draft.fingerprint == file.fingerprint)
+        self.drafts
+            .get(&file.path)
+            .filter(|draft| draft.fingerprint == file.fingerprint)
     }
 
     /// The remaining conflicts of `file`'s result as last edited.
@@ -253,7 +285,9 @@ impl ConflictSession {
             Some((path, draft)) if path == &file.path => string(&draft.text),
             _ => match self.draft_of(file) {
                 Some(draft) => string(&draft.text),
-                None => String::from_utf8_lossy(file.result.as_deref().unwrap_or_default()).into_owned(),
+                None => {
+                    String::from_utf8_lossy(file.result.as_deref().unwrap_or_default()).into_owned()
+                }
             },
         };
         Some(marker_count(&text))
@@ -270,16 +304,31 @@ impl ConflictSession {
     fn bind(&mut self) {
         self.remember_shown();
         self.text_revision += 1;
-        let Some(file) = self.selected_file().cloned() else { return };
-        let draft = match self.drafts.remove(&file.path).filter(|draft| draft.fingerprint == file.fingerprint) {
+        let Some(file) = self.selected_file().cloned() else {
+            return;
+        };
+        let draft = match self
+            .drafts
+            .remove(&file.path)
+            .filter(|draft| draft.fingerprint == file.fingerprint)
+        {
             Some(draft) => draft,
             None => {
-                let merge = (file.kind == NativeConflictFileKind::Text).then(|| MergeDraft::from_file(&file));
+                let merge = (file.kind == NativeConflictFileKind::Text)
+                    .then(|| MergeDraft::from_file(&file));
                 let text = match &merge {
                     Some(merge) => merge.text.clone(),
-                    None => String::from_utf8_lossy(file.result.as_deref().unwrap_or_default()).encode_utf16().collect(),
+                    None => String::from_utf8_lossy(file.result.as_deref().unwrap_or_default())
+                        .encode_utf16()
+                        .collect(),
                 };
-                FileDraft { fingerprint: file.fingerprint, text, draft: merge, side: None, focused_region: 0 }
+                FileDraft {
+                    fingerprint: file.fingerprint,
+                    text,
+                    draft: merge,
+                    side: None,
+                    focused_region: 0,
+                }
             }
         };
         self.shown = Some((file.path.clone(), draft));
@@ -312,7 +361,10 @@ impl ConflictSession {
     /// Takes `snapshot`, dropping drafts of files that changed.
     fn apply(&mut self, snapshot: NativeConflictSnapshot, selected: usize) {
         self.drafts.retain(|path, draft| {
-            snapshot.files.iter().any(|file| &file.path == path && file.fingerprint == draft.fingerprint)
+            snapshot
+                .files
+                .iter()
+                .any(|file| &file.path == path && file.fingerprint == draft.fingerprint)
         });
         self.selected = self.clamp(selected, &snapshot);
         self.finished = Self::ended(&snapshot);
@@ -322,10 +374,19 @@ impl ConflictSession {
 }
 
 /// Outcome of loading, saving or undoing: the snapshot, or why not.
-fn snapshot_of(result: Result<NativeConflictSnapshotResult, ()>) -> Result<NativeConflictSnapshot, Option<NativeConflictFailureKind>> {
+fn snapshot_of(
+    result: Result<NativeConflictSnapshotResult, ()>,
+) -> Result<NativeConflictSnapshot, Option<NativeConflictFailureKind>> {
     match result {
-        Ok(NativeConflictSnapshotResult { snapshot: Some(snapshot), failure: None, .. }) => Ok(snapshot),
-        Ok(NativeConflictSnapshotResult { failure: Some(failure), .. }) => Err(Some(failure.kind)),
+        Ok(NativeConflictSnapshotResult {
+            snapshot: Some(snapshot),
+            failure: None,
+            ..
+        }) => Ok(snapshot),
+        Ok(NativeConflictSnapshotResult {
+            failure: Some(failure),
+            ..
+        }) => Err(Some(failure.kind)),
         _ => Err(None),
     }
 }
@@ -375,15 +436,29 @@ impl ConflictService {
     pub fn with_active<R>(&self, read: impl FnOnce(&mut ConflictSession) -> R) -> Option<R> {
         let identity = self.active_identity()?;
         let mut sessions = self.sessions.borrow_mut();
-        let open: Vec<(u64, u64)> =
-            self.workspace.open_sessions().iter().map(|(identity, _, _)| (identity.native_id, identity.generation)).collect();
+        let open: Vec<(u64, u64)> = self
+            .workspace
+            .open_sessions()
+            .iter()
+            .map(|(identity, _, _)| (identity.native_id, identity.generation))
+            .collect();
         sessions.retain(|key, _| open.contains(key));
-        let session = sessions.entry((identity.native_id, identity.generation)).or_insert_with(ConflictSession::new);
+        let session = sessions
+            .entry((identity.native_id, identity.generation))
+            .or_insert_with(ConflictSession::new);
         Some(read(session))
     }
 
-    fn with_session<R>(&self, identity: SessionIdentity, change: impl FnOnce(&mut ConflictSession) -> R) -> Option<R> {
-        let result = self.sessions.borrow_mut().get_mut(&(identity.native_id, identity.generation)).map(change);
+    fn with_session<R>(
+        &self,
+        identity: SessionIdentity,
+        change: impl FnOnce(&mut ConflictSession) -> R,
+    ) -> Option<R> {
+        let result = self
+            .sessions
+            .borrow_mut()
+            .get_mut(&(identity.native_id, identity.generation))
+            .map(change);
         self.changed();
         result
     }
@@ -396,20 +471,28 @@ impl ConflictService {
     /// Reads the paused operation again; the merge message is taken from
     /// Git once per operation.
     pub async fn load(&self) {
-        let Some(identity) = self.active_identity() else { return };
+        let Some(identity) = self.active_identity() else {
+            return;
+        };
         self.with_active(|session| {
             session.remember_shown();
             session.loading = true;
         });
         self.changed();
-        let result = self.calls.repository_session_conflicts(identity.native_id, identity.generation).await.map_err(|_| ());
+        let result = self
+            .calls
+            .repository_session_conflicts(identity.native_id, identity.generation)
+            .await
+            .map_err(|_| ());
         if !self.shown(identity) {
             return;
         }
         match snapshot_of(result) {
             Ok(snapshot) => {
                 self.with_session(identity, |session| {
-                    if snapshot.operation == NativeConflictOperationKind::Merge && !session.merge_bound {
+                    if snapshot.operation == NativeConflictOperationKind::Merge
+                        && !session.merge_bound
+                    {
                         let message = snapshot.suggested_message.clone().unwrap_or_default();
                         let (subject, rest) = message.split_once('\n').unwrap_or((&message, ""));
                         session.merge_subject = subject.trim().to_owned();
@@ -446,7 +529,10 @@ impl ConflictService {
     /// Shows the file at `index` (its last region when `last_region`).
     pub fn select(&self, index: usize, last_region: bool) {
         self.with_active(|session| {
-            let count = session.snapshot.as_ref().map_or(0, |snapshot| snapshot.files.len());
+            let count = session
+                .snapshot
+                .as_ref()
+                .map_or(0, |snapshot| snapshot.files.len());
             if session.busy || index >= count || index == session.selected {
                 return;
             }
@@ -470,14 +556,23 @@ impl ConflictService {
             if session.busy {
                 return;
             }
-            let Some((_, draft)) = &mut session.shown else { return };
-            let Some(merge) = &mut draft.draft else { return };
+            let Some((_, draft)) = &mut session.shown else {
+                return;
+            };
+            let Some(merge) = &mut draft.draft else {
+                return;
+            };
             if index >= merge.blocks.len() {
                 return;
             }
             draft.side = None;
             draft.focused_region = index;
-            draft.text = if remove { merge.remove(index, choice) } else { merge.take(index, choice) }.to_vec();
+            draft.text = if remove {
+                merge.remove(index, choice)
+            } else {
+                merge.take(index, choice)
+            }
+            .to_vec();
             session.text_revision += 1;
         });
         self.changed();
@@ -490,13 +585,20 @@ impl ConflictService {
             let file = session.selected_file()?;
             let (_, draft) = session.shown.as_ref()?;
             let regions = draft.draft.as_ref().map_or(0, |merge| merge.blocks.len());
-            Some((file.kind == NativeConflictFileKind::Text && regions > 0, draft.focused_region))
+            Some((
+                file.kind == NativeConflictFileKind::Text && regions > 0,
+                draft.focused_region,
+            ))
         });
         match target.flatten() {
             Some((true, region)) => self.take_region(region, choice, false),
             Some((false, _)) => match choice {
-                NativeConflictRegionChoice::Current => self.choose_side(NativeConflictSideChoice::Current),
-                NativeConflictRegionChoice::Incoming => self.choose_side(NativeConflictSideChoice::Incoming),
+                NativeConflictRegionChoice::Current => {
+                    self.choose_side(NativeConflictSideChoice::Current)
+                }
+                NativeConflictRegionChoice::Incoming => {
+                    self.choose_side(NativeConflictSideChoice::Incoming)
+                }
                 NativeConflictRegionChoice::Both => {}
             },
             None => {}
@@ -519,8 +621,12 @@ impl ConflictService {
             if session.busy {
                 return;
             }
-            let Some(file) = session.selected_file().cloned() else { return };
-            let Some((_, draft)) = &mut session.shown else { return };
+            let Some(file) = session.selected_file().cloned() else {
+                return;
+            };
+            let Some((_, draft)) = &mut session.shown else {
+                return;
+            };
             if draft.side == Some(side) {
                 Self::clear_side(draft, &file);
             } else {
@@ -540,7 +646,9 @@ impl ConflictService {
         draft.side = None;
         draft.text = match &draft.draft {
             Some(merge) => merge.text.clone(),
-            None => String::from_utf8_lossy(file.result.as_deref().unwrap_or_default()).encode_utf16().collect(),
+            None => String::from_utf8_lossy(file.result.as_deref().unwrap_or_default())
+                .encode_utf16()
+                .collect(),
         };
     }
 
@@ -550,8 +658,12 @@ impl ConflictService {
             if session.busy {
                 return;
             }
-            let Some(file) = session.selected_file().cloned() else { return };
-            let Some((_, draft)) = &mut session.shown else { return };
+            let Some(file) = session.selected_file().cloned() else {
+                return;
+            };
+            let Some((_, draft)) = &mut session.shown else {
+                return;
+            };
             if draft.side.is_some() {
                 Self::clear_side(draft, &file);
                 session.text_revision += 1;
@@ -563,11 +675,15 @@ impl ConflictService {
     /// Follows a hand edit of the shown file's result.
     pub fn edit_result(&self, text: &str) {
         self.with_active(|session| {
-            let Some(file) = session.selected_file() else { return };
+            let Some(file) = session.selected_file() else {
+                return;
+            };
             if file.kind != NativeConflictFileKind::Text {
                 return;
             }
-            let Some((_, draft)) = &mut session.shown else { return };
+            let Some((_, draft)) = &mut session.shown else {
+                return;
+            };
             let updated: Vec<u16> = text.encode_utf16().collect();
             if updated == draft.text {
                 return;
@@ -596,37 +712,64 @@ impl ConflictService {
     /// Saves the shown file's result: its chosen whole side, or its text,
     /// which must hold no conflict marker.
     pub async fn save(&self) -> bool {
-        let Some(identity) = self.active_identity() else { return false };
+        let Some(identity) = self.active_identity() else {
+            return false;
+        };
         let Some(Some((file, draft))) = self.with_active(|session| {
             if session.busy {
                 return None;
             }
-            Some((session.selected_file()?.clone(), session.shown.as_ref()?.1.clone()))
+            Some((
+                session.selected_file()?.clone(),
+                session.shown.as_ref()?.1.clone(),
+            ))
         }) else {
             return false;
         };
         if let Some(side) = draft.side {
-            return self.mutate(identity, file.path.clone(), Some(side_resolution(&file, side)), async {
-                self.calls
-                    .repository_session_conflict_choose_side(identity.native_id, identity.generation, file.path.clone(), file.fingerprint, side)
-                    .await
-                    .map_err(|_| ())
-            })
-            .await;
+            return self
+                .mutate(
+                    identity,
+                    file.path.clone(),
+                    Some(side_resolution(&file, side)),
+                    async {
+                        self.calls
+                            .repository_session_conflict_choose_side(
+                                identity.native_id,
+                                identity.generation,
+                                file.path.clone(),
+                                file.fingerprint,
+                                side,
+                            )
+                            .await
+                            .map_err(|_| ())
+                    },
+                )
+                .await;
         }
         if file.kind != NativeConflictFileKind::Text {
             return false;
         }
         let text = string(&draft.text);
         if has_conflict_markers(&text) {
-            let count = draft.draft.as_ref().map_or(file.regions.len(), MergeDraft::unresolved_count);
-            self.notices.status("conflictRegionsRemaining", json!({"count": count}));
+            let count = draft
+                .draft
+                .as_ref()
+                .map_or(file.regions.len(), MergeDraft::unresolved_count);
+            self.notices
+                .status("conflictRegionsRemaining", json!({"count": count}));
             return false;
         }
         self.set_busy(identity, true);
         let result = self
             .calls
-            .repository_session_conflict_save_result(identity.native_id, identity.generation, file.path.clone(), file.fingerprint, text.into_bytes())
+            .repository_session_conflict_save_result(
+                identity.native_id,
+                identity.generation,
+                file.path.clone(),
+                file.fingerprint,
+                text.into_bytes(),
+            )
             .await
             .map_err(|_| ());
         let saved = match snapshot_of(result) {
@@ -703,16 +846,33 @@ impl ConflictService {
     /// mergeExternally): its exact command is previewed and confirmed, then
     /// it runs; the conflict is read again and the file counts as resolved
     /// externally once Git no longer lists it.
-    pub async fn merge_externally(&self, tool: gitlama_contract::integrations::NativeIntegrationDefinition) {
-        let Some(identity) = self.active_identity() else { return };
-        let Some(Some(file)) = self.with_active(|session| if session.busy { None } else { session.selected_file().cloned() }) else {
+    pub async fn merge_externally(
+        &self,
+        tool: gitlama_contract::integrations::NativeIntegrationDefinition,
+    ) {
+        let Some(identity) = self.active_identity() else {
+            return;
+        };
+        let Some(Some(file)) = self.with_active(|session| {
+            if session.busy {
+                None
+            } else {
+                session.selected_file().cloned()
+            }
+        }) else {
             return;
         };
         self.set_busy(identity, true);
         let (session, generation) = (identity.native_id, identity.generation);
         let preview = match self
             .calls
-            .repository_session_conflict_external_merge_preview(session, generation, file.path.clone(), file.fingerprint, tool)
+            .repository_session_conflict_external_merge_preview(
+                session,
+                generation,
+                file.path.clone(),
+                file.fingerprint,
+                tool,
+            )
             .await
         {
             Ok(result) if result.failure.is_none() => result.preview,
@@ -722,10 +882,21 @@ impl ConflictService {
             self.set_busy(identity, false);
             return self.notices.status("conflictSaveFailed", Value::Null);
         };
-        let commands: Vec<String> = std::iter::once(preview.executable.clone()).chain(preview.arguments.iter().cloned()).collect();
-        let answer = self.prompts.ask("confirmIntegration", json!({"commands": commands, "summary": "integrationMergeSummary"})).await;
+        let commands: Vec<String> = std::iter::once(preview.executable.clone())
+            .chain(preview.arguments.iter().cloned())
+            .collect();
+        let answer = self
+            .prompts
+            .ask(
+                "confirmIntegration",
+                json!({"commands": commands, "summary": "integrationMergeSummary"}),
+            )
+            .await;
         if answer != Some(Value::Bool(true)) || !self.shown(identity) {
-            let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
+            let _ = self
+                .calls
+                .repository_session_integration_cancel(session, generation, preview.token)
+                .await;
             return self.set_busy(identity, false);
         }
         let completed = matches!(
@@ -733,7 +904,10 @@ impl ConflictService {
             Ok(result) if result.state == gitlama_contract::integrations::NativeIntegrationExecutionState::Completed
         );
         if !completed {
-            let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
+            let _ = self
+                .calls
+                .repository_session_integration_cancel(session, generation, preview.token)
+                .await;
             self.set_busy(identity, false);
             return self.notices.status("conflictSaveFailed", Value::Null);
         }
@@ -750,13 +924,19 @@ impl ConflictService {
     }
 
     pub async fn undo(&self, path: Vec<u8>) {
-        let Some(identity) = self.active_identity() else { return };
+        let Some(identity) = self.active_identity() else {
+            return;
+        };
         if self.with_active(|session| session.busy).unwrap_or(true) {
             return;
         }
         self.mutate(identity, path.clone(), None, async {
             self.calls
-                .repository_session_conflict_undo_resolution(identity.native_id, identity.generation, path.clone())
+                .repository_session_conflict_undo_resolution(
+                    identity.native_id,
+                    identity.generation,
+                    path.clone(),
+                )
                 .await
                 .map_err(|_| ())
         })
@@ -767,7 +947,9 @@ impl ConflictService {
     /// Resolves each of `paths` still conflicted with its whole `side`, or
     /// (side None) puts each back; one busy state for all.
     pub async fn for_each(&self, paths: Vec<Vec<u8>>, side: Option<NativeConflictSideChoice>) {
-        let Some(identity) = self.active_identity() else { return };
+        let Some(identity) = self.active_identity() else {
+            return;
+        };
         if paths.is_empty() || self.with_active(|session| session.busy).unwrap_or(true) {
             return;
         }
@@ -775,10 +957,18 @@ impl ConflictService {
         for path in paths {
             let state = self.with_session(identity, |session| {
                 let shown = session.selected_file().map(|file| file.path.clone());
-                let file = session.snapshot.as_ref().and_then(|snapshot| snapshot.files.iter().find(|file| file.path == path).cloned());
+                let file = session.snapshot.as_ref().and_then(|snapshot| {
+                    snapshot
+                        .files
+                        .iter()
+                        .find(|file| file.path == path)
+                        .cloned()
+                });
                 (session.finished, shown, file)
             });
-            let Some((finished, shown, file)) = state else { break };
+            let Some((finished, shown, file)) = state else {
+                break;
+            };
             if finished || !self.shown(identity) {
                 break;
             }
@@ -798,7 +988,14 @@ impl ConflictService {
                 }
                 None => {
                     self.with_session(identity, |session| session.resolutions.remove(&path));
-                    (self.calls.repository_session_conflict_undo_resolution(identity.native_id, identity.generation, path.clone()), None)
+                    (
+                        self.calls.repository_session_conflict_undo_resolution(
+                            identity.native_id,
+                            identity.generation,
+                            path.clone(),
+                        ),
+                        None,
+                    )
                 }
             };
             match snapshot_of(call.await.map_err(|_| ())) {
@@ -810,9 +1007,15 @@ impl ConflictService {
                         }
                         let selected = shown
                             .as_ref()
-                            .and_then(|shown| snapshot.files.iter().position(|file| &file.path == shown))
+                            .and_then(|shown| {
+                                snapshot.files.iter().position(|file| &file.path == shown)
+                            })
                             .unwrap_or(session.selected);
-                        if session.shown.as_ref().is_some_and(|(shown, _)| shown == &path) {
+                        if session
+                            .shown
+                            .as_ref()
+                            .is_some_and(|(shown, _)| shown == &path)
+                        {
                             session.shown = None;
                         }
                         session.apply(snapshot, selected);
@@ -838,14 +1041,26 @@ impl ConflictService {
     /// Continues, skips or aborts the paused operation. Skip and Abort ask
     /// first; Continue waits until no file is conflicted.
     pub async fn sequence(&self, action: NativeConflictSequencerAction) {
-        let Some(identity) = self.active_identity() else { return };
+        let Some(identity) = self.active_identity() else {
+            return;
+        };
         let Some((busy, conflicted, merge, message)) = self.with_active(|session| {
             let snapshot = session.snapshot.clone();
             (
                 session.busy,
-                snapshot.as_ref().is_some_and(|snapshot| !snapshot.files.is_empty()),
-                snapshot.as_ref().is_some_and(|snapshot| snapshot.operation == NativeConflictOperationKind::Merge),
-                format!("{}\n\n{}", session.merge_subject.trim(), session.merge_description.trim()).trim().to_owned(),
+                snapshot
+                    .as_ref()
+                    .is_some_and(|snapshot| !snapshot.files.is_empty()),
+                snapshot.as_ref().is_some_and(|snapshot| {
+                    snapshot.operation == NativeConflictOperationKind::Merge
+                }),
+                format!(
+                    "{}\n\n{}",
+                    session.merge_subject.trim(),
+                    session.merge_description.trim()
+                )
+                .trim()
+                .to_owned(),
             )
         }) else {
             return;
@@ -854,23 +1069,44 @@ impl ConflictService {
             return;
         }
         if action != NativeConflictSequencerAction::Continue {
-            let kind = if action == NativeConflictSequencerAction::Abort { "abort" } else { "skip" };
-            if self.prompts.ask("confirmSequencer", json!({"action": kind})).await != Some(Value::Bool(true)) || !self.shown(identity) {
+            let kind = if action == NativeConflictSequencerAction::Abort {
+                "abort"
+            } else {
+                "skip"
+            };
+            if self
+                .prompts
+                .ask("confirmSequencer", json!({"action": kind}))
+                .await
+                != Some(Value::Bool(true))
+                || !self.shown(identity)
+            {
                 return;
             }
         }
         self.set_busy(identity, true);
         let call = if action == NativeConflictSequencerAction::Continue && merge {
-            self.calls.repository_session_conflict_continue_with_message(identity.native_id, identity.generation, action, message)
+            self.calls
+                .repository_session_conflict_continue_with_message(
+                    identity.native_id,
+                    identity.generation,
+                    action,
+                    message,
+                )
         } else {
-            self.calls.repository_session_conflict_continue(identity.native_id, identity.generation, action)
+            self.calls.repository_session_conflict_continue(
+                identity.native_id,
+                identity.generation,
+                action,
+            )
         };
         match call.await {
             Ok(result) => {
                 let key = match result.state {
                     NativeConflictContinuationState::Completed => "conflictCompleted",
                     NativeConflictContinuationState::Aborted => "conflictAborted",
-                    NativeConflictContinuationState::Conflict | NativeConflictContinuationState::Interrupted => "conflictStoppedAgain",
+                    NativeConflictContinuationState::Conflict
+                    | NativeConflictContinuationState::Interrupted => "conflictStoppedAgain",
                     NativeConflictContinuationState::Failed => "conflictContinueFailed",
                     NativeConflictContinuationState::OutcomeUncertain => "mutationOutcomeUncertain",
                 };
@@ -879,7 +1115,11 @@ impl ConflictService {
                     if result.state != NativeConflictContinuationState::Failed {
                         session.resolutions.clear();
                     }
-                    if matches!(result.state, NativeConflictContinuationState::Completed | NativeConflictContinuationState::Aborted) {
+                    if matches!(
+                        result.state,
+                        NativeConflictContinuationState::Completed
+                            | NativeConflictContinuationState::Aborted
+                    ) {
                         session.finished = true;
                     }
                     session.busy = false;
@@ -904,10 +1144,16 @@ impl ConflictService {
     /// The resolver of the active tab closed: drops a finished session and
     /// gives the lists back until a new conflict appears.
     pub fn finish(&self) {
-        let Some(identity) = self.active_identity() else { return };
-        let finished = self.with_active(|session| session.finished).unwrap_or(false);
+        let Some(identity) = self.active_identity() else {
+            return;
+        };
+        let finished = self
+            .with_active(|session| session.finished)
+            .unwrap_or(false);
         if finished {
-            self.sessions.borrow_mut().remove(&(identity.native_id, identity.generation));
+            self.sessions
+                .borrow_mut()
+                .remove(&(identity.native_id, identity.generation));
         }
         if let Some(tab) = self.workspace.active_tab_id() {
             self.changes.finish_conflict_flow(tab);
@@ -918,19 +1164,29 @@ impl ConflictService {
     /// Asks whether the active repository has a paused operation its status
     /// does not show, such as a resolved one awaiting Continue.
     pub async fn probe(&self) {
-        let (Some(identity), Some(tab)) = (self.active_identity(), self.workspace.active_tab_id()) else { return };
+        let (Some(identity), Some(tab)) = (self.active_identity(), self.workspace.active_tab_id())
+        else {
+            return;
+        };
         let probe = self.probe.get() + 1;
         self.probe.set(probe);
-        let result = self.calls.repository_session_conflicts(identity.native_id, identity.generation).await.map_err(|_| ());
+        let result = self
+            .calls
+            .repository_session_conflicts(identity.native_id, identity.generation)
+            .await
+            .map_err(|_| ());
         if probe != self.probe.get() || !self.shown(identity) {
             return;
         }
         match snapshot_of(result) {
             Ok(snapshot) => {
-                let active = !snapshot.files.is_empty() || snapshot.can_continue || snapshot.can_skip;
+                let active =
+                    !snapshot.files.is_empty() || snapshot.can_continue || snapshot.can_skip;
                 self.changes.set_conflict_flow(tab, active);
             }
-            Err(Some(NativeConflictFailureKind::NoActiveOperation)) => self.changes.set_conflict_flow(tab, false),
+            Err(Some(NativeConflictFailureKind::NoActiveOperation)) => {
+                self.changes.set_conflict_flow(tab, false)
+            }
             Err(_) => {}
         }
     }
@@ -947,7 +1203,12 @@ mod tests {
     use gitlama_contract::conflict::NativeConflictRegion;
 
     fn side(content: Option<&[u8]>, mode: Option<u32>) -> NativeConflictSide {
-        NativeConflictSide { present: content.is_some(), mode, content: content.map(<[u8]>::to_vec), byte_count: content.map_or(0, <[u8]>::len) as u64 }
+        NativeConflictSide {
+            present: content.is_some(),
+            mode,
+            content: content.map(<[u8]>::to_vec),
+            byte_count: content.map_or(0, <[u8]>::len) as u64,
+        }
     }
 
     fn file(path: &str, current: Option<&[u8]>, incoming: Option<&[u8]>) -> NativeConflictFile {
@@ -961,7 +1222,12 @@ mod tests {
             result_present: true,
             result_mode: Some(0o100644),
             marker_free: false,
-            regions: vec![NativeConflictRegion { index: 0, current: b"x\n".to_vec(), incoming: b"y\n".to_vec(), ancestor: None }],
+            regions: vec![NativeConflictRegion {
+                index: 0,
+                current: b"x\n".to_vec(),
+                incoming: b"y\n".to_vec(),
+                ancestor: None,
+            }],
             fingerprint: 7,
             can_undo_resolution: false,
         }
@@ -970,12 +1236,33 @@ mod tests {
     #[test]
     fn presence_and_differences_read_the_sides() {
         assert_eq!(presence(&file("f", Some(b"x"), None)), "deletedIncoming");
-        assert_eq!(content_difference(&file("f", Some(b"a\r\nb"), Some(b"a\nb"))), "lineEndings");
-        assert_eq!(content_difference(&file("f", Some(b"a\n"), Some(b"a"))), "finalNewline");
-        assert_eq!(content_difference(&file("f", Some(b"\xef\xbb\xbfa"), Some(b"a"))), "byteOrderMark");
-        assert_eq!(content_difference(&file("f", Some(b"a b"), Some(b"ab"))), "whitespace");
-        assert_eq!(content_difference(&file("f", Some(b"a"), Some(b"b"))), "content");
-        assert_eq!(side_resolution(&file("f", None, Some(b"y")), NativeConflictSideChoice::Current), Resolution::Deleted);
+        assert_eq!(
+            content_difference(&file("f", Some(b"a\r\nb"), Some(b"a\nb"))),
+            "lineEndings"
+        );
+        assert_eq!(
+            content_difference(&file("f", Some(b"a\n"), Some(b"a"))),
+            "finalNewline"
+        );
+        assert_eq!(
+            content_difference(&file("f", Some(b"\xef\xbb\xbfa"), Some(b"a"))),
+            "byteOrderMark"
+        );
+        assert_eq!(
+            content_difference(&file("f", Some(b"a b"), Some(b"ab"))),
+            "whitespace"
+        );
+        assert_eq!(
+            content_difference(&file("f", Some(b"a"), Some(b"b"))),
+            "content"
+        );
+        assert_eq!(
+            side_resolution(
+                &file("f", None, Some(b"y")),
+                NativeConflictSideChoice::Current
+            ),
+            Resolution::Deleted
+        );
     }
 
     #[test]
@@ -997,7 +1284,10 @@ mod tests {
                 incoming_label: b"topic".to_vec(),
                 current_step: None,
                 total_steps: None,
-                files: vec![file("a", Some(b"x\n"), Some(b"y\n")), file("b", Some(b"x\n"), Some(b"y\n"))],
+                files: vec![
+                    file("a", Some(b"x\n"), Some(b"y\n")),
+                    file("b", Some(b"x\n"), Some(b"y\n")),
+                ],
                 resolved_undo_paths: Vec::new(),
                 can_continue: false,
                 can_skip: false,
@@ -1007,8 +1297,16 @@ mod tests {
         );
         session.bind();
         let (_, draft) = session.shown.as_mut().unwrap();
-        draft.text = draft.draft.as_mut().unwrap().take(0, NativeConflictRegionChoice::Incoming).to_vec();
-        assert_eq!(session.remaining(&session.selected_file().unwrap().clone()), Some(0));
+        draft.text = draft
+            .draft
+            .as_mut()
+            .unwrap()
+            .take(0, NativeConflictRegionChoice::Incoming)
+            .to_vec();
+        assert_eq!(
+            session.remaining(&session.selected_file().unwrap().clone()),
+            Some(0)
+        );
         session.selected = 1;
         session.bind();
         assert_eq!(session.shown.as_ref().unwrap().0, b"b");

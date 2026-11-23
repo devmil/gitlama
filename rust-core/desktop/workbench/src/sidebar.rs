@@ -16,7 +16,10 @@ use crate::session::{basename, display_path};
 use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
 use gitlama_contract::domain::path_identity::NativePathIdentity;
-use gitlama_contract::dto::{NativeRepositoryReference, NativeRepositoryRefs, NativeRepositoryRemote, NativeRepositorySnapshot};
+use gitlama_contract::dto::{
+    NativeRepositoryReference, NativeRepositoryRefs, NativeRepositoryRemote,
+    NativeRepositorySnapshot,
+};
 use gitlama_contract::extensions::{NativeExtensionInventory, NativeWorktreeEntry};
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -77,11 +80,17 @@ pub struct PullRequestRow {
 
 impl Entry {
     fn identity(&self) -> &str {
-        self.tree_path.as_deref().or(self.command_name.as_deref()).unwrap_or(&self.name)
+        self.tree_path
+            .as_deref()
+            .or(self.command_name.as_deref())
+            .unwrap_or(&self.name)
     }
 
     fn with_children(&self, children: Vec<Entry>) -> Entry {
-        Entry { children, ..self.clone() }
+        Entry {
+            children,
+            ..self.clone()
+        }
     }
 }
 
@@ -108,7 +117,13 @@ fn local_branch_commands() -> Vec<&'static str> {
 /// The symbolic `HEAD` of a remote names its default branch; deleting it
 /// would delete no branch.
 fn remote_branch_commands(name: &str) -> Vec<&'static str> {
-    let mut commands = vec!["checkoutBranch", "mergeBranch", "rebaseBranch", "createBranch", "createTag"];
+    let mut commands = vec![
+        "checkoutBranch",
+        "mergeBranch",
+        "rebaseBranch",
+        "createBranch",
+        "createTag",
+    ];
     if name != "HEAD" {
         commands.push("deleteRemoteBranch");
     }
@@ -117,31 +132,58 @@ fn remote_branch_commands(name: &str) -> Vec<&'static str> {
 
 const TAG_COMMANDS: [&str; 2] = ["pushTag", "deleteTag"];
 const STASH_COMMANDS: [&str; 4] = ["applyStash", "popStash", "renameStash", "dropStash"];
-const REMOTE_COMMANDS: [&str; 6] = ["remoteFetch", "pull", "remotePush", "renameRemote", "editRemote", "removeRemote"];
+const REMOTE_COMMANDS: [&str; 6] = [
+    "remoteFetch",
+    "pull",
+    "remotePush",
+    "renameRemote",
+    "editRemote",
+    "removeRemote",
+];
 
 /// The names a repository's main branch goes by, the preferred one first.
 pub const MAIN_BRANCH_NAMES: [&str; 2] = ["main", "master"];
 
 /// `branches` with the main branch first and every other branch in order.
-pub fn main_branch_first(branches: &[NativeRepositoryReference]) -> Vec<&NativeRepositoryReference> {
-    let main = MAIN_BRANCH_NAMES
-        .iter()
-        .find_map(|name| branches.iter().position(|branch| branch.name == name.as_bytes()));
-    let mut ordered: Vec<&NativeRepositoryReference> = main.map(|index| &branches[index]).into_iter().collect();
-    ordered.extend(branches.iter().enumerate().filter(|(index, _)| Some(*index) != main).map(|(_, branch)| branch));
+pub fn main_branch_first(
+    branches: &[NativeRepositoryReference],
+) -> Vec<&NativeRepositoryReference> {
+    let main = MAIN_BRANCH_NAMES.iter().find_map(|name| {
+        branches
+            .iter()
+            .position(|branch| branch.name == name.as_bytes())
+    });
+    let mut ordered: Vec<&NativeRepositoryReference> =
+        main.map(|index| &branches[index]).into_iter().collect();
+    ordered.extend(
+        branches
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| Some(*index) != main)
+            .map(|(_, branch)| branch),
+    );
     ordered
 }
 
 fn full_name(reference: &NativeRepositoryReference, fallback: impl FnOnce() -> String) -> String {
-    if reference.full_name.is_empty() { fallback() } else { text(&reference.full_name) }
+    if reference.full_name.is_empty() {
+        fallback()
+    } else {
+        text(&reference.full_name)
+    }
 }
 
 pub fn branch_reference(branch: &NativeRepositoryReference) -> String {
     full_name(branch, || format!("refs/heads/{}", text(&branch.name)))
 }
 
-pub fn remote_branch_reference(remote: &NativeRepositoryRemote, branch: &NativeRepositoryReference) -> String {
-    full_name(branch, || format!("refs/remotes/{}/{}", text(&remote.name), text(&branch.name)))
+pub fn remote_branch_reference(
+    remote: &NativeRepositoryRemote,
+    branch: &NativeRepositoryReference,
+) -> String {
+    full_name(branch, || {
+        format!("refs/remotes/{}/{}", text(&remote.name), text(&branch.name))
+    })
 }
 
 pub fn tag_reference(tag: &NativeRepositoryReference) -> String {
@@ -155,13 +197,18 @@ pub fn is_remote_head(reference: &str) -> bool {
 
 /// Whether `reference` names a branch the graph can be filtered to.
 pub fn is_filterable_branch(reference: &str) -> bool {
-    reference.starts_with("refs/heads/") || (reference.starts_with("refs/remotes/") && !is_remote_head(reference))
+    reference.starts_with("refs/heads/")
+        || (reference.starts_with("refs/remotes/") && !is_remote_head(reference))
 }
 
 /// The branch shown along with `branch` in the graph filter: the one it
 /// tracks, when the graph can be filtered to it.
 pub fn filter_upstream(branch: &NativeRepositoryReference) -> Option<String> {
-    let upstream = branch.upstream.as_ref().filter(|_| !branch.upstream_gone).map(|bytes| text(bytes))?;
+    let upstream = branch
+        .upstream
+        .as_ref()
+        .filter(|_| !branch.upstream_gone)
+        .map(|bytes| text(bytes))?;
     is_filterable_branch(&upstream).then_some(upstream)
 }
 
@@ -172,7 +219,11 @@ pub fn display_reference(full: &str) -> &str {
             return short;
         }
     }
-    if full == STASH_REFERENCE { "stash" } else { full }
+    if full == STASH_REFERENCE {
+        "stash"
+    } else {
+        full
+    }
 }
 
 /// Groups `entries` by their `/`-separated name segments; groups show only
@@ -181,7 +232,11 @@ pub fn branch_tree(entries: Vec<Entry>, prefix: &str) -> Vec<Entry> {
     let mut order: Vec<String> = Vec::new();
     let mut groups: HashMap<String, Vec<Entry>> = HashMap::new();
     for entry in entries {
-        let segment = entry.name[prefix.len()..].split('/').next().unwrap_or_default().to_owned();
+        let segment = entry.name[prefix.len()..]
+            .split('/')
+            .next()
+            .unwrap_or_default()
+            .to_owned();
         if !groups.contains_key(&segment) {
             order.push(segment.clone());
         }
@@ -197,7 +252,12 @@ pub fn branch_tree(entries: Vec<Entry>, prefix: &str) -> Vec<Entry> {
                 Entry {
                     name: segment,
                     tree_path: Some(single.name.clone()),
-                    command_name: Some(single.command_name.clone().unwrap_or_else(|| single.name.clone())),
+                    command_name: Some(
+                        single
+                            .command_name
+                            .clone()
+                            .unwrap_or_else(|| single.name.clone()),
+                    ),
                     ..single
                 }
             } else {
@@ -220,7 +280,13 @@ pub fn filter_entries(entries: &[Entry], needle: &str) -> Vec<Entry> {
     let mut kept = Vec::new();
     for entry in entries {
         if entry.children.is_empty() {
-            if entry.command_name.as_deref().unwrap_or(&entry.name).to_lowercase().contains(needle) {
+            if entry
+                .command_name
+                .as_deref()
+                .unwrap_or(&entry.name)
+                .to_lowercase()
+                .contains(needle)
+            {
                 kept.push(entry.clone());
             }
         } else {
@@ -239,8 +305,13 @@ pub fn filter_entries(entries: &[Entry], needle: &str) -> Vec<Entry> {
 pub fn entries_at(refs: &NativeRepositoryRefs, commit: &str) -> Vec<(String, Entry)> {
     fn walk(entries: &[Entry], commit: &str, found: &mut Vec<(String, Entry)>) {
         for entry in entries {
-            if entry.target.as_deref() == Some(commit) && (entry.filter_reference.is_some() || entry.command_name.is_some()) {
-                let name = entry.command_name.clone().unwrap_or_else(|| entry.name.clone());
+            if entry.target.as_deref() == Some(commit)
+                && (entry.filter_reference.is_some() || entry.command_name.is_some())
+            {
+                let name = entry
+                    .command_name
+                    .clone()
+                    .unwrap_or_else(|| entry.name.clone());
                 found.push((name, entry.clone()));
             }
             walk(&entry.children, commit, found);
@@ -264,8 +335,14 @@ pub struct References {
 
 impl References {
     pub fn new(refs: &NativeRepositoryRefs) -> Self {
-        let local: Vec<Entry> = main_branch_first(&refs.branches).into_iter().map(local_branch).collect();
-        let current_branch = local.iter().find(|entry| entry.current).map(|entry| entry.name.clone());
+        let local: Vec<Entry> = main_branch_first(&refs.branches)
+            .into_iter()
+            .map(local_branch)
+            .collect();
+        let current_branch = local
+            .iter()
+            .find(|entry| entry.current)
+            .map(|entry| entry.name.clone());
         Self {
             current_branch,
             branches: branch_tree(local, ""),
@@ -294,7 +371,8 @@ impl References {
                         target: Some(stash.object_id.clone()),
                         // Only the newest stash is a reference; older ones are
                         // reflog entries the history graph does not load.
-                        reveal_reference: (selector == "stash@{0}").then(|| STASH_REFERENCE.to_owned()),
+                        reveal_reference: (selector == "stash@{0}")
+                            .then(|| STASH_REFERENCE.to_owned()),
                         commands: STASH_COMMANDS.to_vec(),
                         ..Entry::default()
                     }
@@ -375,8 +453,14 @@ pub fn worktree_entries(inventory: &NativeExtensionInventory) -> Vec<Entry> {
 }
 
 /// Whether deleting `entry` is refused up front.
-pub fn worktree_deletion_protected(inventory: &NativeExtensionInventory, entry: &NativeWorktreeEntry) -> bool {
-    entry.current || entry.locked || inventory.worktrees.len() == 1 || entry.git_dir == entry.common_git_dir
+pub fn worktree_deletion_protected(
+    inventory: &NativeExtensionInventory,
+    entry: &NativeWorktreeEntry,
+) -> bool {
+    entry.current
+        || entry.locked
+        || inventory.worktrees.len() == 1
+        || entry.git_dir == entry.common_git_dir
 }
 
 /// One sidebar section.
@@ -396,7 +480,10 @@ const FILTERED_SECTIONS: [&str; 3] = ["createBranch", "addRemote", "createTag"];
 /// Whether any of `entries` is in the branch filter.
 fn holds_filtered(entries: &[Entry], filter: &BranchFilter) -> bool {
     entries.iter().any(|entry| {
-        entry.filter_reference.as_ref().is_some_and(|reference| filter.contains(reference))
+        entry
+            .filter_reference
+            .as_ref()
+            .is_some_and(|reference| filter.contains(reference))
             || holds_filtered(&entry.children, filter)
     })
 }
@@ -425,7 +512,11 @@ impl Flatten<'_> {
             .get(name)
             .copied()
             .unwrap_or(name != "createTag" && name != "hostingCreatePullRequest");
-        if self.filtering { FILTERED_SECTIONS.contains(&name) || durable } else { durable }
+        if self.filtering {
+            FILTERED_SECTIONS.contains(&name) || durable
+        } else {
+            durable
+        }
     }
 
     /// The rows: a header per section, then its visible entries.
@@ -457,14 +548,28 @@ impl Flatten<'_> {
         rows
     }
 
-    fn flatten(&self, rows: &mut Vec<Value>, section: &Section, entries: &[Entry], path: &str, depth: usize) {
+    fn flatten(
+        &self,
+        rows: &mut Vec<Value>,
+        section: &Section,
+        entries: &[Entry],
+        path: &str,
+        depth: usize,
+    ) {
         for entry in entries {
             let entry_path = format!("{path}/{}", entry.identity());
             let has_children = !entry.children.is_empty();
             let expanded = has_children
-                && self.choices.get(&entry_path).copied().unwrap_or(self.filtering || entry.contains_current);
+                && self
+                    .choices
+                    .get(&entry_path)
+                    .copied()
+                    .unwrap_or(self.filtering || entry.contains_current);
             let reference = entry.identity().to_owned();
-            let filtered = entry.filter_reference.as_ref().is_some_and(|name| self.branch_filter.contains(name));
+            let filtered = entry
+                .filter_reference
+                .as_ref()
+                .is_some_and(|name| self.branch_filter.contains(name));
             let holds = has_children
                 && !expanded
                 && !self.branch_filter.is_empty()
@@ -539,7 +644,11 @@ struct Filter {
 
 impl Filter {
     fn needle(&self) -> String {
-        if self.open { self.text.trim().to_lowercase() } else { String::new() }
+        if self.open {
+            self.text.trim().to_lowercase()
+        } else {
+            String::new()
+        }
     }
 }
 
@@ -584,7 +693,13 @@ impl SidebarService {
         calls: Rc<dyn SessionCalls>,
         notifier: Notifier,
     ) -> Rc<Self> {
-        Rc::new(Self { workspace, settings, calls, notifier, inner: RefCell::new(Inner::default()) })
+        Rc::new(Self {
+            workspace,
+            settings,
+            calls,
+            notifier,
+            inner: RefCell::new(Inner::default()),
+        })
     }
 
     fn changed(&self) {
@@ -599,7 +714,11 @@ impl SidebarService {
                 inner.filter.choices.insert(path, expanded);
             } else {
                 let repository = inner.repository.clone();
-                inner.expansion.entry(repository).or_default().insert(path, expanded);
+                inner
+                    .expansion
+                    .entry(repository)
+                    .or_default()
+                    .insert(path, expanded);
             }
         }
         self.changed();
@@ -633,7 +752,11 @@ impl SidebarService {
 
     /// The worktree inventory, when loaded.
     pub fn worktrees(&self) -> Option<Rc<NativeExtensionInventory>> {
-        self.inner.borrow().worktrees.as_ref().and_then(|worktrees| worktrees.inventory.clone())
+        self.inner
+            .borrow()
+            .worktrees
+            .as_ref()
+            .and_then(|worktrees| worktrees.inventory.clone())
     }
 
     /// Reloads the worktree inventory now (after opening its section).
@@ -650,7 +773,12 @@ impl SidebarService {
         self.changed();
     }
 
-    fn ensure_worktrees(self: &Rc<Self>, snapshot: &NativeRepositorySnapshot, session: u64, generation: u64) {
+    fn ensure_worktrees(
+        self: &Rc<Self>,
+        snapshot: &NativeRepositorySnapshot,
+        session: u64,
+        generation: u64,
+    ) {
         if snapshot.ref_counts.worktrees == 0 {
             self.inner.borrow_mut().worktrees = None;
             return;
@@ -664,12 +792,23 @@ impl SidebarService {
                 return;
             }
         }
-        let previous = self.inner.borrow_mut().worktrees.take().and_then(|worktrees| worktrees.inventory);
-        self.inner.borrow_mut().worktrees =
-            Some(Worktrees { revision: snapshot.revision, session, inventory: previous, loading: true });
+        let previous = self
+            .inner
+            .borrow_mut()
+            .worktrees
+            .take()
+            .and_then(|worktrees| worktrees.inventory);
+        self.inner.borrow_mut().worktrees = Some(Worktrees {
+            revision: snapshot.revision,
+            session,
+            inventory: previous,
+            loading: true,
+        });
         let this = Rc::clone(self);
         let revision = snapshot.revision;
-        let request = self.calls.repository_session_extensions(session, generation);
+        let request = self
+            .calls
+            .repository_session_extensions(session, generation);
         rt::spawn_detached(async move {
             let result = request.await;
             let inventory = result.ok().and_then(|result| result.inventory).map(Rc::new);
@@ -693,7 +832,9 @@ impl SidebarService {
     pub fn project(self: &Rc<Self>, selected: Option<&str>) -> Projection {
         let active = self.workspace.active_tab();
         let session = active.as_ref().and_then(|tab| tab.session.clone());
-        let repository = active.as_ref().and_then(|tab| tab.canonical_identity().cloned());
+        let repository = active
+            .as_ref()
+            .and_then(|tab| tab.canonical_identity().cloned());
         {
             let mut inner = self.inner.borrow_mut();
             if inner.repository != repository {
@@ -703,7 +844,11 @@ impl SidebarService {
             }
         }
         if let Some(session) = &session {
-            self.ensure_worktrees(&session.snapshot, session.identity.native_id, session.identity.generation);
+            self.ensure_worktrees(
+                &session.snapshot,
+                session.identity.native_id,
+                session.identity.generation,
+            );
         }
         let references = session.as_ref().map(|session| {
             // The snapshot is kept, so a new one never reuses its address.
@@ -716,15 +861,25 @@ impl SidebarService {
                 .map(|(_, references)| Rc::clone(references));
             cached.unwrap_or_else(|| {
                 let built = Rc::new(References::new(&session.snapshot.refs));
-                self.inner.borrow_mut().references = Some((Rc::clone(&session.snapshot), Rc::clone(&built)));
+                self.inner.borrow_mut().references =
+                    Some((Rc::clone(&session.snapshot), Rc::clone(&built)));
                 built
             })
         });
         let inner = self.inner.borrow();
         let needle = inner.filter.needle();
         let filtering = !needle.is_empty();
-        let counts = session.as_ref().map(|session| session.snapshot.ref_counts.clone()).unwrap_or_default();
-        let empty = References { current_branch: None, branches: vec![], remotes: vec![], tags: vec![], stashes: vec![] };
+        let counts = session
+            .as_ref()
+            .map(|session| session.snapshot.ref_counts.clone())
+            .unwrap_or_default();
+        let empty = References {
+            current_branch: None,
+            branches: vec![],
+            remotes: vec![],
+            tags: vec![],
+            stashes: vec![],
+        };
         let references_ref: &References = references.as_deref().unwrap_or(&empty);
         let (branches, remotes, tags) = if filtering {
             (
@@ -733,10 +888,17 @@ impl SidebarService {
                 filter_entries(&references_ref.tags, &needle),
             )
         } else {
-            (references_ref.branches.clone(), references_ref.remotes.clone(), references_ref.tags.clone())
+            (
+                references_ref.branches.clone(),
+                references_ref.remotes.clone(),
+                references_ref.tags.clone(),
+            )
         };
         let no_matches = filtering && branches.is_empty() && remotes.is_empty() && tags.is_empty();
-        let worktree_inventory = inner.worktrees.as_ref().and_then(|worktrees| worktrees.inventory.clone());
+        let worktree_inventory = inner
+            .worktrees
+            .as_ref()
+            .and_then(|worktrees| worktrees.inventory.clone());
         let integrations: Vec<Entry> = self.settings.with(|document| {
             document
                 .integrations
@@ -752,19 +914,57 @@ impl SidebarService {
                 .collect()
         });
         let sections = vec![
-            Section { command: "createBranch", label: "workspaceBranches", icon: "branch", count: counts.branches, entries: branches, expandable: false },
-            Section { command: "addRemote", label: "workspaceRemotes", icon: "cloud", count: counts.remotes, entries: remotes, expandable: false },
-            Section { command: "createStash", label: "workspaceStashes", icon: "stash", count: counts.stashes, entries: references_ref.stashes.clone(), expandable: false },
-            Section { command: "createTag", label: "workspaceTags", icon: "tag", count: counts.tags, entries: tags, expandable: false },
+            Section {
+                command: "createBranch",
+                label: "workspaceBranches",
+                icon: "branch",
+                count: counts.branches,
+                entries: branches,
+                expandable: false,
+            },
+            Section {
+                command: "addRemote",
+                label: "workspaceRemotes",
+                icon: "cloud",
+                count: counts.remotes,
+                entries: remotes,
+                expandable: false,
+            },
+            Section {
+                command: "createStash",
+                label: "workspaceStashes",
+                icon: "stash",
+                count: counts.stashes,
+                entries: references_ref.stashes.clone(),
+                expandable: false,
+            },
+            Section {
+                command: "createTag",
+                label: "workspaceTags",
+                icon: "tag",
+                count: counts.tags,
+                entries: tags,
+                expandable: false,
+            },
             Section {
                 command: "addWorktree",
                 label: "workspaceWorktrees",
                 icon: "folder-symlink",
                 count: counts.worktrees,
-                entries: worktree_inventory.as_deref().map(worktree_entries).unwrap_or_default(),
+                entries: worktree_inventory
+                    .as_deref()
+                    .map(worktree_entries)
+                    .unwrap_or_default(),
                 expandable: counts.worktrees > 0,
             },
-            Section { command: "trackLfsPattern", label: "extensionLfs", icon: "box", count: 0, entries: vec![], expandable: false },
+            Section {
+                command: "trackLfsPattern",
+                label: "extensionLfs",
+                icon: "box",
+                count: 0,
+                entries: vec![],
+                expandable: false,
+            },
             Section {
                 command: "addIntegration",
                 label: "integrationTitle",
@@ -784,11 +984,18 @@ impl SidebarService {
         ];
         let empty_choices = HashMap::new();
         let durable = inner.expansion.get(&repository).unwrap_or(&empty_choices);
-        let branch_filter = active.as_ref().map(|tab| tab.navigation.branch_filter.clone()).unwrap_or_default();
+        let branch_filter = active
+            .as_ref()
+            .map(|tab| tab.navigation.branch_filter.clone())
+            .unwrap_or_default();
         let flatten = Flatten {
             sections: &sections,
             filtering,
-            choices: if filtering { &inner.filter.choices } else { durable },
+            choices: if filtering {
+                &inner.filter.choices
+            } else {
+                durable
+            },
             durable,
             selected,
             branch_filter: &branch_filter,
@@ -826,7 +1033,12 @@ mod tests {
 
     fn refs() -> NativeRepositoryRefs {
         NativeRepositoryRefs {
-            branches: vec![branch("feature/a", false), branch("feature/b", true), branch("main", false), branch("topic", false)],
+            branches: vec![
+                branch("feature/a", false),
+                branch("feature/b", true),
+                branch("main", false),
+                branch("topic", false),
+            ],
             remotes: vec![],
             tags: vec![],
             stashes: vec![],
@@ -837,7 +1049,11 @@ mod tests {
     #[test]
     fn groups_branches_and_puts_main_first() {
         let references = References::new(&refs());
-        let names: Vec<&str> = references.branches.iter().map(|entry| entry.name.as_str()).collect();
+        let names: Vec<&str> = references
+            .branches
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect();
         assert_eq!(names, ["main", "feature", "topic"]);
         let feature = &references.branches[1];
         assert_eq!(feature.tree_path.as_deref(), Some("feature/"));
@@ -859,8 +1075,25 @@ mod tests {
     fn flattens_with_default_expansion() {
         let references = References::new(&refs());
         let sections = vec![
-            Section { command: "createBranch", label: "", icon: "branch", count: 4, entries: references.branches.clone(), expandable: false },
-            Section { command: "createTag", label: "", icon: "tag", count: 1, entries: vec![Entry { name: "v1".into(), ..Entry::default() }], expandable: false },
+            Section {
+                command: "createBranch",
+                label: "",
+                icon: "branch",
+                count: 4,
+                entries: references.branches.clone(),
+                expandable: false,
+            },
+            Section {
+                command: "createTag",
+                label: "",
+                icon: "tag",
+                count: 1,
+                entries: vec![Entry {
+                    name: "v1".into(),
+                    ..Entry::default()
+                }],
+                expandable: false,
+            },
         ];
         let choices = HashMap::new();
         let filter = BranchFilter::default();
@@ -875,7 +1108,10 @@ mod tests {
             worktree_failure: None,
         }
         .rows();
-        let keys: Vec<&str> = rows.iter().map(|row| row["key"].as_str().unwrap()).collect();
+        let keys: Vec<&str> = rows
+            .iter()
+            .map(|row| row["key"].as_str().unwrap())
+            .collect();
         // The group holding the current branch is open; tags start closed.
         assert_eq!(
             keys,

@@ -9,10 +9,13 @@ use crate::notices::Notices;
 use crate::prompts::Prompts;
 use crate::session::{SessionError, SessionIdentity};
 use crate::workspace::{Pane, WorkspaceService};
-use gitlama_contract::dto::{NativeRepositoryRefs, NativeRepositorySnapshot, NativeWorkingTreeState};
+use gitlama_contract::dto::{
+    NativeRepositoryRefs, NativeRepositorySnapshot, NativeWorkingTreeState,
+};
 use gitlama_contract::history_operation::{
-    NativeConflictPredictionKind, NativeConflictPredictionResult, NativeHistoryLocalChanges, NativeHistoryMergeMode,
-    NativeHistoryMutationExecutionResult, NativeHistoryMutationExecutionState, NativeHistoryMutationFailureKind,
+    NativeConflictPredictionKind, NativeConflictPredictionResult, NativeHistoryLocalChanges,
+    NativeHistoryMergeMode, NativeHistoryMutationExecutionResult,
+    NativeHistoryMutationExecutionState, NativeHistoryMutationFailureKind,
     NativeHistoryMutationKind, NativeHistoryMutationPreview, NativeHistoryMutationRequest,
 };
 use serde_json::{Value, json};
@@ -52,12 +55,18 @@ pub fn failure_key(kind: NativeHistoryMutationFailureKind) -> &'static str {
         NativeHistoryMutationFailureKind::DirtyWorktree => "historyMutationFailureDirty",
         NativeHistoryMutationFailureKind::DetachedHead => "historyMutationFailureDetached",
         NativeHistoryMutationFailureKind::ActiveOperation => "historyMutationFailureActive",
-        NativeHistoryMutationFailureKind::PublicationConfirmationRequired => "historyMutationFailurePublished",
+        NativeHistoryMutationFailureKind::PublicationConfirmationRequired => {
+            "historyMutationFailurePublished"
+        }
         NativeHistoryMutationFailureKind::Stale => "historyMutationStale",
         NativeHistoryMutationFailureKind::Canceled => "historyMutationFailureCanceled",
-        NativeHistoryMutationFailureKind::Read | NativeHistoryMutationFailureKind::Failed => "historyMutationFailed",
+        NativeHistoryMutationFailureKind::Read | NativeHistoryMutationFailureKind::Failed => {
+            "historyMutationFailed"
+        }
         NativeHistoryMutationFailureKind::MergeCommit => "historyRevertMergeUnsupported",
-        NativeHistoryMutationFailureKind::LocalChangesOverlap => "historyMutationFailureLocalChanges",
+        NativeHistoryMutationFailureKind::LocalChangesOverlap => {
+            "historyMutationFailureLocalChanges"
+        }
     }
 }
 
@@ -85,23 +94,47 @@ pub fn branch_choices(refs: &NativeRepositoryRefs) -> Vec<Value> {
 }
 
 /// The status line of a finished mutation: (key, args, error).
-pub fn result_message(preview: &NativeHistoryMutationPreview, result: &NativeHistoryMutationExecutionResult) -> (&'static str, Value, bool) {
-    let error = matches!(result.state, NativeHistoryMutationExecutionState::Failed | NativeHistoryMutationExecutionState::Stale);
+pub fn result_message(
+    preview: &NativeHistoryMutationPreview,
+    result: &NativeHistoryMutationExecutionResult,
+) -> (&'static str, Value, bool) {
+    let error = matches!(
+        result.state,
+        NativeHistoryMutationExecutionState::Failed | NativeHistoryMutationExecutionState::Stale
+    );
     let base = || -> (&'static str, Value) {
         match result.state {
-            NativeHistoryMutationExecutionState::Completed => ("historyMutationCompleted", Value::Null),
-            NativeHistoryMutationExecutionState::AlreadyContained => ("historyMutationAlreadyContained", Value::Null),
-            NativeHistoryMutationExecutionState::Conflict => {
-                ("historyMutationConflict", json!({"count": result.conflicting_paths.len()}))
+            NativeHistoryMutationExecutionState::Completed => {
+                ("historyMutationCompleted", Value::Null)
             }
-            NativeHistoryMutationExecutionState::Interrupted => ("historyMutationInterrupted", Value::Null),
+            NativeHistoryMutationExecutionState::AlreadyContained => {
+                ("historyMutationAlreadyContained", Value::Null)
+            }
+            NativeHistoryMutationExecutionState::Conflict => (
+                "historyMutationConflict",
+                json!({"count": result.conflicting_paths.len()}),
+            ),
+            NativeHistoryMutationExecutionState::Interrupted => {
+                ("historyMutationInterrupted", Value::Null)
+            }
             NativeHistoryMutationExecutionState::Stale => ("historyMutationStale", Value::Null),
-            NativeHistoryMutationExecutionState::ReconciledWithWarning => ("historyMutationReconciledWarning", Value::Null),
+            NativeHistoryMutationExecutionState::ReconciledWithWarning => {
+                ("historyMutationReconciledWarning", Value::Null)
+            }
             NativeHistoryMutationExecutionState::Failed => (
-                failure_key(result.failure.as_ref().map_or(NativeHistoryMutationFailureKind::Failed, |failure| failure.kind)),
+                failure_key(
+                    result
+                        .failure
+                        .as_ref()
+                        .map_or(NativeHistoryMutationFailureKind::Failed, |failure| {
+                            failure.kind
+                        }),
+                ),
                 Value::Null,
             ),
-            NativeHistoryMutationExecutionState::OutcomeUncertain => ("mutationOutcomeUncertain", Value::Null),
+            NativeHistoryMutationExecutionState::OutcomeUncertain => {
+                ("mutationOutcomeUncertain", Value::Null)
+            }
         }
     };
     let completed = result.state == NativeHistoryMutationExecutionState::Completed;
@@ -117,11 +150,17 @@ pub fn result_message(preview: &NativeHistoryMutationPreview, result: &NativeHis
         }
     });
     match set_aside {
-        Some(key) if completed || result.set_aside.as_ref().is_some_and(|saved| saved.pending) => (key, Value::Null, error),
+        Some(key) if completed || result.set_aside.as_ref().is_some_and(|saved| saved.pending) => {
+            (key, Value::Null, error)
+        }
         // Both sentences: what happened, then where the changes are.
         Some(key) => {
             let (first, args) = base();
-            ("historyRewriteTwoSentences", json!({"first": {"l10n": first, "args": args}, "second": {"l10n": key}}), error)
+            (
+                "historyRewriteTwoSentences",
+                json!({"first": {"l10n": first, "args": args}, "second": {"l10n": key}}),
+                error,
+            )
         }
         None if preview.no_commit && completed => ("historyRevertApplied", Value::Null, error),
         None => {
@@ -142,11 +181,15 @@ fn prediction_payload(prediction: Option<&NativeConflictPredictionResult>) -> Va
     }
 }
 
-fn preview_payload(preview: &NativeHistoryMutationPreview, prediction: Option<&NativeConflictPredictionResult>) -> Value {
+fn preview_payload(
+    preview: &NativeHistoryMutationPreview,
+    prediction: Option<&NativeConflictPredictionResult>,
+) -> Value {
     let set_aside = preview.local_changes == NativeHistoryLocalChanges::SetAside;
     let mut commands = Vec::new();
     if set_aside {
-        commands.push("git stash push --include-untracked -m \"GitLama before revert …\"".to_owned());
+        commands
+            .push("git stash push --include-untracked -m \"GitLama before revert …\"".to_owned());
     }
     commands.push(format!("git {}", preview.arguments.join(" ")));
     if set_aside {
@@ -195,11 +238,22 @@ impl HistoryMutations {
         notices: Rc<Notices>,
         selected: Box<dyn Fn() -> Vec<String>>,
     ) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, busy, navigator, prompts, notices, selected })
+        Rc::new(Self {
+            calls,
+            workspace,
+            busy,
+            navigator,
+            prompts,
+            notices,
+            selected,
+        })
     }
 
     fn session(&self) -> Option<(u64, SessionIdentity)> {
-        Some((self.workspace.active_tab_id()?, self.workspace.current()?.identity))
+        Some((
+            self.workspace.active_tab_id()?,
+            self.workspace.current()?.identity,
+        ))
     }
 
     fn same(&self, tab: u64, identity: SessionIdentity) -> bool {
@@ -243,7 +297,15 @@ impl HistoryMutations {
         let cancel: Rc<dyn Fn()> = Rc::new(move || {
             let calls = Rc::clone(&calls);
             crate::rt::spawn_detached(async move {
-                drop(calls.repository_session_conflict_prediction_cancel(identity.native_id, identity.generation, token).await);
+                drop(
+                    calls
+                        .repository_session_conflict_prediction_cancel(
+                            identity.native_id,
+                            identity.generation,
+                            token,
+                        )
+                        .await,
+                );
             });
         });
         self.busy
@@ -252,7 +314,13 @@ impl HistoryMutations {
                 BusyActivity::ConflictPrediction,
                 true,
                 Some(cancel),
-                self.calls.repository_session_conflict_prediction(identity.native_id, identity.generation, token, kind, target),
+                self.calls.repository_session_conflict_prediction(
+                    identity.native_id,
+                    identity.generation,
+                    token,
+                    kind,
+                    target,
+                ),
             )
             .await
             .map_err(SessionError::from)
@@ -260,12 +328,24 @@ impl HistoryMutations {
 
     /// Merges a branch, or cherry-picks or reverts `target` (or the commits
     /// History has selected). A merge predicts its conflicts first.
-    pub async fn mutate(&self, kind: NativeHistoryMutationKind, source_name: Option<String>, target: Option<String>) {
-        let Some(session) = self.workspace.current() else { return };
+    pub async fn mutate(
+        &self,
+        kind: NativeHistoryMutationKind,
+        source_name: Option<String>,
+        target: Option<String>,
+    ) {
+        let Some(session) = self.workspace.current() else {
+            return;
+        };
         let snapshot: Rc<NativeRepositorySnapshot> = Rc::clone(&session.snapshot);
-        let Some((tab, identity)) = self.session() else { return };
+        let Some((tab, identity)) = self.session() else {
+            return;
+        };
         let selected = match (&target, kind) {
-            (Some(target), NativeHistoryMutationKind::CherryPick | NativeHistoryMutationKind::Revert) => vec![target.clone()],
+            (
+                Some(target),
+                NativeHistoryMutationKind::CherryPick | NativeHistoryMutationKind::Revert,
+            ) => vec![target.clone()],
             _ => (self.selected)(),
         };
         let status = snapshot.status.as_ref();
@@ -279,7 +359,9 @@ impl HistoryMutations {
             "conflictedWorktree": status.is_some_and(|status| status.working_tree == NativeWorkingTreeState::Conflicted),
             "activeOperation": status.is_some_and(|status| !status.operations.is_empty()),
         });
-        let Some(answer) = self.prompts.ask("chooseHistoryMutation", payload).await else { return };
+        let Some(answer) = self.prompts.ask("chooseHistoryMutation", payload).await else {
+            return;
+        };
         if !self.same(tab, identity) {
             return;
         }
@@ -287,31 +369,52 @@ impl HistoryMutations {
             kind,
             targets: answer["targets"]
                 .as_array()
-                .map(|targets| targets.iter().filter_map(|target| target.as_str().map(str::to_owned)).collect())
+                .map(|targets| {
+                    targets
+                        .iter()
+                        .filter_map(|target| target.as_str().map(str::to_owned))
+                        .collect()
+                })
                 .unwrap_or_default(),
-            source_name: answer["sourceName"].as_str().filter(|name| !name.is_empty()).map(|name| name.as_bytes().to_vec()),
+            source_name: answer["sourceName"]
+                .as_str()
+                .filter(|name| !name.is_empty())
+                .map(|name| name.as_bytes().to_vec()),
             merge_mode: parse_merge_mode(answer["mergeMode"].as_str().unwrap_or_default()),
-            acknowledge_published_history: answer["acknowledgePublishedHistory"].as_bool().unwrap_or(false),
+            acknowledge_published_history: answer["acknowledgePublishedHistory"]
+                .as_bool()
+                .unwrap_or(false),
             no_commit: answer["noCommit"].as_bool().unwrap_or(false),
         };
         let preview = match self
             .calls
-            .repository_session_history_mutation_preview(identity.native_id, identity.generation, request)
+            .repository_session_history_mutation_preview(
+                identity.native_id,
+                identity.generation,
+                request,
+            )
             .await
         {
             Ok(result) => match (result.preview, result.failure) {
                 (Some(preview), None) => preview,
-                (_, Some(failure)) => return self.notices.error(failure_key(failure.kind), Value::Null),
+                (_, Some(failure)) => {
+                    return self.notices.error(failure_key(failure.kind), Value::Null);
+                }
                 _ => return self.notices.error("historyMutationFailed", Value::Null),
             },
-            Err(error) => return self.report_session("historyMutationFailed", SessionError::from(error)),
+            Err(error) => {
+                return self.report_session("historyMutationFailed", SessionError::from(error));
+            }
         };
         let mut prediction = None;
         if kind == NativeHistoryMutationKind::Merge
             && !preview.already_contained
             && let Some(target) = preview.targets.first().cloned()
         {
-            match self.predict(tab, identity, NativeConflictPredictionKind::Merge, target).await {
+            match self
+                .predict(tab, identity, NativeConflictPredictionKind::Merge, target)
+                .await
+            {
                 Ok(result) => prediction = Some(result),
                 Err(error) => return self.report_session("historyMutationFailed", error),
             }
@@ -320,7 +423,14 @@ impl HistoryMutations {
         if !self.same(tab, identity) {
             return;
         }
-        if self.prompts.ask("confirmHistoryMutation", preview_payload(&preview, prediction.as_ref())).await != Some(Value::Bool(true))
+        if self
+            .prompts
+            .ask(
+                "confirmHistoryMutation",
+                preview_payload(&preview, prediction.as_ref()),
+            )
+            .await
+            != Some(Value::Bool(true))
             || !self.same(tab, identity)
         {
             return;
@@ -330,7 +440,15 @@ impl HistoryMutations {
         let cancel: Rc<dyn Fn()> = Rc::new(move || {
             let calls = Rc::clone(&calls);
             crate::rt::spawn_detached(async move {
-                drop(calls.repository_session_history_mutation_cancel(identity.native_id, identity.generation, token).await);
+                drop(
+                    calls
+                        .repository_session_history_mutation_cancel(
+                            identity.native_id,
+                            identity.generation,
+                            token,
+                        )
+                        .await,
+                );
             });
         });
         let result = self
@@ -339,22 +457,30 @@ impl HistoryMutations {
                 Some(tab),
                 BusyActivity::HistoryMutation {
                     kind: kind_name(preview.kind),
-                    source: preview
-                        .source_name
-                        .as_deref()
-                        .map(text)
-                        .unwrap_or_else(|| preview.targets.first().map(|target| target.chars().take(10).collect()).unwrap_or_default()),
+                    source: preview.source_name.as_deref().map(text).unwrap_or_else(|| {
+                        preview
+                            .targets
+                            .first()
+                            .map(|target| target.chars().take(10).collect())
+                            .unwrap_or_default()
+                    }),
                     count: preview.targets.len(),
                     branch: text(&preview.current_branch),
                 },
                 true,
                 Some(cancel),
-                self.calls.repository_session_history_mutation_execute(identity.native_id, identity.generation, token),
+                self.calls.repository_session_history_mutation_execute(
+                    identity.native_id,
+                    identity.generation,
+                    token,
+                ),
             )
             .await;
         let result = match result {
             Ok(result) => result,
-            Err(error) => return self.report_session("historyMutationFailed", SessionError::from(error)),
+            Err(error) => {
+                return self.report_session("historyMutationFailed", SessionError::from(error));
+            }
         };
         let (key, args, error) = result_message(&preview, &result);
         if error {
@@ -363,7 +489,10 @@ impl HistoryMutations {
             self.notices.status(key, args);
         }
         if result.state == NativeHistoryMutationExecutionState::Conflict
-            || result.set_aside.as_ref().is_some_and(|saved| saved.conflicted)
+            || result
+                .set_aside
+                .as_ref()
+                .is_some_and(|saved| saved.conflicted)
             || (preview.no_commit && result.state == NativeHistoryMutationExecutionState::Completed)
         {
             self.navigator.select_pane(Pane::Changes, Some(tab));
@@ -394,7 +523,10 @@ mod tests {
         }
     }
 
-    fn result(state: NativeHistoryMutationExecutionState, set_aside: Option<NativeHistorySetAside>) -> NativeHistoryMutationExecutionResult {
+    fn result(
+        state: NativeHistoryMutationExecutionState,
+        set_aside: Option<NativeHistorySetAside>,
+    ) -> NativeHistoryMutationExecutionResult {
         NativeHistoryMutationExecutionResult {
             state,
             failure: None,
@@ -408,13 +540,25 @@ mod tests {
     #[test]
     fn results_read_as_the_flutter_status_lines() {
         let completed = result(NativeHistoryMutationExecutionState::Completed, None);
-        assert_eq!(result_message(&preview(false), &completed).0, "historyMutationCompleted");
-        assert_eq!(result_message(&preview(true), &completed).0, "historyRevertApplied");
+        assert_eq!(
+            result_message(&preview(false), &completed).0,
+            "historyMutationCompleted"
+        );
+        assert_eq!(
+            result_message(&preview(true), &completed).0,
+            "historyRevertApplied"
+        );
         let conflict = result(NativeHistoryMutationExecutionState::Conflict, None);
         let (key, args, error) = result_message(&preview(false), &conflict);
-        assert_eq!((key, args["count"].as_u64(), error), ("historyMutationConflict", Some(2), false));
+        assert_eq!(
+            (key, args["count"].as_u64(), error),
+            ("historyMutationConflict", Some(2), false)
+        );
         let failed = result(NativeHistoryMutationExecutionState::Failed, None);
-        assert_eq!(result_message(&preview(false), &failed), ("historyMutationFailed", Value::Null, true));
+        assert_eq!(
+            result_message(&preview(false), &failed),
+            ("historyMutationFailed", Value::Null, true)
+        );
     }
 
     #[test]
@@ -425,11 +569,26 @@ mod tests {
             conflicted,
             pending,
         };
-        let restored = result(NativeHistoryMutationExecutionState::Completed, Some(saved(true, false, false)));
-        assert_eq!(result_message(&preview(false), &restored).0, "historyRevertSetAsideRestored");
-        let pending = result(NativeHistoryMutationExecutionState::Conflict, Some(saved(false, false, true)));
-        assert_eq!(result_message(&preview(false), &pending).0, "historyRevertSetAsidePending");
-        let kept = result(NativeHistoryMutationExecutionState::Interrupted, Some(saved(false, false, false)));
+        let restored = result(
+            NativeHistoryMutationExecutionState::Completed,
+            Some(saved(true, false, false)),
+        );
+        assert_eq!(
+            result_message(&preview(false), &restored).0,
+            "historyRevertSetAsideRestored"
+        );
+        let pending = result(
+            NativeHistoryMutationExecutionState::Conflict,
+            Some(saved(false, false, true)),
+        );
+        assert_eq!(
+            result_message(&preview(false), &pending).0,
+            "historyRevertSetAsidePending"
+        );
+        let kept = result(
+            NativeHistoryMutationExecutionState::Interrupted,
+            Some(saved(false, false, false)),
+        );
         let (key, args, _) = result_message(&preview(false), &kept);
         assert_eq!(key, "historyRewriteTwoSentences");
         assert_eq!(args["first"]["l10n"], "historyMutationInterrupted");
@@ -439,21 +598,22 @@ mod tests {
     #[test]
     fn remote_tracking_branches_are_named_with_their_remote() {
         let mut refs = NativeRepositoryRefs::default();
-        refs.remotes.push(gitlama_contract::dto::NativeRepositoryRemote {
-            name: b"origin".to_vec(),
-            display_url: Vec::new(),
-            branches: vec![gitlama_contract::dto::NativeRepositoryReference {
-                name: b"main".to_vec(),
-                full_name: b"refs/remotes/origin/main".to_vec(),
-                target: "d".repeat(40),
-                head: false,
-                published: true,
-                upstream: None,
-                ahead: 0,
-                behind: 0,
-                upstream_gone: false,
-            }],
-        });
+        refs.remotes
+            .push(gitlama_contract::dto::NativeRepositoryRemote {
+                name: b"origin".to_vec(),
+                display_url: Vec::new(),
+                branches: vec![gitlama_contract::dto::NativeRepositoryReference {
+                    name: b"main".to_vec(),
+                    full_name: b"refs/remotes/origin/main".to_vec(),
+                    target: "d".repeat(40),
+                    head: false,
+                    published: true,
+                    upstream: None,
+                    ahead: 0,
+                    behind: 0,
+                    upstream_gone: false,
+                }],
+            });
         assert_eq!(branch_choices(&refs)[0]["name"], "origin/main");
     }
 }

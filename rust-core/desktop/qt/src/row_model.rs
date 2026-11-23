@@ -76,7 +76,10 @@ pub fn plan(old: &[String], new: &[String], changed: impl Fn(usize, usize) -> bo
         while index > 0 && !new_keys.contains(&old[index - 1]) {
             index -= 1;
         }
-        steps.push(Step::Remove { first: index, count: last - index });
+        steps.push(Step::Remove {
+            first: index,
+            count: last - index,
+        });
     }
     // Insertions from the front, at their final positions.
     let mut index = 0;
@@ -89,12 +92,18 @@ pub fn plan(old: &[String], new: &[String], changed: impl Fn(usize, usize) -> bo
         while index < new.len() && !old_keys.contains(&new[index]) {
             index += 1;
         }
-        steps.push(Step::Insert { first, count: index - first });
+        steps.push(Step::Insert {
+            first,
+            count: index - first,
+        });
     }
-    let old_index: HashMap<&String, usize> = old.iter().enumerate().map(|(i, key)| (key, i)).collect();
+    let old_index: HashMap<&String, usize> =
+        old.iter().enumerate().map(|(i, key)| (key, i)).collect();
     let mut run: Option<(usize, usize)> = None;
     for (position, key) in new.iter().enumerate() {
-        let differs = old_index.get(key).is_some_and(|&previous| changed(previous, position));
+        let differs = old_index
+            .get(key)
+            .is_some_and(|&previous| changed(previous, position));
         match (differs, run) {
             (true, Some((first, last))) if last + 1 == position => run = Some((first, position)),
             (true, Some((first, last))) => {
@@ -178,10 +187,15 @@ mod row_model {
         }
 
         fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
-            let Some(row) = usize::try_from(index.row()).ok().and_then(|row| self.rows.get(row)) else {
+            let Some(row) = usize::try_from(index.row())
+                .ok()
+                .and_then(|row| self.rows.get(row))
+            else {
                 return QVariant::default();
             };
-            let Some(name) = usize::try_from(role - FIRST_ROLE).ok().and_then(|role| self.roles.get(role))
+            let Some(name) = usize::try_from(role - FIRST_ROLE)
+                .ok()
+                .and_then(|role| self.roles.get(role))
             else {
                 return QVariant::default();
             };
@@ -191,7 +205,10 @@ mod row_model {
         fn role_names(&self) -> QHash<i32, QByteArray> {
             let mut names = QHash::<i32, QByteArray>::default();
             for (offset, name) in self.roles.iter().enumerate() {
-                names.insert(&(FIRST_ROLE + offset as i32), &QByteArray::from(name.as_str()));
+                names.insert(
+                    &(FIRST_ROLE + offset as i32),
+                    &QByteArray::from(name.as_str()),
+                );
             }
             names
         }
@@ -254,8 +271,10 @@ mod row_model {
                                 (first + count - 1) as i32,
                             );
                             for offset in 0..count {
-                                self.rows.insert(first + offset, rows[first + offset].clone());
-                                self.keys.insert(first + offset, keys[first + offset].clone());
+                                self.rows
+                                    .insert(first + offset, rows[first + offset].clone());
+                                self.keys
+                                    .insert(first + offset, keys[first + offset].clone());
                             }
                             self.end_insert_rows();
                         }
@@ -269,7 +288,8 @@ mod row_model {
                         .iter()
                         .enumerate()
                         .filter(|(_, name)| {
-                            (first..=last).any(|row| self.rows[row].get(*name) != rows[row].get(*name))
+                            (first..=last)
+                                .any(|row| self.rows[row].get(*name) != rows[row].get(*name))
                         })
                         .map(|(offset, _)| FIRST_ROLE + offset as i32)
                         .collect();
@@ -317,8 +337,14 @@ mod tests {
 
     #[test]
     fn reorders_reset() {
-        assert_eq!(plan(&keys(&["a", "b"]), &keys(&["b", "a"]), |_, _| false), vec![Step::Reset]);
-        assert_eq!(plan(&keys(&["a"]), &keys(&["b", "b"]), |_, _| false), vec![Step::Reset]);
+        assert_eq!(
+            plan(&keys(&["a", "b"]), &keys(&["b", "a"]), |_, _| false),
+            vec![Step::Reset]
+        );
+        assert_eq!(
+            plan(&keys(&["a"]), &keys(&["b", "b"]), |_, _| false),
+            vec![Step::Reset]
+        );
     }
 
     #[test]

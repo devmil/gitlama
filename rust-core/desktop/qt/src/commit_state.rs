@@ -2,7 +2,9 @@
 //! its outcome; slots to keep the draft and to commit.
 
 use crate::plumbing::Commands;
-use gitlama_contract::dto::{NativeCommitExecutionResult, NativeCommitFailureKind, NativeCommitRequest, NativeCommitSigning};
+use gitlama_contract::dto::{
+    NativeCommitExecutionResult, NativeCommitFailureKind, NativeCommitRequest, NativeCommitSigning,
+};
 use gitlama_contract::storage::NativeCommitDraft;
 use gitlama_workbench::commit::{Outcome, Retry};
 use gitlama_workbench::rt;
@@ -54,11 +56,23 @@ mod commit_state {
         #[qslot]
         fn update_draft(&self, subject: String, description: String) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(canonical) = services.workspace.active_tab().and_then(|tab| tab.canonical_identity().cloned()) else {
+                let Some(services) = driver.app.services() else {
                     return;
                 };
-                services.commit.update_draft(&canonical, NativeCommitDraft { subject, description });
+                let Some(canonical) = services
+                    .workspace
+                    .active_tab()
+                    .and_then(|tab| tab.canonical_identity().cloned())
+                else {
+                    return;
+                };
+                services.commit.update_draft(
+                    &canonical,
+                    NativeCommitDraft {
+                        subject,
+                        description,
+                    },
+                );
             });
         }
 

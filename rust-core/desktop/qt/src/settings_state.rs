@@ -14,12 +14,30 @@ const MAC: bool = cfg!(target_os = "macos");
 /// The license documents GitLama ships, each under the package names the
 /// license dialog lists.
 const LICENSES: [(&[&str], &str); 6] = [
-    (&["GitLama", "QSpline", "devmil-git"], include_str!("../../../../LICENSE")),
-    (&["GitLama notices"], include_str!("../../../../THIRD_PARTY_NOTICES.md")),
-    (&["JetBrains Mono"], include_str!("../../../../assets/fonts/OFL.txt")),
-    (&["Qt"], include_str!("../../../../assets/licenses/QT-RUNTIME.md")),
-    (&["Rust production dependencies"], include_str!("../../../../assets/licenses/RUST-DEPENDENCIES.md")),
-    (&["Syntax grammars"], include_str!("../../../../assets/licenses/SYNTAX-GRAMMARS.md")),
+    (
+        &["GitLama", "QSpline", "devmil-git"],
+        include_str!("../../../../LICENSE"),
+    ),
+    (
+        &["GitLama notices"],
+        include_str!("../../../../THIRD_PARTY_NOTICES.md"),
+    ),
+    (
+        &["JetBrains Mono"],
+        include_str!("../../../../assets/fonts/OFL.txt"),
+    ),
+    (
+        &["Qt"],
+        include_str!("../../../../assets/licenses/QT-RUNTIME.md"),
+    ),
+    (
+        &["Rust production dependencies"],
+        include_str!("../../../../assets/licenses/RUST-DEPENDENCIES.md"),
+    ),
+    (
+        &["Syntax grammars"],
+        include_str!("../../../../assets/licenses/SYNTAX-GRAMMARS.md"),
+    ),
 ];
 
 /// The license dialog's packages: { name, licenses: [text, …] }, by name.
@@ -53,7 +71,11 @@ pub fn diagnostics_export(version: &str) -> String {
         std::env::consts::OS,
         lines.len(),
         bytes,
-        lines.iter().map(|line| diagnostics::redact(line)).collect::<Vec<_>>().join("\n"),
+        lines
+            .iter()
+            .map(|line| diagnostics::redact(line))
+            .collect::<Vec<_>>()
+            .join("\n"),
     )
 }
 
@@ -111,7 +133,11 @@ mod settings_state {
         #[qsignal]
         pub fn failure_changed(&mut self);
 
-        qproperty!("acceleration", Member = acceleration, Notify = acceleration_changed);
+        qproperty!(
+            "acceleration",
+            Member = acceleration,
+            Notify = acceleration_changed
+        );
         #[qsignal]
         pub fn acceleration_changed(&mut self);
 
@@ -120,12 +146,16 @@ mod settings_state {
         #[qslot]
         fn status_acceleration(&self, action: String) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let acceleration = Rc::clone(&services.acceleration);
                 match action.as_str() {
                     "read" => rt::spawn_detached(async move { acceleration.read().await }),
                     "enable" => rt::spawn_detached(async move { acceleration.enable(false).await }),
-                    "enableFromSettings" => rt::spawn_detached(async move { acceleration.enable(true).await }),
+                    "enableFromSettings" => {
+                        rt::spawn_detached(async move { acceleration.enable(true).await })
+                    }
                     "dismiss" => acceleration.dismiss(),
                     _ => {}
                 }
@@ -140,12 +170,17 @@ mod settings_state {
         #[qslot]
         fn update_action(&self, action: String, value: String) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let updates = Rc::clone(&services.updates);
                 match action.as_str() {
                     "check" => rt::spawn_detached(async move { updates.check().await }),
                     "channel" => {
-                        let Some(channel) = gitlama_workbench::updates::Channel::parse(&value) else { return };
+                        let Some(channel) = gitlama_workbench::updates::Channel::parse(&value)
+                        else {
+                            return;
+                        };
                         rt::spawn_detached(async move { updates.select_channel(channel).await })
                     }
                     _ => {}
@@ -162,7 +197,9 @@ mod settings_state {
         #[qslot]
         fn diff_renderer(&self, action: String, options: Value) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let renderers = Rc::clone(&services.diff_renderers);
                 let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
                 match action.as_str() {
@@ -193,7 +230,9 @@ mod settings_state {
         #[qslot]
         fn tool(&self, action: String, options: Value) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let tools = Rc::clone(&services.tools);
                 let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
                 match action.as_str() {
@@ -232,8 +271,12 @@ mod settings_state {
         #[qslot]
         fn update_auto_fetch(&self, value: Value) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let current = services.settings.with(|document| document.auto_fetch.clone());
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let current = services
+                    .settings
+                    .with(|document| document.auto_fetch.clone());
                 let next = NativeAutoFetchSettings {
                     enabled: value["enabled"].as_bool().unwrap_or(current.enabled),
                     interval_minutes: value["intervalMinutes"]
@@ -251,14 +294,19 @@ mod settings_state {
         #[qslot]
         fn set_repository_auto_fetch(&self, value: String) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(repository) = services.workspace.active_canonical() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(repository) = services.workspace.active_canonical() else {
+                    return;
+                };
                 let choice = match value.as_str() {
                     "on" => Some(true),
                     "off" => Some(false),
                     _ => None,
                 };
-                let saved = preferences::set_repository_auto_fetch(&services.settings, &repository, choice);
+                let saved =
+                    preferences::set_repository_auto_fetch(&services.settings, &repository, choice);
                 driver.settings_result(if saved { "" } else { "settingsSaveFailed" });
             });
         }
@@ -267,11 +315,14 @@ mod settings_state {
         #[qslot]
         fn set_shortcut(&self, command: String, binding: String) {
             self.post(move |driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let settings = Rc::clone(&services.settings);
                 let state = Rc::clone(&driver.settings);
                 rt::spawn_detached(async move {
-                    let result = preferences::set_shortcut(&settings, &command, &binding, MAC).await;
+                    let result =
+                        preferences::set_shortcut(&settings, &command, &binding, MAC).await;
                     crate::driver::show_settings_result(&state, result.err().unwrap_or(""));
                 });
             });
@@ -280,7 +331,9 @@ mod settings_state {
         #[qslot]
         fn reset_shortcuts(&self) {
             self.post(|driver| {
-                let Some(services) = driver.app.services() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
                 let settings = Rc::clone(&services.settings);
                 let state = Rc::clone(&driver.settings);
                 rt::spawn_detached(async move {
@@ -295,8 +348,12 @@ mod settings_state {
         #[qslot]
         fn reset_repository(&self) {
             self.post(|driver| {
-                let Some(services) = driver.app.services() else { return };
-                let Some(repository) = services.workspace.active_canonical() else { return };
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(repository) = services.workspace.active_canonical() else {
+                    return;
+                };
                 let settings = Rc::clone(&services.settings);
                 let state = Rc::clone(&driver.settings);
                 rt::spawn_detached(async move {
@@ -345,13 +402,24 @@ mod settings_state {
         /// Writes `text` to the file `url` names; false when it could not.
         #[qslot]
         fn save_diagnostics(&self, url: String, text: String) -> bool {
-            let mut path = url.strip_prefix("file://").map(percent_decode).unwrap_or(url);
+            let mut path = url
+                .strip_prefix("file://")
+                .map(percent_decode)
+                .unwrap_or(url);
             // file:///C:/… on Windows.
             if cfg!(windows) && path.as_bytes().get(2) == Some(&b':') && path.starts_with('/') {
                 path.remove(0);
             }
             let saved = std::fs::write(&path, text).is_ok();
-            diagnostics::info("Diagnostics", if saved { "diagnostics_saved" } else { "diagnostics_save_failed" }, &[]);
+            diagnostics::info(
+                "Diagnostics",
+                if saved {
+                    "diagnostics_saved"
+                } else {
+                    "diagnostics_save_failed"
+                },
+                &[],
+            );
             saved
         }
     }
@@ -404,10 +472,21 @@ mod tests {
     #[test]
     fn every_license_document_is_listed_once_per_package() {
         let packages = license_packages();
-        let names: Vec<&str> = packages.as_array().unwrap().iter().map(|package| package["name"].as_str().unwrap()).collect();
+        let names: Vec<&str> = packages
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|package| package["name"].as_str().unwrap())
+            .collect();
         assert_eq!(names.len(), 8);
         assert!(names.contains(&"Qt"));
-        assert!(packages.as_array().unwrap().iter().all(|package| !package["licenses"][0].as_str().unwrap().is_empty()));
+        assert!(
+            packages
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|package| !package["licenses"][0].as_str().unwrap().is_empty())
+        );
     }
 
     #[test]

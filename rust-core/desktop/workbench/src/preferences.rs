@@ -24,12 +24,18 @@ pub fn failure_key(code: commands::ShortcutFailure) -> &'static str {
 }
 
 pub fn update_auto_fetch(settings: &SettingsService, auto_fetch: NativeAutoFetchSettings) -> bool {
-    settings.update(|document| document.auto_fetch = auto_fetch).is_ok()
+    settings
+        .update(|document| document.auto_fetch = auto_fetch)
+        .is_ok()
 }
 
 /// Overrides automatic fetching for `repository`; None follows the
 /// application.
-pub fn set_repository_auto_fetch(settings: &SettingsService, repository: &NativePathIdentity, value: Option<bool>) -> bool {
+pub fn set_repository_auto_fetch(
+    settings: &SettingsService,
+    repository: &NativePathIdentity,
+    value: Option<bool>,
+) -> bool {
     settings
         .update(|document| set_auto_fetch_override(document, repository, value))
         .is_ok()
@@ -37,9 +43,15 @@ pub fn set_repository_auto_fetch(settings: &SettingsService, repository: &Native
 
 /// Binds `command` to `input` (blank removes the binding) and saves at once;
 /// Err is the l10n key of why not.
-pub async fn set_shortcut(settings: &SettingsService, command: &str, input: &str, mac: bool) -> Result<(), &'static str> {
+pub async fn set_shortcut(
+    settings: &SettingsService,
+    command: &str,
+    input: &str,
+    mac: bool,
+) -> Result<(), &'static str> {
     let current = settings.with(|document| commands::without_retired(&document.shortcut_overrides));
-    let overrides = commands::replace(&current, command, Some(input), mac).map_err(|error| failure_key(error.code))?;
+    let overrides = commands::replace(&current, command, Some(input), mac)
+        .map_err(|error| failure_key(error.code))?;
     settings
         .update_durable(
             move |document| document.shortcut_overrides = overrides,
@@ -61,13 +73,18 @@ pub async fn reset_shortcuts(settings: &SettingsService) -> Result<(), &'static 
 
 /// Forgets what is stored for `repository`: its automatic-fetch override
 /// and its workspace state.
-pub async fn reset_repository(settings: &SettingsService, repository: &NativePathIdentity) -> Result<(), &'static str> {
+pub async fn reset_repository(
+    settings: &SettingsService,
+    repository: &NativePathIdentity,
+) -> Result<(), &'static str> {
     let target = repository.clone();
     settings
         .update_durable(
             move |document| {
                 set_auto_fetch_override(document, &target, None);
-                document.worktrees.retain(|worktree| worktree.identity != target);
+                document
+                    .worktrees
+                    .retain(|worktree| worktree.identity != target);
             },
             |current, previous| {
                 current.repository_options = previous.repository_options.clone();

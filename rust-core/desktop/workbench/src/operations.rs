@@ -8,8 +8,8 @@ use crate::rt::{self, TimerHandle};
 use crate::session::SessionIdentity;
 use crate::transfers::TransferService;
 use gitlama_contract::dto::{
-    NativeOperationCenterAction, NativeOperationCenterEntry, NativeOperationCenterOrigin, NativeOperationCenterSnapshot,
-    NativeOperationCenterState,
+    NativeOperationCenterAction, NativeOperationCenterEntry, NativeOperationCenterOrigin,
+    NativeOperationCenterSnapshot, NativeOperationCenterState,
 };
 use gitlama_contract::transfer::NativeTransferKind;
 use std::cell::{Cell, RefCell};
@@ -93,10 +93,13 @@ impl OperationCenter {
         if self.disposed.get() || self.refreshing.replace(true) {
             return;
         }
-        let result = rt::blocking(|| gitlama_core::api::application_operation_center(MAXIMUM_ENTRIES)).await;
+        let result =
+            rt::blocking(|| gitlama_core::api::application_operation_center(MAXIMUM_ENTRIES)).await;
         self.refreshing.set(false);
         // A session retiring meanwhile keeps the last coherent projection.
-        let Some(snapshot) = result.snapshot.filter(|_| result.failure.is_none()) else { return };
+        let Some(snapshot) = result.snapshot.filter(|_| result.failure.is_none()) else {
+            return;
+        };
         if self.disposed.get() || *self.snapshot.borrow() == snapshot {
             return;
         }
@@ -105,12 +108,19 @@ impl OperationCenter {
     }
 
     fn entry(&self, key: u64) -> Option<NativeOperationCenterEntry> {
-        self.snapshot.borrow().entries.iter().find(|entry| entry_key(entry) == key).cloned()
+        self.snapshot
+            .borrow()
+            .entries
+            .iter()
+            .find(|entry| entry_key(entry) == key)
+            .cloned()
     }
 
     /// The running transfer this window started for `entry`.
     fn transfer_for(&self, entry: &NativeOperationCenterEntry) -> Option<(u64, SessionIdentity)> {
-        if entry.state != NativeOperationCenterState::Running || entry.origin != NativeOperationCenterOrigin::User {
+        if entry.state != NativeOperationCenterState::Running
+            || entry.origin != NativeOperationCenterOrigin::User
+        {
             return None;
         }
         let kinds: &[NativeTransferKind] = match entry.action {
@@ -155,7 +165,10 @@ impl OperationCenter {
         let Some(entry) = self.entry(key) else { return };
         if let (Some(session), Some(activity)) = (entry.session_id, entry.activity_id) {
             let generation = entry.generation;
-            rt::blocking(move || gitlama_core::api::application_operation_dismiss(session, generation, activity)).await;
+            rt::blocking(move || {
+                gitlama_core::api::application_operation_dismiss(session, generation, activity)
+            })
+            .await;
         }
         self.refresh().await;
     }
@@ -172,7 +185,13 @@ impl OperationCenter {
             .entries
             .iter()
             .rev()
-            .find(|entry| if retry { entry.can_retry } else { self.can_cancel(entry) })
+            .find(|entry| {
+                if retry {
+                    entry.can_retry
+                } else {
+                    self.can_cancel(entry)
+                }
+            })
             .map(entry_key)
     }
 
@@ -193,7 +212,9 @@ pub fn present(entries: &[NativeOperationCenterEntry]) -> Vec<(usize, usize)> {
     let mut rows: Vec<(usize, usize)> = Vec::new();
     for (index, entry) in entries.iter().enumerate() {
         match rows.last_mut() {
-            Some((previous, count)) if quiet_fetch(entry) && quiet_fetch(&entries[*previous]) => *count += 1,
+            Some((previous, count)) if quiet_fetch(entry) && quiet_fetch(&entries[*previous]) => {
+                *count += 1
+            }
             _ => rows.push((index, 1)),
         }
     }
@@ -204,7 +225,11 @@ pub fn present(entries: &[NativeOperationCenterEntry]) -> Vec<(usize, usize)> {
 mod tests {
     use super::*;
 
-    fn entry(action: NativeOperationCenterAction, origin: NativeOperationCenterOrigin, state: NativeOperationCenterState) -> NativeOperationCenterEntry {
+    fn entry(
+        action: NativeOperationCenterAction,
+        origin: NativeOperationCenterOrigin,
+        state: NativeOperationCenterState,
+    ) -> NativeOperationCenterEntry {
         NativeOperationCenterEntry {
             activity_id: None,
             session_id: None,

@@ -8,8 +8,8 @@ use crate::rt;
 use crate::session::{FailureCode, SessionError, SessionIdentity, SessionResult, check, required};
 use futures::future::{FutureExt, LocalBoxFuture, Shared};
 use gitlama_contract::dto::{
-    NativeHistoryMetadataFailure, NativeHistoryPage, NativeHistoryQueryOptions, NativeHistoryResult,
-    NativeHistoryRow, NativeHistorySegmentKind, NativeHistorySelectionOptions,
+    NativeHistoryMetadataFailure, NativeHistoryPage, NativeHistoryQueryOptions,
+    NativeHistoryResult, NativeHistoryRow, NativeHistorySegmentKind, NativeHistorySelectionOptions,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -71,9 +71,7 @@ impl BranchFilter {
     }
 
     pub fn focus(reference: &str, upstream: Option<&str>) -> Self {
-        Self::new(
-            std::iter::once(reference.to_owned()).chain(upstream.map(str::to_owned)),
-        )
+        Self::new(std::iter::once(reference.to_owned()).chain(upstream.map(str::to_owned)))
     }
 
     pub fn toggled(&self, reference: &str, upstream: Option<&str>) -> Self {
@@ -377,7 +375,9 @@ impl HistoryService {
 
     /// Calls `listener` with every new selection for inspection.
     pub fn on_selection(&self, listener: impl Fn(&HistorySelection) + 'static) {
-        self.selection_listeners.borrow_mut().push(Box::new(listener));
+        self.selection_listeners
+            .borrow_mut()
+            .push(Box::new(listener));
     }
 
     fn this(&self) -> Rc<Self> {
@@ -450,7 +450,10 @@ impl HistoryService {
     }
 
     /// Commits of the loaded pages, for reference pickers.
-    pub fn reference_picker_commits(&self, identity: Option<SessionIdentity>) -> Vec<NativeHistoryRow> {
+    pub fn reference_picker_commits(
+        &self,
+        identity: Option<SessionIdentity>,
+    ) -> Vec<NativeHistoryRow> {
         let inner = self.inner.borrow();
         if identity.is_none() || inner.identity != identity {
             return Vec::new();
@@ -557,7 +560,11 @@ impl HistoryService {
                         .or_default()
                         .push(DisplaySegment {
                             from_lane: segment.from_lane,
-                            to_lane: if late_join { segment.from_lane } else { segment.to_lane },
+                            to_lane: if late_join {
+                                segment.from_lane
+                            } else {
+                                segment.to_lane
+                            },
                             kind: segment.kind,
                             starts_at_top: false,
                             ends_at_center: false,
@@ -573,18 +580,25 @@ impl HistoryService {
                 let mut index = first;
                 while index <= last {
                     if let Some(row) = row_at.get(&index) {
-                        display.entry(row.object_id.clone()).or_default().push(DisplaySegment {
-                            from_lane: if late_join { segment.from_lane } else { segment.to_lane },
-                            to_lane: if late_join && index != to {
-                                segment.from_lane
-                            } else {
-                                segment.to_lane
-                            },
-                            kind: segment.kind,
-                            starts_at_top: true,
-                            ends_at_center: index == to,
-                            lit,
-                        });
+                        display
+                            .entry(row.object_id.clone())
+                            .or_default()
+                            .push(DisplaySegment {
+                                from_lane: if late_join {
+                                    segment.from_lane
+                                } else {
+                                    segment.to_lane
+                                },
+                                to_lane: if late_join && index != to {
+                                    segment.from_lane
+                                } else {
+                                    segment.to_lane
+                                },
+                                kind: segment.kind,
+                                starts_at_top: true,
+                                ends_at_center: index == to,
+                                lit,
+                            });
                     }
                     index += 1;
                 }
@@ -710,7 +724,11 @@ impl HistoryService {
             this.load_once(identity, priority).await;
             if let Some(service) = weak.upgrade() {
                 let mut inner = service.inner.borrow_mut();
-                if inner.pending_load.as_ref().is_some_and(|(id, _)| *id == token) {
+                if inner
+                    .pending_load
+                    .as_ref()
+                    .is_some_and(|(id, _)| *id == token)
+                {
                     inner.pending_load = None;
                 }
             }
@@ -734,7 +752,10 @@ impl HistoryService {
             let reloading = inner.identity == Some(identity)
                 && shown.is_some()
                 && !presenting_cache
-                && matches!(inner.current.phase, LoadPhase::Preview | LoadPhase::Complete);
+                && matches!(
+                    inner.current.phase,
+                    LoadPhase::Preview | LoadPhase::Complete
+                );
             if inner.identity.map(|i| i.native_id) != Some(identity.native_id) {
                 inner.retained_selected.clear();
             } else if inner.current.phase == LoadPhase::Complete
@@ -768,13 +789,20 @@ impl HistoryService {
             let remembered = if reloading {
                 None
             } else {
-                hooks.cached_first_page.as_ref().and_then(|hook| hook(identity))
+                hooks
+                    .cached_first_page
+                    .as_ref()
+                    .and_then(|hook| hook(identity))
             };
             (filter, other_refs, remembered)
         };
         let cached = remembered
             .filter(|page| BranchFilter::of_page(page) == filter && page.other_refs == other_refs);
-        let known = if reloading { shown.clone() } else { cached.clone() };
+        let known = if reloading {
+            shown.clone()
+        } else {
+            cached.clone()
+        };
         self.finish_cache_presentation();
         if reloading {
             // The shown page stands in.
@@ -791,13 +819,24 @@ impl HistoryService {
                 inner.cache_replaced_wait = Some(wait);
                 inner.pages.set(Rc::clone(cached));
             }
-            self.publish(HistoryState::with_page(LoadPhase::Preview, Rc::clone(cached)));
+            self.publish(HistoryState::with_page(
+                LoadPhase::Preview,
+                Rc::clone(cached),
+            ));
         } else {
             self.publish(HistoryState::new(LoadPhase::Loading));
         }
         for attempt in 0..2 {
             match self
-                .load_attempt(identity, operation, reloading, &filter, other_refs, known.clone(), &priority)
+                .load_attempt(
+                    identity,
+                    operation,
+                    reloading,
+                    &filter,
+                    other_refs,
+                    known.clone(),
+                    &priority,
+                )
                 .await
             {
                 Ok(()) => return,
@@ -872,13 +911,19 @@ impl HistoryService {
         let mut preview = Rc::new(preview);
         if !reloading {
             self.inner.borrow_mut().pages.replace(Rc::clone(&preview));
-            self.publish(HistoryState::with_page(LoadPhase::Preview, Rc::clone(&preview)));
+            self.publish(HistoryState::with_page(
+                LoadPhase::Preview,
+                Rc::clone(&preview),
+            ));
             self.finish_cache_presentation();
         }
         preview = self.hydrate(identity, operation, preview, priority).await?;
         if !reloading && self.accepts(identity, operation) {
             self.inner.borrow_mut().pages.set(Rc::clone(&preview));
-            self.publish(HistoryState::with_page(LoadPhase::Preview, Rc::clone(&preview)));
+            self.publish(HistoryState::with_page(
+                LoadPhase::Preview,
+                Rc::clone(&preview),
+            ));
         }
         let result = self
             .calls
@@ -909,7 +954,15 @@ impl HistoryService {
                 continue;
             }
             match self
-                .select_native(identity, complete.request_id, Some(selected.clone()), true, false, false, 0)
+                .select_native(
+                    identity,
+                    complete.request_id,
+                    Some(selected.clone()),
+                    true,
+                    false,
+                    false,
+                    0,
+                )
                 .await
             {
                 Ok(page) => {
@@ -930,7 +983,9 @@ impl HistoryService {
         }
         self.inner.borrow_mut().pages.replace(Rc::clone(&complete));
         self.publish(self.loaded_state(Rc::clone(&complete), keep_inspection));
-        let complete = self.hydrate(identity, operation, complete, priority).await?;
+        let complete = self
+            .hydrate(identity, operation, complete, priority)
+            .await?;
         if self.accepts(identity, operation) {
             self.inner.borrow_mut().pages.set(Rc::clone(&complete));
             self.publish(self.loaded_state(Rc::clone(&complete), keep_inspection));
@@ -977,10 +1032,13 @@ impl HistoryService {
 
     fn shows_detail_of(&self, page: &NativeHistoryPage) -> bool {
         let inner = self.inner.borrow();
-        inner.shown_selection.as_ref().is_some_and(|(commit, base)| {
-            Some(commit) == Self::detail_object_id(page).as_ref()
-                && base == &page.comparison_old_object_id
-        })
+        inner
+            .shown_selection
+            .as_ref()
+            .is_some_and(|(commit, base)| {
+                Some(commit) == Self::detail_object_id(page).as_ref()
+                    && base == &page.comparison_old_object_id
+            })
     }
 
     fn restore_detail(&self) {
@@ -1173,7 +1231,9 @@ impl HistoryService {
             if !self.accepts(identity, operation) || self.inner.borrow().pages.view != view {
                 return Ok(());
             }
-            let loaded = self.hydrate(identity, operation, Rc::new(loaded), &[]).await?;
+            let loaded = self
+                .hydrate(identity, operation, Rc::new(loaded), &[])
+                .await?;
             if !self.accepts(identity, operation) || self.inner.borrow().pages.view != view {
                 return Ok(());
             }
@@ -1219,7 +1279,12 @@ impl HistoryService {
         if self.inner.borrow().disposed {
             return;
         }
-        let pending = self.inner.borrow().pending_load.as_ref().map(|(_, f)| f.clone());
+        let pending = self
+            .inner
+            .borrow()
+            .pending_load
+            .as_ref()
+            .map(|(_, f)| f.clone());
         if let Some(pending) = pending {
             let intent = self.bump_selection();
             pending.await;
@@ -1239,7 +1304,12 @@ impl HistoryService {
                 return;
             }
         }
-        let filtering = self.inner.borrow().pending_filter.as_ref().map(|(_, f)| f.clone());
+        let filtering = self
+            .inner
+            .borrow()
+            .pending_filter
+            .as_ref()
+            .map(|(_, f)| f.clone());
         if let Some(filtering) = filtering {
             let intent = self.bump_selection();
             filtering.await;
@@ -1261,7 +1331,15 @@ impl HistoryService {
             ..HistoryState::with_page(phase, Rc::clone(&current_page))
         });
         match self
-            .select_native(identity, current_page.request_id, object_id.clone(), toggle, reveal, focus, offset)
+            .select_native(
+                identity,
+                current_page.request_id,
+                object_id.clone(),
+                toggle,
+                reveal,
+                focus,
+                offset,
+            )
             .await
         {
             Ok(selection) => {
@@ -1283,10 +1361,17 @@ impl HistoryService {
                         if selected.offset == 0 {
                             Rc::clone(&selected)
                         } else {
-                            inner.pages.get(0).unwrap_or_else(|| Rc::clone(&current_page))
+                            inner
+                                .pages
+                                .get(0)
+                                .unwrap_or_else(|| Rc::clone(&current_page))
                         }
                     } else {
-                        inner.current.page.clone().unwrap_or_else(|| Rc::clone(&current_page))
+                        inner
+                            .current
+                            .page
+                            .clone()
+                            .unwrap_or_else(|| Rc::clone(&current_page))
                     }
                 };
                 match Self::detail_object_id(&selected) {
@@ -1366,7 +1451,12 @@ impl HistoryService {
 
     async fn apply_query_once(self: Rc<Self>, query: HistoryQuery) {
         if self.reloading() {
-            let pending = self.inner.borrow().pending_load.as_ref().map(|(_, f)| f.clone());
+            let pending = self
+                .inner
+                .borrow()
+                .pending_load
+                .as_ref()
+                .map(|(_, f)| f.clone());
             if let Some(pending) = pending {
                 pending.await;
             }
@@ -1392,7 +1482,9 @@ impl HistoryService {
             ..HistoryState::with_page(current.phase, Rc::clone(&current_page))
         });
         let outcome: SessionResult<Option<Rc<NativeHistoryPage>>> = async {
-            let mut matches_page = self.query_native(identity, current_page.request_id, &query).await?;
+            let mut matches_page = self
+                .query_native(identity, current_page.request_id, &query)
+                .await?;
             if !self.accepts_query(identity, operation, query_operation) {
                 return Ok(None);
             }
@@ -1407,7 +1499,9 @@ impl HistoryService {
                 );
                 let mut offset = matches_page.rows.len() as u64;
                 while offset < matches_page.total_rows {
-                    matches_page = self.page_native(identity, matches_page.request_id, offset).await?;
+                    matches_page = self
+                        .page_native(identity, matches_page.request_id, offset)
+                        .await?;
                     if !self.accepts_query(identity, operation, query_operation) {
                         return Ok(None);
                     }
@@ -1459,7 +1553,14 @@ impl HistoryService {
                     (inner.search_index >= 0).then(|| inner.search_matches[0].clone())
                 };
                 if let Some(first) = first {
-                    rt::spawn_detached(self.select(Some(first), false, true, true, 0, SelectionOrigin::Search));
+                    rt::spawn_detached(self.select(
+                        Some(first),
+                        false,
+                        true,
+                        true,
+                        0,
+                        SelectionOrigin::Search,
+                    ));
                 }
             }
             Ok(None) => {}
@@ -1497,7 +1598,14 @@ impl HistoryService {
             inner.search_matches[inner.search_index as usize].clone()
         };
         self.republish();
-        rt::spawn_detached(self.select(Some(target), false, true, true, 0, SelectionOrigin::Search));
+        rt::spawn_detached(self.select(
+            Some(target),
+            false,
+            true,
+            true,
+            0,
+            SelectionOrigin::Search,
+        ));
     }
 
     // Branch filter ------------------------------------------------------------------
@@ -1514,11 +1622,17 @@ impl HistoryService {
         let future = async move {
             let identity = this.inner.borrow().identity;
             if let Some(identity) = identity {
-                let loading = this.inner.borrow().pending_load.as_ref().map(|(_, f)| f.clone());
+                let loading = this
+                    .inner
+                    .borrow()
+                    .pending_load
+                    .as_ref()
+                    .map(|(_, f)| f.clone());
                 let proceed = match loading {
                     Some(loading) => {
                         loading.await;
-                        !this.inner.borrow().disposed && this.inner.borrow().identity == Some(identity)
+                        !this.inner.borrow().disposed
+                            && this.inner.borrow().identity == Some(identity)
                     }
                     None => true,
                 };
@@ -1528,7 +1642,11 @@ impl HistoryService {
             }
             if let Some(service) = weak.upgrade() {
                 let mut inner = service.inner.borrow_mut();
-                if inner.pending_filter.as_ref().is_some_and(|(id, _)| *id == token) {
+                if inner
+                    .pending_filter
+                    .as_ref()
+                    .is_some_and(|(id, _)| *id == token)
+                {
                     inner.pending_filter = None;
                 }
             }
@@ -1557,7 +1675,9 @@ impl HistoryService {
                         inner.requested_filter.take()
                     }
                 };
-                let Some((identity, filter)) = request else { break };
+                let Some((identity, filter)) = request else {
+                    break;
+                };
                 this.send_branch_filter(identity, filter).await;
             }
             this.inner.borrow_mut().filter_runner = None;
@@ -1601,7 +1721,11 @@ impl HistoryService {
                 identity.native_id,
                 identity.generation,
                 request_id,
-                filter.references().iter().map(|reference| reference.as_bytes().to_vec()).collect(),
+                filter
+                    .references()
+                    .iter()
+                    .map(|reference| reference.as_bytes().to_vec())
+                    .collect(),
                 0,
                 PAGE_ROWS as u32,
             )
@@ -1680,14 +1804,20 @@ impl HistoryService {
         let this = self.this();
         rt::spawn_detached(async move {
             if this.reloading() {
-                let pending = this.inner.borrow().pending_load.as_ref().map(|(_, f)| f.clone());
+                let pending = this
+                    .inner
+                    .borrow()
+                    .pending_load
+                    .as_ref()
+                    .map(|(_, f)| f.clone());
                 if let Some(pending) = pending {
                     pending.await;
                 }
             }
             let (identity, current_page, operation, query_operation) = {
                 let mut inner = this.inner.borrow_mut();
-                let (Some(identity), Some(page)) = (inner.identity, inner.current.page.clone()) else {
+                let (Some(identity), Some(page)) = (inner.identity, inner.current.page.clone())
+                else {
                     return;
                 };
                 inner.query_operation += 1;
@@ -1750,7 +1880,10 @@ fn same_selection(left: &[String], right: &[String]) -> bool {
 
 /// A fresh topology arrives without subjects and authors; rows `known`
 /// described keep them, so the list does not blank while metadata reloads.
-fn with_known_metadata(mut page: NativeHistoryPage, known: &NativeHistoryPage) -> NativeHistoryPage {
+fn with_known_metadata(
+    mut page: NativeHistoryPage,
+    known: &NativeHistoryPage,
+) -> NativeHistoryPage {
     let described: HashMap<&str, &NativeHistoryRow> = known
         .rows
         .iter()
@@ -1781,7 +1914,8 @@ mod tests {
 
     #[test]
     fn branch_filter_toggles_with_upstream() {
-        let filter = BranchFilter::NONE.toggled("refs/heads/main", Some("refs/remotes/origin/main"));
+        let filter =
+            BranchFilter::NONE.toggled("refs/heads/main", Some("refs/remotes/origin/main"));
         assert_eq!(filter.len(), 2);
         assert!(filter.is_focused_on("refs/heads/main", Some("refs/remotes/origin/main")));
         let filter = filter.toggled("refs/heads/main", None);

@@ -52,11 +52,18 @@ const ACTIONS: &[(FileAction, &str)] = &[
 
 impl FileAction {
     pub fn name(self) -> &'static str {
-        ACTIONS.iter().find(|(action, _)| *action == self).map(|(_, name)| *name).unwrap_or_default()
+        ACTIONS
+            .iter()
+            .find(|(action, _)| *action == self)
+            .map(|(_, name)| *name)
+            .unwrap_or_default()
     }
 
     pub fn parse(name: &str) -> Option<Self> {
-        ACTIONS.iter().find(|(_, candidate)| *candidate == name).map(|(action, _)| *action)
+        ACTIONS
+            .iter()
+            .find(|(_, candidate)| *candidate == name)
+            .map(|(action, _)| *action)
     }
 
     pub fn all() -> impl Iterator<Item = Self> {
@@ -100,7 +107,10 @@ const SOURCES: &[(Source, &str)] = &[
 
 impl Source {
     pub fn parse(name: &str) -> Option<Self> {
-        SOURCES.iter().find(|(_, candidate)| *candidate == name).map(|(source, _)| *source)
+        SOURCES
+            .iter()
+            .find(|(_, candidate)| *candidate == name)
+            .map(|(source, _)| *source)
     }
 }
 
@@ -149,7 +159,13 @@ impl Subject {
 
     /// Inspection actions of the working tree inspect the current commit.
     pub fn at_head(&self) -> bool {
-        matches!(self.source, Source::UnstagedFile | Source::StagedFile | Source::ChangesFolder | Source::ConflictFile)
+        matches!(
+            self.source,
+            Source::UnstagedFile
+                | Source::StagedFile
+                | Source::ChangesFolder
+                | Source::ConflictFile
+        )
     }
 
     /// Reads a subject from the presentation: {source, path, change, tree,
@@ -159,10 +175,23 @@ impl Subject {
         let flag = |name: &str| value.get(name).and_then(Value::as_bool).unwrap_or(false);
         Some(Self {
             source,
-            path: value.get("path").and_then(Value::as_str).unwrap_or_default().to_owned(),
-            change: value.get("change").and_then(Value::as_str).and_then(change_kind),
-            tree: value.get("tree").and_then(Value::as_str).and_then(tree_kind),
-            mode: value.get("mode").and_then(Value::as_u64).map(|mode| mode as u32),
+            path: value
+                .get("path")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            change: value
+                .get("change")
+                .and_then(Value::as_str)
+                .and_then(change_kind),
+            tree: value
+                .get("tree")
+                .and_then(Value::as_str)
+                .and_then(tree_kind),
+            mode: value
+                .get("mode")
+                .and_then(Value::as_u64)
+                .map(|mode| mode as u32),
             exists: flag("exists"),
             changed_folder: flag("changedFolder"),
             staged: flag("staged"),
@@ -227,7 +256,10 @@ pub struct Host {
 
 impl Host {
     fn reason(&self, action: FileAction) -> Option<&str> {
-        self.reasons.iter().find(|(candidate, _)| *candidate == action).map(|(_, reason)| reason.as_str())
+        self.reasons
+            .iter()
+            .find(|(candidate, _)| *candidate == action)
+            .map(|(_, reason)| reason.as_str())
     }
 
     fn offers(&self, action: FileAction) -> bool {
@@ -245,10 +277,16 @@ fn lenses(subject: &Subject) -> (bool, bool) {
     let submodule = subject.tree == Some(NativeTreeEntryKind::Submodule)
         || subject.change == Some(NativeFileChangeKind::Submodule)
         || kind_of_mode == Some(GITLINK_MODE);
-    let symlink = subject.tree == Some(NativeTreeEntryKind::Symlink) || kind_of_mode == Some(SYMLINK_MODE);
+    let symlink =
+        subject.tree == Some(NativeTreeEntryKind::Symlink) || kind_of_mode == Some(SYMLINK_MODE);
     if subject.change == Some(NativeFileChangeKind::Deleted) || submodule {
         (false, false)
-    } else if symlink || matches!(subject.change, Some(NativeFileChangeKind::Binary | NativeFileChangeKind::Image)) {
+    } else if symlink
+        || matches!(
+            subject.change,
+            Some(NativeFileChangeKind::Binary | NativeFileChangeKind::Image)
+        )
+    {
         (true, false)
     } else {
         (true, true)
@@ -269,7 +307,9 @@ pub fn applies(action: FileAction, subject: &Subject) -> bool {
         // A submodule has no contents to show, wherever it is listed.
         FileAction::ShowContents => (committed || history || source == TreeFile) && contents,
         FileAction::Blame => {
-            ((committed || history || source == TreeFile) && blame) || changes_file || matches!(source, ConflictFile | ReviewFile)
+            ((committed || history || source == TreeFile) && blame)
+                || changes_file
+                || matches!(source, ConflictFile | ReviewFile)
         }
         FileAction::FileHistory => !subject.is_folder(),
         FileAction::FolderHistory => subject.is_folder(),
@@ -277,22 +317,41 @@ pub fn applies(action: FileAction, subject: &Subject) -> bool {
         FileAction::Stage => source == UnstagedFile || (source == ChangesFolder && !subject.staged),
         FileAction::Unstage => source == StagedFile || (source == ChangesFolder && subject.staged),
         FileAction::InspectChanges => changes_file,
-        FileAction::CreatePatch => committed || changes_file || source == ChangesFolder || (source == Folder && subject.changed_folder),
+        FileAction::CreatePatch => {
+            committed
+                || changes_file
+                || source == ChangesFolder
+                || (source == Folder && subject.changed_folder)
+        }
         FileAction::ExternalDiff => committed || history,
         FileAction::OpenExternally => {
-            changes_file || source == ConflictFile || ((committed || history || matches!(source, TreeFile | ReviewFile)) && subject.exists)
+            changes_file
+                || source == ConflictFile
+                || ((committed || history || matches!(source, TreeFile | ReviewFile))
+                    && subject.exists)
         }
-        FileAction::RevealInFileBrowser => changes_file || matches!(source, ChangesFolder | ConflictFile) || subject.exists,
+        FileAction::RevealInFileBrowser => {
+            changes_file || matches!(source, ChangesFolder | ConflictFile) || subject.exists
+        }
         FileAction::CopyPath => true,
-        FileAction::AddToGitignore => source == UnstagedFile || (source == ChangesFolder && !subject.staged),
+        FileAction::AddToGitignore => {
+            source == UnstagedFile || (source == ChangesFolder && !subject.staged)
+        }
         FileAction::Discard => {
-            matches!(source, UnstagedFile | ChangesFolder) && !subject.staged && subject.discardable && !subject.untracked
+            matches!(source, UnstagedFile | ChangesFolder)
+                && !subject.staged
+                && subject.discardable
+                && !subject.untracked
         }
         FileAction::Clean => {
-            matches!(source, UnstagedFile | ChangesFolder) && !subject.staged && subject.discardable && subject.untracked
+            matches!(source, UnstagedFile | ChangesFolder)
+                && !subject.staged
+                && subject.discardable
+                && subject.untracked
         }
         FileAction::RestoreFromCommit => {
-            matches!(source, CommittedFile | TreeFile | HistoryEntryFile) && subject.change != Some(NativeFileChangeKind::Deleted)
+            matches!(source, CommittedFile | TreeFile | HistoryEntryFile)
+                && subject.change != Some(NativeFileChangeKind::Deleted)
         }
     }
 }
@@ -306,11 +365,23 @@ const GROUPS: &[&[FileAction]] = &[
         FileAction::FolderHistory,
         FileAction::OpenInNewWindow,
     ],
-    &[FileAction::Stage, FileAction::Unstage, FileAction::InspectChanges],
+    &[
+        FileAction::Stage,
+        FileAction::Unstage,
+        FileAction::InspectChanges,
+    ],
     &[FileAction::CreatePatch, FileAction::ExternalDiff],
-    &[FileAction::OpenExternally, FileAction::RevealInFileBrowser, FileAction::CopyPath],
+    &[
+        FileAction::OpenExternally,
+        FileAction::RevealInFileBrowser,
+        FileAction::CopyPath,
+    ],
     &[FileAction::AddToGitignore],
-    &[FileAction::Discard, FileAction::Clean, FileAction::RestoreFromCommit],
+    &[
+        FileAction::Discard,
+        FileAction::Clean,
+        FileAction::RestoreFromCommit,
+    ],
 ];
 
 const BUSY_ACTIONS: &[FileAction] = &[
@@ -390,7 +461,10 @@ fn title_key(action: FileAction, subject: &Subject, in_selection: bool) -> &'sta
         }
         FileAction::InspectChanges => "inspectChanges",
         FileAction::CreatePatch => {
-            if folder || (!in_selection && matches!(subject.source, Source::UnstagedFile | Source::StagedFile)) {
+            if folder
+                || (!in_selection
+                    && matches!(subject.source, Source::UnstagedFile | Source::StagedFile))
+            {
                 "patchCreate"
             } else {
                 "patchCreateFromFile"
@@ -422,10 +496,22 @@ fn title_key(action: FileAction, subject: &Subject, in_selection: bool) -> &'sta
 /// A title: {key, args}, wrapped in "… (HEAD)" by `head`.
 fn title(key: &str, args: Value, head: bool) -> Value {
     let inner = json!({"key": key, "args": args});
-    if head { json!({"key": "fileActionHeadSuffix", "args": {"action": inner}}) } else { inner }
+    if head {
+        json!({"key": "fileActionHeadSuffix", "args": {"action": inner}})
+    } else {
+        inner
+    }
 }
 
-fn item(action: FileAction, selection: bool, title: Value, icon: &str, enabled: bool, reason: Option<&str>, danger: bool) -> Value {
+fn item(
+    action: FileAction,
+    selection: bool,
+    title: Value,
+    icon: &str,
+    enabled: bool,
+    reason: Option<&str>,
+    danger: bool,
+) -> Value {
     json!({
         "action": action.name(),
         "selection": selection,
@@ -448,10 +534,20 @@ pub fn menu(subject: &Subject, host: &Host, selection: Option<Selection>) -> Vec
     let selection = selection.filter(|selection| selection.count >= 2);
     let in_selection = selection.is_some();
     if let Some(selection) = selection {
-        items.push(json!({"header": title("menuSelectedFiles", json!({"count": selection.count}), false)}));
-        let stage = if selection.staged { FileAction::Unstage } else { FileAction::Stage };
+        items.push(
+            json!({"header": title("menuSelectedFiles", json!({"count": selection.count}), false)}),
+        );
+        let stage = if selection.staged {
+            FileAction::Unstage
+        } else {
+            FileAction::Stage
+        };
         if host.offers(stage) {
-            let (key, icon) = if selection.staged { ("unstageSelected", "unstage-all") } else { ("stageSelected", "stage-all") };
+            let (key, icon) = if selection.staged {
+                ("unstageSelected", "unstage-all")
+            } else {
+                ("stageSelected", "stage-all")
+            };
             items.push(item(
                 stage,
                 true,
@@ -474,10 +570,26 @@ pub fn menu(subject: &Subject, host: &Host, selection: Option<Selection>) -> Vec
             ));
         }
         if let (false, Some(clean)) = (selection.staged, selection.clean) {
-            let action = if clean { FileAction::Clean } else { FileAction::Discard };
+            let action = if clean {
+                FileAction::Clean
+            } else {
+                FileAction::Discard
+            };
             if host.offers(action) {
-                let key = if clean { "cleanSelected" } else { "discardSelected" };
-                items.push(item(action, true, title(key, json!({}), false), "trash", !host.busy, host.reason(action), true));
+                let key = if clean {
+                    "cleanSelected"
+                } else {
+                    "discardSelected"
+                };
+                items.push(item(
+                    action,
+                    true,
+                    title(key, json!({}), false),
+                    "trash",
+                    !host.busy,
+                    host.reason(action),
+                    true,
+                ));
             }
         }
         let basename = subject.path.rsplit('/').next().unwrap_or_default();
@@ -486,8 +598,11 @@ pub fn menu(subject: &Subject, host: &Host, selection: Option<Selection>) -> Vec
     }
     let mut first = true;
     for group in GROUPS {
-        let entries: Vec<FileAction> =
-            group.iter().copied().filter(|action| host.offers(*action) && applies(*action, subject)).collect();
+        let entries: Vec<FileAction> = group
+            .iter()
+            .copied()
+            .filter(|action| host.offers(*action) && applies(*action, subject))
+            .collect();
         if entries.is_empty() {
             continue;
         }
@@ -496,20 +611,37 @@ pub fn menu(subject: &Subject, host: &Host, selection: Option<Selection>) -> Vec
         }
         first = false;
         for action in entries {
-            let unavailable = host.inspection_reason.is_some() && INSPECTION_ACTIONS.contains(&action);
-            let head = subject.at_head() && matches!(action, FileAction::Blame | FileAction::FileHistory | FileAction::FolderHistory);
-            let args = if action == FileAction::RevealInFileBrowser { json!({"browser": host.file_browser}) } else { json!({}) };
+            let unavailable =
+                host.inspection_reason.is_some() && INSPECTION_ACTIONS.contains(&action);
+            let head = subject.at_head()
+                && matches!(
+                    action,
+                    FileAction::Blame | FileAction::FileHistory | FileAction::FolderHistory
+                );
+            let args = if action == FileAction::RevealInFileBrowser {
+                json!({"browser": host.file_browser})
+            } else {
+                json!({})
+            };
             let busy = host.busy
                 && BUSY_ACTIONS.contains(&action)
-                && !(host.allow_staging_while_busy && matches!(action, FileAction::Stage | FileAction::Unstage));
+                && !(host.allow_staging_while_busy
+                    && matches!(action, FileAction::Stage | FileAction::Unstage));
             let mut value = item(
                 action,
                 false,
                 title(title_key(action, subject, in_selection), args, head),
                 icon(action, subject),
                 !unavailable && !busy,
-                if unavailable { None } else { host.reason(action) },
-                matches!(action, FileAction::Discard | FileAction::Clean | FileAction::RestoreFromCommit),
+                if unavailable {
+                    None
+                } else {
+                    host.reason(action)
+                },
+                matches!(
+                    action,
+                    FileAction::Discard | FileAction::Clean | FileAction::RestoreFromCommit
+                ),
             );
             if unavailable {
                 value["unavailable"] = json!(host.inspection_reason);
@@ -562,7 +694,9 @@ mod tests {
         let key = title["key"].as_str().unwrap();
         match key {
             "fileActionHeadSuffix" => format!("{} (HEAD)", text(&title["args"]["action"])),
-            "openInFileBrowser" => format!("Open in {}", title["args"]["browser"].as_str().unwrap()),
+            "openInFileBrowser" => {
+                format!("Open in {}", title["args"]["browser"].as_str().unwrap())
+            }
             "menuSelectedFiles" => format!("{} selected files", title["args"]["count"]),
             other => english(other).to_owned(),
         }
@@ -594,22 +728,37 @@ mod tests {
     }
 
     fn all() -> Host {
-        Host { capabilities: FileAction::all().collect(), file_browser: "Files".into(), ..Host::default() }
+        Host {
+            capabilities: FileAction::all().collect(),
+            file_browser: "Files".into(),
+            ..Host::default()
+        }
     }
 
     fn subject(source: Source) -> Subject {
-        Subject { exists: true, ..Subject::new(source, "lib/a.dart") }
+        Subject {
+            exists: true,
+            ..Subject::new(source, "lib/a.dart")
+        }
     }
 
     fn check(subject: Subject, expected: &[&str]) {
-        assert_eq!(render(&menu(&subject, &all(), None)), expected, "{:?}", subject.source);
+        assert_eq!(
+            render(&menu(&subject, &all(), None)),
+            expected,
+            "{:?}",
+            subject.source
+        );
     }
 
     #[test]
     fn the_matrix_of_every_source() {
         let modified = Some(NativeFileChangeKind::Modified);
         check(
-            Subject { change: modified, ..subject(Source::CommittedFile) },
+            Subject {
+                change: modified,
+                ..subject(Source::CommittedFile)
+            },
             &[
                 "Show diff",
                 "Show contents",
@@ -628,7 +777,11 @@ mod tests {
             ],
         );
         check(
-            Subject { change: modified, exists: false, ..subject(Source::ComparedFile) },
+            Subject {
+                change: modified,
+                exists: false,
+                ..subject(Source::ComparedFile)
+            },
             &[
                 "Show diff",
                 "Show contents",
@@ -657,13 +810,34 @@ mod tests {
                 "Restore this version !",
             ],
         );
-        check(Subject { exists: false, ..subject(Source::Folder) }, &["Folder history", "Open in new window", "—", "Copy path"]);
         check(
-            Subject { changed_folder: true, ..subject(Source::Folder) },
-            &["Folder history", "Open in new window", "—", "Create patch", "—", "Open in Files", "Copy path"],
+            Subject {
+                exists: false,
+                ..subject(Source::Folder)
+            },
+            &["Folder history", "Open in new window", "—", "Copy path"],
         );
         check(
-            Subject { change: Some(NativeFileChangeKind::Added), exists: false, ..subject(Source::HistoryEntryFile) },
+            Subject {
+                changed_folder: true,
+                ..subject(Source::Folder)
+            },
+            &[
+                "Folder history",
+                "Open in new window",
+                "—",
+                "Create patch",
+                "—",
+                "Open in Files",
+                "Copy path",
+            ],
+        );
+        check(
+            Subject {
+                change: Some(NativeFileChangeKind::Added),
+                exists: false,
+                ..subject(Source::HistoryEntryFile)
+            },
             &[
                 "Show diff",
                 "Show contents",
@@ -695,15 +869,25 @@ mod tests {
             "—",
         ];
         check(
-            Subject { discardable: true, ..subject(Source::UnstagedFile) },
+            Subject {
+                discardable: true,
+                ..subject(Source::UnstagedFile)
+            },
             &[&unstaged[..], &["Discard changes !"]].concat(),
         );
         check(
-            Subject { discardable: true, untracked: true, ..subject(Source::UnstagedFile) },
+            Subject {
+                discardable: true,
+                untracked: true,
+                ..subject(Source::UnstagedFile)
+            },
             &[&unstaged[..], &["Delete untracked file !"]].concat(),
         );
         check(
-            Subject { staged: true, ..subject(Source::StagedFile) },
+            Subject {
+                staged: true,
+                ..subject(Source::StagedFile)
+            },
             &[
                 "Blame (HEAD)",
                 "File history (HEAD)",
@@ -719,7 +903,10 @@ mod tests {
             ],
         );
         check(
-            Subject { discardable: true, ..subject(Source::ChangesFolder) },
+            Subject {
+                discardable: true,
+                ..subject(Source::ChangesFolder)
+            },
             &[
                 "Folder history (HEAD)",
                 "—",
@@ -737,41 +924,98 @@ mod tests {
         );
         check(
             subject(Source::ConflictFile),
-            &["Blame (HEAD)", "File history (HEAD)", "—", "Open in external editor", "Open in Files", "Copy path"],
+            &[
+                "Blame (HEAD)",
+                "File history (HEAD)",
+                "—",
+                "Open in external editor",
+                "Open in Files",
+                "Copy path",
+            ],
         );
-        check(Subject { exists: false, ..subject(Source::ReviewFile) }, &["Blame", "File history", "—", "Copy path"]);
+        check(
+            Subject {
+                exists: false,
+                ..subject(Source::ReviewFile)
+            },
+            &["Blame", "File history", "—", "Copy path"],
+        );
     }
 
     #[test]
     fn deleted_binary_submodule_and_symlink_entries_hide_lenses_they_cannot_show() {
         let shown = |subject: Subject| render(&menu(&subject, &all(), None));
-        let deleted = shown(Subject { change: Some(NativeFileChangeKind::Deleted), ..subject(Source::CommittedFile) });
-        assert!(!deleted.contains(&"Show contents".to_owned()) && !deleted.contains(&"Blame".to_owned()));
+        let deleted = shown(Subject {
+            change: Some(NativeFileChangeKind::Deleted),
+            ..subject(Source::CommittedFile)
+        });
+        assert!(
+            !deleted.contains(&"Show contents".to_owned())
+                && !deleted.contains(&"Blame".to_owned())
+        );
         assert!(!deleted.iter().any(|title| title.starts_with("Restore")));
-        let binary = shown(Subject { change: Some(NativeFileChangeKind::Binary), ..subject(Source::CommittedFile) });
-        assert!(binary.contains(&"Show contents".to_owned()) && !binary.contains(&"Blame".to_owned()));
-        let submodule = shown(Subject { tree: Some(NativeTreeEntryKind::Submodule), ..subject(Source::TreeFile) });
+        let binary = shown(Subject {
+            change: Some(NativeFileChangeKind::Binary),
+            ..subject(Source::CommittedFile)
+        });
+        assert!(
+            binary.contains(&"Show contents".to_owned()) && !binary.contains(&"Blame".to_owned())
+        );
+        let submodule = shown(Subject {
+            tree: Some(NativeTreeEntryKind::Submodule),
+            ..subject(Source::TreeFile)
+        });
         assert!(!submodule.contains(&"Show contents".to_owned()));
-        let symlink = shown(Subject { mode: Some(0o120000), ..subject(Source::CommittedFile) });
-        assert!(symlink.contains(&"Show contents".to_owned()) && !symlink.contains(&"Blame".to_owned()));
+        let symlink = shown(Subject {
+            mode: Some(0o120000),
+            ..subject(Source::CommittedFile)
+        });
+        assert!(
+            symlink.contains(&"Show contents".to_owned()) && !symlink.contains(&"Blame".to_owned())
+        );
     }
 
     #[test]
     fn hosts_omit_actions_they_cannot_perform() {
-        let host = Host { capabilities: vec![FileAction::CopyPath, FileAction::Stage], ..all() };
-        let items = menu(&Subject { discardable: true, ..subject(Source::UnstagedFile) }, &host, None);
+        let host = Host {
+            capabilities: vec![FileAction::CopyPath, FileAction::Stage],
+            ..all()
+        };
+        let items = menu(
+            &Subject {
+                discardable: true,
+                ..subject(Source::UnstagedFile)
+            },
+            &host,
+            None,
+        );
         assert_eq!(render(&items), ["Stage file", "—", "Copy path"]);
     }
 
     #[test]
     fn busy_hosts_disable_mutations_and_unavailable_inspection_says_why() {
-        let host = Host { busy: true, inspection_reason: Some("Loading".into()), ..all() };
-        let items = render(&menu(&Subject { discardable: true, ..subject(Source::UnstagedFile) }, &host, None));
+        let host = Host {
+            busy: true,
+            inspection_reason: Some("Loading".into()),
+            ..all()
+        };
+        let items = render(&menu(
+            &Subject {
+                discardable: true,
+                ..subject(Source::UnstagedFile)
+            },
+            &host,
+            None,
+        ));
         assert_eq!(items[0], "Blame (HEAD) — Loading (off)");
         assert!(items.contains(&"Stage file (off)".to_owned()));
         assert!(items.contains(&"Copy path".to_owned()));
         assert!(items.contains(&"Discard changes ! (off)".to_owned()));
-        let queueing = Host { busy: true, allow_staging_while_busy: true, ..all() };
+        let queueing = Host {
+            busy: true,
+            allow_staging_while_busy: true,
+            ..all()
+        };
         let items = render(&menu(&subject(Source::UnstagedFile), &queueing, None));
         assert!(items.contains(&"Stage file".to_owned()));
     }
@@ -790,15 +1034,40 @@ mod tests {
 
     #[test]
     fn a_multiple_selection_comes_first_under_its_own_header() {
-        let selection = Selection { count: 3, staged: false, clean: Some(false) };
-        let items = render(&menu(&Subject { discardable: true, ..subject(Source::UnstagedFile) }, &all(), Some(selection)));
+        let selection = Selection {
+            count: 3,
+            staged: false,
+            clean: Some(false),
+        };
+        let items = render(&menu(
+            &Subject {
+                discardable: true,
+                ..subject(Source::UnstagedFile)
+            },
+            &all(),
+            Some(selection),
+        ));
         assert_eq!(
             items[..6],
-            ["# 3 selected files", "Stage selected", "Create patch from selection", "Discard selected !", "—", "# a.dart"]
+            [
+                "# 3 selected files",
+                "Stage selected",
+                "Create patch from selection",
+                "Discard selected !",
+                "—",
+                "# a.dart"
+            ]
         );
         // The pointed file's patch names the file once a selection is listed.
         assert!(items.contains(&"Create patch from this file".to_owned()));
-        let single = render(&menu(&subject(Source::UnstagedFile), &all(), Some(Selection { count: 1, ..selection })));
+        let single = render(&menu(
+            &subject(Source::UnstagedFile),
+            &all(),
+            Some(Selection {
+                count: 1,
+                ..selection
+            }),
+        ));
         assert_eq!(single[0], "Blame (HEAD)");
     }
 
@@ -807,17 +1076,32 @@ mod tests {
         let sources = SOURCES.iter().map(|(source, _)| *source);
         for source in sources {
             for exists in [false, true] {
-                let items = render(&menu(&Subject { exists, discardable: true, ..subject(source) }, &all(), None));
+                let items = render(&menu(
+                    &Subject {
+                        exists,
+                        discardable: true,
+                        ..subject(source)
+                    },
+                    &all(),
+                    None,
+                ));
                 assert_ne!(items.first().map(String::as_str), Some("—"));
                 assert_ne!(items.last().map(String::as_str), Some("—"));
-                assert!(items.windows(2).all(|pair| !(pair[0] == "—" && pair[1] == "—")));
+                assert!(
+                    items
+                        .windows(2)
+                        .all(|pair| !(pair[0] == "—" && pair[1] == "—"))
+                );
             }
         }
     }
 
     #[test]
     fn subjects_read_from_the_presentation() {
-        let read = Subject::from_value(&json!({"source": "stagedFile", "path": "a/b", "staged": true, "change": "binary"})).unwrap();
+        let read = Subject::from_value(
+            &json!({"source": "stagedFile", "path": "a/b", "staged": true, "change": "binary"}),
+        )
+        .unwrap();
         assert_eq!(read.source, Source::StagedFile);
         assert!(read.staged && !read.exists);
         assert_eq!(read.change, Some(NativeFileChangeKind::Binary));

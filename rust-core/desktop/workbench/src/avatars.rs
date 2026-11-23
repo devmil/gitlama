@@ -29,7 +29,10 @@ pub fn data_url(bytes: &[u8]) -> Option<String> {
     } else {
         return None;
     };
-    Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+    Some(format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
 }
 
 pub struct Avatars {
@@ -60,7 +63,9 @@ impl Avatars {
 
     /// Follows the setting; turning it off forgets every image.
     pub fn sync(&self) {
-        let enabled = self.settings.with(|document| document.appearance.gravatar_enabled);
+        let enabled = self
+            .settings
+            .with(|document| document.appearance.gravatar_enabled);
         if enabled == self.enabled.get() {
             return;
         }
@@ -80,7 +85,11 @@ impl Avatars {
 
     /// Loads the image of `hash` once, while enabled.
     pub fn request(self: &Rc<Self>, hash: String) {
-        if !self.enabled.get() || !valid_hash(&hash) || self.images.borrow().contains_key(&hash) || !self.pending.borrow_mut().insert(hash.clone()) {
+        if !self.enabled.get()
+            || !valid_hash(&hash)
+            || self.images.borrow().contains_key(&hash)
+            || !self.pending.borrow_mut().insert(hash.clone())
+        {
             return;
         }
         let generation = self.generation.get();
@@ -100,7 +109,9 @@ impl Avatars {
     }
 
     pub fn set_enabled(&self, enabled: bool) -> bool {
-        self.settings.update(|document| document.appearance.gravatar_enabled = enabled).is_ok()
+        self.settings
+            .update(|document| document.appearance.gravatar_enabled = enabled)
+            .is_ok()
     }
 }
 
@@ -112,7 +123,11 @@ mod tests {
     fn hashes_and_images_are_checked() {
         assert!(valid_hash(&"a".repeat(64)));
         assert!(!valid_hash("abc"));
-        assert!(data_url(&[0x89, b'P', b'N', b'G', 0]).unwrap().starts_with("data:image/png;base64,"));
+        assert!(
+            data_url(&[0x89, b'P', b'N', b'G', 0])
+                .unwrap()
+                .starts_with("data:image/png;base64,")
+        );
         assert!(data_url(b"<svg/>").is_none());
     }
 }

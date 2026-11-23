@@ -18,11 +18,15 @@ use crate::workspace::WorkspaceService;
 /// Whether `repository` is fetched in the background: its own override, or
 /// the application's choice.
 pub fn auto_fetches(document: &NativeSettingsDocument, repository: &NativePathIdentity) -> bool {
-    repository.remote.is_none() && auto_fetch_override(document, repository).unwrap_or(document.auto_fetch.enabled)
+    repository.remote.is_none()
+        && auto_fetch_override(document, repository).unwrap_or(document.auto_fetch.enabled)
 }
 
 /// The override stored for `repository`; None follows the application.
-pub fn auto_fetch_override(document: &NativeSettingsDocument, repository: &NativePathIdentity) -> Option<bool> {
+pub fn auto_fetch_override(
+    document: &NativeSettingsDocument,
+    repository: &NativePathIdentity,
+) -> Option<bool> {
     document
         .repository_options
         .iter()
@@ -32,8 +36,14 @@ pub fn auto_fetch_override(document: &NativeSettingsDocument, repository: &Nativ
 
 /// `document` with `repository` overriding automatic fetching, or following
 /// the application again when `value` is None.
-pub fn set_auto_fetch_override(document: &mut NativeSettingsDocument, repository: &NativePathIdentity, value: Option<bool>) {
-    document.repository_options.retain(|options| &options.identity != repository);
+pub fn set_auto_fetch_override(
+    document: &mut NativeSettingsDocument,
+    repository: &NativePathIdentity,
+    value: Option<bool>,
+) {
+    document
+        .repository_options
+        .retain(|options| &options.identity != repository);
     if let Some(value) = value {
         document.repository_options.push(NativeRepositoryOptions {
             identity: repository.clone(),
@@ -54,7 +64,11 @@ pub struct AutoFetchScheduler {
 }
 
 impl AutoFetchScheduler {
-    pub fn new(settings: Rc<SettingsService>, workspace: Rc<WorkspaceService>, transfers: Rc<TransferService>) -> Rc<Self> {
+    pub fn new(
+        settings: Rc<SettingsService>,
+        workspace: Rc<WorkspaceService>,
+        transfers: Rc<TransferService>,
+    ) -> Rc<Self> {
         Rc::new_cyclic(|this| Self {
             this: this.clone(),
             settings,
@@ -87,7 +101,10 @@ impl AutoFetchScheduler {
             self.minutes.set(None);
             return;
         }
-        let minutes = self.settings.with(|document| document.auto_fetch.interval_minutes).max(1);
+        let minutes = self
+            .settings
+            .with(|document| document.auto_fetch.interval_minutes)
+            .max(1);
         if self.minutes.get() == Some(minutes) && self.timer.borrow().is_active() {
             return;
         }
@@ -97,11 +114,14 @@ impl AutoFetchScheduler {
 
     fn schedule(&self, minutes: u32) {
         let weak = self.this.clone();
-        *self.timer.borrow_mut() = TimerHandle::start(Duration::from_secs(u64::from(minutes) * 60), move || {
-            let Some(scheduler) = weak.upgrade() else { return };
-            scheduler.schedule(minutes);
-            rt::spawn_detached(async move { scheduler.run().await });
-        });
+        *self.timer.borrow_mut() =
+            TimerHandle::start(Duration::from_secs(u64::from(minutes) * 60), move || {
+                let Some(scheduler) = weak.upgrade() else {
+                    return;
+                };
+                scheduler.schedule(minutes);
+                rt::spawn_detached(async move { scheduler.run().await });
+            });
     }
 
     /// Fetches every open repository that wants it, one after another.
@@ -114,7 +134,11 @@ impl AutoFetchScheduler {
             if self.disposed.get() {
                 break;
             }
-            if snapshot.refs.remotes.is_empty() || !self.settings.with(|document| auto_fetches(document, &canonical)) {
+            if snapshot.refs.remotes.is_empty()
+                || !self
+                    .settings
+                    .with(|document| auto_fetches(document, &canonical))
+            {
                 continue;
             }
             self.transfers.background_fetch(identity).await;
@@ -134,7 +158,11 @@ mod tests {
     use gitlama_contract::domain::path_identity::{NativePathPlatform, NativeRemoteAuthority};
 
     fn path(name: &str) -> NativePathIdentity {
-        NativePathIdentity { platform: NativePathPlatform::Unix, units: name.encode_utf16().collect(), remote: None }
+        NativePathIdentity {
+            platform: NativePathPlatform::Unix,
+            units: name.encode_utf16().collect(),
+            remote: None,
+        }
     }
 
     #[test]
@@ -158,7 +186,11 @@ mod tests {
     fn a_remote_repository_never_fetches_in_the_background() {
         let document = NativeSettingsDocument::default();
         let mut repository = path("/a");
-        repository.remote = Some(NativeRemoteAuthority { profile_id: "p".into(), store_id: "s".into(), account_uid: "1".into() });
+        repository.remote = Some(NativeRemoteAuthority {
+            profile_id: "p".into(),
+            store_id: "s".into(),
+            account_uid: "1".into(),
+        });
         assert!(!auto_fetches(&document, &repository));
     }
 }

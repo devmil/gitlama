@@ -71,7 +71,10 @@ impl CloneService {
     }
 
     fn is_current(&self, attempt: &NativeCloneSnapshot) -> bool {
-        self.current.borrow().as_ref().is_some_and(|current| current.attempt_id == attempt.attempt_id)
+        self.current
+            .borrow()
+            .as_ref()
+            .is_some_and(|current| current.attempt_id == attempt.attempt_id)
     }
 
     fn require_current(&self) -> CloneResult<NativeCloneSnapshot> {
@@ -80,17 +83,27 @@ impl CloneService {
 
     /// Starts a clone of `source` into `destination` as attempt
     /// `generation`; a running attempt is canceled first.
-    pub async fn start(&self, source: String, destination: String, generation: u64) -> CloneResult<(Option<OpenedSession>, bool)> {
+    pub async fn start(
+        &self,
+        source: String,
+        destination: String,
+        generation: u64,
+    ) -> CloneResult<(Option<OpenedSession>, bool)> {
         self.cancel_running().await;
-        let created =
-            rt::blocking(move || gitlama_core::api::repository_clone_create(source, destination, None, generation)).await;
+        let created = rt::blocking(move || {
+            gitlama_core::api::repository_clone_create(source, destination, None, generation)
+        })
+        .await;
         if let Some(failure) = created.failure {
             return Err(failure_name(failure.kind));
         }
         let attempt = created.snapshot.ok_or_else(invalid_state)?;
         self.publish(attempt.clone());
         let (id, generation) = (attempt.attempt_id, attempt.generation);
-        self.run(attempt, move || gitlama_core::api::repository_clone_run(id, generation)).await
+        self.run(attempt, move || {
+            gitlama_core::api::repository_clone_run(id, generation)
+        })
+        .await
     }
 
     /// Runs the current attempt again, into `destination` when its partial
@@ -99,7 +112,11 @@ impl CloneService {
         let current = self.require_current()?;
         let (id, generation) = (current.attempt_id, current.generation);
         let result = rt::blocking(move || match destination {
-            Some(destination) => gitlama_core::api::repository_clone_retry_at_destination(id, generation, destination),
+            Some(destination) => gitlama_core::api::repository_clone_retry_at_destination(
+                id,
+                generation,
+                destination,
+            ),
             None => gitlama_core::api::repository_clone_retry(id, generation),
         })
         .await;
@@ -111,10 +128,16 @@ impl CloneService {
         Ok(attempt)
     }
 
-    pub async fn retry(&self, destination: Option<String>) -> CloneResult<(Option<OpenedSession>, bool)> {
+    pub async fn retry(
+        &self,
+        destination: Option<String>,
+    ) -> CloneResult<(Option<OpenedSession>, bool)> {
         let attempt = self.again(destination).await?;
         let (id, generation) = (attempt.attempt_id, attempt.generation);
-        self.run(attempt, move || gitlama_core::api::repository_clone_run(id, generation)).await
+        self.run(attempt, move || {
+            gitlama_core::api::repository_clone_run(id, generation)
+        })
+        .await
     }
 
     /// Runs the current attempt again with credentials the user entered;
@@ -129,7 +152,9 @@ impl CloneService {
         let attempt = self.again(destination).await?;
         let (id, generation) = (attempt.attempt_id, attempt.generation);
         self.run(attempt, move || {
-            gitlama_core::api::repository_clone_run_with_credentials(id, generation, username, password, token)
+            gitlama_core::api::repository_clone_run_with_credentials(
+                id, generation, username, password, token,
+            )
         })
         .await
     }
@@ -137,8 +162,15 @@ impl CloneService {
     pub async fn probe_host_key(&self) -> CloneResult<NativeHostKeyChallenge> {
         let current = self.require_current()?;
         let (id, generation) = (current.attempt_id, current.generation);
-        let result = rt::blocking(move || gitlama_core::api::repository_clone_probe_host_key(id, generation)).await;
-        if let Some(snapshot) = rt::blocking(move || gitlama_core::api::repository_clone_snapshot(id, generation)).await.snapshot {
+        let result = rt::blocking(move || {
+            gitlama_core::api::repository_clone_probe_host_key(id, generation)
+        })
+        .await;
+        if let Some(snapshot) =
+            rt::blocking(move || gitlama_core::api::repository_clone_snapshot(id, generation))
+                .await
+                .snapshot
+        {
             self.publish(snapshot);
         }
         match (result.challenge, result.failure) {
@@ -157,39 +189,75 @@ impl CloneService {
         destination: Option<String>,
     ) -> CloneResult<Option<(Option<OpenedSession>, bool)>> {
         let current = self.require_current()?;
-        if current.host_key_challenge.as_ref().map(|shown| shown.challenge_id) != Some(challenge.challenge_id) {
-            return Err(failure_name(NativeCloneFailureKind::HostKeyChallengeExpired));
+        if current
+            .host_key_challenge
+            .as_ref()
+            .map(|shown| shown.challenge_id)
+            != Some(challenge.challenge_id)
+        {
+            return Err(failure_name(
+                NativeCloneFailureKind::HostKeyChallengeExpired,
+            ));
         }
-        let (id, generation, challenge_id) = (current.attempt_id, current.generation, challenge.challenge_id);
+        let (id, generation, challenge_id) = (
+            current.attempt_id,
+            current.generation,
+            challenge.challenge_id,
+        );
         if !accept {
-            rt::blocking(move || gitlama_core::api::repository_clone_reject_host_key(id, generation, challenge_id)).await;
-            if let Some(snapshot) = rt::blocking(move || gitlama_core::api::repository_clone_snapshot(id, generation)).await.snapshot {
+            rt::blocking(move || {
+                gitlama_core::api::repository_clone_reject_host_key(id, generation, challenge_id)
+            })
+            .await;
+            if let Some(snapshot) =
+                rt::blocking(move || gitlama_core::api::repository_clone_snapshot(id, generation))
+                    .await
+                    .snapshot
+            {
                 self.publish(snapshot);
             }
             return Ok(None);
         }
-        let accepted =
-            rt::blocking(move || gitlama_core::api::repository_clone_accept_host_key(id, generation, challenge_id)).await;
+        let accepted = rt::blocking(move || {
+            gitlama_core::api::repository_clone_accept_host_key(id, generation, challenge_id)
+        })
+        .await;
         if let Some(failure) = accepted.failure {
             return Err(failure_name(failure.kind));
         }
         let attempt = self.again(destination).await?;
         let (id, generation) = (attempt.attempt_id, attempt.generation);
-        self.run(attempt, move || gitlama_core::api::repository_clone_run_with_host_key(id, generation)).await.map(Some)
+        self.run(attempt, move || {
+            gitlama_core::api::repository_clone_run_with_host_key(id, generation)
+        })
+        .await
+        .map(Some)
     }
 
     pub async fn cancel(&self) -> CloneResult<()> {
-        let attempt = self.current().filter(|attempt| attempt.state == NativeCloneState::Running).ok_or_else(invalid_state)?;
+        let attempt = self
+            .current()
+            .filter(|attempt| attempt.state == NativeCloneState::Running)
+            .ok_or_else(invalid_state)?;
         let (id, generation) = (attempt.attempt_id, attempt.generation);
-        let result = rt::blocking(move || gitlama_core::api::repository_clone_cancel(id, generation)).await;
-        result.failure.map_or(Ok(()), |failure| Err(failure_name(failure.kind)))
+        let result =
+            rt::blocking(move || gitlama_core::api::repository_clone_cancel(id, generation)).await;
+        result
+            .failure
+            .map_or(Ok(()), |failure| Err(failure_name(failure.kind)))
     }
 
     pub async fn dismiss(&self) -> CloneResult<()> {
-        let attempt = self.current().filter(|attempt| attempt.state != NativeCloneState::Running).ok_or_else(invalid_state)?;
+        let attempt = self
+            .current()
+            .filter(|attempt| attempt.state != NativeCloneState::Running)
+            .ok_or_else(invalid_state)?;
         let (id, generation) = (attempt.attempt_id, attempt.generation);
         rt::blocking(move || gitlama_core::api::repository_clone_dismiss(id, generation)).await;
-        if self.current().is_some_and(|current| current.attempt_id == attempt.attempt_id) {
+        if self
+            .current()
+            .is_some_and(|current| current.attempt_id == attempt.attempt_id)
+        {
             *self.current.borrow_mut() = None;
             self.notifier.notify(Topics::WORKSPACE);
         }
@@ -197,7 +265,10 @@ impl CloneService {
     }
 
     async fn cancel_running(&self) {
-        if let Some(attempt) = self.current().filter(|attempt| attempt.state == NativeCloneState::Running) {
+        if let Some(attempt) = self
+            .current()
+            .filter(|attempt| attempt.state == NativeCloneState::Running)
+        {
             let (id, generation) = (attempt.attempt_id, attempt.generation);
             rt::blocking(move || gitlama_core::api::repository_clone_cancel(id, generation)).await;
         }
@@ -206,21 +277,33 @@ impl CloneService {
     fn poll(&self, attempt: NativeCloneSnapshot) {
         let weak = self.this.clone();
         *self.progress.borrow_mut() = TimerHandle::start(PROGRESS, move || {
-            let Some(service) = weak.upgrade() else { return };
+            let Some(service) = weak.upgrade() else {
+                return;
+            };
             rt::spawn_detached(async move {
                 if !service.is_current(&attempt) {
                     return;
                 }
                 let (id, generation) = (attempt.attempt_id, attempt.generation);
-                let result = rt::blocking(move || gitlama_core::api::repository_clone_snapshot(id, generation)).await;
+                let result = rt::blocking(move || {
+                    gitlama_core::api::repository_clone_snapshot(id, generation)
+                })
+                .await;
                 // The run's own result stays authoritative over a late poll.
-                if let Some(snapshot) = result.snapshot.filter(|snapshot| snapshot.state == NativeCloneState::Running)
+                if let Some(snapshot) = result
+                    .snapshot
+                    .filter(|snapshot| snapshot.state == NativeCloneState::Running)
                     && service.is_current(&attempt)
-                    && service.current().is_some_and(|current| current.state == NativeCloneState::Running)
+                    && service
+                        .current()
+                        .is_some_and(|current| current.state == NativeCloneState::Running)
                 {
                     service.publish(snapshot);
                 }
-                if service.current().is_some_and(|current| current.state == NativeCloneState::Running) {
+                if service
+                    .current()
+                    .is_some_and(|current| current.state == NativeCloneState::Running)
+                {
                     service.poll(attempt);
                 }
             });
@@ -247,7 +330,11 @@ impl CloneService {
             return Err(failure_name(failure.kind));
         }
         let opened = completion.session.map(|session| OpenedSession {
-            identity: SessionIdentity { native_id: session.session_id, generation: session.generation, backend: BackendKind::Local },
+            identity: SessionIdentity {
+                native_id: session.session_id,
+                generation: session.generation,
+                backend: BackendKind::Local,
+            },
             snapshot: session.snapshot,
         });
         Ok((opened, self.is_current(&attempt)))
@@ -278,10 +365,14 @@ mod tests {
             host_key_challenge: None,
         };
         assert_eq!(progress(&snapshot), None);
-        snapshot.progress = Some(NativeActivityProgress { phase: "Receiving objects".into(), completed: 5, total: Some(20), unit: String::new() });
+        snapshot.progress = Some(NativeActivityProgress {
+            phase: "Receiving objects".into(),
+            completed: 5,
+            total: Some(20),
+            unit: String::new(),
+        });
         assert_eq!(progress(&snapshot), Some(0.25));
         snapshot.progress.as_mut().unwrap().total = Some(0);
         assert_eq!(progress(&snapshot), None);
     }
 }
-

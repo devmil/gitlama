@@ -5,13 +5,13 @@ pub mod api;
 pub mod avatar;
 pub mod child_process;
 pub mod cli_forwarding;
-pub mod sink;
 pub mod hosting;
 pub mod hosting_reference;
 pub mod hosting_review;
 pub mod hosting_runtime;
 #[cfg(test)]
 mod loopback_fixture;
+pub mod sink;
 
 /// Restarts the process with the login shell's PATH when it differs, so Git
 /// finds helpers such as `git-lfs` after a launch from the desktop. The macOS

@@ -10,9 +10,10 @@ use crate::history::HistoryService;
 use crate::session::{BackendKind, SessionIdentity};
 use crate::workspace::WorkspaceService;
 use gitlama_contract::dto::{
-    NativeHistoryPage, NativePatchApplyExecutionResult, NativePatchApplyExecutionState, NativePatchApplyPreview,
-    NativePatchExportExecutionResult, NativePatchExportExecutionState, NativePatchExportPreview, NativePatchExportRequest,
-    NativePatchExportScope, NativePatchFormat, NativePatchSide, NativeStagingSide,
+    NativeHistoryPage, NativePatchApplyExecutionResult, NativePatchApplyExecutionState,
+    NativePatchApplyPreview, NativePatchExportExecutionResult, NativePatchExportExecutionState,
+    NativePatchExportPreview, NativePatchExportRequest, NativePatchExportScope, NativePatchFormat,
+    NativePatchSide, NativeStagingSide,
 };
 use std::rc::Rc;
 
@@ -23,16 +24,26 @@ pub enum Source {
     /// one or a range, or the working tree; `commit` names one commit.
     History { commit: Option<String> },
     /// The commit or comparison whose diff is on screen, limited to `paths`.
-    Diff { base: Option<String>, commit: String, paths: Vec<Vec<u8>> },
+    Diff {
+        base: Option<String>,
+        commit: String,
+        paths: Vec<Vec<u8>>,
+    },
     /// The Changes selection: the focused list's selected files, the other
     /// list's when the focused one has none, else everything focused.
     Selection,
     /// The chosen lines `rows` of the working diff `request_id`.
     Lines { request_id: u64, rows: Vec<String> },
     /// Exactly `paths` on `side`.
-    Files { side: NativeStagingSide, paths: Vec<Vec<u8>> },
+    Files {
+        side: NativeStagingSide,
+        paths: Vec<Vec<u8>>,
+    },
     /// The Changes files `keys` on `side` (a folder's files).
-    Keys { side: NativeStagingSide, keys: Vec<String> },
+    Keys {
+        side: NativeStagingSide,
+        keys: Vec<String>,
+    },
 }
 
 fn patch_side(side: NativeStagingSide) -> NativePatchSide {
@@ -61,29 +72,53 @@ fn empty(destination: String, overwrite: bool) -> NativePatchExportRequest {
 }
 
 /// The request of a History patch (the Dart PatchRequestBuilder.history).
-pub fn history_request(page: Option<&NativeHistoryPage>, commit: Option<String>, destination: String, overwrite: bool) -> NativePatchExportRequest {
+pub fn history_request(
+    page: Option<&NativeHistoryPage>,
+    commit: Option<String>,
+    destination: String,
+    overwrite: bool,
+) -> NativePatchExportRequest {
     let (comparison_old, comparison_new) = match (commit.is_none(), page) {
-        (true, Some(page)) => (page.comparison_old_object_id.clone(), page.comparison_new_object_id.clone()),
+        (true, Some(page)) => (
+            page.comparison_old_object_id.clone(),
+            page.comparison_new_object_id.clone(),
+        ),
         _ => (None, None),
     };
     let mut single = commit;
     let mut range = Vec::new();
     if single.is_none() && (comparison_old.is_none() || comparison_new.is_none()) {
-        let selected: Vec<String> =
-            page.map(|page| page.selected_object_ids.iter().filter(|id| id.as_str() != "wip").cloned().collect()).unwrap_or_default();
+        let selected: Vec<String> = page
+            .map(|page| {
+                page.selected_object_ids
+                    .iter()
+                    .filter(|id| id.as_str() != "wip")
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
         if selected.len() == 1 {
             single = selected.into_iter().next();
         } else if selected.len() > 1 {
             // The selection in the order the graph shows it, oldest first.
             let mut visible: Vec<String> = page
-                .map(|page| page.rows.iter().filter(|row| selected.contains(&row.object_id)).map(|row| row.object_id.clone()).collect())
+                .map(|page| {
+                    page.rows
+                        .iter()
+                        .filter(|row| selected.contains(&row.object_id))
+                        .map(|row| row.object_id.clone())
+                        .collect()
+                })
                 .filter(|rows: &Vec<String>| !rows.is_empty())
                 .unwrap_or(selected);
             visible.reverse();
             range = visible;
         }
     }
-    let workspace_default = comparison_old.is_none() && comparison_new.is_none() && range.is_empty() && single.is_none();
+    let workspace_default = comparison_old.is_none()
+        && comparison_new.is_none()
+        && range.is_empty()
+        && single.is_none();
     NativePatchExportRequest {
         comparison_old,
         comparison_new,
@@ -95,7 +130,13 @@ pub fn history_request(page: Option<&NativeHistoryPage>, commit: Option<String>,
 }
 
 /// The request of a patch of a shown diff (PatchRequestBuilder.diff).
-pub fn diff_request(base: Option<String>, commit: String, paths: Vec<Vec<u8>>, destination: String, overwrite: bool) -> NativePatchExportRequest {
+pub fn diff_request(
+    base: Option<String>,
+    commit: String,
+    paths: Vec<Vec<u8>>,
+    destination: String,
+    overwrite: bool,
+) -> NativePatchExportRequest {
     let comparison = base.is_some();
     NativePatchExportRequest {
         comparison_new: comparison.then(|| commit.clone()),
@@ -107,7 +148,12 @@ pub fn diff_request(base: Option<String>, commit: String, paths: Vec<Vec<u8>>, d
 }
 
 /// The request of a working-tree patch (PatchRequestBuilder.workingTree).
-pub fn working_tree_request(side: NativeStagingSide, paths: Vec<Vec<u8>>, destination: String, overwrite: bool) -> NativePatchExportRequest {
+pub fn working_tree_request(
+    side: NativeStagingSide,
+    paths: Vec<Vec<u8>>,
+    destination: String,
+    overwrite: bool,
+) -> NativePatchExportRequest {
     let any = !paths.is_empty();
     NativePatchExportRequest {
         selected_side: any.then(|| patch_side(side)),
@@ -170,8 +216,18 @@ pub struct PatchService {
 pub struct PatchFailure;
 
 impl PatchService {
-    pub fn new(calls: Rc<dyn SessionCalls>, workspace: Rc<WorkspaceService>, history: Rc<HistoryService>, changes: Rc<ChangesService>) -> Rc<Self> {
-        Rc::new(Self { calls, workspace, history, changes })
+    pub fn new(
+        calls: Rc<dyn SessionCalls>,
+        workspace: Rc<WorkspaceService>,
+        history: Rc<HistoryService>,
+        changes: Rc<ChangesService>,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            calls,
+            workspace,
+            history,
+            changes,
+        })
     }
 
     /// The active repository's session, which a dialog keeps.
@@ -185,11 +241,33 @@ impl PatchService {
     }
 
     /// The export request of `source` written to `destination`.
-    pub fn request(&self, source: &Source, destination: String, overwrite: bool) -> NativePatchExportRequest {
+    pub fn request(
+        &self,
+        source: &Source,
+        destination: String,
+        overwrite: bool,
+    ) -> NativePatchExportRequest {
         match source {
-            Source::History { commit } => history_request(self.history.current().page.as_deref(), commit.clone(), destination, overwrite),
-            Source::Diff { base, commit, paths } => diff_request(base.clone(), commit.clone(), paths.clone(), destination, overwrite),
-            Source::Files { side, paths } => working_tree_request(*side, paths.clone(), destination, overwrite),
+            Source::History { commit } => history_request(
+                self.history.current().page.as_deref(),
+                commit.clone(),
+                destination,
+                overwrite,
+            ),
+            Source::Diff {
+                base,
+                commit,
+                paths,
+            } => diff_request(
+                base.clone(),
+                commit.clone(),
+                paths.clone(),
+                destination,
+                overwrite,
+            ),
+            Source::Files { side, paths } => {
+                working_tree_request(*side, paths.clone(), destination, overwrite)
+            }
             Source::Keys { side, keys } => {
                 let entries: Vec<_> = self
                     .workspace
@@ -202,7 +280,12 @@ impl PatchService {
                             .collect()
                     })
                     .unwrap_or_default();
-                working_tree_request(*side, unique_command_paths(&entries), destination, overwrite)
+                working_tree_request(
+                    *side,
+                    unique_command_paths(&entries),
+                    destination,
+                    overwrite,
+                )
             }
             Source::Lines { request_id, rows } => NativePatchExportRequest {
                 working_diff_request_id: Some(*request_id),
@@ -210,7 +293,14 @@ impl PatchService {
                 ..empty(destination, overwrite)
             },
             Source::Selection => {
-                let Some(tab) = self.workspace.active_tab_id() else { return working_tree_request(NativeStagingSide::Unstaged, Vec::new(), destination, overwrite) };
+                let Some(tab) = self.workspace.active_tab_id() else {
+                    return working_tree_request(
+                        NativeStagingSide::Unstaged,
+                        Vec::new(),
+                        destination,
+                        overwrite,
+                    );
+                };
                 let mut side = self.changes.selection_of(tab).focused;
                 let mut entries = self.changes.selected_entries(tab, side);
                 if entries.is_empty() {
@@ -226,30 +316,53 @@ impl PatchService {
     }
 
     /// Previews writing the patch `request` describes.
-    pub async fn preview_export(&self, identity: SessionIdentity, request: NativePatchExportRequest) -> Result<NativePatchExportPreview, PatchFailure> {
+    pub async fn preview_export(
+        &self,
+        identity: SessionIdentity,
+        request: NativePatchExportRequest,
+    ) -> Result<NativePatchExportPreview, PatchFailure> {
         if identity.backend == BackendKind::Local {
             let result = self
                 .calls
-                .repository_session_patch_export_preview(identity.native_id, identity.generation, request)
+                .repository_session_patch_export_preview(
+                    identity.native_id,
+                    identity.generation,
+                    request,
+                )
                 .await
                 .map_err(|_| PatchFailure)?;
-            return result.preview.filter(|_| result.failure.is_none()).ok_or(PatchFailure);
+            return result
+                .preview
+                .filter(|_| result.failure.is_none())
+                .ok_or(PatchFailure);
         }
         // The host builds the patch; it is saved on this computer.
         let destination = request.destination_directory.clone();
         let overwrite = request.overwrite;
         let result = self
             .calls
-            .repository_session_patch_export_content(identity.native_id, identity.generation, request)
+            .repository_session_patch_export_content(
+                identity.native_id,
+                identity.generation,
+                request,
+            )
             .await
             .map_err(|_| PatchFailure)?;
-        let content = result.content.filter(|_| result.failure.is_none()).ok_or(PatchFailure)?;
+        let content = result
+            .content
+            .filter(|_| result.failure.is_none())
+            .ok_or(PatchFailure)?;
         let total = content.total_bytes as usize;
         let mut bytes = content.first;
         while bytes.len() < total {
             let page = self
                 .calls
-                .repository_session_patch_export_content_page(identity.native_id, identity.generation, content.token, bytes.len() as u64)
+                .repository_session_patch_export_content_page(
+                    identity.native_id,
+                    identity.generation,
+                    content.token,
+                    bytes.len() as u64,
+                )
                 .await
                 .map_err(|_| PatchFailure)?;
             // A page that adds nothing would never finish.
@@ -282,9 +395,19 @@ impl PatchService {
     }
 
     /// Writes a previewed patch.
-    pub async fn execute_export(&self, identity: SessionIdentity, token: u64) -> Result<NativePatchExportExecutionResult, PatchFailure> {
+    pub async fn execute_export(
+        &self,
+        identity: SessionIdentity,
+        token: u64,
+    ) -> Result<NativePatchExportExecutionResult, PatchFailure> {
         let result = if identity.backend == BackendKind::Local {
-            self.calls.repository_session_patch_export_execute(identity.native_id, identity.generation, token).await
+            self.calls
+                .repository_session_patch_export_execute(
+                    identity.native_id,
+                    identity.generation,
+                    token,
+                )
+                .await
         } else {
             self.calls.patch_export_save_execute(token).await
         };
@@ -292,17 +415,28 @@ impl PatchService {
     }
 
     /// Checks that the patch file `path` applies.
-    pub async fn preview_apply(&self, identity: SessionIdentity, path: String) -> Result<NativePatchApplyPreview, PatchFailure> {
+    pub async fn preview_apply(
+        &self,
+        identity: SessionIdentity,
+        path: String,
+    ) -> Result<NativePatchApplyPreview, PatchFailure> {
         let result = self
             .calls
             .repository_session_patch_apply_preview(identity.native_id, identity.generation, path)
             .await
             .map_err(|_| PatchFailure)?;
-        result.preview.filter(|_| result.failure.is_none()).ok_or(PatchFailure)
+        result
+            .preview
+            .filter(|_| result.failure.is_none())
+            .ok_or(PatchFailure)
     }
 
     /// Applies a checked patch.
-    pub async fn execute_apply(&self, identity: SessionIdentity, token: u64) -> Result<NativePatchApplyExecutionResult, PatchFailure> {
+    pub async fn execute_apply(
+        &self,
+        identity: SessionIdentity,
+        token: u64,
+    ) -> Result<NativePatchApplyExecutionResult, PatchFailure> {
         self.calls
             .repository_session_patch_apply_execute(identity.native_id, identity.generation, token)
             .await
@@ -314,7 +448,11 @@ impl PatchService {
 mod tests {
     use super::*;
 
-    fn page(selected: &[&str], rows: &[&str], comparison: Option<(&str, &str)>) -> NativeHistoryPage {
+    fn page(
+        selected: &[&str],
+        rows: &[&str],
+        comparison: Option<(&str, &str)>,
+    ) -> NativeHistoryPage {
         NativeHistoryPage {
             request_id: 1,
             topology_complete: true,
@@ -370,43 +508,113 @@ mod tests {
 
     #[test]
     fn history_patches_follow_the_selection() {
-        let none = history_request(Some(&page(&[], &["c", "b", "a"], None)), None, "/out".into(), false);
+        let none = history_request(
+            Some(&page(&[], &["c", "b", "a"], None)),
+            None,
+            "/out".into(),
+            false,
+        );
         assert!(none.workspace_default && none.commit.is_none());
-        let one = history_request(Some(&page(&["b"], &["c", "b", "a"], None)), None, "/out".into(), false);
+        let one = history_request(
+            Some(&page(&["b"], &["c", "b", "a"], None)),
+            None,
+            "/out".into(),
+            false,
+        );
         assert_eq!(one.commit.as_deref(), Some("b"));
         assert!(!one.workspace_default);
         // A range lists the selection oldest first, in graph order.
-        let range = history_request(Some(&page(&["a", "c"], &["c", "b", "a"], None)), None, "/out".into(), true);
+        let range = history_request(
+            Some(&page(&["a", "c"], &["c", "b", "a"], None)),
+            None,
+            "/out".into(),
+            true,
+        );
         assert_eq!(range.range_commits, ["a", "c"]);
         assert!(range.overwrite);
-        let compared = history_request(Some(&page(&["a", "c"], &["c", "b", "a"], Some(("a", "c")))), None, "/out".into(), false);
-        assert_eq!((compared.comparison_old.as_deref(), compared.comparison_new.as_deref()), (Some("a"), Some("c")));
+        let compared = history_request(
+            Some(&page(&["a", "c"], &["c", "b", "a"], Some(("a", "c")))),
+            None,
+            "/out".into(),
+            false,
+        );
+        assert_eq!(
+            (
+                compared.comparison_old.as_deref(),
+                compared.comparison_new.as_deref()
+            ),
+            (Some("a"), Some("c"))
+        );
         assert!(compared.range_commits.is_empty() && compared.commit.is_none());
-        let named = history_request(Some(&page(&["a", "c"], &["c", "b", "a"], Some(("a", "c")))), Some("b".into()), "/out".into(), false);
+        let named = history_request(
+            Some(&page(&["a", "c"], &["c", "b", "a"], Some(("a", "c")))),
+            Some("b".into()),
+            "/out".into(),
+            false,
+        );
         assert_eq!(named.commit.as_deref(), Some("b"));
         assert!(named.comparison_old.is_none() && named.range_commits.is_empty());
     }
 
     #[test]
     fn diff_and_working_tree_patches() {
-        let commit = diff_request(None, "c".into(), vec![b"a.rs".to_vec()], "/out".into(), false);
+        let commit = diff_request(
+            None,
+            "c".into(),
+            vec![b"a.rs".to_vec()],
+            "/out".into(),
+            false,
+        );
         assert_eq!(commit.commit.as_deref(), Some("c"));
         assert_eq!(commit.history_paths, [b"a.rs".to_vec()]);
         let compare = diff_request(Some("a".into()), "c".into(), vec![], "/out".into(), false);
-        assert_eq!((compare.comparison_old.as_deref(), compare.comparison_new.as_deref(), compare.commit), (Some("a"), Some("c"), None));
-        let files = working_tree_request(NativeStagingSide::Staged, vec![b"x".to_vec()], "/out".into(), false);
-        assert_eq!((files.selected_side, files.focused_side), (Some(NativePatchSide::Staged), None));
+        assert_eq!(
+            (
+                compare.comparison_old.as_deref(),
+                compare.comparison_new.as_deref(),
+                compare.commit
+            ),
+            (Some("a"), Some("c"), None)
+        );
+        let files = working_tree_request(
+            NativeStagingSide::Staged,
+            vec![b"x".to_vec()],
+            "/out".into(),
+            false,
+        );
+        assert_eq!(
+            (files.selected_side, files.focused_side),
+            (Some(NativePatchSide::Staged), None)
+        );
         let all = working_tree_request(NativeStagingSide::Unstaged, vec![], "/out".into(), false);
-        assert_eq!((all.selected_side, all.focused_side), (None, Some(NativePatchSide::Unstaged)));
+        assert_eq!(
+            (all.selected_side, all.focused_side),
+            (None, Some(NativePatchSide::Unstaged))
+        );
     }
 
     #[test]
     fn outcomes_name_their_messages() {
-        assert_eq!(export_message(NativePatchExportExecutionState::Completed), ("patchExportDone", false));
-        assert_eq!(export_message(NativePatchExportExecutionState::Stale), ("patchExportStale", true));
-        assert_eq!(apply_message(NativePatchApplyExecutionState::ReconciledWithWarning), ("patchApplyWarning", "warning"));
-        assert_eq!(apply_message(NativePatchApplyExecutionState::OutcomeUncertain).1, "error");
+        assert_eq!(
+            export_message(NativePatchExportExecutionState::Completed),
+            ("patchExportDone", false)
+        );
+        assert_eq!(
+            export_message(NativePatchExportExecutionState::Stale),
+            ("patchExportStale", true)
+        );
+        assert_eq!(
+            apply_message(NativePatchApplyExecutionState::ReconciledWithWarning),
+            ("patchApplyWarning", "warning")
+        );
+        assert_eq!(
+            apply_message(NativePatchApplyExecutionState::OutcomeUncertain).1,
+            "error"
+        );
         assert_eq!(scope_key(NativePatchExportScope::Range), "patchScopeRange");
-        assert_eq!(format_key(NativePatchFormat::FormatPatch), "patchFormatEmail");
+        assert_eq!(
+            format_key(NativePatchFormat::FormatPatch),
+            "patchFormatEmail"
+        );
     }
 }

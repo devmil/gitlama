@@ -184,9 +184,7 @@ impl<T> Future for JoinHandle<T> {
     type Output = Option<T>;
 
     fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<T>> {
-        Pin::new(&mut self.receiver)
-            .poll(context)
-            .map(Result::ok)
+        Pin::new(&mut self.receiver).poll(context).map(Result::ok)
     }
 }
 
@@ -200,7 +198,9 @@ pub fn spawn<T: 'static>(future: impl Future<Output = T> + 'static) -> JoinHandl
     });
     CURRENT.with(|current| {
         let current = current.borrow();
-        let inner = current.as_ref().expect("no workbench runtime on this thread");
+        let inner = current
+            .as_ref()
+            .expect("no workbench runtime on this thread");
         let id = inner.next.get();
         inner.next.set(id + 1);
         inner.spawned.borrow_mut().push((id, task));
@@ -494,7 +494,9 @@ impl TimerHandle {
 
     /// Whether the timer is armed and has not fired.
     pub fn is_active(&self) -> bool {
-        self.canceled.as_ref().is_some_and(|canceled| !canceled.get())
+        self.canceled
+            .as_ref()
+            .is_some_and(|canceled| !canceled.get())
     }
 }
 
@@ -541,7 +543,9 @@ impl PeriodicHandle {
     }
 
     pub fn is_active(&self) -> bool {
-        self.canceled.as_ref().is_some_and(|canceled| !canceled.get())
+        self.canceled
+            .as_ref()
+            .is_some_and(|canceled| !canceled.get())
     }
 }
 
