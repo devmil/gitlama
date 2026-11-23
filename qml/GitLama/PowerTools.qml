@@ -314,7 +314,8 @@ Item {
                     objectName: "power-bisect-good"
                     width: parent.width
                     label: L10n.t("powerBisectGood")
-                    names: tools.panelState.names ?? []
+                    names: []
+                    choices: Store.history ? Store.history.referenceChoices() : []
                     text: tools.good
                     onEdited: tools.good = text
                 }
@@ -322,7 +323,8 @@ Item {
                     objectName: "power-bisect-bad"
                     width: parent.width
                     label: L10n.t("powerBisectBad")
-                    names: tools.panelState.names ?? []
+                    names: []
+                    choices: Store.history ? Store.history.referenceChoices() : []
                     text: tools.bad
                     onEdited: tools.bad = text
                 }

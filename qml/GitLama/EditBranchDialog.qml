@@ -8,71 +8,70 @@ MeridianDialog {
 
     property int promptId: -1
     property var payload: ({})
-    property var upstream: null
     readonly property var references: payload.references ?? ({})
+    readonly property string initialUpstream: payload.upstream ?? ""
     readonly property string nameText: nameField.text.trim()
-    readonly property bool exists: nameText !== payload.branch
-        && (references.branches ?? []).some(branch => branch.name === nameText)
-    readonly property var upstreams: [null].concat([].concat(...(references.remotes ?? [])
-        .map(remote => remote.branches.filter(branch => branch !== "HEAD").map(branch => remote.name + "/" + branch))))
+    readonly property string upstreamText: upstreamField.text.trim()
+    readonly property var otherBranches: (references.branches ?? []).map(branch => branch.name)
+        .filter(name => name !== payload.branch)
+    readonly property var remoteBranches: [].concat(...(references.remotes ?? [])
+        .map(remote => remote.branches.filter(branch => branch !== "HEAD").map(branch => remote.name + "/" + branch))).sort()
+    readonly property bool exists: otherBranches.indexOf(nameText) >= 0
+    // A gone upstream may stay as it is; a new one must be fetched.
+    readonly property bool upstreamValid: upstreamText.length === 0 || upstreamText === initialUpstream
+        || remoteBranches.indexOf(upstreamText) >= 0
+    readonly property bool changed: nameText !== payload.branch || upstreamText !== initialUpstream
+    readonly property bool canSave: nameText.length > 0 && !exists && upstreamValid && changed
     signal answered(int id, var edit)
 
     function ask(id, value) {
         promptId = id
         payload = value
         nameField.text = value.branch ?? ""
-        upstream = value.upstream ?? null
+        upstreamField.text = value.upstream ?? ""
         open()
-        nameField.forceActiveFocus()
+        nameField.searchField.forceActiveFocus()
     }
     function submit() {
-        if (nameText.length === 0 || exists)
+        if (!canSave)
             return
         close()
-        answered(promptId, { name: nameText, upstream: upstream })
+        answered(promptId, { name: nameText, upstream: upstreamText.length > 0 ? upstreamText : null })
         promptId = -1
     }
 
     widthClass: MeridianDialog.Form
     title: Commands.dialogTitle(L10n.t("commandEditBranch"))
     description: L10n.t("editBranchDescription")
-    submitDisabled: nameText.length === 0 || exists
+    submitDisabled: !canSave
     onSubmitted: submit()
     onRejected: { answered(promptId, null); promptId = -1 }
 
     Column {
         width: parent ? parent.width : 0
         spacing: Theme.space.s6
-        Column {
+        ReferenceField {
+            id: nameField
+            objectName: "edit-branch-name"
             width: parent.width
-            spacing: Theme.space.s2
-            MeridianText { role: MeridianText.Label; text: L10n.t("editBranchName") }
-            MeridianTextField { id: nameField; width: parent.width; error: dialog.exists; Accessible.name: L10n.t("editBranchName") }
-            MeridianText {
-                visible: dialog.exists
-                role: MeridianText.Caption
-                color: Theme.colors.danger
-                text: L10n.t("editBranchNameExists")
-            }
+            label: L10n.t("editBranchName")
+            names: dialog.otherBranches
+            normalize: true
+            suggestSegments: true
+            helperText: dialog.exists ? L10n.t("editBranchNameExists") : ""
         }
-        Column {
+        ReferenceField {
+            id: upstreamField
+            objectName: "edit-branch-upstream"
             width: parent.width
-            spacing: Theme.space.s2
-            MeridianText { role: MeridianText.Label; text: L10n.t("editBranchUpstream") }
-            MeridianSelect {
-                fixedWidth: parent.width
-                label: L10n.t("editBranchUpstream")
-                values: dialog.upstream !== null && dialog.upstreams.indexOf(dialog.upstream) < 0
-                    ? dialog.upstreams.concat([dialog.upstream]) : dialog.upstreams
-                value: dialog.upstream
-                valueLabel: value => value === null ? L10n.t("editBranchNoUpstream")
-                    : value
-                onActivated: value => dialog.upstream = value
-            }
+            label: L10n.t("editBranchUpstream")
+            selectionIcon: "cloud"
+            names: dialog.remoteBranches
+            helperText: dialog.upstreamValid ? L10n.t("editBranchNoUpstream") : L10n.t("editBranchUpstreamUnknown")
         }
     }
     actions: [
         MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: dialog.reject() },
-        MeridianButton { text: L10n.t("editBranchSave"); variant: MeridianButton.Primary; enabled: dialog.nameText.length > 0 && !dialog.exists; onClicked: dialog.submit() }
+        MeridianButton { text: L10n.t("editBranchSave"); variant: MeridianButton.Primary; enabled: dialog.canSave; onClicked: dialog.submit() }
     ]
 }

@@ -91,6 +91,55 @@ pub fn bisect_action(name: &str) -> Option<NativeBisectAction> {
 
 /// The references a bisect field offers, each with the commit it names:
 /// HEAD, local branches, remote-tracking branches, then tags.
+/// Every reference a reference field offers (the Dart gitReferenceChoices):
+/// HEAD, branches, remote branches, tags and the loaded commits, each as
+/// {value, description, icon}.
+pub fn reference_choice_values(
+    snapshot: &gitlama_contract::dto::NativeRepositorySnapshot,
+    commits: &[gitlama_contract::dto::NativeHistoryRow],
+) -> Value {
+    use gitlama_contract::dto::NativeHistoryNodeShape;
+    let text = |bytes: &[u8]| String::from_utf8_lossy(bytes).into_owned();
+    let refs = &snapshot.refs;
+    let mut choices = vec![json!({"value": "HEAD", "description": "", "icon": "locate"})];
+    choices.extend(refs.branches.iter().map(|branch| {
+        json!({"value": text(&branch.name), "description": branch.target, "icon": "branch"})
+    }));
+    for remote in &refs.remotes {
+        let prefix = text(&remote.name);
+        choices.extend(remote.branches.iter().map(|branch| {
+            json!({
+                "value": format!("{prefix}/{}", text(&branch.name)),
+                "description": branch.target,
+                "icon": "cloud",
+            })
+        }));
+    }
+    choices.extend(
+        refs.tags
+            .iter()
+            .map(|tag| json!({"value": text(&tag.name), "description": tag.target, "icon": "tag"})),
+    );
+    choices.extend(
+        commits
+            .iter()
+            .filter(|row| {
+                !matches!(
+                    row.shape,
+                    NativeHistoryNodeShape::Wip | NativeHistoryNodeShape::WipConflict
+                )
+            })
+            .map(|row| {
+                json!({
+                    "value": row.object_id,
+                    "description": text(&row.subject),
+                    "icon": "git-commit-horizontal",
+                })
+            }),
+    );
+    Value::Array(choices)
+}
+
 pub fn reference_choices(
     snapshot: &gitlama_contract::dto::NativeRepositorySnapshot,
 ) -> Vec<(String, String)> {

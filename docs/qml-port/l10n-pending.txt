@@ -2,9 +2,7 @@
 # scripts/check_l10n.py accepts them as unused while listed and fails when a
 # listed key gets used. The port is complete when this file is empty.
 clonePasswordOrToken
-commandRenameBranch
 diagnosticsShare
-editBranchUpstreamUnknown
 extensionWorktreeChooseFolderFailure
 historyWindowFailed
 hostingBranchChecks
@@ -46,12 +44,6 @@ inspectorShowInGraph
 inspectorShowInMainWindow
 inspectorShowing
 patchCurrentRepository
-refConfirmResetHard
-refConfirmResetMixed
-refConfirmResetSoft
-refMutationRemoteUrlHidden
-referencePickerEmpty
-referencePickerTitle
 remoteAccess
 remoteAccessChanges
 remoteAccessChangesDetail

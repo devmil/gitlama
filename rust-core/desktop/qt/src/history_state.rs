@@ -135,6 +135,8 @@ mod history_state {
         pub(crate) state: Value,
         /// The snapshot History shows, for the commit menu's references.
         pub(crate) snapshot: Option<std::rc::Rc<gitlama_contract::dto::NativeRepositorySnapshot>>,
+        /// The loaded History page, for the commits reference fields offer.
+        pub(crate) page: Option<std::rc::Rc<gitlama_contract::dto::NativeHistoryPage>>,
     }
 
     impl HistoryState {
@@ -260,6 +262,19 @@ mod history_state {
             self.snapshot
                 .as_deref()
                 .map_or(Value::Array(Vec::new()), branch_filter_choices)
+        }
+
+        /// What reference fields offer (the Dart gitReferenceChoices):
+        /// [{value, description, icon}] of HEAD, branches, remote branches,
+        /// tags and the loaded commits.
+        #[qslot]
+        fn reference_choices(&self) -> Value {
+            let commits = self.page.as_ref().map_or(&[][..], |page| &page.rows[..]);
+            self.snapshot
+                .as_deref()
+                .map_or(Value::Array(Vec::new()), |snapshot| {
+                    gitlama_workbench::power_tools::reference_choice_values(snapshot, commits)
+                })
         }
 
         /// The new commits of the checked-out branch's upstream:

@@ -330,7 +330,8 @@ MeridianPanel {
                 width: parent.width
                 label: L10n.t("extensionWorktreeReference")
                 helperText: L10n.t("referencePickerHistoryHint")
-                names: panel.panelState.names ?? []
+                names: []
+                choices: Store.history ? Store.history.referenceChoices() : []
             }
             // The folder button belongs to the path above it and starts at
             // the fields' leading edge.

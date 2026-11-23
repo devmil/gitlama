@@ -854,6 +854,8 @@ Item {
             width: parent ? parent.width : 0
             label: L10n.t("refMutationName")
             names: snapshotBranch.branches
+            normalize: true
+            suggestSegments: true
         }
         actions: [
             MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotBranch.reject() },

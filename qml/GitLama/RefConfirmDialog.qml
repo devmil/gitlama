@@ -19,7 +19,10 @@ MeridianDialog {
             checkoutBranch: "checkoutBranch", checkoutCommit: "checkoutCommit", setUpstream: "editBranch",
             unsetUpstream: "editBranch", createTag: "createTag", deleteTag: "deleteTag", addRemote: "addRemote",
             editRemote: "editRemote", renameRemote: "renameRemote", removeRemote: "removeRemote", reset: "resetBranch" })[kind]
-        return Commands.dialogTitle(command === "editBranch" ? L10n.t("commandEditBranch") : Commands.label(command))
+        // The confirmation titles name the mutation (the Dart
+        // refMutationConfirmationTitle), not always the registry command.
+        return Commands.dialogTitle(command === "editBranch" ? L10n.t("commandEditBranch")
+            : command === "renameBranch" ? L10n.t("commandRenameBranch") : Commands.label(command))
     }
     function message(request) {
         const name = request.name ?? ""
@@ -41,6 +44,8 @@ MeridianDialog {
         case "editRemote": return L10n.tn("refConfirmEditRemote", { name: name })
         case "renameRemote": return L10n.tn("refConfirmRenameRemote", { name: name, newName: request.secondName ?? "" })
         case "removeRemote": return L10n.tn("refConfirmRemoveRemote", { name: name })
+        case "reset": return request.resetMode === "hard" ? L10n.t("refConfirmResetHard")
+            : request.resetMode === "mixed" ? L10n.t("refConfirmResetMixed") : L10n.t("refConfirmResetSoft")
         default: return ""
         }
     }

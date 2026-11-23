@@ -599,6 +599,7 @@ impl Driver {
         let state = crate::history_state::project(history);
         {
             let mut pane = self.history.borrow_mut();
+            pane.page = history.current().page;
             if pane.state != state {
                 pane.state = state;
                 pane.state_changed();

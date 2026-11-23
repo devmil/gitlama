@@ -52,6 +52,13 @@ MeridianDialog {
     readonly property string titleText: Commands.dialogTitle(Commands.label(commandId))
     signal answered(int id, var request)
 
+    property bool currentUrlHidden: false
+    /// The references and loaded commits the target offers.
+    property var choices: []
+    /// Branch names without their remote, for new names (the Dart
+    /// gitBranchNameSuggestions).
+    readonly property var branchNameSuggestions: (references.branches ?? []).map(branch => branch.name)
+        .concat([].concat(...(references.remotes ?? []).map(remote => remote.branches)))
     function ask(id, value) {
         promptId = id
         payload = value
@@ -60,8 +67,11 @@ MeridianDialog {
         secondField.text = previous ? (previous.secondName ?? "") : ""
         targetField.text = previous ? (previous.target ?? "") : (value.initialTarget ?? "")
         const remote = (value.references.remotes ?? []).find(item => item.name === value.initialName)
-        urlField.text = previous ? (previous.url ?? "") : (remote && value.kind === "editRemote" ? remote.url : "")
+        // A URL with credentials shows redacted: it is never offered for editing.
+        currentUrlHidden = !!remote && value.kind === "editRemote" && String(remote.url ?? "").indexOf("[REDACTED]") >= 0
+        urlField.text = previous ? (previous.url ?? "") : (remote && value.kind === "editRemote" && !currentUrlHidden ? remote.url : "")
         messageField.text = previous ? (previous.message ?? "") : ""
+        choices = Store.history ? Store.history.referenceChoices() : []
         checkout = previous ? previous.checkout === true : true
         force = previous ? previous.force === true : false
         deleteUpstream = false
@@ -112,10 +122,14 @@ MeridianDialog {
             label: L10n.t("refMutationName")
             selectionIcon: dialog.remoteKind || dialog.needsUrl || dialog.kind === "removeRemote" ? "cloud"
                 : dialog.kind === "deleteTag" || dialog.kind === "createTag" ? "tag" : "branch"
-            names: dialog.kind === "createBranch" || dialog.kind === "createTag" ? []
+            names: dialog.kind === "createBranch" ? dialog.branchNameSuggestions
+                : dialog.kind === "createTag" ? []
                 : dialog.remoteKind || dialog.kind === "removeRemote" ? dialog.remoteNames
                 : dialog.kind === "deleteTag" ? (dialog.references.tags ?? []).map(tag => tag.name)
                 : (dialog.references.branches ?? []).map(branch => branch.name)
+            normalize: dialog.kind === "createBranch" || dialog.kind === "createTag"
+            suggestSegments: dialog.kind === "createBranch"
+            suggestions: (dialog.remoteKind || !dialog.needsUrl) && dialog.kind !== "createTag"
             enabled: !dialog.fixedName
         }
         ReferenceField {
@@ -123,7 +137,9 @@ MeridianDialog {
             visible: dialog.needsSecondName
             width: parent.width
             label: L10n.t("refMutationNewName")
-            names: []
+            names: dialog.kind === "renameRemote" ? [] : dialog.branchNameSuggestions
+            normalize: true
+            suggestSegments: dialog.kind === "renameBranch"
         }
         Column {
             visible: dialog.needsUrl
@@ -131,15 +147,24 @@ MeridianDialog {
             spacing: Theme.space.s2
             MeridianText { role: MeridianText.Label; text: L10n.t("refMutationRemoteUrl") }
             MeridianTextField { id: urlField; width: parent.width; Accessible.name: L10n.t("refMutationRemoteUrl") }
+            MeridianText {
+                visible: dialog.currentUrlHidden
+                width: parent.width
+                role: MeridianText.Caption
+                color: Theme.colors.inkMuted
+                wrapMode: Text.Wrap
+                text: L10n.t("refMutationRemoteUrlHidden")
+            }
         }
         ReferenceField {
             id: targetField
             visible: dialog.needsTarget
             width: parent.width
             label: dialog.kind === "createBranch" ? L10n.t("refMutationStartingPoint") : L10n.t("extensionWorktreeReference")
-            names: (dialog.references.branches ?? []).map(branch => branch.name)
+            names: ["HEAD"].concat((dialog.references.branches ?? []).map(branch => branch.name))
                 .concat([].concat(...(dialog.references.remotes ?? []).map(remote => remote.branches.map(branch => remote.name + "/" + branch))))
                 .concat((dialog.references.tags ?? []).map(tag => tag.name))
+            choices: dialog.choices
             helperText: L10n.t("referencePickerHistoryHint")
         }
         MeridianCheckbox {
