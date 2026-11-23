@@ -247,6 +247,16 @@ pub fn basename(identity: &NativePathIdentity) -> String {
 }
 
 /// A native path as text for display; invalid encodings are replaced.
+/// The identity of a path on this computer, as the platform's file dialogs
+/// name it.
+pub fn local_path(path: &str) -> NativePathIdentity {
+    if cfg!(windows) {
+        NativePathIdentity { platform: gitlama_contract::dto::NativePathPlatform::Windows, units: path.encode_utf16().collect(), remote: None }
+    } else {
+        NativePathIdentity { platform: gitlama_contract::dto::NativePathPlatform::Unix, units: path.bytes().map(u16::from).collect(), remote: None }
+    }
+}
+
 pub fn display_path(identity: &NativePathIdentity) -> String {
     use gitlama_contract::domain::path_identity::NativePathPlatform;
     match identity.platform {

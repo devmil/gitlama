@@ -5,6 +5,7 @@ use crate::plumbing::Commands;
 use gitlama_workbench::rt;
 use qtbridge::qobject;
 use serde_json::Value;
+use std::rc::Rc;
 
 #[qobject(ConvertToCamelCase)]
 mod workspace_state {
@@ -20,6 +21,10 @@ mod workspace_state {
         pub(crate) entry: Value,
         pub(crate) recents: Value,
         pub(crate) active: Value,
+        /// The repository mark being edited: {tabId, name, icon, color,
+        /// image, imageUrl, imageFailed}, or null.
+        pub(crate) appearance_edit: Value,
+        pub(crate) appearance_image: Option<gitlama_contract::dto::NativePathIdentity>,
     }
 
     impl Default for WorkspaceState {
@@ -30,6 +35,8 @@ mod workspace_state {
                 tabs: Value::Array(Vec::new()),
                 active_tab_id: -1,
                 groups: Value::Array(Vec::new()),
+                appearance_edit: Value::Null,
+                appearance_image: None,
                 entry: Value::Null,
                 recents: Value::Array(Vec::new()),
                 active: Value::Null,
@@ -44,6 +51,100 @@ mod workspace_state {
         qproperty!("entry", Member = entry, Notify = entry_changed);
         qproperty!("recents", Member = recents, Notify = recents_changed);
         qproperty!("active", Member = active, Notify = active_changed);
+        qproperty!("appearanceEdit", Member = appearance_edit, Notify = appearance_edit_changed);
+
+        #[qsignal]
+        pub fn appearance_edit_changed(&mut self);
+        /// The mark was saved (`ok`) or could not be.
+        #[qsignal]
+        pub fn appearance_saved(&mut self, ok: bool);
+
+        /// Starts editing the mark of tab `tab_id`'s repository.
+        #[qslot]
+        fn edit_tab_appearance(&self, tab_id: i64) {
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(tab) = services.workspace.tab(tab_id as u64) else { return };
+                let identity = tab.canonical_identity().cloned();
+                let appearance = services.appearances.appearance_for(identity.as_ref());
+                let mut state = driver.workspace.borrow_mut();
+                state.appearance_image = appearance.as_ref().and_then(|appearance| appearance.image.clone());
+                state.appearance_edit = serde_json::json!({
+                    "tabId": tab_id,
+                    "name": tab.label,
+                    "icon": appearance.as_ref().and_then(|appearance| appearance.icon.clone()),
+                    "color": appearance.as_ref().and_then(|appearance| appearance.color.clone()),
+                });
+                drop(state);
+                driver.project_appearance_edit();
+            });
+        }
+
+        /// Uses the image file at `path` (empty removes the image).
+        #[qslot]
+        fn set_appearance_image(&self, path: String) {
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let image = (!path.is_empty()).then(|| gitlama_workbench::session::local_path(&path));
+                if let Some(image) = &image {
+                    // A file chosen again is read again.
+                    services.appearances.forget_image(image);
+                }
+                driver.workspace.borrow_mut().appearance_image = image;
+                driver.project_appearance_edit();
+            });
+        }
+
+        /// Saves the edited mark: `icon` and `color` keys (empty for none).
+        #[qslot]
+        fn save_tab_appearance(&self, icon: String, color: String) {
+            let Some(commands) = &self.commands else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let (tab_id, image) = {
+                    let state = driver.workspace.borrow();
+                    (state.appearance_edit["tabId"].as_i64(), state.appearance_image.clone())
+                };
+                let Some(identity) = tab_id
+                    .and_then(|tab| services.workspace.tab(tab as u64))
+                    .and_then(|tab| tab.canonical_identity().cloned())
+                else {
+                    return;
+                };
+                let mut appearance = services.appearances.appearance_for(Some(&identity)).unwrap_or(
+                    gitlama_contract::storage::NativeRepositoryAppearance {
+                        identity: identity.clone(),
+                        icon: None,
+                        color: None,
+                        image: None,
+                        name: None,
+                    },
+                );
+                appearance.icon = (!icon.is_empty()).then_some(icon);
+                appearance.color = (!color.is_empty()).then_some(color);
+                appearance.image = image;
+                let appearances = Rc::clone(&services.appearances);
+                let shared = Rc::clone(&driver.workspace);
+                rt::spawn_detached(async move {
+                    let ok = appearances.save(appearance).await.is_ok();
+                    shared.borrow_mut().appearance_saved(ok);
+                });
+            });
+        }
+
+        /// Ends the mark editor.
+        #[qslot]
+        fn end_tab_appearance(&self) {
+            let Some(commands) = &self.commands else { return };
+            commands.post(|driver| {
+                let mut state = driver.workspace.borrow_mut();
+                state.appearance_edit = Value::Null;
+                state.appearance_image = None;
+                state.appearance_edit_changed();
+            });
+        }
 
         #[qsignal]
         pub fn tabs_changed(&mut self);

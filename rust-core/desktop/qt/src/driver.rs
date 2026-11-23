@@ -286,8 +286,31 @@ impl Driver {
         }
     }
 
+    /// The mark editor's image: its path and, once read, its preview.
+    pub(crate) fn project_appearance_edit(&self) {
+        let Some(services) = self.app.services() else { return };
+        let mut state = self.workspace.borrow_mut();
+        if state.appearance_edit.is_null() {
+            return;
+        }
+        let image = state.appearance_image.clone();
+        let url = image.as_ref().and_then(|path| services.appearances.image_at(path));
+        let failed = image.as_ref().is_some_and(|path| services.appearances.image_failed(path));
+        let mut next = state.appearance_edit.clone();
+        next["image"] = image.as_ref().map_or(Value::Null, |path| Value::from(gitlama_workbench::session::display_path(path)));
+        next["imageUrl"] = url.map_or(Value::Null, |url| Value::from(url.as_ref()));
+        next["imageFailed"] = Value::from(failed);
+        if next != state.appearance_edit {
+            state.appearance_edit = next;
+            state.appearance_edit_changed();
+        }
+    }
+
     fn project_workspace(&self, changed: Topics) {
         let Some(services) = self.app.services() else { return };
+        if changed.intersects(Topics::WORKSPACE) {
+            self.project_appearance_edit();
+        }
         if changed.intersects(Topics::SETTINGS) {
             let recents = services
                 .settings

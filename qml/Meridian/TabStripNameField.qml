@@ -30,11 +30,14 @@ MeridianTextField {
         done(name)
     }
 
-    Component.onCompleted: {
+    // Focus moves after the loader that created the field has settled, and
+    // leaving the field finishes after the focus change, so neither runs
+    // inside the strip's own bindings.
+    Component.onCompleted: Qt.callLater(() => {
         forceActiveFocus()
         selectAll()
-    }
+    })
     onAccepted: finish(text)
-    onActiveFocusChanged: if (!activeFocus) finish(text)
+    onActiveFocusChanged: if (!activeFocus) Qt.callLater(() => { if (!activeFocus) finish(text) })
     Keys.onEscapePressed: finish(null)
 }

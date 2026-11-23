@@ -159,8 +159,22 @@ Item {
     /// Opens the local folder `path` itself in the file manager.
     function openFolder(path) { Store.workflows.openFolder(path) }
     function deleteWorktree(index, name) { Store.workflows.deleteWorktree(index) }
-    function showRepositoryIconDialog(tab) {}
-    function showTabGroupDialog(group, labels) {}
+    function findWell(item) {
+        if (!item)
+            return null
+        if (item.objectName === "meridian-color-custom")
+            return item
+        for (const child of item.children) {
+            const found = findWell(child)
+            if (found)
+                return found
+        }
+        return null
+    }
+    function showRepositoryIconDialog(tab) { repositoryIconDialog.show(tab) }
+    function showTabGroupDialog(group, labels) { tabGroupDialog.show(group, labels) }
+    RepositoryIconDialog { id: repositoryIconDialog }
+    TabGroupDialog { id: tabGroupDialog }
 
     /// Copies `text` and confirms it with `message` in the status bar.
     function copyText(text, message) {
@@ -696,6 +710,30 @@ Item {
                 lineSelectionDialog.close()
             } else if (name === "patchSubmit")
                 patchDialog.submit()
+            else if (name === "iconDialog")
+                showRepositoryIconDialog({ id: Store.workspace.activeTabId })
+            else if (name === "iconPick") {
+                // iconPick:<icon>=<series index>
+                const parts = argument.split("=")
+                repositoryIconDialog.icon = parts[0]
+                repositoryIconDialog.color = { series: Number(parts[1]) }
+            } else if (name === "iconSave")
+                repositoryIconDialog.save()
+            else if (name === "createGroup")
+                Store.workspace.createTabGroup(Store.workspace.activeTabId)
+            else if (name === "groupDialog") {
+                const group = Store.workspace.groups[0]
+                if (group)
+                    showTabGroupDialog(group, Store.workspace.tabs.filter(tab => tab.groupId === group.id).map(tab => tab.label))
+            } else if (name === "colorWell") {
+                // Opens the custom colour well of the open dialog's colour row.
+                const dialogs = [repositoryIconDialog, tabGroupDialog]
+                for (const d of dialogs)
+                    if (d.opened) {
+                        const well = findWell(d.contentItem)
+                        if (well) well.clicked()
+                    }
+            }
             else if (name === "about")
                 showAbout()
             else if (name === "submitIgnore")

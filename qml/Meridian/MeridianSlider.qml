@@ -9,6 +9,9 @@ T.Slider {
     id: control
 
     property string label
+    /// Colours along the track (a colour channel); the track then shows
+    /// them instead of the `accent` fill.
+    property var trackColors: []
     property var valueLabel: function (v) { return Math.round((v - from) / Math.max(1e-9, to - from) * 100) + "%" }
     readonly property real thumbSize: Theme.touch ? Metrics.sliderThumbTouch : Metrics.sliderThumb
     readonly property bool emphasis: enabled && (hovered || pressed)
@@ -41,8 +44,41 @@ T.Slider {
             anchors.fill: parent
             radius: height / 2
             color: Theme.colors.lineStrong
+            visible: control.trackColors.length === 0
+        }
+        Canvas {
+            id: trackCanvas
+            visible: control.trackColors.length > 0
+            anchors.fill: parent
+            opacity: control.enabled ? 1 : 0.4
+            onPaint: {
+                const context = getContext("2d")
+                context.reset()
+                const colors = control.trackColors
+                if (colors.length === 0)
+                    return
+                const gradient = context.createLinearGradient(0, 0, width, 0)
+                for (let i = 0; i < colors.length; ++i)
+                    gradient.addColorStop(i / Math.max(1, colors.length - 1), String(colors[i]))
+                const r = height / 2
+                context.beginPath()
+                context.moveTo(r, 0)
+                context.lineTo(width - r, 0)
+                context.arc(width - r, r, r, -Math.PI / 2, Math.PI / 2, false)
+                context.lineTo(r, height)
+                context.arc(r, r, r, Math.PI / 2, 3 * Math.PI / 2, false)
+                context.closePath()
+                context.fillStyle = gradient
+                context.fill()
+            }
+            onWidthChanged: requestPaint()
+            Connections {
+                target: control
+                function onTrackColorsChanged() { trackCanvas.requestPaint() }
+            }
         }
         Rectangle {
+            visible: control.trackColors.length === 0
             width: parent.width * control.visualPosition
             height: parent.height
             radius: height / 2

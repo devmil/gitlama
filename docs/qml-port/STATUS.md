@@ -92,13 +92,15 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   minimap, Latin-1 decoding and Show more lines (transient wider context) in the diff view.
 - Find in diff (Meridian QML find bar, added to meridian_ui): whole-diff search in Rust, match
   position, case toggle, stepping with wrap-around, matches marked in rows and minimap.
+- About, repository icon dialog (icon, colour with the Meridian colour picker, image file) and
+  tab group dialog (preview, name, colour, icon); Meridian QML colour swatch, picker, well and
+  choice row added to meridian_ui.
 - Image diffs (committed and working): both sides decoded by the core, side by side, swipe and
   onion skin over a checkerboard with sizes.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
-- About (brand_about), tab group dialog, repository icon dialog (stubs in `Actions.qml`),
-  shortcut reference, commit archive (save snapshot as ZIP), repository details,
+- Shortcut reference, commit archive (save snapshot as ZIP), repository details,
   named snapshots, power tools, extensions panel (worktree create, LFS, submodules),
   integrations panel and settings page, status acceleration settings.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,

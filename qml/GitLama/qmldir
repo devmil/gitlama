@@ -42,8 +42,10 @@ WorkspaceBody 1.0 WorkspaceBody.qml
 WorkspaceStatusBar 1.0 WorkspaceStatusBar.qml
 singleton AppearanceColors 1.0 AppearanceColors.qml
 RepositoryIcon 1.0 RepositoryIcon.qml
+RepositoryIconDialog 1.0 RepositoryIconDialog.qml
 GroupContextMenu 1.0 GroupContextMenu.qml
 TabContextMenu 1.0 TabContextMenu.qml
+TabGroupDialog 1.0 TabGroupDialog.qml
 TabMark 1.0 TabMark.qml
 WorktreeOpenMenu 1.0 WorktreeOpenMenu.qml
 WorktreeRow 1.0 WorktreeRow.qml
