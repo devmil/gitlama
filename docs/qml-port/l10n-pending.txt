@@ -19,11 +19,6 @@ editBranchUpstreamUnknown
 extensionWorktreeChooseFolderFailure
 gitFolderCollapsed
 gitFolderExpanded
-historyHeadReference
-historyNoCommitsYet
-historyOpenChanges
-historyRetryLoad
-historyRowSemantics
 historyWindowFailed
 hostingBranchChecks
 hostingReferenceEmpty

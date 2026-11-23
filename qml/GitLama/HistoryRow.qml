@@ -45,6 +45,21 @@ Item {
         graphClipRight)
     readonly property real contentAvailable: Math.max(0, Math.min(width, metadataLeft - contentStart - 12))
     readonly property bool wip: graph && (graph.shape === 5 || graph.shape === 6)
+
+    // What a screen reader says (the Dart historyRowSemantics with the
+    // HEAD label of the current commit).
+    Accessible.role: Accessible.ListItem
+    Accessible.selected: selected
+    Accessible.name: loading ? "" : [
+        L10n.tn("historyRowSemantics", {
+            subject: subject,
+            author: author,
+            objectId: wip ? "" : objectId,
+            date: authorTime > 0 ? Qt.formatDateTime(new Date(authorTime * 1000), Qt.ISODate) : "",
+            lane: (graph ? graph.lane : 0) + 1,
+            references: (chips ?? []).map(chip => chip.label).join(", "),
+            overflow: overflow ? overflow.count : 0,
+        })].concat(current ? [L10n.t("historyHeadReference")] : []).join(", ")
     readonly property real textOpacity: !lightingActive || lit ? 1 : GitLamaLayout.opacityUnlitText
     readonly property bool shownSelected: selected || selectedHere
     readonly property var laneColors: [Theme.colors.series1, Theme.colors.series2, Theme.colors.series3, Theme.colors.series4,

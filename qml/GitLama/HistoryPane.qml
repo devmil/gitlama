@@ -509,13 +509,32 @@ Item {
             compact: true
             iconName: "circle-alert"
             title: L10n.t("workspaceUnavailableRepository")
+            MeridianButton {
+                text: L10n.t("historyRetryLoad")
+                iconName: "rotate-ccw"
+                controlSize: MeridianButton.Small
+                onClicked: Store.history.reload()
+            }
         }
+        // A repository without commits (no page), or a page that shows no
+        // rows (the Dart history pane).
         MeridianEmptyState {
             anchors.fill: parent
             visible: pane.paneState.phase !== "failed" && pane.paneState.phase !== "loading" && pane.paneState.empty === true
+                && pane.paneState.hasPage === true
             compact: true
             iconName: "history"
             title: L10n.t("workspaceEmptyHistory")
+        }
+        MeridianEmptyState {
+            anchors.fill: parent
+            visible: pane.paneState.phase !== "failed" && pane.paneState.phase !== "loading" && pane.paneState.hasPage !== true
+            headline: true
+            title: L10n.t("historyNoCommitsYet")
+            MeridianButton {
+                text: L10n.t("historyOpenChanges")
+                onClicked: Store.actions.runCommand("showChanges", ({}))
+            }
         }
 
         ListView {
