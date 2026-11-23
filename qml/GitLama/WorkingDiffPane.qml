@@ -23,6 +23,18 @@ Rectangle {
     readonly property bool busy: paneState.busy === true
 
     color: Theme.colors.pane
+    Component.onCompleted: Store.workingDiffPane = pane
+    Component.onDestruction: if (Store.workingDiffPane === pane) Store.workingDiffPane = null
+
+    readonly property bool diffFocused: diff.activeFocus || workingFind.searchField.activeFocus
+    /// Focuses the diff's find field (Find); false without a diff.
+    function focusFind() {
+        if (!content.visible)
+            return false
+        workingFind.searchField.forceActiveFocus()
+        workingFind.searchField.selectAll()
+        return true
+    }
 
     // Development screenshots: `diffRow:<index>` scrolls the diff to a row;
     // `stageHunk:<n>` stages (or unstages) the n-th hunk.
@@ -156,6 +168,7 @@ Rectangle {
                     onClicked: diff.nextHunk(true)
                 }
                 DiffFind {
+                    id: workingFind
                     anchors.verticalCenter: parent.verticalCenter
                     searcher: Store.changes
                     view: diff

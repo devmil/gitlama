@@ -93,6 +93,11 @@ Item {
         case "confirmRendererSave":
             rendererConfirm.ask(id, payload)
             return
+        case "confirmIndexLock":
+            indexLockConfirm.promptId = id
+            indexLockConfirm.sizeBytes = payload.sizeBytes ?? 0
+            indexLockConfirm.open()
+            return
         case "confirmBisect":
             bisectConfirm.promptId = id
             bisectConfirm.action = payload.action ?? "start"
@@ -177,6 +182,20 @@ Item {
         licenseDialog.open()
     }
     function showAbout() { aboutDialog.open() }
+    /// Find (the Dart _findInRepository): the focused diff's find field,
+    /// else the Changes diff's, else the history search.
+    function findInRepository() {
+        const working = Store.workingDiffPane
+        const commit = Store.inspectorView
+        for (const pane of [working && working.diffFocused ? working : null,
+                            commit && commit.diffFocused ? commit : null,
+                            Store.workspace && Store.workspace.active && Store.workspace.active.pane === "changes" ? working : null]) {
+            if (pane && pane.focusFind())
+                return
+        }
+        Store.sidebar.selectPane("history")
+        Qt.callLater(() => { if (Store.historyPane) Store.historyPane.focusSearch() })
+    }
     ShortcutReferenceDialog { id: shortcutReference }
     // Where a zip snapshot goes, then its progress (the Dart saveCommitArchive).
     FileDialog {
@@ -396,6 +415,12 @@ Item {
             Store.workflows.deleteRemoteBranch(options.initialReference ?? ""); return
         case "pushTag":
             Store.workflows.transfer("pushTag", { initialBranch: options.initialName ?? null }); return
+        case "find": findInRepository(); return
+        case "reportIssue":
+            if (!Qt.openUrlExternally("https://github.com/devmil/gitlama/issues"))
+                Notifications.show(L10n.t("reportIssueOpenFailed"), true)
+            return
+        case "inspectIndexLock": Store.workflows.inspectIndexLock(); return
         case "showChanges": Store.sidebar.selectPane("changes"); return
         case "showHistory": Store.sidebar.selectPane("history"); return
         case "nextPane": Store.sidebar.nextPane(); return
@@ -920,6 +945,20 @@ Item {
         cancelLabel: L10n.t("avatarGravatarNotNow")
         onConfirmed: Store.workflows.setGravatar(true)
     }
+    // Removing Git's index lock (the Dart confirmIndexLockRemoval).
+    MeridianConfirm {
+        id: indexLockConfirm
+        property int promptId: -1
+        property real sizeBytes: 0
+        title: L10n.t("indexLockConfirmationTitle")
+        description: L10n.tn("indexLockConfirmation", { size: Labels.byteSize(sizeBytes) })
+        confirmLabel: L10n.t("indexLockRemove")
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
+    }
+
     // One bisect step with its Git command (confirmBisect).
     MeridianConfirm {
         id: bisectConfirm

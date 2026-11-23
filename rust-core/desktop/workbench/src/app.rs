@@ -57,6 +57,7 @@ pub struct Services {
     pub power_tools: Rc<crate::power_tools::PowerTools>,
     pub tools: Rc<crate::tools::ToolsPage>,
     pub acceleration: Rc<crate::acceleration::Acceleration>,
+    pub locks: Rc<crate::locks::RepositoryLocks>,
     pub diff_renderers: Rc<crate::diff_renderer::DiffRenderers>,
     pub cli: Rc<crate::cli::CliForwarding>,
     pub updates: Rc<crate::updates::UpdateService>,
@@ -334,6 +335,12 @@ impl Services {
             Rc::clone(&workspace),
             notifier.clone(),
         );
+        let locks = crate::locks::RepositoryLocks::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+        );
         let tools = crate::tools::ToolsPage::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -362,6 +369,7 @@ impl Services {
             power_tools,
             tools,
             acceleration,
+            locks,
             diff_renderers,
             cli,
             updates,

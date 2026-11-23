@@ -61,8 +61,11 @@ def main() -> int:
             errors.append(f"{name}: unknown group {command['group']}")
         if command["remote"] not in REMOTE:
             errors.append(f"{name}: remote classification {command['remote']!r} is incomplete")
-        if command["available"] and f'"{name}"' not in qml:
-            errors.append(f"{name}: no QML handler names this command")
+        # A handler dispatches on the id (`case "id":` or `=== "id"`); a
+        # menu listing alone would fall through to the unknown-command path.
+        handled = re.search(rf'case\s+"{re.escape(name)}"\s*:|===\s*"{re.escape(name)}"', qml)
+        if command["available"] and not handled:
+            errors.append(f"{name}: no QML handler runs this command")
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

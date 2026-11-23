@@ -55,6 +55,7 @@ QtObject {
     property var changesSections: ({})
     /// The inspector view (development screenshots open its file menus).
     property var inspectorView: null
+    property var workingDiffPane: null
     /// Native window hooks (PlatformHooks).
     property var hooks: null
     /// The window's dialogs and workflows (Actions.qml).

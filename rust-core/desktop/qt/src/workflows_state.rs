@@ -5,7 +5,7 @@ use crate::plumbing::Commands;
 use gitlama_workbench::rt;
 use gitlama_workbench::transfers::{Draft, parse_kind};
 use qtbridge::qobject;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::rc::Rc;
 
 #[qobject(ConvertToCamelCase)]
@@ -229,6 +229,12 @@ mod workflows_state {
 
         #[qsignal]
         pub fn busy_changed(&mut self);
+        /// The answer of `inspect_locks`: see `RepositoryLocks::inspect`.
+        #[qsignal]
+        pub fn locks_inspected(&mut self, inspection: Value);
+        /// The answer of `remove_locks`: {removed} or {failure: l10n key}.
+        #[qsignal]
+        pub fn locks_removed(&mut self, outcome: Value);
         #[qsignal]
         pub fn file_browser_changed(&mut self);
 
@@ -532,6 +538,60 @@ mod workflows_state {
                 let rebases = Rc::clone(&services.rebases);
                 let root = (!root.is_empty()).then_some(root);
                 rt::spawn_detached(async move { rebases.restack(root).await });
+            });
+        }
+
+        /// Inspect index lock: removes a left behind index lock after a confirmation.
+        #[qslot]
+        fn inspect_index_lock(&self) {
+            self.with_services(|services| {
+                let locks = Rc::clone(&services.locks);
+                rt::spawn_detached(async move { locks.inspect_index_lock().await });
+            });
+        }
+
+        /// Lists the active repository's lock files (`locks_inspected`).
+        #[qslot]
+        fn inspect_locks(&self) {
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(|driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let locks = Rc::clone(&services.locks);
+                let shared = Rc::clone(&driver.workflows);
+                rt::spawn_detached(async move {
+                    let inspection = locks.inspect().await;
+                    shared.borrow_mut().locks_inspected(inspection);
+                });
+            });
+        }
+
+        /// Removes the listed locks (`locks_removed`).
+        #[qslot]
+        fn remove_locks(&self, tokens: Vec<String>) {
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let locks = Rc::clone(&services.locks);
+                let shared = Rc::clone(&driver.workflows);
+                let tokens: Vec<u64> = tokens
+                    .iter()
+                    .filter_map(|token| token.parse().ok())
+                    .collect();
+                rt::spawn_detached(async move {
+                    let outcome = match locks.remove(tokens).await {
+                        Ok(removed) => json!({"removed": removed}),
+                        Err(key) => json!({"failure": key}),
+                    };
+                    shared.borrow_mut().locks_removed(outcome);
+                });
             });
         }
 

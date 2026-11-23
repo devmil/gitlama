@@ -114,6 +114,15 @@ Rectangle {
         }
     }
     Component.onCompleted: Store.inspectorView = inspector
+    readonly property bool diffFocused: commitDiff.activeFocus || commitFind.searchField.activeFocus
+    /// Focuses the commit diff's find field (Find); false without one.
+    function focusFind() {
+        if (!commitFind.visible || !commitDiff.visible)
+            return false
+        commitFind.searchField.forceActiveFocus()
+        commitFind.searchField.selectAll()
+        return true
+    }
     /// Development screenshots: finds `query` in the shown diff.
     function find(query) {
         if (location !== null && location.lens === "contents") {
