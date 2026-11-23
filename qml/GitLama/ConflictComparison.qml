@@ -332,6 +332,9 @@ Item {
 
         delegate: Column {
             id: row
+            // A pooled row is hidden until it is reused (it could stay drawn at its old place).
+            ListView.onPooled: visible = false
+            ListView.onReused: visible = true
             required property int index
             required property string current
             required property string incoming

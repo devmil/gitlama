@@ -107,6 +107,8 @@ FocusScope {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         model: Store.sidebarRows
+        // Rows are reused; each choice hides its pooled rows itself (onPooled below): with the
+        // DelegateChooser, rows another repository's rows replaced stayed drawn on top of them.
         reuseItems: true
         cacheBuffer: 400
         keyNavigationEnabled: false
@@ -201,6 +203,8 @@ FocusScope {
                 roleValue: "section"
                 SidebarSectionRow {
                     required property var model
+                    ListView.onPooled: visible = false
+                    ListView.onReused: visible = true
                     width: list.width - list.leftMargin - list.rightMargin
                     row: model ?? ({})
                     hasRepository: sidebar.hasRepository
@@ -217,6 +221,8 @@ FocusScope {
                 roleValue: "banner"
                 Item {
                     required property var model
+                    ListView.onPooled: visible = false
+                    ListView.onReused: visible = true
                     width: list.width - list.leftMargin - list.rightMargin
                     implicitHeight: banner.implicitHeight + 2 * Theme.space.s3
                     MeridianBanner {
@@ -233,6 +239,8 @@ FocusScope {
                 roleValue: "ref"
                 SidebarRefRow {
                     required property var model
+                    ListView.onPooled: visible = false
+                    ListView.onReused: visible = true
                     width: list.width - list.leftMargin - list.rightMargin
                     row: model ?? ({})
                     onToggled: sidebar.setExpanded(row.key, !row.expanded)

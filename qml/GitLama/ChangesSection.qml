@@ -557,6 +557,8 @@ Item {
         // comes from the other list enters, or lands from its flight (NH-4) with a tint.
         delegate: Item {
             id: slot
+            // A pooled row is hidden until it is reused (it could stay drawn at its old place).
+            ListView.onPooled: visible = false
             required property int index
             required property var model
             readonly property string key: model.key ?? ""
@@ -584,7 +586,10 @@ Item {
                     leaving.start()
                 }
             }
-            ListView.onReused: arrival = 0
+            ListView.onReused: {
+                visible = true
+                arrival = 0
+            }
 
             // Pressed anywhere: a long press drags the row's files (the grip drags at once).
             PointHandler {

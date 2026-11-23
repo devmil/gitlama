@@ -692,6 +692,9 @@ Item {
 
             delegate: HistoryRow {
                 id: historyRow
+                // A pooled row is hidden until it is reused (it could stay drawn at its old place).
+                ListView.onPooled: visible = false
+                ListView.onReused: visible = true
                 width: list.width
                 height: Theme.size.row
                 metadataLeft: pane.metadataLeft
