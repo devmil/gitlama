@@ -6,6 +6,15 @@ import QtQuick
 QtObject {
     /// The AppState bridge: startup, appearance, platform, prompts, notices.
     property var app: null
+    /// Moments that play once per session (MeridianMotionMemory): key -> true.
+    property var motionSeen: ({})
+    /// Marks `key` seen; false when it was already.
+    function markMotionSeen(key) {
+        if (motionSeen[key] === true)
+            return false
+        motionSeen[key] = true
+        return true
+    }
     /// The WorkspaceState bridge: tabs, groups, entry actions, recents.
     property var workspace: null
     /// The SidebarState bridge: header state and sidebar slots.

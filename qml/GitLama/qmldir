@@ -75,6 +75,7 @@ StatusAccelerationSettings 1.0 StatusAccelerationSettings.qml
 ExtensionsPanel 1.0 ExtensionsPanel.qml
 RefChip 1.0 RefChip.qml
 AuthorAvatar 1.0 AuthorAvatar.qml
+HistoryMotion 1.0 HistoryMotion.qml
 HistoryRow 1.0 HistoryRow.qml
 HistoryPane 1.0 HistoryPane.qml
 StatusGlyph 1.0 StatusGlyph.qml

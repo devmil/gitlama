@@ -62,6 +62,7 @@ pub mod session;
 pub mod settings;
 pub mod sidebar;
 pub mod snapshots;
+pub mod sync;
 pub mod tools;
 pub mod transfers;
 pub mod updates;

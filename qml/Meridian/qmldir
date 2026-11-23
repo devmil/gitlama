@@ -4,6 +4,7 @@ singleton Metrics 1.0 Metrics.qml
 singleton IconData 1.0 IconData.qml
 singleton Theme 1.0 Theme.qml
 singleton Motion 1.0 Motion.qml
+singleton MeridianMotionMemory 1.0 MeridianMotionMemory.qml
 ColorScheme 1.0 ColorScheme.qml
 TypeScale 1.0 TypeScale.qml
 MeridianText 1.0 MeridianText.qml
@@ -94,3 +95,4 @@ MeridianSwap 1.0 MeridianSwap.qml
 internal TabStripPill TabStripPill.qml
 internal TabStripChip TabStripChip.qml
 internal TabStripNameField TabStripNameField.qml
+MeridianEntrance 1.0 MeridianEntrance.qml

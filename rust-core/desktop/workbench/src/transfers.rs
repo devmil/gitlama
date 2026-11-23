@@ -229,6 +229,10 @@ pub struct TransferService {
     notifier: Notifier,
     /// Transfers running now: kind and session, for the operation center.
     running: RefCell<Vec<(u64, NativeTransferKind, SessionIdentity)>>,
+    /// What the person's transfers changed (NH-2); background fetches never reach it.
+    pub sync: Rc<crate::sync::SyncTracker>,
+    /// The active tab before the transfer running now.
+    baseline: RefCell<Option<crate::sync::SyncBaseline>>,
 }
 
 impl TransferService {
@@ -237,6 +241,7 @@ impl TransferService {
         workspace: Rc<WorkspaceService>,
         prompts: Rc<Prompts>,
         notices: Rc<Notices>,
+        sync: Rc<crate::sync::SyncTracker>,
         notifier: Notifier,
     ) -> Rc<Self> {
         Rc::new(Self {
@@ -246,7 +251,16 @@ impl TransferService {
             notices,
             notifier,
             running: RefCell::new(Vec::new()),
+            sync,
+            baseline: RefCell::new(None),
         })
+    }
+
+    /// The transfer's effect is expected now: the tracker reports it once it shows.
+    fn settle(&self) {
+        if let Some(baseline) = self.baseline.borrow_mut().take() {
+            self.sync.expect(baseline);
+        }
     }
 
     /// The transfers running now.
@@ -283,6 +297,15 @@ impl TransferService {
 
     /// Runs `request` in the active tab; true when it succeeded.
     pub async fn execute(&self, request: NativeTransferRequest, notify_result: bool) -> bool {
+        *self.baseline.borrow_mut() = self.sync.capture();
+        let succeeded = self.execute_captured(request, notify_result).await;
+        if succeeded {
+            self.settle();
+        }
+        succeeded
+    }
+
+    async fn execute_captured(&self, request: NativeTransferRequest, notify_result: bool) -> bool {
         let (Some(tab), Some(session)) = (self.workspace.active_tab_id(), self.workspace.current())
         else {
             return false;
@@ -432,6 +455,14 @@ impl TransferService {
             };
         }
         if needs_stash_recovery(&result) {
+            // The pull may already be complete while the saved work waits.
+            if result
+                .stash
+                .as_ref()
+                .is_some_and(|stash| stash.pull_completed)
+            {
+                self.settle();
+            }
             if self.same_session(tab, identity) {
                 drop(
                     self.prompts

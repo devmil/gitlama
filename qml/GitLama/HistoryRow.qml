@@ -38,6 +38,8 @@ Item {
     property string dateFormat: "iso"
     property bool selectedHere: false
     property bool copied: false
+    /// The graph's motion (HistoryMotion), or null.
+    property var motion: null
 
     readonly property real graphClipRight: Math.max(0, metadataLeft - Theme.space.s5)
     readonly property real contentStart: Math.min(
@@ -59,7 +61,9 @@ Item {
             references: (chips ?? []).map(chip => chip.label).join(", "),
             overflow: overflow ? overflow.count : 0,
         })].concat(current ? [L10n.t("historyHeadReference")] : []).join(", ")
-    readonly property real textOpacity: !lightingActive || lit ? 1 : GitLamaLayout.opacityUnlitText
+    // Follows the lanes' lighting transition (NH-3).
+    readonly property real textOpacity: GitLamaLayout.opacityUnlitText
+        + (1 - GitLamaLayout.opacityUnlitText) * graphRow.rowLitness
     readonly property bool shownSelected: selected || selectedHere
     readonly property var laneColors: [Theme.colors.series1, Theme.colors.series2, Theme.colors.series3, Theme.colors.series4,
         Theme.colors.series5, Theme.colors.series6, Theme.colors.series7, Theme.colors.series8]
@@ -72,6 +76,8 @@ Item {
     // Rows outside a search fade (NM-32).
     opacity: queryActive && !searchMatch && !loading ? GitLamaLayout.opacityUnlit : 1
     Behavior on opacity { NumberAnimation { duration: entry.opacity < 1 ? GitLamaLayout.laneDim : Motion.hoverOut } }
+    // A row inserted above slides this one from its old place (NH-1, NM-36).
+    transform: Translate { y: entry.motion ? -entry.motion.insertionShift(entry.index) * entry.height : 0 }
 
     Rectangle {
         id: fill
@@ -128,8 +134,11 @@ Item {
     }
 
     GraphRow {
+        id: graphRow
         visible: !entry.loading
         anchors.fill: parent
+        opacity: entry.motion ? entry.motion.insertionOpacity(entry.index) : 1
+        rowKey: entry.objectId
         row: entry.graph
         clipRight: entry.graphClipRight
         laneColors: entry.laneColors
@@ -142,6 +151,38 @@ Item {
         lightingActive: entry.lightingActive
         lit: entry.lit
         incomingLit: entry.incomingLit
+        // Lanes drawing in (NH-2, NH-7) and a new commit's node landing (NH-1).
+        drawProgress: entry.motion ? entry.motion.drawProgress(entry.index) : 1
+        landing: entry.motion !== null && entry.motion.landingId === entry.objectId
+        ringClose: entry.motion ? entry.motion.ringClose : 0
+        ringOpacity: entry.motion ? entry.motion.ringOpacity : 0
+        core: entry.motion ? entry.motion.core : 0
+        halo: entry.motion ? entry.motion.halo : 0
+        // The lanes light or dim flowing down from the focused commit (NH-3).
+        onLightingTransition: {
+            lighting.stop()
+            const timing = entry.motion ? entry.motion.lightingTiming(entry.index) : null
+            if (timing === null) {
+                graphRow.litBlend = 1
+                return
+            }
+            graphRow.litBlend = 0
+            lightingDelay.duration = timing.delay
+            lightingFade.duration = timing.duration
+            lighting.restart()
+        }
+        SequentialAnimation {
+            id: lighting
+            PauseAnimation { id: lightingDelay }
+            NumberAnimation {
+                id: lightingFade
+                target: graphRow
+                property: "litBlend"
+                to: 1
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Motion.standard
+            }
+        }
     }
 
     // References and subject; text dims with the row's lanes (NH-3).

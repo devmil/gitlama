@@ -224,11 +224,17 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let sync = crate::sync::SyncTracker::new(
+            Rc::clone(&workspace),
+            Rc::clone(&history),
+            notifier.clone(),
+        );
         let transfers = crate::transfers::TransferService::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
             Rc::clone(&prompts),
             Rc::clone(&notices),
+            sync,
             notifier.clone(),
         );
         let auto_fetch = crate::auto_fetch::AutoFetchScheduler::new(

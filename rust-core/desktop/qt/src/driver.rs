@@ -653,7 +653,31 @@ impl Driver {
             return;
         };
         let history = &services.workspace.history;
-        let state = crate::history_state::project(history);
+        services.transfers.sync.check();
+        let mut state = crate::history_state::project(history);
+        // What the person's last transfer changed (NH-2) and the last commit made here
+        // (NH-1), for the graph's motion.
+        let sync = services.transfers.sync.current();
+        state["sync"] = serde_json::json!({
+            "sequence": sync.sequence,
+            "newRows": sync.new_rows,
+            "previousHistoryRequest": sync.previous_history_request,
+        });
+        let canonical = services
+            .workspace
+            .active_tab_id()
+            .and_then(|id| services.workspace.tab(id))
+            .and_then(|tab| tab.canonical_identity().cloned());
+        state["lastCommit"] = services.commit.last_committed(canonical.as_ref()).map_or(
+            serde_json::Value::Null,
+            |committed| {
+                serde_json::json!({
+                    "sequence": committed.sequence,
+                    "objectId": committed.object_id,
+                    "amend": committed.amend,
+                })
+            },
+        );
         {
             let mut pane = self.history.borrow_mut();
             if pane.history_service.is_none() {

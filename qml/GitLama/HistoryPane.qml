@@ -152,6 +152,84 @@ Item {
             if (paneState.revealIndex !== null && paneState.revealIndex !== undefined)
                 Qt.callLater(() => list.positionViewAtIndex(paneState.revealIndex, ListView.Contain))
         }
+        syncMotion()
+    }
+
+    // ---------------------------------------------------------------- graph motion
+
+    HistoryMotion { id: graphMotion }
+
+    readonly property string _repository: Store.workspace ? String(Store.workspace.activeTabId) : ""
+    property string _lighting: ""
+    property string _wip: ""
+    property string _initialLanes: ""
+    property int _handledSync: -1
+    property int _handledCommit: -1
+    property string _pendingLanding: ""
+
+    function _visibleRows() {
+        return Math.max(1, Math.ceil(list.height / Theme.size.row))
+    }
+
+    /// Tells the graph's motion what changed: the lit ancestry (NH-3), the working-tree row
+    /// appearing or going (NM-36), the first load of a repository (NH-7), a transfer's new
+    /// rows (NH-2) and a commit made here (NH-1).
+    function syncMotion() {
+        const state = paneState
+        if (state.hasPage !== true || _repository.length === 0)
+            return
+        const repository = _repository
+        const lighting = repository + "|" + (state.lightingActive === true) + "|" + (state.currentObjectId ?? "")
+        if (_lighting.length > 0 && _lighting !== lighting && _lighting.startsWith(repository + "|")) {
+            const current = state.currentObjectId ?? ""
+            graphMotion.lightingChanged(current.length > 0 ? Store.historyRows.indexOf(current) : -1,
+                                        state.lightingActive === true)
+        }
+        _lighting = lighting
+        const wip = repository + "|" + ((state.worktreeRows ?? 0) > 0)
+        if (_wip.length > 0 && _wip !== wip && _wip.startsWith(repository + "|")) {
+            if ((state.worktreeRows ?? 0) > 0) {
+                // The working-tree row opens at the top and its ring draws.
+                graphMotion.insertRow(0)
+                graphMotion.drawLanes(0, 1, 0)
+            } else {
+                graphMotion.removeRow(0)
+            }
+        }
+        _wip = wip
+        if (_initialLanes !== repository) {
+            _initialLanes = repository
+            if (Store.markMotionSeen("history-open-lanes|" + repository))
+                Qt.callLater(() => graphMotion.drawLanes(0, Math.min(pane._visibleRows(), Store.historyRows.count()),
+                                                         Motion.select))
+        }
+        const sync = state.sync ?? ({})
+        if (_handledSync < 0)
+            _handledSync = sync.sequence ?? 0
+        if ((sync.sequence ?? 0) > _handledSync && state.requestId !== sync.previousHistoryRequest) {
+            _handledSync = sync.sequence
+            if (Store.markMotionSeen("history-sync-rows|" + repository + "|" + sync.sequence)) {
+                const first = Math.floor(list.contentY / Theme.size.row)
+                const last = first + _visibleRows()
+                const indices = (sync.newRows ?? []).map(id => Store.historyRows.indexOf(id))
+                    .filter(index => index >= first && index < last).sort((a, b) => a - b)
+                if (indices.length > 0)
+                    graphMotion.drawLanes(indices[0], indices.length, GitLamaLayout.pullLanesDelay)
+            }
+        }
+        const committed = state.lastCommit
+        if (committed && committed.sequence > _handledCommit) {
+            _handledCommit = committed.sequence
+            _pendingLanding = committed.amend ? ""
+                : Store.markMotionSeen("gitlama-commit-land|" + repository + "|" + committed.sequence) ? committed.objectId : ""
+        }
+        if (_pendingLanding.length > 0 && Store.historyRows.indexOf(_pendingLanding) >= 0) {
+            const landed = _pendingLanding
+            _pendingLanding = ""
+            graphMotion.landCommit(landed)
+            if (list.contentY < Theme.size.row)
+                graphMotion.insertRow(1)
+        }
     }
 
     // The search scopes and whether the typed query is the one searched.
@@ -589,6 +667,7 @@ Item {
                 queryActive: pane.paneState.queryActive === true
                 dateFormat: pane.dateFormat
                 selectedHere: objectId === pane.selectedObjectId
+                motion: graphMotion
                 onActivated: (objectId, toggle) => pane.select(objectId, toggle)
                 onDoubleActivated: objectId => pane.command("checkoutCommit", { initialTarget: objectId })
                 onCopyRequested: value => Store.actions.copyText(value, L10n.t("historyObjectIdCopied"))

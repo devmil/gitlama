@@ -31,6 +31,8 @@ pub fn project(history: &gitlama_workbench::history::HistoryService) -> Value {
         "worktreeRows": page.map_or(0, |page| page.rows.iter().filter(|row| row.object_id == WORKTREE_OBJECT_ID).count()),
         "laneCount": page.map_or(0, |page| page.lane_count),
         "lightingActive": page.is_some_and(|page| page.lighting_active),
+        "currentObjectId": page.and_then(|page| page.current_object_id.clone()),
+        "requestId": page.map(|page| page.request_id),
         "queryActive": page.is_some_and(|page| page.query_active),
         "acceptedQuery": page.map(|page| page.accepted_query.clone()),
         "collapsedCommits": page.map_or(0, |page| page.collapsed_commits),

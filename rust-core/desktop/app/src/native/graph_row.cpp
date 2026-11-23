@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QtQml/qqml.h>
+#include <algorithm>
 #include <cmath>
 
 namespace gitlama {
@@ -76,10 +77,118 @@ qreal GraphRow::laneX(int lane)
     return graphLaneOrigin + lane * laneWidth;
 }
 
+GraphRow::Lighting GraphRow::currentLighting() const
+{
+    Lighting state { lightingActive_, lit_, incomingLit_, {} };
+    state.segments.reserve(segments_.size());
+    for (const Segment &segment : segments_)
+        state.segments.push_back(segment.lit);
+    return state;
+}
+
+void GraphRow::beginTransition()
+{
+    if (suppress_ || pending_)
+        return;
+    // A change during a running transition finishes it first (rule 1.3.2).
+    from_ = currentLighting();
+    hasFrom_ = true;
+    pending_ = true;
+    const int generation = generation_;
+    QMetaObject::invokeMethod(this, [this, generation] {
+        pending_ = false;
+        if (generation == generation_ && hasFrom_)
+            emit lightingTransition();
+    }, Qt::QueuedConnection);
+}
+
+void GraphRow::setLightingActive(bool value)
+{
+    if (lightingActive_ == value)
+        return;
+    beginTransition();
+    lightingActive_ = value;
+    emit changed();
+}
+
+void GraphRow::setLit(bool value)
+{
+    if (lit_ == value)
+        return;
+    beginTransition();
+    lit_ = value;
+    emit changed();
+}
+
+void GraphRow::setIncomingLit(bool value)
+{
+    if (incomingLit_ == value)
+        return;
+    beginTransition();
+    incomingLit_ = value;
+    emit changed();
+}
+
+void GraphRow::setRowKey(const QString &key)
+{
+    if (rowKey_ == key)
+        return;
+    rowKey_ = key;
+    // A recycled row shows another commit: it starts at rest, and the changes the new
+    // commit's values make during this turn are not transitions.
+    ++generation_;
+    hasFrom_ = false;
+    litBlend_ = 1;
+    suppress_ = true;
+    QMetaObject::invokeMethod(this, [this] { suppress_ = false; }, Qt::QueuedConnection);
+    emit changed();
+}
+
+qreal GraphRow::blend(bool from, bool to) const
+{
+    const qreal target = to ? 1 : 0;
+    if (!hasFrom_ || litBlend_ >= 1)
+        return target;
+    const qreal start = from ? 1 : 0;
+    return start + (target - start) * std::clamp(litBlend_, qreal(0), qreal(1));
+}
+
+qreal GraphRow::rowLitness() const
+{
+    return blend(!from_.active || from_.lit, !lightingActive_ || lit_);
+}
+
+void GraphRow::segmentLitness(const Lighting &state, std::size_t index, bool &upper, bool &lower) const
+{
+    const Segment &segment = segments_[index];
+    const int explicitLit = index < state.segments.size() ? state.segments[index] : -1;
+    const bool row = !state.active || state.lit;
+    const bool arriving = !state.active || state.incoming;
+    if (explicitLit >= 0) {
+        upper = lower = !state.active || explicitLit == 1;
+    } else if (segment.top && !segment.center) {
+        upper = arriving;
+        lower = row;
+    } else {
+        upper = lower = segment.top ? arriving : row;
+    }
+}
+
 void GraphRow::setRow(const QVariant &row)
 {
-    rowValue_ = row;
     const QVariantMap map = row.toMap();
+    // The same commit's lane lighting may change with a new projection.
+    {
+        const QVariantList segments = map.value(QStringLiteral("segments")).toList();
+        bool differs = segments.size() != qsizetype(segments_.size());
+        for (qsizetype index = 0; !differs && index < segments.size(); ++index) {
+            const QVariantList fields = segments[index].toList();
+            differs = fields.size() < 6 || fields[5].toInt() != segments_[std::size_t(index)].lit;
+        }
+        if (differs && !segments_.empty())
+            beginTransition();
+    }
+    rowValue_ = row;
     lane_ = map.value(QStringLiteral("lane")).toInt();
     shape_ = map.value(QStringLiteral("shape")).toInt();
     current_ = map.value(QStringLiteral("current")).toBool();
@@ -141,21 +250,22 @@ void GraphRow::paint(QPainter *painter)
 
 void GraphRow::paintSegments(QPainter *painter)
 {
-    const bool rowLit = !lightingActive_ || lit_;
-    const bool arrivingLit = !lightingActive_ || incomingLit_;
+    const Lighting now = currentLighting();
     const qreal centerY = height() / 2;
     // The graph is clipped at the metadata columns; lanes beyond it are skipped.
     const qreal visibleRight = (clipRight_ > 0 ? clipRight_ : width()) + laneWidth;
-    auto pen = [&](int lane, bool isLit) {
-        const QColor color = onAccent_ ? strongInk_ : withAlpha(laneColor(lane), isLit ? 1 : unlitOpacity);
-        QPen result(color, isLit ? graphStrokeLit : graphRingStroke);
+    auto pen = [&](int lane, qreal litness) {
+        const QColor color = onAccent_ ? strongInk_
+            : withAlpha(laneColor(lane), unlitOpacity + (1 - unlitOpacity) * litness);
+        QPen result(color, graphRingStroke + (graphStrokeLit - graphRingStroke) * litness);
         result.setCapStyle(Qt::RoundCap);
         return result;
     };
     painter->setBrush(Qt::NoBrush);
     // Straight lanes first, then the edges that cross them.
     for (int pass = 0; pass < 2; ++pass) {
-        for (const Segment &segment : segments_) {
+        for (std::size_t index = 0; index < segments_.size(); ++index) {
+            const Segment &segment = segments_[index];
             if ((segment.from == segment.to) != (pass == 0))
                 continue;
             const qreal fromX = laneX(segment.from);
@@ -171,22 +281,26 @@ void GraphRow::paintSegments(QPainter *painter)
                 const qreal midpoint = (startY + endY) / 2;
                 path.cubicTo(fromX, midpoint, toX, midpoint, toX, endY);
             }
-            if (segment.lit >= 0) {
-                painter->setPen(pen(segment.from, !lightingActive_ || segment.lit == 1));
-                painter->drawPath(path);
-            } else if (segment.top && !segment.center && arrivingLit != rowLit) {
+            bool upperNow = true, lowerNow = true, upperBefore = true, lowerBefore = true;
+            segmentLitness(now, index, upperNow, lowerNow);
+            if (hasFrom_)
+                segmentLitness(from_, index, upperBefore, lowerBefore);
+            const qreal upper = blend(upperBefore, upperNow);
+            const qreal lower = blend(lowerBefore, lowerNow);
+            if (!qFuzzyCompare(upper + 1, lower + 1)) {
+                // The lane arriving from above and the row's own lighting differ.
                 painter->save();
                 painter->setClipRect(QRectF(0, 0, width(), centerY), Qt::IntersectClip);
-                painter->setPen(pen(segment.from, arrivingLit));
+                painter->setPen(pen(segment.from, upper));
                 painter->drawPath(path);
                 painter->restore();
                 painter->save();
                 painter->setClipRect(QRectF(0, centerY, width(), height() - centerY), Qt::IntersectClip);
-                painter->setPen(pen(segment.from, rowLit));
+                painter->setPen(pen(segment.from, lower));
                 painter->drawPath(path);
                 painter->restore();
             } else {
-                painter->setPen(pen(segment.from, segment.top ? arrivingLit : rowLit));
+                painter->setPen(pen(segment.from, upper));
                 painter->drawPath(path);
             }
             if (segment.kind == Missing) {
@@ -221,11 +335,12 @@ void GraphRow::paintNodeBackground(QPainter *painter)
 
 void GraphRow::paintNode(QPainter *painter)
 {
-    const bool rowLit = !lightingActive_ || lit_;
+    const qreal litness = rowLitness();
+    const qreal nodeAlpha = unlitOpacity + (1 - unlitOpacity) * litness;
     const qreal centerY = height() / 2;
     const qreal nodeX = laneX(lane_);
     const QPointF center(nodeX, centerY);
-    const QColor nodeColor = onAccent_ ? strongInk_ : withAlpha(laneColor(lane_), rowLit ? 1 : unlitOpacity);
+    const QColor nodeColor = onAccent_ ? strongInk_ : withAlpha(laneColor(lane_), nodeAlpha);
     auto ring = [&](qreal radius, const QColor &color, qreal stroke) {
         painter->setPen(QPen(color, stroke));
         painter->setBrush(Qt::NoBrush);
@@ -247,7 +362,7 @@ void GraphRow::paintNode(QPainter *painter)
             painter->restore();
         }
         const QColor color = onAccent_ ? strongInk_ : shape_ == WipConflict ? conflictColor_ : wipColor_;
-        drawDashedCircle(painter, center, graphCommitRadius, withAlpha(color, rowLit ? 1 : unlitOpacity));
+        drawDashedCircle(painter, center, graphCommitRadius, withAlpha(color, nodeAlpha));
         break;
     }
     case Commit:

@@ -23,6 +23,11 @@ Item {
 
     signal command(string id, var options)
 
+    /// The repository whose islands enter one after the other the first time it shows its
+    /// status this session (NH-7); empty while it loads.
+    readonly property string openMotionKey: active && active.phase === "open" && active.hasStatus === true
+        ? "repository-open|" + active.tabId + "|" + (active.name ?? "") : ""
+
     function setSidebarWidth(width) {
         const clamped = Math.round(Math.max(Metrics.sidebarMinWidth, Math.min(Metrics.sidebarMaxWidth, width)))
         Store.app.updateAppearance({ sidebarWidth: clamped })
@@ -37,13 +42,17 @@ Item {
         onSelectPane: pane => Store.sidebar.selectPane(pane)
     }
 
-    WorkspaceSidebar {
+    MeridianEntrance {
         id: sidebar
-        objectName: "workspace-sidebar"
         visible: !body.compactSidebar
         width: body.shownSidebarWidth
         height: parent.height - Theme.space.s3
-        onCommand: (id, options) => body.command(id, options)
+        entranceKey: body.openMotionKey.length > 0 ? body.openMotionKey + "|0" : ""
+        WorkspaceSidebar {
+            objectName: "workspace-sidebar"
+            anchors.fill: parent
+            onCommand: (id, options) => body.command(id, options)
+        }
     }
 
     MeridianResizeHandle {
@@ -89,10 +98,15 @@ Item {
             && Store.changes !== null && (Store.changes.state ?? ({})).conflictFlow === true
 
         // Changes: the files island beside the diff.
-        ChangesPane {
+        MeridianEntrance {
             visible: !workspace.history && body.active !== null && body.active.hasStatus === true && !workspace.conflictFlow
             anchors.fill: parent
-            onCommand: (id, options) => body.command(id, options)
+            entranceKey: body.openMotionKey.length > 0 ? body.openMotionKey + "|1" : ""
+            delay: GitLamaLayout.openStagger
+            ChangesPane {
+                anchors.fill: parent
+                onCommand: (id, options) => body.command(id, options)
+            }
         }
         // A paused operation at conflicts: the resolver replaces Changes.
         Loader {
@@ -105,22 +119,27 @@ Item {
         }
 
         // History keeps the full width above; details and the diff below.
-        MeridianIsland {
+        MeridianEntrance {
             id: primary
             visible: (workspace.history && !workspace.maximized) || body.active === null || !body.active.hasStatus
             width: parent.width
             height: workspace.history ? Math.max(0, parent.height - workspace.detailHeight - Theme.space.s3) : parent.height
-            HistoryPane {
+            entranceKey: workspace.history && body.openMotionKey.length > 0 ? body.openMotionKey + "|1" : ""
+            delay: GitLamaLayout.openStagger
+            MeridianIsland {
                 anchors.fill: parent
-                visible: workspace.history
-                onCommand: (id, options) => body.command(id, options)
-            }
-            MeridianEmptyState {
-                visible: !workspace.history && (body.active === null || !body.active.hasStatus)
-                anchors.fill: parent
-                compact: true
-                progress: true
-                title: L10n.t("workspaceLoadingRepository")
+                HistoryPane {
+                    anchors.fill: parent
+                    visible: workspace.history
+                    onCommand: (id, options) => body.command(id, options)
+                }
+                MeridianEmptyState {
+                    visible: !workspace.history && (body.active === null || !body.active.hasStatus)
+                    anchors.fill: parent
+                    compact: true
+                    progress: true
+                    title: L10n.t("workspaceLoadingRepository")
+                }
             }
         }
         MeridianResizeHandle {
@@ -147,14 +166,19 @@ Item {
                 body.draggedDetailHeight = -1
             }
         }
-        MeridianIsland {
-            objectName: "detail-pane"
+        MeridianEntrance {
             visible: workspace.history
             y: parent.height - height
             width: parent.width
             height: workspace.maximized ? parent.height : workspace.detailHeight
-            InspectorView {
+            entranceKey: body.openMotionKey.length > 0 ? body.openMotionKey + "|2" : ""
+            delay: 2 * GitLamaLayout.openStagger
+            MeridianIsland {
+                objectName: "detail-pane"
                 anchors.fill: parent
+                InspectorView {
+                    anchors.fill: parent
+                }
             }
         }
     }

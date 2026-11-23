@@ -102,6 +102,10 @@ Rectangle {
             operationsVisible: shell.operationsVisible
             activityVisible: shell.activityVisible
             detailsOpen: repositoryDetails.visible
+            // The person's transfer that changed the repository (NH-2).
+            syncSequence: Store.history && Store.history.state && Store.history.state.sync
+                ? Store.history.state.sync.sequence : 0
+            syncChanged: syncSequence > 0
             onCommand: (id, options) => shell.command(id, options)
         }
 

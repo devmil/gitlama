@@ -30,7 +30,11 @@ Module {
         Property { name: "ringClose"; type: "double" }
         Property { name: "halo"; type: "double" }
         Property { name: "core"; type: "double" }
+        Property { name: "rowKey"; type: "QString" }
+        Property { name: "litBlend"; type: "double" }
+        Property { name: "rowLitness"; type: "double"; isReadonly: true }
         Signal { name: "changed" }
+        Signal { name: "lightingTransition" }
     }
     Component {
         file: "text_formatter.h"
