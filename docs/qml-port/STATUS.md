@@ -103,10 +103,15 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   and LFS pointers).
 - Image diffs (committed and working): both sides decoded by the core, side by side, swipe and
   onion skin over a checkerboard with sizes.
+- Power tools: diff content search (scope, case, limits, reveal in History), statistics and
+  bisect with a confirmed command per step; floating, or docked under History's query bar
+  with a section switch. Bisect fields resolve HEAD, branch, remote-branch and tag names to
+  their commits (the core takes object IDs only); commit choices with subjects and the remote
+  host's history-write check wait for the history projection and remote workspaces.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
-- Power tools, extensions panel (worktree create, LFS, submodules),
+- Extensions panel (worktree create, LFS, submodules),
   integrations panel and settings page, status acceleration settings.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing

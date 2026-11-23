@@ -147,6 +147,11 @@ impl Driver {
                 workflows.snapshots = snapshots;
                 workflows.snapshots_changed();
             }
+            let power_tools = gitlama_workbench::power_tools::panel_value(&services.power_tools.panel());
+            if workflows.power_tools != power_tools {
+                workflows.power_tools = power_tools;
+                workflows.power_tools_changed();
+            }
         }
         if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)
             && let Some(services) = self.app.services()

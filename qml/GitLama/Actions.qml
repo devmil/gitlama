@@ -84,6 +84,12 @@ Item {
             snapshotBranch.open()
             snapshotBranchField.forceActiveFocus()
             return
+        case "confirmBisect":
+            bisectConfirm.promptId = id
+            bisectConfirm.action = payload.action ?? "start"
+            bisectConfirm.command = payload.command ?? ""
+            bisectConfirm.open()
+            return
         case "confirmSnapshotDelete":
             snapshotDelete.promptId = id
             snapshotDelete.name = payload.name ?? ""
@@ -279,6 +285,7 @@ Item {
         case "showLicenses": showLicenses(); return
         case "showShortcutReference": shortcutReference.show(); return
         case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
+        case "showPowerTools": if (Store.shell) Store.shell.togglePanel("powerTools"); return
         case "showRepositoryDetails": if (Store.shell) Store.shell.showRepositoryDetails(); return
         case "saveCommitArchive": {
             const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
@@ -850,6 +857,35 @@ Item {
             }
         }
     }
+    // One bisect step with its Git command (confirmBisect).
+    MeridianConfirm {
+        id: bisectConfirm
+        property int promptId: -1
+        property string action: "start"
+        property string command: ""
+        readonly property string suffix: action.charAt(0).toUpperCase() + action.slice(1)
+        widthClass: MeridianDialog.Form
+        title: L10n.t("bisect" + suffix + "Title")
+        confirmLabel: L10n.t(action === "good" ? "bisectConfirmGood" : action === "bad" ? "bisectConfirmBad" : "powerBisect" + suffix)
+        cancelLabel: L10n.t("cancel")
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s4
+            MeridianText {
+                width: parent.width
+                role: MeridianText.Body
+                wrapMode: Text.Wrap
+                text: L10n.t("bisect" + bisectConfirm.suffix + "Summary")
+            }
+            GitCommands {
+                width: parent.width
+                title: L10n.t("commandDetails")
+                commands: [bisectConfirm.command]
+            }
+        }
+    }
     EditBranchDialog {
         id: editBranchDialog
         onAnswered: (id, edit) => actions.answer(id, edit)
@@ -964,6 +1000,15 @@ Item {
             else if (name === "snapshotAction") {
                 const entry = (Store.workflows.snapshots.entries ?? [])[0]
                 if (entry) Store.workflows.snapshot(argument, { id: entry.id })
+            }
+            else if (name === "powerTool") {
+                // powerTool:<action>=<options json>
+                const split = argument.indexOf("=")
+                Store.workflows.powerTool(split < 0 ? argument : argument.slice(0, split), split < 0 ? ({}) : JSON.parse(argument.slice(split + 1)))
+            }
+            else if (name === "confirmBisect") {
+                bisectConfirm.close()
+                bisectConfirm.confirmed()
             }
             else if (name === "snapshotCreate")
                 Store.workflows.snapshot("create", { name: argument, includeUntracked: true, keepIndex: false })

@@ -24,6 +24,8 @@ mod workflows_state {
         pub(crate) archive: Value,
         /// The named snapshots panel (snapshots.rs panel_value).
         pub(crate) snapshots: Value,
+        /// The power tools panel (power_tools.rs panel_value).
+        pub(crate) power_tools: Value,
     }
 
     impl WorkflowsState {
@@ -32,8 +34,47 @@ mod workflows_state {
         qproperty!("archive", Member = archive, Notify = archive_changed);
         qproperty!("snapshots", Member = snapshots, Notify = snapshots_changed);
 
+        qproperty!("powerTools", Member = power_tools, Notify = power_tools_changed);
+
         #[qsignal]
         pub fn snapshots_changed(&mut self);
+
+        #[qsignal]
+        pub fn power_tools_changed(&mut self);
+
+        /// Power tools: `action` is open or close (options.owner), search
+        /// (query, caseSensitive, currentBranch), cancelSearch, statistics,
+        /// bisect (step: start, good, bad, skip, reset; good, bad) or reveal
+        /// (commit).
+        #[qslot]
+        fn power_tool(&self, action: String, options: Value) {
+            self.with_services(move |services| {
+                let tools = Rc::clone(&services.power_tools);
+                let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
+                let owner = options["owner"].as_u64().unwrap_or(0);
+                match action.as_str() {
+                    "open" => rt::spawn_detached(async move { tools.open(owner).await }),
+                    "close" => tools.close(owner),
+                    "search" => {
+                        let (query, case, current) =
+                            (text("query"), options["caseSensitive"].as_bool() == Some(true), options["currentBranch"].as_bool() == Some(true));
+                        rt::spawn_detached(async move { tools.search(query, case, current).await })
+                    }
+                    "cancelSearch" => tools.cancel_search(),
+                    "statistics" => rt::spawn_detached(async move { tools.statistics().await }),
+                    "bisect" => {
+                        let Some(step) = gitlama_workbench::power_tools::bisect_action(&text("step")) else { return };
+                        let (good, bad) = (text("good"), text("bad"));
+                        rt::spawn_detached(async move { tools.bisect(step, good, bad).await })
+                    }
+                    "reveal" => {
+                        let commit = text("commit");
+                        rt::spawn_detached(async move { tools.reveal(commit).await })
+                    }
+                    _ => {}
+                }
+            });
+        }
 
         /// Named snapshots: `action` is load, more, create, restore, branch,
         /// delete or select; `options` carries id, name, includeUntracked,

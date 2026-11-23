@@ -173,4 +173,19 @@ Rectangle {
             onHidden: shell.unmountPanel("snapshots")
         }
     }
+    // Power tools, in the same place; History docks them under its query
+    // bar instead.
+    Loader {
+        active: shell.mounted.powerTools === true && !(shell.active && shell.active.pane === "history")
+        x: shell.width - width - Theme.space.s3
+        y: toolbar.height + tabs.height + Theme.space.s2
+        z: 10
+        sourceComponent: PowerToolsPanel {
+            shown: shell.panel === "powerTools"
+            availableHeight: shell.height - y - Metrics.statusBarHeight - Theme.space.s4
+            maximumWidth: shell.width - 2 * Theme.space.s3
+            onCloseRequested: shell.closePanel("powerTools")
+            onHidden: shell.unmountPanel("powerTools")
+        }
+    }
 }

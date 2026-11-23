@@ -204,9 +204,38 @@ Item {
         }
     }
 
+    // Power tools dock under the query bar.
+    Loader {
+        id: powerTools
+        anchors.top: toolbar.bottom
+        width: parent.width
+        height: active ? item.implicitHeight : 0
+        active: Store.shell !== null && Store.shell.panel === "powerTools"
+        sourceComponent: Column {
+            width: pane.width
+            WorkflowHeader {
+                width: parent.width
+                title: L10n.t("powerToolsTitle")
+                exitLabel: L10n.t("close")
+                onExit: Store.shell.closePanel("powerTools")
+            }
+            Rectangle {
+                width: parent.width
+                height: Math.min(GitLamaLayout.powerToolsDockedMaxHeight, pane.Window.height * GitLamaLayout.powerToolsDockedHeightFraction)
+                color: Theme.colors.paneAlt
+                PowerTools {
+                    anchors.fill: parent
+                    docked: true
+                    onCloseRequested: Store.shell.closePanel("powerTools")
+                }
+            }
+            MeridianHairline { width: parent.width }
+        }
+    }
+
     Item {
         id: body
-        anchors.top: toolbar.bottom
+        anchors.top: powerTools.bottom
         anchors.bottom: parent.bottom
         width: parent.width
 
