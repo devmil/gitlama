@@ -178,10 +178,21 @@ impl Driver {
                 operations.center_changed();
             }
         }
-        if changed.intersects(Topics::CONFLICTS | Topics::WORKSPACE | Topics::SESSION)
+        if changed.intersects(Topics::CONFLICTS | Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS)
             && let Some(services) = self.app.services()
-            && let Some((state, text, revision, rows)) = services.conflicts.with_active(|session| crate::conflicts_state::project(session))
+            && let Some((mut state, text, revision, rows)) = services.conflicts.with_active(|session| crate::conflicts_state::project(session))
         {
+            // The configured merge tools, for the external merge action.
+            state["mergeTools"] = services.settings.with(|document| {
+                serde_json::Value::Array(
+                    document
+                        .integrations
+                        .iter()
+                        .filter(|tool| tool.kind == "mergeTool")
+                        .map(|tool| serde_json::Value::String(tool.id.clone()))
+                        .collect(),
+                )
+            });
             self.conflict_rows.borrow_mut().publish(rows);
             let mut conflicts = self.conflicts.borrow_mut();
             if conflicts.result_text != text || conflicts.text_revision != revision as i64 {

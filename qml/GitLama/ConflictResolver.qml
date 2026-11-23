@@ -171,12 +171,9 @@ FocusScope {
                 }
                 CommandMenu { id: sequenceMenu; onSelected: value => Store.conflicts.sequence(value) }
             }
-            MeridianIconButton {
-                iconName: "external-link"
-                text: L10n.t("conflictExternalTool")
-                controlSize: MeridianButton.Small
-                enabled: false
-                disabledReason: L10n.t("conflictExternalUnavailable")
+            ExternalMergeAction {
+                iconOnly: true
+                busy: resolver.busy
             }
             MeridianIconButton {
                 iconName: "refresh"

@@ -699,6 +699,56 @@ impl ConflictService {
     }
 
     /// Puts the conflict of `path` back.
+    /// Merges the shown file in the external `tool` (the Dart
+    /// mergeExternally): its exact command is previewed and confirmed, then
+    /// it runs; the conflict is read again and the file counts as resolved
+    /// externally once Git no longer lists it.
+    pub async fn merge_externally(&self, tool: gitlama_contract::integrations::NativeIntegrationDefinition) {
+        let Some(identity) = self.active_identity() else { return };
+        let Some(Some(file)) = self.with_active(|session| if session.busy { None } else { session.selected_file().cloned() }) else {
+            return;
+        };
+        self.set_busy(identity, true);
+        let (session, generation) = (identity.native_id, identity.generation);
+        let preview = match self
+            .calls
+            .repository_session_conflict_external_merge_preview(session, generation, file.path.clone(), file.fingerprint, tool)
+            .await
+        {
+            Ok(result) if result.failure.is_none() => result.preview,
+            _ => None,
+        };
+        let Some(preview) = preview else {
+            self.set_busy(identity, false);
+            return self.notices.status("conflictSaveFailed", Value::Null);
+        };
+        let commands: Vec<String> = std::iter::once(preview.executable.clone()).chain(preview.arguments.iter().cloned()).collect();
+        let answer = self.prompts.ask("confirmIntegration", json!({"commands": commands, "summary": "integrationMergeSummary"})).await;
+        if answer != Some(Value::Bool(true)) || !self.shown(identity) {
+            let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
+            return self.set_busy(identity, false);
+        }
+        let completed = matches!(
+            self.calls.repository_session_integration_execute(session, generation, preview.token, true).await,
+            Ok(result) if result.state == gitlama_contract::integrations::NativeIntegrationExecutionState::Completed
+        );
+        if !completed {
+            let _ = self.calls.repository_session_integration_cancel(session, generation, preview.token).await;
+            self.set_busy(identity, false);
+            return self.notices.status("conflictSaveFailed", Value::Null);
+        }
+        self.set_busy(identity, false);
+        if !self.shown(identity) {
+            return;
+        }
+        self.load().await;
+        self.with_session(identity, |session| {
+            if let Some(snapshot) = session.snapshot.clone() {
+                session.record(&snapshot, &file.path, Resolution::External);
+            }
+        });
+    }
+
     pub async fn undo(&self, path: Vec<u8>) {
         let Some(identity) = self.active_identity() else { return };
         if self.with_active(|session| session.busy).unwrap_or(true) {

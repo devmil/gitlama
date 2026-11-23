@@ -131,6 +131,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   stored, deleted) and Render diff in the inspector (preview with limits and exact commands,
   progress, fallback banner, plain-text output with Use built-in; Render with configured
   renderer command).
+- Conflict resolver: external merge tools (one configured tool runs directly, several offer a
+  native menu; exact command confirmed; the file counts as merged externally).
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
@@ -145,7 +147,7 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
 - Inspector: changed-word marks on wrapped lines.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry from the logbook; row entrance/exit stagger.
-- Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode
+- Conflict resolver: wrapped comparison lines, syntax colours, tree mode
   of its file list, the Continue pulse, file action menus.
 - Settings pages: integrations, repository binding, remote hosts, updates; diagnostics Share on macOS/Windows.
 - Changes: drag between lists, flight animation.

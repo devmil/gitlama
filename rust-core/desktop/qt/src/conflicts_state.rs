@@ -326,6 +326,29 @@ mod conflicts_state {
             });
         }
 
+        /// Merges the shown file in the merge tool `name` (the only one when
+        /// empty).
+        #[qslot]
+        fn merge_externally(&self, name: String) {
+            self.spawn(move |services| {
+                let conflicts = Rc::clone(&services.conflicts);
+                let tool = services.settings.with(|document| {
+                    let tools: Vec<_> = document
+                        .integrations
+                        .iter()
+                        .filter_map(gitlama_workbench::integrations::definition)
+                        .filter(|tool| tool.kind == gitlama_contract::integrations::NativeIntegrationKind::MergeTool)
+                        .collect();
+                    if name.is_empty() && tools.len() == 1 { tools.into_iter().next() } else { tools.into_iter().find(|tool| tool.id == name) }
+                });
+                async move {
+                    if let Some(tool) = tool {
+                        conflicts.merge_externally(tool).await;
+                    }
+                }
+            });
+        }
+
         /// Puts the conflict of the file `key` back.
         #[qslot]
         fn undo(&self, key: String) {

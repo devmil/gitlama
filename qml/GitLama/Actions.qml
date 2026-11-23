@@ -1066,6 +1066,12 @@ Item {
             }
             else if (name === "rendererSave")
                 Store.settings.diffRenderer("save", JSON.parse(argument))
+            else if (name === "conflictExternal")
+                Store.conflicts.mergeExternally(argument)
+            else if (name === "confirmIntegrationRun") {
+                integrationConfirm.close()
+                integrationConfirm.confirmed()
+            }
             else if (name === "confirmBisect") {
                 bisectConfirm.close()
                 bisectConfirm.confirmed()

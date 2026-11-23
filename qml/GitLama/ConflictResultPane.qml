@@ -64,13 +64,9 @@ Item {
             x: parent.width - width - Theme.space.s4
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.space.s2
-            MeridianButton {
+            ExternalMergeAction {
                 anchors.verticalCenter: parent.verticalCenter
-                text: L10n.t("conflictExternalTool")
-                iconName: "external-link"
-                controlSize: MeridianButton.Small
-                enabled: false
-                disabledReason: L10n.t("conflictExternalUnavailable")
+                busy: Store.conflicts.state.busy === true
             }
             MeridianButton {
                 visible: root.textFile && root.file.ancestorPresent === true
