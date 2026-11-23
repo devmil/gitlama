@@ -5,3 +5,4 @@
 extern "C" void gitlama_set_desktop_file_name(const char *name) {
     QGuiApplication::setDesktopFileName(QString::fromUtf8(name));
 }
+

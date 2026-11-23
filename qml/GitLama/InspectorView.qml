@@ -9,7 +9,17 @@ import Meridian
 Rectangle {
     id: inspector
 
-    readonly property var paneState: Store.inspector ? (Store.inspector.state ?? ({})) : ({})
+    /// The inspector this view shows (the History inspector by default, a
+    /// window's own in an inspection window) with its diff and blame.
+    property var bridge: Store.inspector
+    property var diffModel: Store.inspectorDiff
+    property var blameModel: Store.inspectorBlame
+    /// Shown in an inspection window (no maximize; Show in main window).
+    property bool inWindow: false
+    property int windowId: 0
+    property string windowRepository
+
+    readonly property var paneState: inspector.bridge ? (inspector.bridge.state ?? ({})) : ({})
     readonly property var location: paneState.location ?? null
     /// The configured diff renderer and its run for the shown diff.
     readonly property var renderer: Store.settings ? (Store.settings.renderer ?? ({})) : ({})
@@ -50,7 +60,7 @@ Rectangle {
     function showFileMenu(file, item, x, y) {
         if (!location)
             return
-        const host = Store.inspector.fileHost()
+        const host = inspector.bridge.fileHost()
         const canOpen = host.canOpenWorkingCopy === true
         const remoteReason = L10n.t("remoteCommandUnsupported")
         const capabilities = ["showDiff", "showContents", "blame", "fileHistory", "folderHistory", "createPatch", "copyPath", "restoreFromCommit"]
@@ -70,7 +80,7 @@ Rectangle {
             tree: !folder && !changed ? (file.treeKind ?? null) : null,
             mode: file.mode ?? null,
             changedFolder: folder && file.rowKind === undefined,
-            exists: canOpen && Store.inspector.existsInWorkingTree(file.path),
+            exists: canOpen && inspector.bridge.existsInWorkingTree(file.path),
         }, null, {
             capabilities: capabilities,
             reasons: host.remote === true
@@ -91,11 +101,11 @@ Rectangle {
             const path = file.path
             const commit = target.commit
             switch (action) {
-            case "folderHistory": Store.inspector.openFileLens(path, "history", true, commit); return
-            case "showDiff": Store.inspector.openFileLens(path, "diff", false, commit); return
-            case "showContents": Store.inspector.openFileLens(path, "contents", false, commit); return
-            case "blame": Store.inspector.openFileLens(path, "blame", false, commit); return
-            case "fileHistory": Store.inspector.openFileLens(path, "history", false, commit); return
+            case "folderHistory": inspector.bridge.openFileLens(path, "history", true, commit); return
+            case "showDiff": inspector.bridge.openFileLens(path, "diff", false, commit); return
+            case "showContents": inspector.bridge.openFileLens(path, "contents", false, commit); return
+            case "blame": inspector.bridge.openFileLens(path, "blame", false, commit); return
+            case "fileHistory": inspector.bridge.openFileLens(path, "history", false, commit); return
             case "createPatch": {
                 // A folder's patch holds its changed files.
                 const paths = folder
@@ -105,15 +115,15 @@ Rectangle {
                 return
             }
             case "externalDiff":
-                Store.inspector.externalDiff(target.base ?? "", commit, file.oldPath.length > 0 ? file.oldPath : path, path); return
+                inspector.bridge.externalDiff(target.base ?? "", commit, file.oldPath.length > 0 ? file.oldPath : path, path); return
             case "openExternally": Store.workflows.openTool("editor", path); return
             case "revealInFileBrowser": Store.workflows.openTool("fileManager", path); return
             case "copyPath": Store.actions.copyText(path, L10n.t("filePathCopied")); return
-            case "restoreFromCommit": Store.inspector.restoreFile(path, commit); return
+            case "restoreFromCommit": inspector.bridge.restoreFile(path, commit); return
             }
         }
     }
-    Component.onCompleted: Store.inspectorView = inspector
+    Component.onCompleted: if (!inWindow) Store.inspectorView = inspector
     readonly property bool diffFocused: commitDiff.activeFocus || commitFind.searchField.activeFocus
     // Screen readers hear where the inspector went (the Dart
     // inspectorShowing announcement), once per location.
@@ -148,7 +158,7 @@ Rectangle {
         const options = paneState.options ?? ({})
         switch (id) {
         case "diffToggleLayout":
-            Store.inspector.setDiffOptions(options.contextLines ?? 3, options.whitespace ?? "preserve",
+            inspector.bridge.setDiffOptions(options.contextLines ?? 3, options.whitespace ?? "preserve",
                                            options.layout === "sideBySide" ? "unified" : "sideBySide")
             return true
         case "diffToggleWrap":
@@ -158,6 +168,24 @@ Rectangle {
         case "diffPreviousHunk": commitDiff.nextHunk(false); return true
         }
         return false
+    }
+    /// Whether a window's repository has a tab in the main window.
+    readonly property bool repositoryOpen: !inWindow
+        || (Store.workspace !== null && (Store.workspace.tabs ?? []).some(tab => tab.path === windowRepository))
+    /// The location's commit in History: here, or in the main window.
+    function showInGraph() {
+        if (!location)
+            return
+        if (!inWindow) {
+            Store.history.reveal(location.commit)
+            return
+        }
+        Store.inspectionWindows.showInMainWindow(windowId, location.commit)
+        const main = Store.actions ? Store.actions.Window.window : null
+        if (main) {
+            main.raise()
+            main.requestActivate()
+        }
     }
     /// Shows or hides the changed files beside the diff.
     function toggleFiles() { filesHidden = !filesHidden }
@@ -176,15 +204,16 @@ Rectangle {
     function showTargetMenu(item, x, y) {
         targetMenu.items = [
             { title: L10n.t("fileActionCopyCommitHash"), icon: "copy", value: "copy" },
-            { title: L10n.t("inspectorShowInGraph"), icon: "locate", value: "graph" },
-        ]
+            { title: inWindow ? L10n.t("inspectorShowInMainWindow") : L10n.t("inspectorShowInGraph"), icon: "locate", value: "graph",
+              enabled: !inWindow || repositoryOpen },
+        ].concat(inWindow ? [] : [{ title: L10n.t("inspectorOpenInWindow"), icon: "app-window", value: "window" }])
         targetMenu.show(item, x, y)
     }
     CommandMenu {
         id: moreMenu
         onSelected: value => {
             if (value === "allFiles")
-                Store.inspector.setAllFiles(true)
+                inspector.bridge.setAllFiles(true)
             else if (value === "toggleFiles")
                 inspector.toggleFiles()
             else if (value === "copyHash" && inspector.location)
@@ -199,7 +228,9 @@ Rectangle {
             if (value === "copy")
                 Store.actions.copyText(inspector.location.commit, L10n.t("menuCommitHashCopied"))
             else if (value === "graph")
-                Store.history.reveal(inspector.location.commit)
+                inspector.showInGraph()
+            else if (value === "window")
+                Store.actions.openInspectionWindow(inspector.location)
         }
     }
     /// Focuses the commit diff's find field (Find); false without one.
@@ -231,7 +262,7 @@ Rectangle {
     // Back and Forward mouse buttons move through the inspector's history.
     TapHandler {
         acceptedButtons: Qt.BackButton | Qt.ForwardButton
-        onTapped: (point, button) => button === Qt.BackButton ? Store.inspector.back() : Store.inspector.forward()
+        onTapped: (point, button) => button === Qt.BackButton ? inspector.bridge.back() : inspector.bridge.forward()
     }
 
     MeridianEmptyState {
@@ -264,14 +295,14 @@ Rectangle {
                     text: L10n.t("historyNavigateBack")
                     iconName: "back"
                     enabled: inspector.paneState.canBack === true
-                    onClicked: Store.inspector.back()
+                    onClicked: inspector.bridge.back()
                 }
                 MeridianIconButton {
                     objectName: "inspector-forward"
                     text: L10n.t("historyNavigateForward")
                     iconName: "forward"
                     enabled: inspector.paneState.canForward === true
-                    onClicked: Store.inspector.forward()
+                    onClicked: inspector.bridge.forward()
                 }
             }
             MeridianBreadcrumbs {
@@ -302,7 +333,7 @@ Rectangle {
                 }
                 onActivated: index => {
                     if (index === 0)
-                        Store.inspector.selectFile("")
+                        inspector.bridge.selectFile("")
                 }
                 onContextMenuRequested: (index, x, y) => {
                     if (index === 0)
@@ -339,11 +370,29 @@ Rectangle {
                                  enabled: !reason, tooltip: reason ? inspector.lensReasonText(reason) : names[lens] }
                     })
                 }
-                onActivated: lens => Store.inspector.selectLens(lens)
+                onActivated: lens => inspector.bridge.selectLens(lens)
+            }
+            MeridianIconButton {
+                objectName: "inspector-show-in-main-window"
+                visible: inspector.inWindow
+                anchors.verticalCenter: parent.verticalCenter
+                text: L10n.t("inspectorShowInMainWindow")
+                iconName: "locate"
+                enabled: inspector.repositoryOpen
+                disabledReason: inspector.repositoryOpen ? "" : L10n.t("inspectorRepositoryNotOpen")
+                onClicked: inspector.showInGraph()
+            }
+            MeridianIconButton {
+                objectName: "inspector-open-window"
+                visible: !inspector.inWindow && inspector.location !== null
+                anchors.verticalCenter: parent.verticalCenter
+                text: L10n.t("inspectorOpenInWindow")
+                iconName: "app-window"
+                onClicked: Store.actions.openInspectionWindow(inspector.location)
             }
             MeridianIconButton {
                 objectName: "inspector-maximize"
-                visible: inspector.location !== null
+                visible: inspector.location !== null && !inspector.inWindow
                 anchors.verticalCenter: parent.verticalCenter
                 text: Store.inspectorMaximized ? L10n.t("inspectorRestoreLayout") : L10n.t("inspectorMaximize")
                 iconName: Store.inspectorMaximized ? "minimize-2" : "maximize-2"
@@ -388,7 +437,7 @@ Rectangle {
                     objectName: "inspector-retry"
                     text: L10n.t("retry")
                     controlSize: MeridianButton.Small
-                    onClicked: Store.inspector.retry()
+                    onClicked: inspector.bridge.retry()
                 }
             }
 
@@ -403,7 +452,7 @@ Rectangle {
                     width: parent.width
                     height: visible ? Math.min(implicitHeight, parent.height * GitLamaLayout.commitSummaryMaxHeightFraction) : 0
                     summary: inspector.summary ?? ({})
-                    onParentSelected: commit => Store.inspector.showCommit(commit)
+                    onParentSelected: commit => inspector.bridge.showCommit(commit)
                 }
                 MeridianHairline { visible: card.visible; anchors.top: card.bottom; width: parent.width }
 
@@ -465,7 +514,7 @@ Rectangle {
                                            { value: "all", label: L10n.t("inspectorScopeAll"), enabled: !filesHeader.comparison,
                                              tooltip: filesHeader.comparison ? L10n.t("inspectorScopeAllUnavailable") : "" }]
                                 value: filesHeader.all ? "all" : "changed"
-                                onActivated: value => Store.inspector.setAllFiles(value === "all")
+                                onActivated: value => inspector.bridge.setAllFiles(value === "all")
                             }
                             MeridianIconButton {
                                 visible: filesHeader.width < 240
@@ -474,7 +523,7 @@ Rectangle {
                                 iconName: filesHeader.all ? "list-view" : "tree-view"
                                 controlSize: MeridianButton.Small
                                 enabled: !(filesHeader.comparison && !filesHeader.all)
-                                onClicked: Store.inspector.setAllFiles(!filesHeader.all)
+                                onClicked: inspector.bridge.setAllFiles(!filesHeader.all)
                             }
                             // List or tree of the changed files.
                             MeridianSegmented {
@@ -503,6 +552,7 @@ Rectangle {
                         }
                         // The history lens lists the path's commits here instead.
                         InspectorHistoryList {
+                            bridge: inspector.bridge
                             visible: inspector.historyLens
                             anchors.fill: parent
                             paneState: inspector.paneState
@@ -530,7 +580,7 @@ Rectangle {
                                 selected: inspector.location !== null && inspector.location.path === null
                                 enabled: inspector.paneState.allChangesTooLarge !== true
                                 meta: inspector.paneState.allChangesTooLarge === true ? L10n.t("historyAllChangesTooLarge") : ""
-                                onClicked: Store.inspector.selectFile("")
+                                onClicked: inspector.bridge.selectFile("")
                             }
                             delegate: FileRow {
                                 required property var modelData
@@ -545,11 +595,11 @@ Rectangle {
                                 selected: !modelData.directory && inspector.location !== null && inspector.location.path === modelData.path
                                 onClicked: {
                                     if (modelData.directory)
-                                        Store.inspector.toggleFolder(modelData.path)
+                                        inspector.bridge.toggleFolder(modelData.path)
                                     else
-                                        Store.inspector.selectFile(modelData.path)
+                                        inspector.bridge.selectFile(modelData.path)
                                 }
-                                onFolderToggled: Store.inspector.toggleFolder(modelData.path)
+                                onFolderToggled: inspector.bridge.toggleFolder(modelData.path)
                                 onContextMenuRequested: (x, y) => inspector.showFileMenu(modelData, this, x, y)
                             }
                         }
@@ -587,11 +637,11 @@ Rectangle {
                                         selected: !folder && inspector.location !== null && inspector.location.path === allRow.modelData.path
                                         function toggleFolder() {
                                             if (allRow.modelData.expanded)
-                                                Store.inspector.collapseDirectory(allRow.modelData.path)
+                                                inspector.bridge.collapseDirectory(allRow.modelData.path)
                                             else
-                                                Store.inspector.expandDirectory(allRow.modelData.path)
+                                                inspector.bridge.expandDirectory(allRow.modelData.path)
                                         }
-                                        onClicked: folder ? toggleFolder() : Store.inspector.selectFile(allRow.modelData.path)
+                                        onClicked: folder ? toggleFolder() : inspector.bridge.selectFile(allRow.modelData.path)
                                         onFolderToggled: toggleFolder()
                                         onContextMenuRequested: (x, y) => inspector.showTreeMenu(allRow.modelData, this, x, y)
                                     }
@@ -605,8 +655,8 @@ Rectangle {
                                         iconName: allRow.modelData.rowKind === "retry" ? "rotate-ccw" : "more"
                                         enabled: allRow.modelData.loading !== true
                                         onClicked: allRow.modelData.rowKind === "retry"
-                                            ? Store.inspector.expandDirectory(allRow.modelData.path)
-                                            : Store.inspector.loadMoreDirectory(allRow.modelData.path)
+                                            ? inspector.bridge.expandDirectory(allRow.modelData.path)
+                                            : inspector.bridge.loadMoreDirectory(allRow.modelData.path)
                                     }
                                 }
                             }
@@ -676,7 +726,7 @@ Rectangle {
                                 id: commitFind
                                 anchors.verticalCenter: parent.verticalCenter
                                 objectName: "commit-diff-search"
-                                searcher: Store.inspector
+                                searcher: inspector.bridge
                                 view: commitDiff
                                 diffKey: inspector.location ? inspector.location.commit + ":" + (inspector.location.base ?? "") + ":" + (inspector.location.path ?? "") : null
                             }
@@ -698,7 +748,7 @@ Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                                 encoding: commitDiff.encoding
                                 onEncodingChosen: value => commitDiff.encoding = value
-                                setOptions: (context, whitespace, layout) => Store.inspector.setDiffOptions(context, whitespace, layout)
+                                setOptions: (context, whitespace, layout) => inspector.bridge.setDiffOptions(context, whitespace, layout)
                             }
                             MeridianIconButton {
                                 objectName: "commit-diff-renderer"
@@ -740,7 +790,7 @@ Rectangle {
                             MeridianButton {
                                 text: L10n.t("retry")
                                 controlSize: MeridianButton.Small
-                                onClicked: Store.inspector.retry()
+                                onClicked: inspector.bridge.retry()
                             }
                         }
                         // The history lens: the selected commit, then its change to the path.
@@ -789,8 +839,8 @@ Rectangle {
                                         text: L10n.t("inspectorShowCommit")
                                         iconName: "git-commit-horizontal"
                                         controlSize: MeridianButton.Small
-                                        onClicked: parent.folder ? Store.inspector.showCommit(historyHeader.entry.commit)
-                                            : Store.inspector.openFileLens(inspector.location.path, "diff", false, historyHeader.entry.commit)
+                                        onClicked: parent.folder ? inspector.bridge.showCommit(historyHeader.entry.commit)
+                                            : inspector.bridge.openFileLens(inspector.location.path, "diff", false, historyHeader.entry.commit)
                                     }
                                     MeridianButton {
                                         objectName: "inspector-history-blame"
@@ -799,7 +849,7 @@ Rectangle {
                                         iconName: "blame"
                                         controlSize: MeridianButton.Small
                                         variant: MeridianButton.Quiet
-                                        onClicked: Store.inspector.openFileLens(inspector.location.path, "blame", false, historyHeader.entry.commit)
+                                        onClicked: inspector.bridge.openFileLens(inspector.location.path, "blame", false, historyHeader.entry.commit)
                                     }
                                     MeridianButton {
                                         objectName: "inspector-history-contents"
@@ -808,7 +858,7 @@ Rectangle {
                                         iconName: "file-text"
                                         controlSize: MeridianButton.Small
                                         variant: MeridianButton.Quiet
-                                        onClicked: Store.inspector.openFileLens(inspector.location.path, "contents", false, historyHeader.entry.commit)
+                                        onClicked: inspector.bridge.openFileLens(inspector.location.path, "contents", false, historyHeader.entry.commit)
                                     }
                                 }
                             }
@@ -842,7 +892,7 @@ Rectangle {
                                     width: ListView.view.width
                                     path: modelData.path
                                     status: inspector.fileStatus(modelData.kind)
-                                    onClicked: Store.inspector.openFileLens(modelData.path, "diff", false, historyHeader.entry.commit)
+                                    onClicked: inspector.bridge.openFileLens(modelData.path, "diff", false, historyHeader.entry.commit)
                                 }
                             }
                         }
@@ -857,6 +907,8 @@ Rectangle {
                             path: inspector.location && inspector.location.path ? inspector.location.path : ""
                         }
                         InspectorBlame {
+                            bridge: inspector.bridge
+                            blameModel: inspector.blameModel
                             visible: inspector.location !== null && inspector.location.lens === "blame" && inspector.paneState.hasBlame === true
                             anchors.top: showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
@@ -867,15 +919,15 @@ Rectangle {
                             id: commitImage
                             visible: commitDiff.visible && row !== null
                             anchors.fill: commitDiff
-                            source: Store.inspector
-                            load: row => Store.inspector.loadImageDiff(row.key, row.oldPath, row.newPath)
+                            source: inspector.bridge
+                            load: row => inspector.bridge.loadImageDiff(row.key, row.oldPath, row.newPath)
                             function refresh() {
-                                const next = Store.inspectorDiff ? Store.inspectorDiff.imageRow() : null
+                                const next = inspector.diffModel ? inspector.diffModel.imageRow() : null
                                 if (JSON.stringify(next) !== JSON.stringify(row))
                                     row = next
                             }
                             Connections {
-                                target: Store.inspectorDiff
+                                target: inspector.diffModel
                                 function onCountChanged() { commitImage.refresh() }
                                 function onDataChanged() { commitImage.refresh() }
                                 function onModelReset() { commitImage.refresh() }
@@ -910,33 +962,33 @@ Rectangle {
                             id: commitDiff
                             opacity: commitImage.row === null ? 1 : 0
                             enabled: commitImage.row === null
-                            hunkSource: Store.inspector
+                            hunkSource: inspector.bridge
                             visible: inspector.paneState.hasDiff === true && (inspector.location.lens === "diff" || inspector.historyLens)
                                 && !inspector.paneState.contentFailure
                             wrap: Store.appearance.diffWrap === true
                             showIndicators: Store.appearance.diffIndicators !== false
                             showMinimap: Store.appearance.diffMinimap !== false
                             canShowMoreContext: !!inspector.paneState.options && inspector.paneState.options.contextLines < 10000
-                            onShowMoreContext: Store.inspector.showMoreContext()
+                            onShowMoreContext: inspector.bridge.showMoreContext()
                             anchors.top: rendererStatus.visible ? rendererStatus.bottom
                                 : historyHeader.visible ? historyHeader.bottom : progress.visible ? progress.bottom
                                 : diffToolbar.visible ? diffToolbar.bottom : showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
                             width: parent.width
-                            model: Store.inspectorDiff
+                            model: inspector.diffModel
                             layout: inspector.paneState.options ? inspector.paneState.options.layout : "unified"
                             canShowAsText: inspector.paneState.forceText !== true
-                            onShowAsText: Store.inspector.showAsText()
+                            onShowAsText: inspector.bridge.showAsText()
                             // Lines select for copying (the Dart CommitDiffPane selection).
                             lineSelection: true
-                            patchSource: Store.inspector
+                            patchSource: inspector.bridge
                             onRowsSelected: rows => selectedRows = rows
                             onLineMenuRequested: (x, y) => {
                                 commitLineMenu.items = commitDiff.copyMenuItems().slice(1)
                                 commitLineMenu.show(commitDiff, x, y)
                             }
                             Connections {
-                                target: Store.inspectorDiff
+                                target: inspector.diffModel
                                 function onModelReset() { commitDiff.selectedRows = [] }
                             }
                             CommandMenu {

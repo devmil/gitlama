@@ -11,6 +11,9 @@ import Meridian
 Item {
     id: root
 
+    property var bridge: Store.inspector
+    property var blameModel: Store.inspectorBlame
+
     readonly property real lineHeight: GitLamaLayout.diffLineHeight
     property real widest: 0
 
@@ -43,7 +46,7 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         flickableDirection: Flickable.AutoFlickIfNeeded
         contentWidth: Math.max(width, GitLamaLayout.blameBandWidth + GitLamaLayout.diffGutterWidth + root.widest + Theme.space.s6)
-        model: Store.inspectorBlame
+        model: root.blameModel
         MeridianWheelScroll { flickable: list }
         C.ScrollBar.vertical: MeridianScrollBar {}
         C.ScrollBar.horizontal: MeridianScrollBar {}
@@ -64,8 +67,8 @@ Item {
             width: list.contentWidth
             height: root.lineHeight
             color: index % 2 === 0 ? Theme.colors.pane : Qt.alpha(Theme.colors.paneAlt, GitLamaLayout.opacityUnlit)
-            Component.onCompleted: if (loading) Store.inspector.ensureBlameRow(index)
-            onLoadingChanged: if (loading) Store.inspector.ensureBlameRow(index)
+            Component.onCompleted: if (loading) root.bridge.ensureBlameRow(index)
+            onLoadingChanged: if (loading) root.bridge.ensureBlameRow(index)
 
             // The commit band.
             Rectangle {
@@ -109,7 +112,7 @@ Item {
                 }
                 TapHandler {
                     enabled: row.hasCommit && row.boundary !== true
-                    onTapped: Store.inspector.blameBefore(row.index)
+                    onTapped: root.bridge.blameBefore(row.index)
                 }
             }
             MeridianHairline { x: band.width; vertical: true; height: parent.height }
@@ -137,10 +140,10 @@ Item {
                 onTapped: point => {
                     const items = []
                     if (row.hasCommit)
-                        items.push({ title: L10n.t("inspectorShowCommit"), icon: "git-commit-horizontal", value: () => Store.inspector.showCommit(row.commit) })
+                        items.push({ title: L10n.t("inspectorShowCommit"), icon: "git-commit-horizontal", value: () => root.bridge.showCommit(row.commit) })
                     if (row.hasCommit && row.boundary !== true)
-                        items.push({ title: L10n.t("inspectorBlameBefore"), icon: "blame", value: () => Store.inspector.blameBefore(row.index) })
-                    items.push({ title: L10n.t("inspectorLineHistory"), icon: "history", value: () => Store.inspector.lineHistory(row.line, row.line) })
+                        items.push({ title: L10n.t("inspectorBlameBefore"), icon: "blame", value: () => root.bridge.blameBefore(row.index) })
+                    items.push({ title: L10n.t("inspectorLineHistory"), icon: "history", value: () => root.bridge.lineHistory(row.line, row.line) })
                     if (row.hasCommit) {
                         items.push({ separator: true })
                         items.push({ title: L10n.t("fileActionCopyCommitHash"), icon: "copy",

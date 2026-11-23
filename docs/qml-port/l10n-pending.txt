@@ -3,13 +3,10 @@
 # listed key gets used. The port is complete when this file is empty.
 diagnosticsShare
 extensionWorktreeChooseFolderFailure
-historyWindowFailed
 initializeLocation
 initializeLocationThisComputer
 inspectorRemoteHostNotConnected
 inspectorRemoteHostNotConnectedDetail
-inspectorRepositoryNotOpen
-inspectorShowInMainWindow
 remoteAccess
 remoteAccessChanges
 remoteAccessChangesDetail

@@ -325,6 +325,11 @@ mod inspector_state {
         pub(crate) collapsed: Rc<std::cell::RefCell<(String, std::collections::HashSet<String>)>>,
         /// The file menus' host actions, set once the services run.
         pub(crate) actions: Option<Rc<gitlama_workbench::inspector_actions::InspectorActions>>,
+        /// An inspection window's own inspector; the History inspector when
+        /// absent.
+        pub(crate) service: Option<Rc<InspectorService>>,
+        /// An inspection window's own object, for its signals.
+        pub(crate) this: Option<std::rc::Weak<std::cell::RefCell<InspectorState>>>,
     }
 
     impl InspectorState {
@@ -424,6 +429,7 @@ mod inspector_state {
         /// `diff_searched` (matches null when the search failed).
         #[qslot]
         fn search_diff(&self, query: String, case_sensitive: bool) {
+            let (target, this) = (self.service.clone(), self.this.clone());
             let Some(commands) = self.commands.clone() else {
                 return;
             };
@@ -431,10 +437,18 @@ mod inspector_state {
                 let Some(services) = driver.app.services() else {
                     return;
                 };
-                let Some(document) = services.inspector.current().diff else {
+                let Some(document) = target
+                    .clone()
+                    .unwrap_or_else(|| Rc::clone(&services.inspector))
+                    .current()
+                    .diff
+                else {
                     return;
                 };
-                let shared = Rc::clone(&driver.inspector);
+                let shared = this
+                    .as_ref()
+                    .and_then(std::rc::Weak::upgrade)
+                    .unwrap_or_else(|| Rc::clone(&driver.inspector));
                 rt::spawn_detached(async move {
                     let matches = document.search(&query, case_sensitive).await;
                     let value = matches.map_or(Value::Null, Value::from);
@@ -449,6 +463,7 @@ mod inspector_state {
         /// by `image_diff_loaded` with `key`.
         #[qslot]
         fn load_image_diff(&self, key: String, old_path: String, new_path: String) {
+            let (target, this) = (self.service.clone(), self.this.clone());
             let Some(commands) = self.commands.clone() else {
                 return;
             };
@@ -456,8 +471,13 @@ mod inspector_state {
                 let Some(services) = driver.app.services() else {
                     return;
                 };
-                let inspector = Rc::clone(&services.inspector);
-                let shared = Rc::clone(&driver.inspector);
+                let inspector = target
+                    .clone()
+                    .unwrap_or_else(|| Rc::clone(&services.inspector));
+                let shared = this
+                    .as_ref()
+                    .and_then(std::rc::Weak::upgrade)
+                    .unwrap_or_else(|| Rc::clone(&driver.inspector));
                 rt::spawn_detached(async move {
                     let old = if old_path.is_empty() {
                         new_path.clone()
@@ -484,6 +504,7 @@ mod inspector_state {
         /// answered by `patch_ready`; Latin-1 text when `latin1`.
         #[qslot]
         fn copy_patch(&self, rows: Vec<String>, latin1: bool) {
+            let (target, this) = (self.service.clone(), self.this.clone());
             let Some(commands) = self.commands.clone() else {
                 return;
             };
@@ -491,10 +512,18 @@ mod inspector_state {
                 let Some(services) = driver.app.services() else {
                     return;
                 };
-                let Some(document) = services.inspector.current().diff else {
+                let Some(document) = target
+                    .clone()
+                    .unwrap_or_else(|| Rc::clone(&services.inspector))
+                    .current()
+                    .diff
+                else {
                     return;
                 };
-                let shared = Rc::clone(&driver.inspector);
+                let shared = this
+                    .as_ref()
+                    .and_then(std::rc::Weak::upgrade)
+                    .unwrap_or_else(|| Rc::clone(&driver.inspector));
                 let patch = document.selection_patch(rows);
                 rt::spawn_detached(async move {
                     let text = patch.await.map_or_else(String::new, |bytes| {
@@ -512,6 +541,7 @@ mod inspector_state {
         /// Every hunk header row of the shown diff: answered by `hunks_loaded`.
         #[qslot]
         fn load_hunks(&self) {
+            let (target, this) = (self.service.clone(), self.this.clone());
             let Some(commands) = self.commands.clone() else {
                 return;
             };
@@ -519,10 +549,18 @@ mod inspector_state {
                 let Some(services) = driver.app.services() else {
                     return;
                 };
-                let Some(document) = services.inspector.current().diff else {
+                let Some(document) = target
+                    .clone()
+                    .unwrap_or_else(|| Rc::clone(&services.inspector))
+                    .current()
+                    .diff
+                else {
                     return;
                 };
-                let shared = Rc::clone(&driver.inspector);
+                let shared = this
+                    .as_ref()
+                    .and_then(std::rc::Weak::upgrade)
+                    .unwrap_or_else(|| Rc::clone(&driver.inspector));
                 rt::spawn_detached(async move {
                     let rows = document.hunks().await;
                     shared.borrow_mut().hunks_loaded(Value::from(rows));
@@ -684,6 +722,7 @@ mod inspector_state {
         /// `directory`) at the current commit in the History inspector.
         #[qslot]
         fn inspect_working_file(&self, path: String, lens: String, directory: bool) {
+            let target = self.service.clone();
             let Some(commands) = &self.commands else {
                 return;
             };
@@ -702,7 +741,9 @@ mod inspector_state {
                     return;
                 };
                 let navigator = Rc::clone(&services.navigator);
-                let inspector = Rc::clone(&services.inspector);
+                let inspector = target
+                    .clone()
+                    .unwrap_or_else(|| Rc::clone(&services.inspector));
                 rt::spawn_detached(async move {
                     navigator
                         .show_commit(head.clone(), None, false, false)
@@ -851,10 +892,15 @@ mod inspector_state {
             F: FnOnce(Rc<InspectorService>) -> Fut + 'static,
             Fut: std::future::Future<Output = ()> + 'static,
         {
+            let target = self.service.clone();
             if let Some(commands) = &self.commands {
                 commands.post(move |driver| {
                     if let Some(services) = driver.app.services() {
-                        rt::spawn_detached(action(Rc::clone(&services.inspector)));
+                        rt::spawn_detached(action(
+                            target
+                                .clone()
+                                .unwrap_or_else(|| Rc::clone(&services.inspector)),
+                        ));
                     }
                 });
             }

@@ -48,6 +48,8 @@ pub struct Driver {
     pub inspector: Rc<RefCell<InspectorState>>,
     pub inspector_diff: Rc<RefCell<DiffModel>>,
     pub inspector_blame: Rc<RefCell<crate::blame_model::BlameModel>>,
+    /// The open inspection windows (see `InspectionWindows`).
+    pub inspection_windows: crate::inspection_windows::Registry,
     pub changes: Rc<RefCell<ChangesState>>,
     pub unstaged_rows: Rc<RefCell<RowModel>>,
     pub staged_rows: Rc<RefCell<RowModel>>,
@@ -898,15 +900,44 @@ impl Driver {
         let Some(services) = self.app.services() else {
             return;
         };
+        Self::project_one_inspector(
+            &services,
+            &services.inspector,
+            &self.inspector,
+            &self.inspector_diff,
+            &self.inspector_blame,
+        );
+        // Inspection windows show their own inspectors.
+        let windows: Vec<_> = self.inspection_windows.borrow().clone();
+        for window in windows {
+            let Some(service) = window.state.borrow().service.clone() else {
+                continue;
+            };
+            Self::project_one_inspector(
+                &services,
+                &service,
+                &window.state,
+                &window.diff,
+                &window.blame,
+            );
+        }
+    }
+
+    fn project_one_inspector(
+        services: &gitlama_workbench::app::Services,
+        service: &Rc<gitlama_workbench::inspector::InspectorService>,
+        shown: &Rc<RefCell<InspectorState>>,
+        diff_model: &Rc<RefCell<DiffModel>>,
+        blame_model: &Rc<RefCell<crate::blame_model::BlameModel>>,
+    ) {
         let tree = services
             .settings
             .with(|document| document.appearance.commit_files_mode == "tree");
         let collapsed = {
-            let inspector = self.inspector.borrow();
+            let inspector = shown.borrow();
             let mut folded = inspector.collapsed.borrow_mut();
             // Another commit starts with every folder open.
-            let commit = services
-                .inspector
+            let commit = service
                 .current()
                 .location
                 .map(|location| location.target.commit().to_owned())
@@ -916,19 +947,20 @@ impl Driver {
             }
             folded.1.clone()
         };
-        let state = crate::inspector_state::project(&services.inspector, tree, &collapsed);
+        let state = crate::inspector_state::project(service, tree, &collapsed);
         {
-            let mut inspector = self.inspector.borrow_mut();
+            let mut inspector = shown.borrow_mut();
+            if inspector.actions.is_none() {
+                inspector.actions = Some(Rc::clone(&services.inspector_actions));
+            }
             if inspector.state != state {
                 inspector.state = state;
                 inspector.state_changed();
             }
         }
-        let diff = services.inspector.current().diff;
-        self.inspector_diff.borrow_mut().publish(diff);
-        self.inspector_blame
-            .borrow_mut()
-            .publish(services.inspector.current().blame);
+        let current = service.current();
+        diff_model.borrow_mut().publish(current.diff);
+        blame_model.borrow_mut().publish(current.blame);
     }
 
     pub(crate) fn project_changes(&self) {

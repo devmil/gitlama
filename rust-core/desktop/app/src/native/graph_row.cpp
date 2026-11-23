@@ -1,3 +1,4 @@
+#include <QtGui/QGuiApplication>
 #include "graph_row.h"
 #include "text_formatter.h"
 
@@ -316,4 +317,10 @@ extern "C" void gitlama_register_native_types()
 {
     qmlRegisterType<gitlama::GraphRow>("GitLamaNative", 1, 0, "GraphRow");
     qmlRegisterType<gitlama::TextFormatter>("GitLamaNative", 1, 0, "TextFormatter");
+}
+
+// The modifier keys held now (Qt::KeyboardModifiers): a command run from a
+// menu or the palette reads Ctrl/Cmd to invert where inspection opens.
+extern "C" int gitlama_keyboard_modifiers() {
+    return static_cast<int>(QGuiApplication::queryKeyboardModifiers());
 }

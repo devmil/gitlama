@@ -192,6 +192,82 @@ Item {
         licenseDialog.open()
     }
     function showAbout() { aboutDialog.open() }
+    /// Opens `location` ({commit, base, path, directory, lens, scope}) of the
+    /// active repository in an inspection window.
+    function openInspectionWindow(location) {
+        const active = Store.workspace ? Store.workspace.active : null
+        const tab = active ? (Store.workspace.tabs ?? []).find(candidate => candidate.id === active.tabId) : null
+        const id = Store.inspectionWindows && location ? Store.inspectionWindows.open(location) : 0
+        if (id === 0) {
+            Notifications.show(L10n.t("historyWindowFailed"), true)
+            return
+        }
+        const window = inspectionWindowComponent.createObject(null, {
+            windowId: id,
+            bridge: Store.inspectionWindows.inspector(id),
+            diffModel: Store.inspectionWindows.diff(id),
+            blameModel: Store.inspectionWindows.blame(id),
+            repository: tab ? (tab.path ?? "") : "",
+        })
+        if (!window) {
+            Store.inspectionWindows.close(id)
+            Notifications.show(L10n.t("historyWindowFailed"), true)
+            return
+        }
+        openWindows.push(window)
+        window.closing.connect(() => { openWindows = openWindows.filter(candidate => candidate !== window) })
+        actionsRoot.raiseWindow(window)
+    }
+    property var openWindows: []
+    function closeInspectionWindows() {
+        for (const window of openWindows.slice())
+            window.close()
+    }
+    // Created windows are untyped; they are shown dynamically.
+    function raiseWindow(window) {
+        window.show()
+        window.requestActivate()
+    }
+    Component { id: inspectionWindowComponent; InspectionWindow {} }
+    /// A working-tree path at the checked-out commit (the Dart
+    /// _inspectWorkingFile): in a window where windows open, else in the
+    /// History inspector.
+    function inspectWorkingFile(path, lens, directory) {
+        const active = Store.workspace ? Store.workspace.active : null
+        const head = active ? active.headObjectId : null
+        if (head && Store.inspectionWindows) {
+            openInspectionWindow({ commit: head, path: path, directory: directory, lens: lens })
+            return
+        }
+        Store.inspector.inspectWorkingFile(path, lens, directory)
+    }
+    /// Blame or History of the inspected file, or of the commit's first
+    /// changed file (the Dart _openHistoryInspection): in a window when the
+    /// inspector is not on screen or the setting (or Ctrl/Cmd) says so.
+    function openHistoryInspection(lens) {
+        const view = Store.inspectorView
+        const location = view ? view.location : null
+        const first = view ? (view.paneState.files ?? []).map(file => file.path).find(path => !!path) : undefined
+        const path = location ? (location.path ?? first) : undefined
+        if (!location || !path) {
+            Notifications.show(Commands.reasonText("contextRequired"), false)
+            return
+        }
+        const active = Store.workspace ? Store.workspace.active : null
+        const inspectorVisible = active !== null && active.pane === "history"
+        const invert = Store.hooks !== null && (Store.hooks.keyboardModifiers() & (Qt.ControlModifier | Qt.MetaModifier)) !== 0
+        const setting = Store.appearance.inspectionOpenIn === "window"
+        const inWindow = !inspectorVisible || (invert ? !setting : setting)
+        const directory = location.path ? location.directory === true : false
+        if (inWindow && Store.inspectionWindows) {
+            openInspectionWindow({ commit: location.commit, base: location.base, path: path, directory: directory, lens: lens })
+            return
+        }
+        if (location.path === path)
+            Store.inspector.selectLens(lens)
+        else
+            Store.inspector.openFileLens(path, lens, directory, "")
+    }
     /// A Refresh began (the toolbar spins if it lasts).
     signal refreshStarted()
     /// Find (the Dart _findInRepository): the focused diff's find field,
@@ -454,6 +530,12 @@ Item {
             return
         case "historyCompare": Store.history.compareSelected(); return
         case "inspectorToggleMaximize": Store.inspectorMaximized = !Store.inspectorMaximized; return
+        case "inspectorOpenInWindow":
+            if (Store.inspectorView && Store.inspectorView.location)
+                openInspectionWindow(Store.inspectorView.location)
+            else
+                Notifications.show(Commands.reasonText("contextRequired"), false)
+            return
         case "inspectorToggleFiles": if (Store.inspectorView) Store.inspectorView.toggleFiles(); return
         case "inspectorAllFiles": Store.inspector.setAllFiles(true); return
         case "reportIssue":
@@ -470,8 +552,10 @@ Item {
         case "discardChanges": Store.changes.discardSelection(); return
         case "inspectorLensDiff": Store.inspector.selectLens("diff"); return
         case "inspectorLensContents": Store.inspector.selectLens("contents"); return
-        case "inspectorLensBlame": case "historyBlame": Store.inspector.selectLens("blame"); return
-        case "inspectorLensHistory": case "historyPathHistory": Store.inspector.selectLens("history"); return
+        case "inspectorLensBlame": Store.inspector.selectLens("blame"); return
+        case "inspectorLensHistory": Store.inspector.selectLens("history"); return
+        case "historyBlame": openHistoryInspection("blame"); return
+        case "historyPathHistory": openHistoryInspection("history"); return
         case "inspectorUp": Store.inspector.up(); return
         case "inspectorBack": Store.inspector.back(); return
         case "inspectorForward": Store.inspector.forward(); return
@@ -1254,6 +1338,8 @@ Item {
             }
             else if (name === "snapshotCreate")
                 Store.workflows.snapshot("create", { name: argument, includeUntracked: true, keepIndex: false })
+            else if (name === "shotWindow")
+                Store.screenshotWindow = actionsRoot.openWindows.length > 0 ? actionsRoot.openWindows[actionsRoot.openWindows.length - 1] : null
             else if (name === "reviewSample") {
                 Store.hosting.reviewShowSample()
                 reviewWorkspace.open()

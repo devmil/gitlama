@@ -2,6 +2,10 @@
 
 use qtbridge::qobject;
 
+unsafe extern "C" {
+    fn gitlama_keyboard_modifiers() -> i32;
+}
+
 #[qobject(ConvertToCamelCase)]
 mod platform_hooks {
     #[derive(Default)]
@@ -37,6 +41,13 @@ mod platform_hooks {
         }
 
         /// The platform's reduce-motion accessibility setting.
+        /// The modifier keys held now (Qt.KeyboardModifiers).
+        #[qslot]
+        fn keyboard_modifiers(&self) -> i32 {
+            // SAFETY: reads the GUI application's keyboard state on the GUI thread.
+            unsafe { super::gitlama_keyboard_modifiers() }
+        }
+
         #[qslot]
         fn reduce_motion(&self) -> bool {
             #[cfg(target_os = "linux")]

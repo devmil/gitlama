@@ -166,6 +166,9 @@ QtObject {
     readonly property real windowDefaultHeight: 800
     readonly property real windowMinimumWidth: 900
     readonly property real windowMinimumHeight: 600
+    // An inspection window opens at this size.
+    readonly property real inspectionWindowWidth: 1100
+    readonly property real inspectionWindowHeight: 760
     readonly property real conflictChoiceRail: 2
     readonly property real conflictComparisonRowHeight: 25
     readonly property real conflictAncestorHeight: 100

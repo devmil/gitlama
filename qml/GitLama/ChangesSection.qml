@@ -280,11 +280,11 @@ Item {
             case "addToGitignore":
                 Store.workflows.ignorePath(path, folder, rows.some(row => row.untracked !== true)); return
             case "blame":
-                Store.inspector.inspectWorkingFile(path, "blame", false); return
+                Store.actions.inspectWorkingFile(path, "blame", false); return
             case "fileHistory":
-                Store.inspector.inspectWorkingFile(path, "history", false); return
+                Store.actions.inspectWorkingFile(path, "history", false); return
             case "folderHistory":
-                Store.inspector.inspectWorkingFile(path, "history", true); return
+                Store.actions.inspectWorkingFile(path, "history", true); return
             }
         }
     }

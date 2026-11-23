@@ -248,7 +248,13 @@ fn main() {
     let inspector_blame = Rc::new(RefCell::new(gitlama_qt::BlameModel::default()));
     gitlama_qt::BlameModel::attach_qobject(&inspector_blame);
 
+    let inspection_windows = Rc::new(RefCell::new(gitlama_qt::InspectionWindows::default()));
+    gitlama_qt::InspectionWindows::attach_qobject(&inspection_windows);
+    inspection_windows.borrow_mut().commands = Some(commands.clone());
+    let window_registry = Rc::clone(&inspection_windows.borrow().registry);
+
     let driver = Rc::new(Driver {
+        inspection_windows: window_registry,
         inspector_blame: Rc::clone(&inspector_blame),
         operations: Rc::clone(&operations),
         patches: Rc::clone(&patches),
@@ -327,6 +333,10 @@ fn main() {
         ("conflictRows", conflict_rows.borrow().as_qvariant()),
         ("operations", operations.borrow().as_qvariant()),
         ("inspectorBlame", inspector_blame.borrow().as_qvariant()),
+        (
+            "inspectionWindows",
+            inspection_windows.borrow().as_qvariant(),
+        ),
         ("patches", patches.borrow().as_qvariant()),
         ("hosting", hosting.borrow().as_qvariant()),
         ("lineSelection", line_selection.borrow().as_qvariant()),

@@ -32,6 +32,7 @@ Window {
     required property var lineSelection
     required property var lineRows
     required property var inspectorBlame
+    required property var inspectionWindows
 
     // A command forwarded from the command line brings the window forward.
     Connections {
@@ -116,6 +117,7 @@ Window {
         Store.lineSelection = lineSelection
         Store.lineRows = lineRows
         Store.inspectorBlame = inspectorBlame
+        Store.inspectionWindows = inspectionWindows
         Store.actions = actions
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()
@@ -151,7 +153,9 @@ Window {
             }
             if (path === "-")
                 return
-            appWindow.contentItem.grabToImage(result => {
+            // `shotWindow` captures the newest inspection window instead.
+            const target = Store.screenshotWindow ?? appWindow
+            target.contentItem.grabToImage(result => {
                 result.saveToFile(path)
                 Qt.quit()
             })
@@ -169,7 +173,12 @@ Window {
         return { leading: buttons(sides[0]), trailing: sides.length > 1 ? buttons(sides[1]) : [] }
     }
 
-    onClosing: app.flushSettings()
+    onClosing: {
+        // Inspection windows close with the main window.
+        if (Store.actions)
+            Store.actions.closeInspectionWindows()
+        app.flushSettings()
+    }
 
     MeridianGround { anchors.fill: parent }
 

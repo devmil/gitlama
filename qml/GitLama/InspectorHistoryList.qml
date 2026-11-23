@@ -10,6 +10,8 @@ import Meridian
 Item {
     id: root
 
+    property var bridge: Store.inspector
+
     property var paneState: ({})
     readonly property var location: paneState.location ?? null
     readonly property var history: paneState.history ?? null
@@ -26,7 +28,7 @@ Item {
             text: root.lines ? L10n.tn("inspectorLines", { first: root.lines[0], last: root.lines[1] }) : ""
             removable: true
             removeLabel: L10n.t("inspectorClearLines")
-            onRemoveRequested: Store.inspector.up()
+            onRemoveRequested: root.bridge.up()
         }
     }
     MeridianEmptyState {
@@ -54,14 +56,14 @@ Item {
         model: root.entries
         MeridianWheelScroll { flickable: list }
         C.ScrollBar.vertical: MeridianScrollBar {}
-        onAtYEndChanged: if (atYEnd && root.history && root.history.hasMore && !root.history.loadingMore && !root.history.moreFailed) Store.inspector.loadMoreHistory()
+        onAtYEndChanged: if (atYEnd && root.history && root.history.hasMore && !root.history.loadingMore && !root.history.moreFailed) root.bridge.loadMoreHistory()
         footer: MeridianListRow {
             visible: root.history !== null && root.history.hasMore === true && root.lines === null
             height: visible ? implicitHeight : 0
             width: list.width - list.leftMargin - list.rightMargin
             text: root.history && root.history.moreFailed ? L10n.t("retry") : L10n.t("inspectorLoadOlder")
             iconName: root.history && root.history.moreFailed ? "rotate-ccw" : "history"
-            onClicked: Store.inspector.loadMoreHistory()
+            onClicked: root.bridge.loadMoreHistory()
         }
         delegate: MeridianListRow {
             id: entryRow
@@ -80,8 +82,8 @@ Item {
                     text: Labels.shortObjectId(entryRow.modelData.commit)
                 }
             }
-            onClicked: Store.inspector.selectHistoryEntry(modelData.commit)
-            TapHandler { onDoubleTapped: Store.inspector.showCommit(entryRow.modelData.commit) }
+            onClicked: root.bridge.selectHistoryEntry(modelData.commit)
+            TapHandler { onDoubleTapped: root.bridge.showCommit(entryRow.modelData.commit) }
         }
     }
 }

@@ -38,6 +38,10 @@ QtObject {
     property var conflictRows: null
     /// The inspector's blame lines.
     property var inspectorBlame: null
+    /// Opens inspection windows (InspectionWindows).
+    property var inspectionWindows: null
+    /// Development screenshots: the window to capture instead of the main one.
+    property var screenshotWindow: null
     /// The OperationsState bridge (logbook, activity).
     property var operations: null
     property var patches: null

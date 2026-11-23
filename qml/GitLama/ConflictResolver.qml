@@ -794,8 +794,8 @@ FocusScope {
             case "copyPath": Store.actions.copyText(path, L10n.t("filePathCopied")); return
             case "openExternally": Store.workflows.openTool("editor", path); return
             case "revealInFileBrowser": Store.workflows.openTool("fileManager", path); return
-            case "blame": Store.inspector.inspectWorkingFile(path, "blame", false); return
-            case "fileHistory": Store.inspector.inspectWorkingFile(path, "history", false); return
+            case "blame": Store.actions.inspectWorkingFile(path, "blame", false); return
+            case "fileHistory": Store.actions.inspectWorkingFile(path, "history", false); return
             }
         }
     }

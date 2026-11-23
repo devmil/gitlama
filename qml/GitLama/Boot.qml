@@ -30,6 +30,7 @@ QtObject {
     required property var lineSelection
     required property var lineRows
     required property var inspectorBlame
+    required property var inspectionWindows
     property var window: null
 
     Component.onCompleted: {
@@ -46,7 +47,7 @@ QtObject {
                                                          changes: boot.changes, unstagedRows: boot.unstagedRows,
                                                          stagedRows: boot.stagedRows, workingDiff: boot.workingDiff,
                                                          commit: boot.commit, workflows: boot.workflows, settings: boot.settings,
-                                                         conflicts: boot.conflicts, conflictRows: boot.conflictRows, operations: boot.operations, inspectorBlame: boot.inspectorBlame,
+                                                         conflicts: boot.conflicts, conflictRows: boot.conflictRows, operations: boot.operations, inspectorBlame: boot.inspectorBlame, inspectionWindows: boot.inspectionWindows,
                                                          patches: boot.patches, hosting: boot.hosting, lineSelection: boot.lineSelection, lineRows: boot.lineRows })
         if (window === null) {
             console.error("the main window could not be created")
