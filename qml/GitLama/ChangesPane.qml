@@ -57,6 +57,13 @@ Item {
                     message: ({ waiting: L10n.t("stagingWaiting"), preparing: L10n.t("stagingPreparing"),
                                 updating: L10n.t("stagingUpdating"), refreshing: L10n.t("stagingRefreshing") })[pane.paneState.phase ?? "waiting"]
                         + " " + L10n.tn("stagingQueueCount", { count: pane.paneState.pending ?? 0 })
+                    MeridianButton {
+                        visible: (pane.paneState.pending ?? 0) > 0
+                        text: L10n.t("stagingClearQueue")
+                        variant: MeridianButton.Quiet
+                        controlSize: MeridianButton.Small
+                        onClicked: Store.changes.clearQueue()
+                    }
                 }
             }
 

@@ -338,6 +338,13 @@ impl ChangesService {
         self.notify();
     }
 
+    /// Drops the queued staging work that has not started (Clear queue);
+    /// the running step finishes.
+    pub fn clear_pending_stages(&self, tab: u64) {
+        self.with_tab(tab, |state| state.pending.clear());
+        self.notify();
+    }
+
     pub fn pending_stages(&self, tab: u64) -> usize {
         self.with_tab(tab, |state| state.pending.len())
     }

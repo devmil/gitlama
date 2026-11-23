@@ -39,6 +39,8 @@ Item {
 
     Accessible.role: Accessible.ListItem
     Accessible.name: status.length > 0 ? status + ", " + path : path
+    // A tree's folder says whether it is open (the Dart git file list).
+    Accessible.description: folder ? (expanded ? L10n.t("gitFolderExpanded") : L10n.t("gitFolderCollapsed")) : ""
     Accessible.selected: selected
 
     Keys.onReturnPressed: row.clicked()
@@ -117,7 +119,7 @@ Item {
             MeridianText {
                 visible: text.length > 0
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, Math.max(0, label.width - nameText.implicitWidth))
+                width: Math.min(implicitWidth, Math.max(0, label.width - nameText.implicitWidth - (partialText.visible ? partialText.implicitWidth : 0)))
                 text: row.directory
                 color: Theme.colors.inkMuted
                 elide: Text.ElideLeft
@@ -126,10 +128,19 @@ Item {
             MeridianText {
                 id: nameText
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, label.width)
+                width: Math.min(implicitWidth, label.width - (partialText.visible ? partialText.implicitWidth : 0))
                 text: row.folder ? row.path : row.name
                 color: Theme.colors.ink
                 elide: Text.ElideRight
+            }
+            // A file with staged and unstaged changes says so after its name.
+            MeridianText {
+                id: partialText
+                visible: row.partial && !row.folder
+                anchors.verticalCenter: parent.verticalCenter
+                role: MeridianText.Caption
+                text: "  " + L10n.t("changesPartial")
+                color: Theme.colors.inkMuted
             }
         }
     }

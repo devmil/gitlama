@@ -720,6 +720,12 @@ mod changes_state {
             });
         }
 
+        /// Drops the queued staging work that has not started.
+        #[qslot]
+        fn clear_queue(&self) {
+            self.with_tab(|services, tab| services.changes.clear_pending_stages(tab));
+        }
+
         #[qslot]
         fn dismiss_stopped(&self) {
             self.with_tab(|services, tab| services.changes.dismiss_stopped_stages(tab));
