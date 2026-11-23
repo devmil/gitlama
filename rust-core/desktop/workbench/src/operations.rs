@@ -27,6 +27,7 @@ pub fn entry_key(entry: &NativeOperationCenterEntry) -> u64 {
 
 pub struct OperationCenter {
     this: Weak<Self>,
+    remote: RefCell<Weak<crate::remote::service::RemoteService>>,
     notifier: Notifier,
     transfers: Rc<TransferService>,
     snapshot: RefCell<NativeOperationCenterSnapshot>,
@@ -49,6 +50,7 @@ fn empty() -> NativeOperationCenterSnapshot {
 impl OperationCenter {
     pub fn new(notifier: Notifier, transfers: Rc<TransferService>) -> Rc<Self> {
         Rc::new_cyclic(|this| Self {
+            remote: RefCell::new(std::rc::Weak::new()),
             this: this.clone(),
             notifier,
             transfers,
@@ -57,6 +59,11 @@ impl OperationCenter {
             refreshing: Cell::new(false),
             disposed: Cell::new(false),
         })
+    }
+
+    /// Lists the operations of remote hosts' helpers beside this computer's.
+    pub fn set_remote(&self, remote: &Rc<crate::remote::service::RemoteService>) {
+        *self.remote.borrow_mut() = Rc::downgrade(remote);
     }
 
     pub fn current(&self) -> NativeOperationCenterSnapshot {
@@ -97,9 +104,23 @@ impl OperationCenter {
             rt::blocking(|| gitlama_core::api::application_operation_center(MAXIMUM_ENTRIES)).await;
         self.refreshing.set(false);
         // A session retiring meanwhile keeps the last coherent projection.
-        let Some(snapshot) = result.snapshot.filter(|_| result.failure.is_none()) else {
+        let Some(mut snapshot) = result.snapshot.filter(|_| result.failure.is_none()) else {
             return;
         };
+        let remote = self.remote.borrow().upgrade();
+        if let Some(remote) = remote {
+            for other in remote.remote_operations().await {
+                snapshot.running_count += other.running_count;
+                snapshot.failed_count += other.failed_count;
+                snapshot.warning_count += other.warning_count;
+                snapshot.attention_count += other.attention_count;
+                snapshot.truncated |= other.truncated;
+                snapshot.entries.extend(other.entries);
+            }
+            snapshot
+                .entries
+                .sort_by_key(|entry| entry.started_at_unix_ms);
+        }
         if self.disposed.get() || *self.snapshot.borrow() == snapshot {
             return;
         }
@@ -163,7 +184,16 @@ impl OperationCenter {
 
     pub async fn dismiss(&self, key: u64) {
         let Some(entry) = self.entry(key) else { return };
-        if let (Some(session), Some(activity)) = (entry.session_id, entry.activity_id) {
+        if let (Some(session), Some(activity)) = (entry.session_id, entry.activity_id)
+            && session >= crate::remote::service::REMOTE_SESSION_BASE
+        {
+            let remote = self.remote.borrow().upgrade();
+            if let Some(remote) = remote {
+                remote
+                    .dismiss_remote_operation(session, entry.generation, activity)
+                    .await;
+            }
+        } else if let (Some(session), Some(activity)) = (entry.session_id, entry.activity_id) {
             let generation = entry.generation;
             rt::blocking(move || {
                 gitlama_core::api::application_operation_dismiss(session, generation, activity)

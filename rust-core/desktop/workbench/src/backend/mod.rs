@@ -12,7 +12,7 @@ pub mod lifecycle;
 use futures::future::LocalBoxFuture;
 use gitlama_application::wire::runtime::{Value, WireError};
 
-pub use calls::{LocalCalls, RemoteCalls, RemoteCustom, SessionCalls};
+pub use calls::{CallRouter, LocalCalls, RemoteCalls, RemoteCustom, RoutedCalls, SessionCalls};
 
 /// Why a call did not reach the core or its answer could not be read.
 #[derive(Clone, Debug, PartialEq, Eq)]

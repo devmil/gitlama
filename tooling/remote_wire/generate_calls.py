@@ -13,7 +13,9 @@ Output: rust-core/desktop/workbench/src/backend/calls.rs with
 * `LocalCalls`, which runs the in-process facade on the blocking pool;
 * `wire_reads`, one client function per remote read method;
 * `RemoteCallsBase`, the remote backend's routing: read methods go to `wire_reads`, custom
-  methods to the hand-written `RemoteCustom` implementation, all others fail as unsupported.
+  methods to the hand-written `RemoteCustom` implementation, all others fail as unsupported;
+* `RoutedCalls`, which hands each call to the backend of its session (or, for an open, of
+  its path's authority) through a `CallRouter`; calls without either run locally.
 
   python3 tooling/remote_wire/generate_calls.py          write the seam
   python3 tooling/remote_wire/generate_calls.py --check  fail when it is stale
@@ -258,7 +260,11 @@ def emit(functions: dict[str, Function], calls: list[str], surface: dict, arms: 
             f"    fn {name}(&self{params}) -> LocalBoxFuture<'static, CallResult<{function.returns}>> {{"
         )
         if name in read:
-            out.append(f"        wire_reads::{name}(self.custom.transport(){args}).boxed_local()")
+            out.append("        let custom = Rc::clone(&self.custom);")
+            out.append(
+                f"        wire_reads::{name}(self.custom.transport(){args})"
+                ".map(move |result| result.map(|value| custom.adapt(value))).boxed_local()"
+            )
         elif name in custom:
             out.append(f"        self.custom.{name}({', '.join(n for n, _ in function.params)})")
         else:
@@ -268,6 +274,10 @@ def emit(functions: dict[str, Function], calls: list[str], surface: dict, arms: 
     out.append("/// The custom methods a remote backend implements by hand.")
     out.append("pub trait RemoteCustom {")
     out.append("    fn transport(&self) -> Rc<dyn WireTransport>;")
+    out.append("    /// Adjusts a read result: a connection marks host paths with its authority.")
+    out.append("    fn adapt<T: 'static>(&self, value: T) -> T {")
+    out.append("        value")
+    out.append("    }")
     for name in calls:
         if name not in custom:
             continue
@@ -276,6 +286,46 @@ def emit(functions: dict[str, Function], calls: list[str], surface: dict, arms: 
         out.append(
             f"    fn {name}(&self{params}) -> LocalBoxFuture<'static, CallResult<{function.returns}>>;"
         )
+    out.append("}")
+    out.append("")
+    out.append("/// Where a call runs: the backend of a session or of a path's authority.")
+    out.append("pub trait CallRouter {")
+    out.append("    /// The in-process backend.")
+    out.append("    fn local(&self) -> Rc<dyn SessionCalls>;")
+    out.append("    /// The backend of `session_id`; `None` when its connection is gone.")
+    out.append("    fn for_session(&self, session_id: u64) -> Option<Rc<dyn SessionCalls>>;")
+    out.append("    /// The backend of `identity`'s location; `None` when its host is not connected.")
+    out.append("    fn for_identity(&self, identity: &NativePathIdentity) -> Option<Rc<dyn SessionCalls>>;")
+    out.append("}")
+    out.append("")
+    out.append("/// Hands every call to the backend its session or path belongs to.")
+    out.append("pub struct RoutedCalls<R: CallRouter> {")
+    out.append("    pub router: Rc<R>,")
+    out.append("}")
+    out.append("")
+    out.append("impl<R: CallRouter + 'static> SessionCalls for RoutedCalls<R> {")
+    for name in calls:
+        function = functions[name]
+        params = "".join(f", {n}: {owned(t)}" for n, t in function.params)
+        args = ", ".join(n for n, _ in function.params)
+        out.append(
+            f"    fn {name}(&self{params}) -> LocalBoxFuture<'static, CallResult<{function.returns}>> {{"
+        )
+        first = function.params[0] if function.params else None
+        if first and first[0] == "session_id":
+            backend = "self.router.for_session(session_id)"
+        elif first and first[1] == "NativePathIdentity":
+            backend = f"self.router.for_identity(&{first[0]})"
+        else:
+            backend = None
+        if backend is None:
+            out.append(f"        self.router.local().{name}({args})")
+        else:
+            out.append(f"        match {backend} {{")
+            out.append(f"            Some(backend) => backend.{name}({args}),")
+            out.append('            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),')
+            out.append("        }")
+        out.append("    }")
     out.append("}")
     return "\n".join(out) + "\n"
 

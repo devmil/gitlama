@@ -77,10 +77,16 @@ impl SessionLifecycle for LocalLifecycle {
         identity: NativePathIdentity,
         generation: u64,
     ) -> LocalBoxFuture<'static, SessionResult<OpenedSession>> {
+        // A remote identity opens on its host's connection (the router's choice).
+        let backend = if identity.remote.is_some() {
+            BackendKind::Remote
+        } else {
+            BackendKind::Local
+        };
         let call = self
             .calls
             .repository_session_open_identity(identity, generation);
-        async move { opened(call.await?, BackendKind::Local) }.boxed_local()
+        async move { opened(call.await?, backend) }.boxed_local()
     }
 
     fn initialize(

@@ -17,3 +17,5 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 image = { workspace = true }
 base64 = "0.22"
+sha2 = { workspace = true }
+getrandom = { workspace = true }

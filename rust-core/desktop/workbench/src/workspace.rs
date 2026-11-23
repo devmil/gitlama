@@ -252,7 +252,15 @@ impl WorkspaceState {
     }
 }
 
-/// What the workspace needs from remote workspaces.
+/// Why a repository could not be created on a host.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RemoteInitializeError {
+    Remote(crate::remote::model::Failure),
+    Session(SessionError),
+}
+
+/// What the workspace needs from remote workspaces: their states, and connecting,
+/// disconnecting and creating repositories on them.
 pub trait WorkspaceRemotes {
     /// Whether this window offers remote workspaces.
     fn available(&self) -> bool;
@@ -260,8 +268,35 @@ pub trait WorkspaceRemotes {
     fn is_live(&self, authority: &NativeRemoteAuthority) -> bool;
     /// Whether a host profile exists.
     fn has_profile(&self, profile_id: &str) -> bool;
+    /// Whether the profile's connection is ready.
+    fn is_ready(&self, profile_id: &str) -> bool;
     /// Forgets the verified binding of a remote path.
     fn forget_binding(&self, authority: &NativeRemoteAuthority, path: &[u16]);
+    /// Connects a profile; concurrent requests share one attempt.
+    fn connect(
+        &self,
+        profile_id: &str,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<crate::remote::model::ConnectionState, crate::remote::model::Failure>,
+    >;
+    /// Closes a profile's connection.
+    fn disconnect(&self, profile_id: &str) -> LocalBoxFuture<'static, ()>;
+    /// Creates a repository at `path` on `authority`'s connected host without opening it:
+    /// the host's reason for creating nothing, or a connection failure.
+    fn initialize_repository(
+        &self,
+        authority: &NativeRemoteAuthority,
+        path: Vec<u8>,
+        initial_branch: String,
+        bare: bool,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<
+            Option<gitlama_contract::dto::NativeRepositoryFailureKind>,
+            crate::remote::model::Failure,
+        >,
+    >;
 }
 
 /// A window without remote workspaces.
@@ -277,7 +312,37 @@ impl WorkspaceRemotes for NoRemotes {
     fn has_profile(&self, _: &str) -> bool {
         false
     }
+    fn is_ready(&self, _: &str) -> bool {
+        false
+    }
     fn forget_binding(&self, _: &NativeRemoteAuthority, _: &[u16]) {}
+    fn connect(
+        &self,
+        _: &str,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<crate::remote::model::ConnectionState, crate::remote::model::Failure>,
+    > {
+        Box::pin(async { Err(crate::remote::model::Failure::Unsupported) })
+    }
+    fn disconnect(&self, _: &str) -> LocalBoxFuture<'static, ()> {
+        Box::pin(async {})
+    }
+    fn initialize_repository(
+        &self,
+        _: &NativeRemoteAuthority,
+        _: Vec<u8>,
+        _: String,
+        _: bool,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<
+            Option<gitlama_contract::dto::NativeRepositoryFailureKind>,
+            crate::remote::model::Failure,
+        >,
+    > {
+        Box::pin(async { Err(crate::remote::model::Failure::Unsupported) })
+    }
 }
 
 /// The HEADs operations move to, so History selects and reveals them.
@@ -338,8 +403,7 @@ struct Inner {
     disposed: bool,
     connection_epochs: HashMap<String, u64>,
     tab_epochs: HashMap<u64, u64>,
-    // Remote workspaces reopen their tabs after a reconnect (not ported yet).
-    #[allow(dead_code)]
+    /// Tabs being reopened; a second request for one of them waits for none.
     reopening: HashSet<u64>,
     draining: HashSet<u64>,
     drain_tick: u64,
@@ -362,9 +426,7 @@ pub struct WorkspaceService {
     pub history: Rc<HistoryService>,
     settings: Option<Rc<SettingsService>>,
     view_cache: Rc<dyn SessionViewCache>,
-    // Remote workspaces: the router and reconnector (a stub until ported).
-    #[allow(dead_code)]
-    remotes: Rc<dyn WorkspaceRemotes>,
+    remotes: RefCell<Rc<dyn WorkspaceRemotes>>,
     hooks: RefCell<WorkspaceHooks>,
     notifier: Notifier,
     inner: RefCell<Inner>,
@@ -390,7 +452,7 @@ impl WorkspaceService {
             history,
             settings,
             view_cache,
-            remotes,
+            remotes: RefCell::new(remotes),
             hooks: RefCell::new(WorkspaceHooks::default()),
             notifier,
             inner: RefCell::new(Inner {
@@ -423,6 +485,15 @@ impl WorkspaceService {
 
     pub fn set_hooks(&self, hooks: WorkspaceHooks) {
         *self.hooks.borrow_mut() = hooks;
+    }
+
+    /// Installs the window's remote workspaces (they need the workspace themselves).
+    pub fn set_remotes(&self, remotes: Rc<dyn WorkspaceRemotes>) {
+        *self.remotes.borrow_mut() = remotes;
+    }
+
+    fn remotes(&self) -> Rc<dyn WorkspaceRemotes> {
+        Rc::clone(&self.remotes.borrow())
     }
 
     #[allow(dead_code)]
@@ -819,6 +890,276 @@ impl WorkspaceService {
             units: path.iter().map(|byte| u16::from(*byte)).collect(),
             remote: Some(authority),
         }
+    }
+
+    // Remote tabs --------------------------------------------------------------------
+
+    /// The host profile a tab belongs to.
+    #[must_use]
+    pub fn remote_profile_of(tab: &Tab) -> Option<String> {
+        tab.remote_profile().map(str::to_owned)
+    }
+
+    /// Whether a remote tab shows state its connection no longer backs: it has no session,
+    /// no connection, or a session of an earlier connection, which the host closed with it.
+    #[must_use]
+    pub fn is_remote_tab_stale(&self, tab: &Tab) -> bool {
+        let Some(authority) = tab
+            .canonical_identity()
+            .or(tab.requested_identity.as_ref())
+            .and_then(|identity| identity.remote.as_ref())
+        else {
+            return false;
+        };
+        let inner = self.inner.borrow();
+        tab.session.is_none()
+            || !self.remotes().is_live(authority)
+            || inner.tab_epochs.get(&tab.id).copied()
+                != Some(
+                    inner
+                        .connection_epochs
+                        .get(&authority.profile_id)
+                        .copied()
+                        .unwrap_or(0),
+                )
+    }
+
+    /// Whether `profile_id` has open tabs that need it, in a window offering remote
+    /// workspaces.
+    #[must_use]
+    pub fn wants_remote(&self, profile_id: &str) -> bool {
+        if self.disposed() || !self.remotes().has_profile(profile_id) {
+            return false;
+        }
+        self.inner
+            .borrow()
+            .tabs
+            .iter()
+            .any(|tab| tab.remote_profile() == Some(profile_id))
+    }
+
+    /// The hosts of restored tabs no connection backs yet.
+    #[must_use]
+    pub fn stale_remote_profiles(&self) -> Vec<String> {
+        let tabs = self.inner.borrow().tabs.clone();
+        let mut profiles = Vec::new();
+        for tab in &tabs {
+            if self.is_remote_tab_stale(tab)
+                && let Some(profile) = tab.remote_profile()
+                && !profiles.iter().any(|known| known == profile)
+            {
+                profiles.push(profile.to_owned());
+            }
+        }
+        profiles
+    }
+
+    /// A host connected (from any dialog): tabs whose sessions belong to an earlier
+    /// connection reopen on this one.
+    pub fn remote_connection_ready(self: &Rc<Self>, profile_id: &str) {
+        *self
+            .inner
+            .borrow_mut()
+            .connection_epochs
+            .entry(profile_id.to_owned())
+            .or_insert(0) += 1;
+        self.publish_workspace();
+        let this = Rc::clone(self);
+        let profile = profile_id.to_owned();
+        rt::spawn_detached(async move { this.reopen_stale_remote_tabs(&profile).await });
+    }
+
+    /// A host's connection state changed; tabs re-evaluate whether they are stale.
+    pub fn remote_state_changed(&self) {
+        self.publish_workspace();
+    }
+
+    /// Connects `profile_id` and reopens its tabs on the new connection. Their navigation
+    /// and drafts stay; the snapshot is replaced as a whole.
+    pub async fn reconnect_remote(
+        self: &Rc<Self>,
+        profile_id: &str,
+    ) -> Result<crate::remote::model::ConnectionState, crate::remote::model::Failure> {
+        let remotes = self.remotes();
+        if !remotes.available() || self.disposed() {
+            return Err(crate::remote::model::Failure::Unsupported);
+        }
+        let state = remotes.connect(profile_id).await?;
+        if self.disposed() || !state.ready() {
+            return Ok(state);
+        }
+        let tabs = self.inner.borrow().tabs.clone();
+        for tab in tabs {
+            if tab.remote_profile() != Some(profile_id) || tab.phase == TabPhase::Opening {
+                continue;
+            }
+            let _ = self.reopen_tab(tab.id).await;
+        }
+        Ok(state)
+    }
+
+    /// Applies a changed "Allow changes" choice to a live connection: it reconnects, since
+    /// write capabilities are negotiated when a connection starts, and its tabs reopen.
+    pub async fn apply_remote_access(
+        self: &Rc<Self>,
+        profile_id: &str,
+    ) -> Option<Result<crate::remote::model::ConnectionState, crate::remote::model::Failure>> {
+        let remotes = self.remotes();
+        if self.disposed() || !remotes.available() || !remotes.is_ready(profile_id) {
+            return None;
+        }
+        remotes.disconnect(profile_id).await;
+        if self.disposed() {
+            return None;
+        }
+        Some(self.reconnect_remote(profile_id).await)
+    }
+
+    /// Reopens a remote tab whose repository no longer matches the one it opened, after the
+    /// user chose to trust the repository found there now.
+    pub async fn reopen_changed_remote_tab(
+        self: &Rc<Self>,
+        tab_id: u64,
+    ) -> Option<SessionResult<SessionState>> {
+        let tab = self.tab(tab_id)?;
+        let identity = tab
+            .requested_identity
+            .clone()
+            .or_else(|| tab.canonical_identity().cloned())?;
+        let authority = identity.remote.clone()?;
+        if tab.failure != Some(FailureCode::RemoteIdentityChanged) {
+            return None;
+        }
+        self.remotes().forget_binding(&authority, &identity.units);
+        self.reopen_tab(tab_id).await
+    }
+
+    async fn reopen_stale_remote_tabs(self: &Rc<Self>, profile_id: &str) {
+        let tabs = self.inner.borrow().tabs.clone();
+        for tab in tabs {
+            if self.disposed() {
+                return;
+            }
+            if tab.remote_profile() != Some(profile_id) || tab.phase == TabPhase::Opening {
+                continue;
+            }
+            let Some(current) = self.tab(tab.id) else {
+                continue;
+            };
+            if !self.is_remote_tab_stale(&current) {
+                continue;
+            }
+            // A tab that could not reopen is left failed and offers Reconnect.
+            let _ = self.reopen_tab(tab.id).await;
+        }
+    }
+
+    /// Reopens a tab's repository in place, keeping its position, group and navigation. A
+    /// failure leaves the tab failed with its identity.
+    pub async fn reopen_tab(self: &Rc<Self>, tab_id: u64) -> Option<SessionResult<SessionState>> {
+        if !self.inner.borrow_mut().reopening.insert(tab_id) {
+            return None;
+        }
+        let result = self.reopen_tab_once(tab_id).await;
+        self.inner.borrow_mut().reopening.remove(&tab_id);
+        result
+    }
+
+    async fn reopen_tab_once(self: &Rc<Self>, tab_id: u64) -> Option<SessionResult<SessionState>> {
+        let tab = self.tab(tab_id)?;
+        let identity = tab
+            .requested_identity
+            .clone()
+            .or_else(|| tab.canonical_identity().cloned())?;
+        if let Some(previous) = tab.session.as_ref().map(|session| session.identity) {
+            // The old session may belong to a closed connection.
+            let _ = self.sessions.close(previous).await;
+            if let Some(on_closed) = self.hooks.borrow().on_session_closed.as_ref() {
+                on_closed(previous);
+            }
+        }
+        let generation = {
+            let mut inner = self.inner.borrow_mut();
+            if inner.disposed {
+                return None;
+            }
+            let index = Self::index(&inner, tab_id)?;
+            inner.generation += 1;
+            let generation = inner.generation;
+            let mut opening = Tab::new(tab_id, generation, tab.label.clone(), TabPhase::Opening);
+            opening.requested_identity = Some(identity.clone());
+            opening.navigation = tab.navigation.clone();
+            opening.group_id = tab.group_id;
+            inner.tabs[index] = opening;
+            if inner.active_tab_id == Some(tab_id) {
+                inner.current = None;
+            }
+            generation
+        };
+        self.publish_workspace();
+        match self.sessions.open_identity(identity, generation).await {
+            Ok(opened) => {
+                if self.disposed()
+                    || self
+                        .tab(tab_id)
+                        .is_none_or(|tab| tab.generation != generation)
+                {
+                    let _ = self.sessions.close(opened.identity).await;
+                    return Some(Err(SessionError(FailureCode::StaleGeneration)));
+                }
+                let state = self.adopt(opened, Some(tab_id), Some(tab.label.clone()));
+                if self.active_tab_id() == Some(tab_id) {
+                    self.activate_tab(tab_id);
+                }
+                Some(Ok(state))
+            }
+            Err(error) => {
+                {
+                    let mut inner = self.inner.borrow_mut();
+                    if let Some(index) = Self::index(&inner, tab_id) {
+                        inner.tabs[index].phase = TabPhase::Failed;
+                        inner.tabs[index].failure = Some(error.code());
+                    }
+                }
+                self.publish_workspace();
+                Some(Err(error))
+            }
+        }
+    }
+
+    /// Creates a repository at `path` on `authority`'s connected host and opens it in a new
+    /// tab. The host's reasons for creating nothing are the failures of initializing a
+    /// repository on this computer.
+    pub async fn initialize_remote(
+        self: &Rc<Self>,
+        authority: NativeRemoteAuthority,
+        path: Vec<u8>,
+        initial_branch: String,
+        bare: bool,
+    ) -> Result<SessionState, RemoteInitializeError> {
+        self.ensure_active()
+            .map_err(RemoteInitializeError::Session)?;
+        let remotes = self.remotes();
+        if !remotes.available() {
+            return Err(RemoteInitializeError::Remote(
+                crate::remote::model::Failure::Unsupported,
+            ));
+        }
+        let failure = remotes
+            .initialize_repository(&authority, path.clone(), initial_branch, bare)
+            .await
+            .map_err(RemoteInitializeError::Remote)?;
+        if let Some(kind) = failure {
+            let failure = gitlama_contract::dto::NativeRepositoryFailure { kind };
+            return Err(RemoteInitializeError::Session(SessionError(
+                FailureCode::from(&failure),
+            )));
+        }
+        self.ensure_active()
+            .map_err(RemoteInitializeError::Session)?;
+        self.open_recent(Self::remote_path_identity(authority, &path))
+            .await
+            .map_err(RemoteInitializeError::Session)
     }
 
     /// Opens a session that opened outside the workspace (a finished clone).

@@ -171,13 +171,29 @@ impl From<FailureCode> for SessionError {
     }
 }
 
-/// Maps a helper's failure code to the repository failure it means.
+/// Maps a helper's failure code (a remote error code, or a client code such as
+/// `outcomeUnknown`) to the repository failure it means.
 fn remote_failure(code: &str) -> FailureCode {
     match code {
         "outcome_unknown" | "outcomeUnknown" => FailureCode::RemoteOutcomeUnknown,
-        "identity_changed" | "identityChanged" => FailureCode::RemoteIdentityChanged,
-        "not_offered" | "notOffered" => FailureCode::RemoteNotOffered,
+        "identity_changed" | "identityChanged" | "identityMismatch" => {
+            FailureCode::RemoteIdentityChanged
+        }
+        "not_offered" | "notOffered" | "unsupportedCommand" => FailureCode::RemoteNotOffered,
         "write_not_permitted" | "writeNotPermitted" => FailureCode::RemoteWriteNotPermitted,
+        "timedOut" => FailureCode::TimedOut,
+        "canceled" => FailureCode::Canceled,
+        "capacity" | "receiptCapacity" => FailureCode::Capacity,
+        "unknownSession" => FailureCode::UnknownSession,
+        "invalidRequest" | "operationIdConflict" => FailureCode::InvalidOptions,
+        "pathInvalid" | "pathNotFound" | "notDirectory" => FailureCode::PathNotFound,
+        "permissionDenied" => FailureCode::PermissionDenied,
+        "previewExpired"
+        | "preconditionFailed"
+        | "admissionEpochRetired"
+        | "cursorExpired"
+        | "directoryChanged" => FailureCode::StaleGeneration,
+        "storeUnavailable" | "internal" => FailureCode::Read,
         _ => FailureCode::RemoteDisconnected,
     }
 }

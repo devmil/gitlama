@@ -676,12 +676,14 @@ dependencies = [
  "base64",
  "devmil-git",
  "futures",
+ "getrandom 0.3.3",
  "gitlama_application",
  "gitlama_contract",
  "gitlama_core",
  "image",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

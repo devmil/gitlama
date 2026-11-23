@@ -4451,12 +4451,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         maximum_records: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryActivityResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_activity(
             self.custom.transport(),
             session_id,
             generation,
             maximum_records,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_activity_record(
@@ -4465,12 +4467,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         activity_id: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryActivityResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_activity_record(
             self.custom.transport(),
             session_id,
             generation,
             activity_id,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_archive_page(
@@ -4480,6 +4484,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         token: u64,
         offset: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeArchivePage>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_archive_page(
             self.custom.transport(),
             session_id,
@@ -4487,6 +4492,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             token,
             offset,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_archive_release(
@@ -4495,12 +4501,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         token: u64,
     ) -> LocalBoxFuture<'static, CallResult<bool>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_archive_release(
             self.custom.transport(),
             session_id,
             generation,
             token,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_archive_start(
@@ -4510,6 +4518,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         commit: String,
         prefix: String,
     ) -> LocalBoxFuture<'static, CallResult<NativeArchiveStartResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_archive_start(
             self.custom.transport(),
             session_id,
@@ -4517,6 +4526,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             commit,
             prefix,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_archive_status(
@@ -4525,12 +4535,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         token: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeArchiveStatus>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_archive_status(
             self.custom.transport(),
             session_id,
             generation,
             token,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_bisect_cancel_preview(
@@ -4567,7 +4579,9 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeBisectStateResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_bisect_state(self.custom.transport(), session_id, generation)
+            .map(move |result| result.map(|value| custom.adapt(value)))
             .boxed_local()
     }
     fn repository_session_blame_load(
@@ -4576,12 +4590,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         options: NativeBlameOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativeBlameResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_blame_load(
             self.custom.transport(),
             session_id,
             generation,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_blame_page(
@@ -4592,6 +4608,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeBlameResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_blame_page(
             self.custom.transport(),
             session_id,
@@ -4600,6 +4617,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_change_source(
@@ -4612,6 +4630,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         new_path: Option<Vec<u8>>,
         byte_limit: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeChangeSourceResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_change_source(
             self.custom.transport(),
             session_id,
@@ -4622,6 +4641,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             new_path,
             byte_limit,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_change_source_page(
@@ -4632,6 +4652,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         new_side: bool,
         offset: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeChangeSourcePage>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_change_source_page(
             self.custom.transport(),
             session_id,
@@ -4640,6 +4661,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             new_side,
             offset,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_close(
@@ -4655,12 +4677,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         options: NativeCommitDiffOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_commit_diff_load(
             self.custom.transport(),
             session_id,
             generation,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_commit_execute(
@@ -4696,6 +4720,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         commit: String,
         path: Vec<u8>,
     ) -> LocalBoxFuture<'static, CallResult<NativeCommitFileContentResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_commit_file_content(
             self.custom.transport(),
             session_id,
@@ -4703,6 +4728,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             commit,
             path,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_commit_inspection(
@@ -4712,6 +4738,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         commit: String,
         first_parent: Option<String>,
     ) -> LocalBoxFuture<'static, CallResult<NativeCommitInspectionResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_commit_inspection(
             self.custom.transport(),
             session_id,
@@ -4719,6 +4746,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             commit,
             first_parent,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_commit_preview(
@@ -4735,7 +4763,9 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeCommitToolsResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_commit_tools(self.custom.transport(), session_id, generation)
+            .map(move |result| result.map(|value| custom.adapt(value)))
             .boxed_local()
     }
     fn repository_session_conflict_choose_side(
@@ -4798,6 +4828,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         kind: NativeConflictPredictionKind,
         target: String,
     ) -> LocalBoxFuture<'static, CallResult<NativeConflictPredictionResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_conflict_prediction(
             self.custom.transport(),
             session_id,
@@ -4806,6 +4837,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             kind,
             target,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_conflict_prediction_begin(
@@ -4813,11 +4845,13 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeConflictPredictionStartResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_conflict_prediction_begin(
             self.custom.transport(),
             session_id,
             generation,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_conflict_prediction_cancel(
@@ -4826,12 +4860,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         token: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_conflict_prediction_cancel(
             self.custom.transport(),
             session_id,
             generation,
             token,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_conflict_save_result(
@@ -4882,7 +4918,9 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeConflictSnapshotResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_conflicts(self.custom.transport(), session_id, generation)
+            .map(move |result| result.map(|value| custom.adapt(value)))
             .boxed_local()
     }
     fn repository_session_delete_tracking_refs(
@@ -4900,12 +4938,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         token: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffContentSearchResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_content_search_poll(
             self.custom.transport(),
             session_id,
             generation,
             token,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_content_search_start_configured(
@@ -4914,12 +4954,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         options: NativeDiffSearchOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativePowerJobStartResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_content_search_start_configured(
             self.custom.transport(),
             session_id,
             generation,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_hunks(
@@ -4929,6 +4971,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         request_id: u64,
         maximum_positions: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffPositionsResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_hunks(
             self.custom.transport(),
             session_id,
@@ -4936,6 +4979,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             request_id,
             maximum_positions,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_page(
@@ -4946,6 +4990,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_page(
             self.custom.transport(),
             session_id,
@@ -4954,6 +4999,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_renderer_cancel(
@@ -4988,12 +5034,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         request_id: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererInputResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_renderer_input(
             self.custom.transport(),
             session_id,
             generation,
             request_id,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_renderer_poll(
@@ -5045,6 +5093,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         case_sensitive: bool,
         maximum_matches: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffSearchResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_search(
             self.custom.transport(),
             session_id,
@@ -5054,6 +5103,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             case_sensitive,
             maximum_matches,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_selection_patch(
@@ -5064,6 +5114,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         working: bool,
         row_ids: Vec<String>,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffSelectionPatchResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_selection_patch(
             self.custom.transport(),
             session_id,
@@ -5072,6 +5123,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             working,
             row_ids,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_syntax_cancel(
@@ -5082,6 +5134,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         diff_request_id: u64,
         syntax_request_id: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_syntax_cancel(
             self.custom.transport(),
             session_id,
@@ -5090,6 +5143,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             diff_request_id,
             syntax_request_id,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_diff_syntax_page(
@@ -5098,12 +5152,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         request: NativeDiffSyntaxRequest,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffSyntaxResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_diff_syntax_page(
             self.custom.transport(),
             session_id,
             generation,
             request,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_discard_execute(
@@ -5159,7 +5215,9 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeExtensionInventoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_extensions(self.custom.transport(), session_id, generation)
+            .map(move |result| result.map(|value| custom.adapt(value)))
             .boxed_local()
     }
     fn repository_session_fixup_suggestion(
@@ -5169,6 +5227,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         selected_commit: Option<String>,
         paths: Vec<Vec<u8>>,
     ) -> LocalBoxFuture<'static, CallResult<NativeFixupSuggestionResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_fixup_suggestion(
             self.custom.transport(),
             session_id,
@@ -5176,6 +5235,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             selected_commit,
             paths,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_branch_filter(
@@ -5187,6 +5247,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_branch_filter(
             self.custom.transport(),
             session_id,
@@ -5196,6 +5257,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_collapse(
@@ -5207,6 +5269,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_collapse(
             self.custom.transport(),
             session_id,
@@ -5216,6 +5279,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_complete(
@@ -5225,6 +5289,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         request_id: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_complete(
             self.custom.transport(),
             session_id,
@@ -5232,6 +5297,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             request_id,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_load(
@@ -5242,6 +5308,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         maximum_rows: u32,
         other_refs: bool,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_load(
             self.custom.transport(),
             session_id,
@@ -5250,6 +5317,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             maximum_rows,
             other_refs,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_metadata(
@@ -5259,6 +5327,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         request_id: u64,
         object_ids: Vec<String>,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryMetadataResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_metadata(
             self.custom.transport(),
             session_id,
@@ -5266,6 +5335,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             request_id,
             object_ids,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_mutation_cancel(
@@ -5303,6 +5373,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_page(
             self.custom.transport(),
             session_id,
@@ -5311,6 +5382,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_query(
@@ -5320,6 +5392,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         request_id: u64,
         options: NativeHistoryQueryOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_query(
             self.custom.transport(),
             session_id,
@@ -5327,6 +5400,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             request_id,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_history_select(
@@ -5336,6 +5410,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         request_id: u64,
         options: NativeHistorySelectionOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_history_select(
             self.custom.transport(),
             session_id,
@@ -5343,6 +5418,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             request_id,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_image_diff(
@@ -5362,11 +5438,13 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeIndexLockInspectionResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_inspect_index_lock(
             self.custom.transport(),
             session_id,
             generation,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_inspect_locks(
@@ -5374,11 +5452,13 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryLockInspectionResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_inspect_locks(
             self.custom.transport(),
             session_id,
             generation,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_integration_cancel(
@@ -5427,12 +5507,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         path: Vec<u8>,
     ) -> LocalBoxFuture<'static, CallResult<NativeLfsPointerResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_lfs_pointer(
             self.custom.transport(),
             session_id,
             generation,
             path,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_named_snapshot_branch(
@@ -5508,6 +5590,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u32,
         maximum: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotListResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_named_snapshots(
             self.custom.transport(),
             session_id,
@@ -5515,6 +5598,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_open(
@@ -5556,12 +5640,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         request: NativePatchExportRequest,
     ) -> LocalBoxFuture<'static, CallResult<NativePatchExportContentResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_patch_export_content(
             self.custom.transport(),
             session_id,
             generation,
             request,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_patch_export_content_page(
@@ -5571,6 +5657,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         token: u64,
         offset: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativePatchExportContentPage>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_patch_export_content_page(
             self.custom.transport(),
             session_id,
@@ -5578,6 +5665,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             token,
             offset,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_patch_export_execute(
@@ -5612,12 +5700,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         options: NativePathHistoryOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativePathHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_path_history(
             self.custom.transport(),
             session_id,
             generation,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_power_job_cancel(
@@ -5626,12 +5716,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         token: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_power_job_cancel(
             self.custom.transport(),
             session_id,
             generation,
             token,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_range_history(
@@ -5644,6 +5736,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         last_line: u32,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeRangeHistoryResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_range_history(
             self.custom.transport(),
             session_id,
@@ -5654,6 +5747,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             last_line,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_rebase_cancel(
@@ -5681,6 +5775,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         onto: String,
         onto_name: Option<Vec<u8>>,
     ) -> LocalBoxFuture<'static, CallResult<NativeRebasePlanResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_rebase_plan(
             self.custom.transport(),
             session_id,
@@ -5688,6 +5783,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             onto,
             onto_name,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_rebase_preview(
@@ -5733,6 +5829,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeReflogResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_reflog(
             self.custom.transport(),
             session_id,
@@ -5740,6 +5837,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_refresh(
@@ -5747,7 +5845,9 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_refresh(self.custom.transport(), session_id, generation)
+            .map(move |result| result.map(|value| custom.adapt(value)))
             .boxed_local()
     }
     fn repository_session_remove_index_lock(
@@ -5797,12 +5897,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         root_branch: Vec<u8>,
     ) -> LocalBoxFuture<'static, CallResult<NativeRestackPlanResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_restack_plan(
             self.custom.transport(),
             session_id,
             generation,
             root_branch,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_restore_file(
@@ -5839,11 +5941,13 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<Option<NativeStagingPhase>>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_staging_phase(
             self.custom.transport(),
             session_id,
             generation,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_stash_cancel(
@@ -5878,12 +5982,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         token: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryStatisticsResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_statistics_poll(
             self.custom.transport(),
             session_id,
             generation,
             token,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_statistics_start(
@@ -5891,11 +5997,13 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         session_id: u64,
         generation: u64,
     ) -> LocalBoxFuture<'static, CallResult<NativePowerJobStartResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_statistics_start(
             self.custom.transport(),
             session_id,
             generation,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_status_acceleration(
@@ -5916,12 +6024,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         path: Vec<u8>,
     ) -> LocalBoxFuture<'static, CallResult<NativeSubmoduleEnterResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_submodule_enter(
             self.custom.transport(),
             session_id,
             generation,
             path,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_transfer_cancel(
@@ -6016,6 +6126,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeTreeResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_tree(
             self.custom.transport(),
             session_id,
@@ -6025,6 +6136,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_working_change_source(
@@ -6036,6 +6148,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         new_path: Option<Vec<u8>>,
         byte_limit: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeChangeSourceResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_working_change_source(
             self.custom.transport(),
             session_id,
@@ -6045,6 +6158,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             new_path,
             byte_limit,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_working_diff_load(
@@ -6053,12 +6167,14 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         generation: u64,
         options: NativeWorkingDiffOptions,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_working_diff_load(
             self.custom.transport(),
             session_id,
             generation,
             options,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_working_diff_page(
@@ -6069,6 +6185,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
         offset: u64,
         maximum_rows: u32,
     ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        let custom = Rc::clone(&self.custom);
         wire_reads::repository_session_working_diff_page(
             self.custom.transport(),
             session_id,
@@ -6077,6 +6194,7 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
             offset,
             maximum_rows,
         )
+        .map(move |result| result.map(|value| custom.adapt(value)))
         .boxed_local()
     }
     fn repository_session_working_image_diff(
@@ -6100,6 +6218,10 @@ impl<C: RemoteCustom + 'static> SessionCalls for RemoteCalls<C> {
 /// The custom methods a remote backend implements by hand.
 pub trait RemoteCustom {
     fn transport(&self) -> Rc<dyn WireTransport>;
+    /// Adjusts a read result: a connection marks host paths with its authority.
+    fn adapt<T: 'static>(&self, value: T) -> T {
+        value
+    }
     fn repository_session_bisect_cancel_preview(
         &self,
         session_id: u64,
@@ -6392,4 +6514,1937 @@ pub trait RemoteCustom {
         generation: u64,
         request: NativeTransferRequest,
     ) -> LocalBoxFuture<'static, CallResult<NativeTransferPreviewResult>>;
+}
+
+/// Where a call runs: the backend of a session or of a path's authority.
+pub trait CallRouter {
+    /// The in-process backend.
+    fn local(&self) -> Rc<dyn SessionCalls>;
+    /// The backend of `session_id`; `None` when its connection is gone.
+    fn for_session(&self, session_id: u64) -> Option<Rc<dyn SessionCalls>>;
+    /// The backend of `identity`'s location; `None` when its host is not connected.
+    fn for_identity(&self, identity: &NativePathIdentity) -> Option<Rc<dyn SessionCalls>>;
+}
+
+/// Hands every call to the backend its session or path belongs to.
+pub struct RoutedCalls<R: CallRouter> {
+    pub router: Rc<R>,
+}
+
+impl<R: CallRouter + 'static> SessionCalls for RoutedCalls<R> {
+    fn diff_renderer_detached_cancel(
+        &self,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<bool>> {
+        self.router.local().diff_renderer_detached_cancel(token)
+    }
+    fn diff_renderer_detached_execute(
+        &self,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererResult>> {
+        self.router.local().diff_renderer_detached_execute(token)
+    }
+    fn diff_renderer_detached_poll(
+        &self,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererResult>> {
+        self.router.local().diff_renderer_detached_poll(token)
+    }
+    fn diff_renderer_detached_preview(
+        &self,
+        input: Vec<u8>,
+        definition: NativeDiffRendererDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererPreviewResult>> {
+        self.router
+            .local()
+            .diff_renderer_detached_preview(input, definition)
+    }
+    fn diff_renderer_detached_validate(
+        &self,
+        definition: NativeDiffRendererDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererPreviewResult>> {
+        self.router
+            .local()
+            .diff_renderer_detached_validate(definition)
+    }
+    fn external_diff_detached_cancel(
+        &self,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<bool>> {
+        self.router.local().external_diff_detached_cancel(token)
+    }
+    fn external_diff_detached_execute(
+        &self,
+        token: u64,
+        confirmed: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationExecutionResult>> {
+        self.router
+            .local()
+            .external_diff_detached_execute(token, confirmed)
+    }
+    fn external_diff_detached_preview(
+        &self,
+        old: Vec<u8>,
+        new: Vec<u8>,
+        configured: NativeIntegrationDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationPreviewResult>> {
+        self.router
+            .local()
+            .external_diff_detached_preview(old, new, configured)
+    }
+    fn image_decode_pair(
+        &self,
+        old: Option<Vec<u8>>,
+        new: Option<Vec<u8>>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeImageDiffResult>> {
+        self.router.local().image_decode_pair(old, new)
+    }
+    fn integration_discover(
+        &self,
+        kind: NativeIntegrationKind,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationDiscoveryResult>> {
+        self.router.local().integration_discover(kind)
+    }
+    fn patch_export_save_execute(
+        &self,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchExportExecutionResult>> {
+        self.router.local().patch_export_save_execute(token)
+    }
+    fn patch_export_save_preview(
+        &self,
+        destination_directory: String,
+        filename: String,
+        bytes: Vec<u8>,
+        overwrite: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchSavePreviewResult>> {
+        self.router.local().patch_export_save_preview(
+            destination_directory,
+            filename,
+            bytes,
+            overwrite,
+        )
+    }
+    fn repository_initialize(
+        &self,
+        path: String,
+        initial_branch: String,
+        bare: bool,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryOpenResult>> {
+        self.router
+            .local()
+            .repository_initialize(path, initial_branch, bare, generation)
+    }
+    fn repository_session_activity(
+        &self,
+        session_id: u64,
+        generation: u64,
+        maximum_records: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryActivityResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_activity(session_id, generation, maximum_records)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_activity_record(
+        &self,
+        session_id: u64,
+        generation: u64,
+        activity_id: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryActivityResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_activity_record(session_id, generation, activity_id)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_archive_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        offset: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeArchivePage>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_archive_page(session_id, generation, token, offset)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_archive_release(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<bool>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_archive_release(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_archive_start(
+        &self,
+        session_id: u64,
+        generation: u64,
+        commit: String,
+        prefix: String,
+    ) -> LocalBoxFuture<'static, CallResult<NativeArchiveStartResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_archive_start(session_id, generation, commit, prefix)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_archive_status(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeArchiveStatus>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_archive_status(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_bisect_cancel_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_bisect_cancel_preview(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_bisect_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeBisectExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_bisect_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_bisect_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        action: NativeBisectAction,
+        good: Option<String>,
+        bad: Option<String>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeBisectPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_bisect_preview(session_id, generation, action, good, bad)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_bisect_state(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeBisectStateResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_bisect_state(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_blame_load(
+        &self,
+        session_id: u64,
+        generation: u64,
+        options: NativeBlameOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativeBlameResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_blame_load(session_id, generation, options),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_blame_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeBlameResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_blame_page(
+                session_id,
+                generation,
+                request_id,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_change_source(
+        &self,
+        session_id: u64,
+        generation: u64,
+        old_revision: Option<String>,
+        new_revision: String,
+        old_path: Option<Vec<u8>>,
+        new_path: Option<Vec<u8>>,
+        byte_limit: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeChangeSourceResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_change_source(
+                session_id,
+                generation,
+                old_revision,
+                new_revision,
+                old_path,
+                new_path,
+                byte_limit,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_change_source_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        new_side: bool,
+        offset: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeChangeSourcePage>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_change_source_page(
+                session_id, generation, token, new_side, offset,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_close(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_close(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_diff_load(
+        &self,
+        session_id: u64,
+        generation: u64,
+        options: NativeCommitDiffOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_commit_diff_load(session_id, generation, options)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeCommitExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_commit_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_external_diff_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        old_revision: Option<String>,
+        new_revision: String,
+        old_path: Option<Vec<u8>>,
+        new_path: Option<Vec<u8>>,
+        configured: NativeIntegrationDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_commit_external_diff_preview(
+                session_id,
+                generation,
+                old_revision,
+                new_revision,
+                old_path,
+                new_path,
+                configured,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_file_content(
+        &self,
+        session_id: u64,
+        generation: u64,
+        commit: String,
+        path: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeCommitFileContentResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_commit_file_content(session_id, generation, commit, path)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_inspection(
+        &self,
+        session_id: u64,
+        generation: u64,
+        commit: String,
+        first_parent: Option<String>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeCommitInspectionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_commit_inspection(
+                session_id,
+                generation,
+                commit,
+                first_parent,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeCommitRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeCommitPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_commit_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_commit_tools(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeCommitToolsResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_commit_tools(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_choose_side(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+        expected_fingerprint: u64,
+        choice: NativeConflictSideChoice,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictSnapshotResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflict_choose_side(
+                session_id,
+                generation,
+                path,
+                expected_fingerprint,
+                choice,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_continue(
+        &self,
+        session_id: u64,
+        generation: u64,
+        action: NativeConflictSequencerAction,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictContinuationResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_conflict_continue(session_id, generation, action)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_continue_with_message(
+        &self,
+        session_id: u64,
+        generation: u64,
+        action: NativeConflictSequencerAction,
+        message: String,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictContinuationResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflict_continue_with_message(
+                session_id, generation, action, message,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_external_merge_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+        expected_fingerprint: u64,
+        configured: NativeIntegrationDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflict_external_merge_preview(
+                session_id,
+                generation,
+                path,
+                expected_fingerprint,
+                configured,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_prediction(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        kind: NativeConflictPredictionKind,
+        target: String,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictPredictionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflict_prediction(
+                session_id, generation, token, kind, target,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_prediction_begin(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictPredictionStartResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_conflict_prediction_begin(session_id, generation)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_prediction_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_conflict_prediction_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_save_result(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+        expected_fingerprint: u64,
+        result: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictSnapshotResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflict_save_result(
+                session_id,
+                generation,
+                path,
+                expected_fingerprint,
+                result,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_take_region(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+        expected_fingerprint: u64,
+        region_index: u32,
+        choice: NativeConflictRegionChoice,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictSnapshotResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflict_take_region(
+                session_id,
+                generation,
+                path,
+                expected_fingerprint,
+                region_index,
+                choice,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflict_undo_resolution(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictSnapshotResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_conflict_undo_resolution(session_id, generation, path)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_conflicts(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeConflictSnapshotResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_conflicts(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_delete_tracking_refs(
+        &self,
+        session_id: u64,
+        generation: u64,
+        references: Vec<String>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeTransferExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_delete_tracking_refs(session_id, generation, references)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_content_search_poll(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffContentSearchResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_diff_content_search_poll(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_content_search_start_configured(
+        &self,
+        session_id: u64,
+        generation: u64,
+        options: NativeDiffSearchOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativePowerJobStartResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_content_search_start_configured(
+                session_id, generation, options,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_hunks(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        maximum_positions: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffPositionsResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_hunks(
+                session_id,
+                generation,
+                request_id,
+                maximum_positions,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_page(
+                session_id,
+                generation,
+                request_id,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_renderer_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_diff_renderer_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_renderer_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_diff_renderer_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_renderer_input(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererInputResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_diff_renderer_input(session_id, generation, request_id)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_renderer_poll(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_diff_renderer_poll(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_renderer_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        definition: NativeDiffRendererDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_renderer_preview(
+                session_id, generation, request_id, definition,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_renderer_validate(
+        &self,
+        session_id: u64,
+        generation: u64,
+        definition: NativeDiffRendererDefinition,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffRendererPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_diff_renderer_validate(session_id, generation, definition),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_search(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        query: Vec<u8>,
+        case_sensitive: bool,
+        maximum_matches: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffSearchResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_search(
+                session_id,
+                generation,
+                request_id,
+                query,
+                case_sensitive,
+                maximum_matches,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_selection_patch(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        working: bool,
+        row_ids: Vec<String>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffSelectionPatchResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_selection_patch(
+                session_id, generation, request_id, working, row_ids,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_syntax_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        origin: NativeDiffSyntaxOrigin,
+        diff_request_id: u64,
+        syntax_request_id: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_diff_syntax_cancel(
+                session_id,
+                generation,
+                origin,
+                diff_request_id,
+                syntax_request_id,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_diff_syntax_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeDiffSyntaxRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffSyntaxResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_diff_syntax_page(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_discard_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiscardExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_discard_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_discard_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeDiscardRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiscardPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_discard_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_enable_status_acceleration(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeStatusAccelerationResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_enable_status_acceleration(session_id, generation)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_events(
+        &self,
+        session_id: u64,
+        generation: u64,
+        maximum_events: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryEventsResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_events(session_id, generation, maximum_events)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_extension_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeExtensionMutationRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeExtensionMutationResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_extension_execute(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_extensions(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeExtensionInventoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_extensions(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_fixup_suggestion(
+        &self,
+        session_id: u64,
+        generation: u64,
+        selected_commit: Option<String>,
+        paths: Vec<Vec<u8>>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeFixupSuggestionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_fixup_suggestion(
+                session_id,
+                generation,
+                selected_commit,
+                paths,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_branch_filter(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        references: Vec<Vec<u8>>,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_history_branch_filter(
+                session_id,
+                generation,
+                request_id,
+                references,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_collapse(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        object_id: String,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_history_collapse(
+                session_id,
+                generation,
+                request_id,
+                object_id,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_complete(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_history_complete(
+                session_id,
+                generation,
+                request_id,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_load(
+        &self,
+        session_id: u64,
+        generation: u64,
+        complete: bool,
+        maximum_rows: u32,
+        other_refs: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_history_load(
+                session_id,
+                generation,
+                complete,
+                maximum_rows,
+                other_refs,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_metadata(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        object_ids: Vec<String>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryMetadataResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_history_metadata(
+                session_id, generation, request_id, object_ids,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_mutation_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_history_mutation_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_mutation_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryMutationExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_history_mutation_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_mutation_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeHistoryMutationRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryMutationPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_history_mutation_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_history_page(
+                session_id,
+                generation,
+                request_id,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_query(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        options: NativeHistoryQueryOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_history_query(session_id, generation, request_id, options),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_history_select(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        options: NativeHistorySelectionOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_history_select(session_id, generation, request_id, options),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_image_diff(
+        &self,
+        session_id: u64,
+        generation: u64,
+        old_revision: Option<String>,
+        new_revision: String,
+        old_path: Vec<u8>,
+        new_path: Vec<u8>,
+        byte_limit: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeImageDiffResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_image_diff(
+                session_id,
+                generation,
+                old_revision,
+                new_revision,
+                old_path,
+                new_path,
+                byte_limit,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_inspect_index_lock(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIndexLockInspectionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_inspect_index_lock(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_inspect_locks(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryLockInspectionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_inspect_locks(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_integration_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_integration_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_integration_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        confirmed: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_integration_execute(session_id, generation, token, confirmed),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_integration_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeIntegrationRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIntegrationPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_integration_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_lfs_pointer(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeLfsPointerResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_lfs_pointer(session_id, generation, path),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshot_branch(
+        &self,
+        session_id: u64,
+        generation: u64,
+        snapshot_id: u64,
+        branch: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_named_snapshot_branch(
+                session_id,
+                generation,
+                snapshot_id,
+                branch,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshot_create(
+        &self,
+        session_id: u64,
+        generation: u64,
+        name: String,
+        include_untracked: bool,
+        keep_index: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_named_snapshot_create(
+                session_id,
+                generation,
+                name,
+                include_untracked,
+                keep_index,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshot_delete(
+        &self,
+        session_id: u64,
+        generation: u64,
+        snapshot_id: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_named_snapshot_delete(
+                session_id,
+                generation,
+                snapshot_id,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshot_restore_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_named_snapshot_restore_cancel(session_id, generation, token),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshot_restore_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_named_snapshot_restore_execute(session_id, generation, token),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshot_restore_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        snapshot_id: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotRestorePreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_named_snapshot_restore_preview(
+                session_id,
+                generation,
+                snapshot_id,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_named_snapshots(
+        &self,
+        session_id: u64,
+        generation: u64,
+        offset: u32,
+        maximum: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeNamedSnapshotListResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_named_snapshots(session_id, generation, offset, maximum)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_open(
+        &self,
+        path: String,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryOpenResult>> {
+        self.router
+            .local()
+            .repository_session_open(path, generation)
+    }
+    fn repository_session_open_identity(
+        &self,
+        identity: NativePathIdentity,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryOpenResult>> {
+        match self.router.for_identity(&identity) {
+            Some(backend) => backend.repository_session_open_identity(identity, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_patch_apply_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchApplyExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_patch_apply_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_patch_apply_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        patch_path: String,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchApplyPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_patch_apply_preview(session_id, generation, patch_path)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_patch_export_content(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativePatchExportRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchExportContentResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_patch_export_content(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_patch_export_content_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        offset: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchExportContentPage>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_patch_export_content_page(
+                session_id, generation, token, offset,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_patch_export_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchExportExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_patch_export_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_patch_export_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativePatchExportRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativePatchExportPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_patch_export_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_path_history(
+        &self,
+        session_id: u64,
+        generation: u64,
+        options: NativePathHistoryOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativePathHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_path_history(session_id, generation, options)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_power_job_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_power_job_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_range_history(
+        &self,
+        session_id: u64,
+        generation: u64,
+        revision: String,
+        path: Vec<u8>,
+        first_line: u32,
+        last_line: u32,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRangeHistoryResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_range_history(
+                session_id,
+                generation,
+                revision,
+                path,
+                first_line,
+                last_line,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_rebase_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_rebase_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_rebase_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRebaseExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_rebase_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_rebase_plan(
+        &self,
+        session_id: u64,
+        generation: u64,
+        onto: String,
+        onto_name: Option<Vec<u8>>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRebasePlanResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_rebase_plan(session_id, generation, onto, onto_name)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_rebase_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        instructions: Vec<NativeRebaseInstruction>,
+        acknowledge_published_history: bool,
+        apply_autosquash: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRebasePreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_rebase_preview(
+                session_id,
+                generation,
+                token,
+                instructions,
+                acknowledge_published_history,
+                apply_autosquash,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_ref_mutation_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRefMutationExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_ref_mutation_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_ref_mutation_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeRefMutationRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRefMutationPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_ref_mutation_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_reflog(
+        &self,
+        session_id: u64,
+        generation: u64,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeReflogResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_reflog(session_id, generation, offset, maximum_rows)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_refresh(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_refresh(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_remove_index_lock(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIndexLockRemovalResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_remove_index_lock(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_remove_lock(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeIndexLockRemovalResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_remove_lock(session_id, generation, token),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_restack_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_restack_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_restack_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        acknowledge_published_history: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRestackExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_restack_execute(
+                session_id,
+                generation,
+                token,
+                acknowledge_published_history,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_restack_plan(
+        &self,
+        session_id: u64,
+        generation: u64,
+        root_branch: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRestackPlanResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_restack_plan(session_id, generation, root_branch)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_restore_file(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRestoreResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_restore_file(session_id, generation, token),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_restore_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        commit: String,
+        path: Vec<u8>,
+        byte_limit: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRestorePreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_restore_preview(
+                session_id, generation, commit, path, byte_limit,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_staging_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeStagingRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeStagingExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_staging_execute(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_staging_phase(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<Option<NativeStagingPhase>>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_staging_phase(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_stash_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_stash_cancel(session_id, generation, token),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_stash_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeStashExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_stash_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_stash_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeStashRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeStashPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_stash_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_statistics_poll(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryStatisticsResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_statistics_poll(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_statistics_start(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativePowerJobStartResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_statistics_start(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_status_acceleration(
+        &self,
+        session_id: u64,
+        generation: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeStatusAccelerationResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_status_acceleration(session_id, generation),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_submodule_enter(
+        &self,
+        session_id: u64,
+        generation: u64,
+        path: Vec<u8>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeSubmoduleEnterResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_submodule_enter(session_id, generation, path)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_cancel(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeRepositoryCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_transfer_cancel(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_execute(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeTransferExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_transfer_execute(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_execute_background(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeTransferExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend
+                .repository_session_transfer_execute_background(session_id, generation, token),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_execute_with_credentials(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        username: Option<String>,
+        password: Option<String>,
+        credential_token: Option<String>,
+    ) -> LocalBoxFuture<'static, CallResult<NativeTransferExecutionResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_transfer_execute_with_credentials(
+                session_id,
+                generation,
+                token,
+                username,
+                password,
+                credential_token,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_preview(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request: NativeTransferRequest,
+    ) -> LocalBoxFuture<'static, CallResult<NativeTransferPreviewResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_transfer_preview(session_id, generation, request)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_probe_host_key(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+    ) -> LocalBoxFuture<'static, CallResult<NativeHostKeyResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_transfer_probe_host_key(session_id, generation, token)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_transfer_resolve_host_key(
+        &self,
+        session_id: u64,
+        generation: u64,
+        token: u64,
+        challenge_id: u64,
+        accept: bool,
+    ) -> LocalBoxFuture<'static, CallResult<NativeCloneCommandResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_transfer_resolve_host_key(
+                session_id,
+                generation,
+                token,
+                challenge_id,
+                accept,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_tree(
+        &self,
+        session_id: u64,
+        generation: u64,
+        commit: String,
+        directory: Option<Vec<u8>>,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeTreeResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_tree(
+                session_id,
+                generation,
+                commit,
+                directory,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_working_change_source(
+        &self,
+        session_id: u64,
+        generation: u64,
+        side: NativeStagingSide,
+        old_path: Option<Vec<u8>>,
+        new_path: Option<Vec<u8>>,
+        byte_limit: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeChangeSourceResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_working_change_source(
+                session_id, generation, side, old_path, new_path, byte_limit,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_working_diff_load(
+        &self,
+        session_id: u64,
+        generation: u64,
+        options: NativeWorkingDiffOptions,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => {
+                backend.repository_session_working_diff_load(session_id, generation, options)
+            }
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_working_diff_page(
+        &self,
+        session_id: u64,
+        generation: u64,
+        request_id: u64,
+        offset: u64,
+        maximum_rows: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeDiffResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_working_diff_page(
+                session_id,
+                generation,
+                request_id,
+                offset,
+                maximum_rows,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
+    fn repository_session_working_image_diff(
+        &self,
+        session_id: u64,
+        generation: u64,
+        side: NativeStagingSide,
+        old_path: Option<Vec<u8>>,
+        new_path: Option<Vec<u8>>,
+        byte_limit: u32,
+    ) -> LocalBoxFuture<'static, CallResult<NativeImageDiffResult>> {
+        match self.router.for_session(session_id) {
+            Some(backend) => backend.repository_session_working_image_diff(
+                session_id, generation, side, old_path, new_path, byte_limit,
+            ),
+            None => async { Err(CallError::Transport("disconnected".to_owned())) }.boxed_local(),
+        }
+    }
 }

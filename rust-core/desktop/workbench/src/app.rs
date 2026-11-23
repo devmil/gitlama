@@ -30,6 +30,7 @@ pub enum StartupPhase {
 /// The initialized services of one successful start (the Dart `AppRuntime`).
 pub struct Services {
     pub settings: Rc<SettingsService>,
+    pub remote: Rc<crate::remote::service::RemoteService>,
     pub calls: Rc<dyn SessionCalls>,
     pub history: Rc<HistoryService>,
     pub workspace: Rc<WorkspaceService>,
@@ -84,7 +85,14 @@ impl Services {
         let settings =
             SettingsService::new(Rc::new(NativeSettingsStore::default()), notifier.clone());
         settings.initialize().await.map_err(|_| "settings")?;
-        let calls: Rc<dyn SessionCalls> = Rc::new(LocalCalls);
+        // Every call goes to this computer or to the host connection owning its session.
+        let router = Rc::new(crate::remote::service::Router {
+            local: Rc::new(LocalCalls),
+            remote: RefCell::new(std::rc::Weak::new()),
+        });
+        let calls: Rc<dyn SessionCalls> = Rc::new(crate::backend::RoutedCalls {
+            router: Rc::clone(&router),
+        });
         let view_cache: Rc<dyn SessionViewCache> = Rc::new(NoViewCache);
         let history = HistoryService::new(Rc::clone(&calls), notifier.clone());
         let workspace = WorkspaceService::new(
@@ -97,6 +105,12 @@ impl Services {
             Rc::new(NoRemotes),
             notifier.clone(),
         );
+        let remote =
+            crate::remote::service::RemoteService::new(Rc::clone(&settings), notifier.clone())
+                .await;
+        *router.remote.borrow_mut() = Rc::downgrade(&remote);
+        workspace.set_remotes(Rc::clone(&remote) as Rc<dyn crate::workspace::WorkspaceRemotes>);
+        remote.attach(&workspace);
         let entry =
             EntryWorkflows::new(Rc::clone(&workspace), Rc::clone(&prompts), notifier.clone());
         let appearances = AppearanceService::new(Rc::clone(&settings), notifier.clone());
@@ -164,6 +178,7 @@ impl Services {
             .restore_workspace()
             .await
             .map_err(|_| "workspace")?;
+        remote.connect_restored_tabs();
         let navigator = crate::navigator::Navigator::new(Rc::clone(&workspace), notifier.clone());
         let sidebar = crate::sidebar::SidebarService::new(
             Rc::clone(&workspace),
@@ -367,8 +382,10 @@ impl Services {
         );
         let operations =
             crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
+        operations.set_remote(&remote);
         operations.start();
         Ok(Self {
+            remote,
             integrations,
             extensions,
             inspector_actions,
@@ -420,6 +437,7 @@ impl Services {
         self.operations.dispose();
         self.workspace.retire();
         self.workspace.close().await;
+        self.remote.dispose().await;
         self.history.dispose();
         self.settings.dispose().await;
     }

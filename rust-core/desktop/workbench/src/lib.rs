@@ -54,6 +54,7 @@ pub mod preferences;
 pub mod prompts;
 pub mod rebases;
 pub mod refs;
+pub mod remote;
 pub mod rewrite;
 pub mod rt;
 pub mod session;
