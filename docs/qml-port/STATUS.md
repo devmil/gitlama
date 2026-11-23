@@ -95,6 +95,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - About, repository icon dialog (icon, colour with the Meridian colour picker, image file) and
   tab group dialog (preview, name, colour, icon); Meridian QML colour swatch, picker, well and
   choice row added to meridian_ui.
+- Repository details: the Compass morphs into the health header, path, branch/upstream/changes
+  tiles, paused operations, activity, Git version and Open in file manager.
 - Shortcut reference; save snapshot as ZIP (progress, cancel, result with missing submodules
   and LFS pointers).
 - Image diffs (committed and working): both sides decoded by the core, side by side, swipe and
@@ -102,8 +104,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
-- Repository details,
-  named snapshots, power tools, extensions panel (worktree create, LFS, submodules),
+- Named snapshots, power tools, extensions panel (worktree create, LFS, submodules),
   integrations panel and settings page, status acceleration settings.
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing

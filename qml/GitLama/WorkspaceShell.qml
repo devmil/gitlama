@@ -49,6 +49,16 @@ Rectangle {
         Store.actions.runCommand(id, options ?? ({}))
     }
 
+    /// The Compass grows into the active repository's details.
+    function showRepositoryDetails() {
+        if (!repositoryDetails.opened && Store.workspace.details)
+            repositoryDetails.open()
+    }
+    RepositoryDetailsPanel {
+        id: repositoryDetails
+        anchorItem: toolbar.compassItem
+    }
+
     Column {
         anchors.fill: parent
 
@@ -60,6 +70,7 @@ Rectangle {
             operations: shell.operationSummary
             operationsVisible: shell.operationsVisible
             activityVisible: shell.activityVisible
+            detailsOpen: repositoryDetails.visible
             onCommand: (id, options) => shell.command(id, options)
         }
 

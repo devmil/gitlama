@@ -263,6 +263,7 @@ Item {
         case "cloneRepository": cloneRepository(); return
         case "showLicenses": showLicenses(); return
         case "showShortcutReference": shortcutReference.show(); return
+        case "showRepositoryDetails": if (Store.shell) Store.shell.showRepositoryDetails(); return
         case "saveCommitArchive": {
             const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
             const commit = options.initialTarget ?? (selected.length === 1 ? selected[0] : "")

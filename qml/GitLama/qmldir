@@ -41,6 +41,7 @@ RepositoryTabs 1.0 RepositoryTabs.qml
 WorkspaceBody 1.0 WorkspaceBody.qml
 WorkspaceStatusBar 1.0 WorkspaceStatusBar.qml
 singleton AppearanceColors 1.0 AppearanceColors.qml
+RepositoryDetailsPanel 1.0 RepositoryDetailsPanel.qml
 RepositoryIcon 1.0 RepositoryIcon.qml
 RepositoryIconDialog 1.0 RepositoryIconDialog.qml
 GroupContextMenu 1.0 GroupContextMenu.qml

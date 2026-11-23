@@ -114,7 +114,7 @@ impl Driver {
         if changed.intersects(Topics::EVENTS) {
             self.emit_events();
         }
-        if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS) {
+        if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::SETTINGS | Topics::OPERATIONS) {
             self.project_workspace(changed);
         }
         if changed.intersects(Topics::HISTORY | Topics::WORKSPACE | Topics::SESSION) {
@@ -327,6 +327,14 @@ impl Driver {
         let Some(services) = self.app.services() else { return };
         if changed.intersects(Topics::WORKSPACE) {
             self.project_appearance_edit();
+        }
+        if changed.intersects(Topics::WORKSPACE | Topics::SESSION | Topics::OPERATIONS | Topics::SETTINGS) {
+            let details = crate::workspace_state::details(&services);
+            let mut workspace = self.workspace.borrow_mut();
+            if workspace.details != details {
+                workspace.details = details;
+                workspace.details_changed();
+            }
         }
         if changed.intersects(Topics::SETTINGS) {
             let recents = services

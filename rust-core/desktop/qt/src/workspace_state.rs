@@ -4,8 +4,79 @@
 use crate::plumbing::Commands;
 use gitlama_workbench::rt;
 use qtbridge::qobject;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::rc::Rc;
+
+/// What the repository details overlay shows about the active tab: where
+/// it lives, what it is and what happens in it (the Dart RepositoryDetails).
+pub fn details(services: &gitlama_workbench::app::Services) -> Value {
+    use gitlama_contract::dto::{NativeHeadKind, NativeOperationKind, NativeRepositoryKind};
+    use gitlama_contract::dto::{NativeOperationCenterOrigin, NativeOperationCenterState};
+    let workspace = services.workspace.workspace();
+    let Some(tab) = workspace.active_tab_id.and_then(|id| workspace.tabs.iter().find(|tab| tab.id == id)) else { return Value::Null };
+    let text = |bytes: &Vec<u8>| String::from_utf8_lossy(bytes).into_owned();
+    let snapshot = tab.session.as_ref().map(|session| Rc::clone(&session.snapshot));
+    let identity = snapshot.as_ref().and_then(|snapshot| snapshot.identity.clone());
+    let status = snapshot.as_ref().and_then(|snapshot| snapshot.status.clone());
+    let group = workspace.group(tab.group_id).map(|group| group.name.clone()).filter(|name| !name.is_empty());
+    let path = tab.canonical_identity().or(tab.requested_identity.as_ref()).map(gitlama_workbench::session::display_path);
+    let branch = match &status {
+        Some(status) => status.branch_name.as_ref().map(text),
+        None => identity
+            .as_ref()
+            .and_then(|identity| identity.head_reference.as_ref())
+            .map(text)
+            .and_then(|reference| reference.strip_prefix("refs/heads/").map(str::to_owned)),
+    };
+    let session = tab.session.as_ref().map(|session| session.identity);
+    let center = services.operations.current();
+    let running: Vec<_> = center
+        .entries
+        .iter()
+        .filter(|entry| {
+            entry.state == NativeOperationCenterState::Running
+                && session.is_some_and(|session| entry.session_id == Some(session.native_id) && entry.generation == session.generation)
+        })
+        .collect();
+    let operation = running.iter().find(|entry| entry.origin == NativeOperationCenterOrigin::User).or(running.first()).map(|entry| {
+        json!({
+            "action": format!("{:?}", entry.action).to_lowercase(),
+            "progress": entry.progress.as_ref().and_then(|progress| {
+                let total = progress.total.filter(|total| *total > 0)?;
+                Some(json!({"phase": progress.phase, "percent": (100.0 * progress.completed as f64 / total as f64).round() as u64,
+                            "fraction": progress.completed as f64 / total as f64}))
+            }),
+        })
+    });
+    json!({
+        "name": services.appearances.name_for(tab.canonical_identity()).unwrap_or_else(|| tab.label.clone()),
+        "group": group,
+        "remote": tab.canonical_identity().is_some_and(|identity| identity.remote.is_some()),
+        "path": path,
+        "bare": identity.as_ref().is_some_and(|identity| identity.kind == NativeRepositoryKind::Bare),
+        "hasKind": identity.is_some(),
+        "linkedWorktree": identity.as_ref().is_some_and(|identity| identity.git_dir != identity.common_git_dir),
+        "unborn": identity.as_ref().is_some_and(|identity| identity.head_kind == NativeHeadKind::Unborn),
+        "branch": branch,
+        "headObjectId": status.as_ref().and_then(|status| status.head_object_id.clone())
+            .or_else(|| identity.as_ref().and_then(|identity| identity.head_object_id.clone())),
+        "upstream": status.as_ref().and_then(|status| status.upstream.as_ref()).map(text),
+        "ahead": status.as_ref().map_or(0, |status| status.ahead),
+        "behind": status.as_ref().map_or(0, |status| status.behind),
+        "changed": status.as_ref().map_or(0, |status| status.total_entries),
+        "conflicts": status.as_ref().map_or(0, |status| status.entries.iter()
+            .filter(|entry| entry.kind == gitlama_contract::dto::NativeStatusEntryKind::Unmerged).count()),
+        "inProgress": status.as_ref().map_or_else(Vec::new, |status| status.operations.iter().map(|operation| match operation.kind {
+            NativeOperationKind::Merge => "workspaceOperationMerge",
+            NativeOperationKind::Rebase => "workspaceOperationRebase",
+            NativeOperationKind::CherryPick => "workspaceOperationCherryPick",
+            NativeOperationKind::Revert => "workspaceOperationRevert",
+            NativeOperationKind::Bisect => "workspaceOperationBisect",
+        }).collect()),
+        "operation": operation,
+        "gitVersion": identity.as_ref().map(|identity| format!("{}.{}.{}", identity.git_major, identity.git_minor, identity.git_patch)),
+    })
+}
 
 #[qobject(ConvertToCamelCase)]
 mod workspace_state {
@@ -25,6 +96,8 @@ mod workspace_state {
         /// image, imageUrl, imageFailed}, or null.
         pub(crate) appearance_edit: Value,
         pub(crate) appearance_image: Option<gitlama_contract::dto::NativePathIdentity>,
+        /// The active repository's details overlay.
+        pub(crate) details: Value,
     }
 
     impl Default for WorkspaceState {
@@ -37,6 +110,7 @@ mod workspace_state {
                 groups: Value::Array(Vec::new()),
                 appearance_edit: Value::Null,
                 appearance_image: None,
+                details: Value::Null,
                 entry: Value::Null,
                 recents: Value::Array(Vec::new()),
                 active: Value::Null,
@@ -52,6 +126,10 @@ mod workspace_state {
         qproperty!("recents", Member = recents, Notify = recents_changed);
         qproperty!("active", Member = active, Notify = active_changed);
         qproperty!("appearanceEdit", Member = appearance_edit, Notify = appearance_edit_changed);
+        qproperty!("details", Member = details, Notify = details_changed);
+
+        #[qsignal]
+        pub fn details_changed(&mut self);
 
         #[qsignal]
         pub fn appearance_edit_changed(&mut self);
