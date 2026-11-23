@@ -123,6 +123,19 @@ impl Driver {
         if changed.intersects(Topics::HOSTING | Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION | Topics::STARTUP) {
             self.project_hosting();
         }
+        if changed.intersects(Topics::EVENTS | Topics::SETTINGS)
+            && let Some(services) = self.app.services()
+        {
+            services.avatars.sync();
+            let images: serde_json::Map<String, serde_json::Value> =
+                services.avatars.images().into_iter().map(|(hash, url)| (hash, serde_json::Value::String(url))).collect();
+            let images = serde_json::Value::Object(images);
+            let mut workflows = self.workflows.borrow_mut();
+            if workflows.avatars != images {
+                workflows.avatars = images;
+                workflows.avatars_changed();
+            }
+        }
         if changed.intersects(Topics::EVENTS) {
             self.emit_events();
         }

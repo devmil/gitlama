@@ -910,6 +910,16 @@ Item {
                 ] : [])
         }
     }
+    // Author images from Gravatar: what enabling sends (the Dart GravatarOfferDialog).
+    function offerGravatar() { gravatarOffer.open() }
+    MeridianConfirm {
+        id: gravatarOffer
+        title: L10n.t("avatarGravatarTitle")
+        description: L10n.t("avatarGravatarHint")
+        confirmLabel: L10n.t("avatarEnableGravatar")
+        cancelLabel: L10n.t("avatarGravatarNotNow")
+        onConfirmed: Store.workflows.setGravatar(true)
+    }
     // One bisect step with its Git command (confirmBisect).
     MeridianConfirm {
         id: bisectConfirm

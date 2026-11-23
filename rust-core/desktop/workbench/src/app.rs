@@ -61,6 +61,7 @@ pub struct Services {
     pub cli: Rc<crate::cli::CliForwarding>,
     pub updates: Rc<crate::updates::UpdateService>,
     pub hosting: Rc<crate::hosting::Hosting>,
+    pub avatars: Rc<crate::avatars::Avatars>,
     pub repository_hosting: Rc<crate::hosting::RepositoryHosting>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
@@ -274,6 +275,7 @@ impl Services {
         let cli = crate::cli::CliForwarding::start(Rc::clone(&workspace), Rc::clone(&transfers), notifier.clone())
             .await
             .map_err(|_| "cli_forwarding")?;
+        let avatars = crate::avatars::Avatars::new(Rc::clone(&settings), notifier.clone());
         let hosting = crate::hosting::Hosting::new(Rc::clone(&settings), notifier.clone()).await;
         let repository_hosting = crate::hosting::RepositoryHosting::new(Rc::clone(&hosting), notifier.clone());
         let updates = crate::updates::UpdateService::new(Rc::clone(&settings), notifier.clone()).await;
@@ -318,6 +320,7 @@ impl Services {
             cli,
             updates,
             hosting,
+            avatars,
             repository_hosting,
             operations,
             conflicts,

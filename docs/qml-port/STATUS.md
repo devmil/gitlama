@@ -166,13 +166,16 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   commands, the sidebar's pull request rows (yours first, merged, checks and conflicts,
   open/check out), and pull request chips after History's branch chips (at the head, or
   outdated on the remote-tracking chip with a recheck). Rendered without a provider only.
+- Gravatar author images: loaded once per hash while enabled (data URLs), cache cleared when
+  turned off; an avatar explains and offers Gravatar while it is off. Not loaded against
+  Gravatar here.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
 - Integrations panel (the hosting resources view) and the Integrations/Repository binding
   settings pages (with hosting).
 - History: selection glide, lane lighting/draw/landing motion, sync entrance.
-- Hosting: review workspace and check retry, branch CI decorations, Gravatar avatars;
+- Hosting: review workspace and check retry, branch CI decorations;
   macOS window configuration, macOS open-file events.
 - Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
   remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).

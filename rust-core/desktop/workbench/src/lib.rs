@@ -12,6 +12,7 @@ pub mod archive;
 pub mod appearance;
 pub mod appearances;
 pub mod auto_fetch;
+pub mod avatars;
 pub mod backend;
 pub mod busy;
 pub mod changes;

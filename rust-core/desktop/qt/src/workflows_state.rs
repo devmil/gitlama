@@ -28,6 +28,8 @@ mod workflows_state {
         pub(crate) power_tools: Value,
         /// The extensions panel (extensions.rs panel_value).
         pub(crate) extensions: Value,
+        /// Loaded author images: Gravatar hash to data URL.
+        pub(crate) avatars: Value,
     }
 
     impl WorkflowsState {
@@ -43,6 +45,24 @@ mod workflows_state {
 
         #[qsignal]
         pub fn power_tools_changed(&mut self);
+
+        qproperty!("avatars", Member = avatars, Notify = avatars_changed);
+        #[qsignal]
+        pub fn avatars_changed(&mut self);
+
+        /// Loads the author image of Gravatar hash `hash` (while enabled).
+        #[qslot]
+        fn request_avatar(&self, hash: String) {
+            self.with_services(move |services| services.avatars.request(hash));
+        }
+
+        /// Turns author images from Gravatar on or off.
+        #[qslot]
+        fn set_gravatar(&self, enabled: bool) {
+            self.with_services(move |services| {
+                services.avatars.set_enabled(enabled);
+            });
+        }
 
         qproperty!("extensions", Member = extensions, Notify = extensions_changed);
 
