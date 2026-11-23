@@ -51,6 +51,9 @@
 
 ## Unreleased Beta
 
+- GitLama is now a native Qt application instead of a Flutter one. It looks and works as before and keeps your settings, recent repositories and other data, so it updates in place.
+- GitLama is available for Arch Linux and Omarchy as a pacman package. Install it with `sudo pacman -U` from the downloads page.
+
 ## [0.1.0-beta.68] - 2026-11-21
 
 - Resizing the window on Linux no longer shows black flashes or black edges.

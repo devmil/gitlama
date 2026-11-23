@@ -2,7 +2,7 @@
 """Choose the CI lane for a pushed range.
 
 `desktop` builds and tests the application on every platform. `source` runs
-only the checks that need neither Flutter nor Rust, for a range that cannot
+only the checks that need neither Qt nor Rust, for a range that cannot
 change the application: website, documentation and signed release metadata,
 and a release preparation that only moves the version. The release workflow
 builds and qualifies that prepared commit itself.
@@ -36,19 +36,10 @@ LIGHT_PATTERNS = (
     "CONTRIBUTING.md",
     "SECURITY.md",
 )
-# The design contract check compares these with the Flutter sources.
+# The design contract check compares these with the QML sources.
 APPLICATION_PATTERNS = ("docs/design-system/*",)
 
 PLACEHOLDER = "<version>"
-
-
-def _pubspec(text: str) -> str:
-    lines = text.split("\n")
-    for index, line in enumerate(lines):
-        if re.fullmatch(r"version: \S+", line):
-            lines[index] = f"version: {PLACEHOLDER}"
-            break
-    return "\n".join(lines)
 
 
 def _after_line(text: str, anchor: str, section_end: str | None) -> str:
@@ -80,7 +71,6 @@ def _cargo_lock(text: str) -> str:
 # change is a version move only when both sides are otherwise identical.
 VERSION_FILES: dict[str, Callable[[str], str]] = {
     "VERSION": lambda text: PLACEHOLDER,
-    "pubspec.yaml": _pubspec,
     "rust-core/Cargo.toml": _cargo_manifest,
     "rust-core/Cargo.lock": _cargo_lock,
 }

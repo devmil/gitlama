@@ -61,16 +61,13 @@ class MacosSigningTest(unittest.TestCase):
         self.assertIn('echo "sign-macos-candidate: notarization credentials are required"', script)
         self.assertIn('xcrun stapler validate "$candidate"', script)
 
-    def test_release_uses_the_cocoapods_version_of_the_lock_file(self) -> None:
-        workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
-        macos_job = workflow.split("\n  macos:\n", 1)[1].split("\n  linux:\n", 1)[0]
-        lock = Path("macos/Podfile.lock").read_text(encoding="utf-8")
-
-        self.assertRegex(lock, r"\nCOCOAPODS: \d+\.\d+\.\d+\n")
-        self.assertIn("sed -n 's/^COCOAPODS: //p' macos/Podfile.lock", macos_job)
-        self.assertIn('gem install cocoapods --version "$version"', macos_job)
-        self.assertLess(macos_job.index("Install the CocoaPods version of the lock file"),
-                        macos_job.index("python3 scripts/package.py dmg"))
+    def test_release_bundles_the_pinned_and_verified_sparkle(self) -> None:
+        package = Path("scripts/package.py").read_text(encoding="utf-8")
+        self.assertIn('SPARKLE_VERSION = "2.10.0"', package)
+        self.assertRegex(package, r'SPARKLE_SHA256 = "[0-9a-f]{64}"')
+        self.assertIn("Sparkle archive checksum mismatch", package)
+        sign = Path("scripts/sign-macos-candidate.sh").read_text(encoding="utf-8")
+        self.assertIn('packaging/macos/GitLama.entitlements', sign)
 
     def test_stapling_retries_a_dropped_ticket_lookup(self) -> None:
         import os

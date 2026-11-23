@@ -14,7 +14,7 @@
   const latestNotes = document.getElementById("latest-notes");
   const releaseList = document.getElementById("release-list");
 
-  const formats = { macos: ["dmg"], windows: ["msi"], linux: ["AppImage", "deb", "rpm", "tar.gz"] };
+  const formats = { macos: ["dmg"], windows: ["msi"], linux: ["AppImage", "deb", "rpm", "pkg.tar.zst", "tar.gz"] };
   const platforms = {
     macos: { label: "macOS", icon: "apple" },
     windows: { label: "Windows", icon: "windows" },
@@ -26,6 +26,7 @@
     AppImage: { icons: ["appimage"] },
     deb: { icons: ["debian", "ubuntu"] },
     rpm: { icons: ["fedora"] },
+    "pkg.tar.zst": { icons: ["arch"] },
     "tar.gz": { icons: ["archive"] },
   };
 
@@ -82,6 +83,7 @@
     const agent = navigator.userAgent || "";
     if (/ubuntu|debian|mint/i.test(agent)) return "deb";
     if (/fedora|red hat|suse/i.test(agent)) return "rpm";
+    if (/arch|manjaro|endeavour/i.test(agent)) return "pkg.tar.zst";
     return "AppImage";
   }
 
@@ -190,7 +192,7 @@
         r.notes.forEach((note) => list.append(element("li", "", note)));
         record.append(list);
       }
-      const order = ["dmg", "msi", "AppImage", "deb", "rpm", "tar.gz"];
+      const order = ["dmg", "msi", "AppImage", "deb", "rpm", "pkg.tar.zst", "tar.gz"];
       const assets = Array.isArray(r.assets) ? r.assets.filter(validAsset) : [];
       assets.sort((a, b) => order.indexOf(a.format) - order.indexOf(b.format));
       if (assets.length) {

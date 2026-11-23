@@ -86,7 +86,7 @@ class ReleaseHostsTest(unittest.TestCase):
         reconcile(api, "verify", "v1.2.3-7", "a" * 40, self.candidate, self.public)
         reconcile(api, "publish", "v1.2.3-7", "a" * 40, self.candidate, self.public)
         self.assertFalse(api.release["draft"])
-        self.assertEqual(len(api.assets), 9)
+        self.assertEqual(len(api.assets), 10)
 
     def test_release_page_shows_the_signed_notes(self) -> None:
         api = MemoryReleaseApi()

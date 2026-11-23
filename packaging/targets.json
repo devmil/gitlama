@@ -8,6 +8,7 @@
     {"os":"linux","arch":"x86_64","format":"AppImage","minimum":"glibc 2.35"},
     {"os":"linux","arch":"x86_64","format":"deb","minimum":"glibc 2.35"},
     {"os":"linux","arch":"x86_64","format":"rpm","minimum":"glibc 2.35"},
+    {"os":"linux","arch":"x86_64","format":"pkg.tar.zst","minimum":"glibc 2.35"},
     {"os":"linux","arch":"x86_64","format":"tar.gz","minimum":"glibc 2.35"}
   ],
   "minimum_git": "2.39.0"

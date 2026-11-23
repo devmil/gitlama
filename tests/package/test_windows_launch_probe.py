@@ -33,7 +33,7 @@ class WindowsLaunchProbeTests(unittest.TestCase):
             'import sys\n'
             'sys.stdout.write("private content https://secret.invalid/ " * 100000)\n'
             'sys.stderr.write("private path and credentials " * 100000)\n'
-            'sys.stderr.write("Could not prepare isolate")\n'
+            'sys.stderr.write("qt.qpa.plugin: Could not load the Qt platform plugin")\n'
             'sys.exit(17)\n', survival=5,
         )
         self.assertFalse(accepted)
@@ -42,7 +42,7 @@ class WindowsLaunchProbeTests(unittest.TestCase):
         self.assertEqual(report["exitCodeHex"], "0x00000011")
         self.assertFalse(report["terminatedByProbe"])
         self.assertGreater(report["stdout"]["bytes"], 100000)
-        self.assertIn("flutter_isolate_failed", report["stderr"]["signals"])
+        self.assertIn("qt_platform_plugin_failed", report["stderr"]["signals"])
         self.assertNotIn("private", json.dumps(report))
         self.assertNotIn("secret.invalid", json.dumps(report))
         self.assertLess(len(json.dumps(report)), 5000)

@@ -21,7 +21,6 @@ fn main() {
     println!("cargo:rustc-env=GITLAMA_VERSION={marketing}");
     println!("cargo:rustc-env=GITLAMA_BUILD={build}");
     println!("cargo:rerun-if-changed={}", root.join("VERSION").display());
-    println!("cargo:rerun-if-env-changed=GITLAMA_RELEASE_CHANNEL");
 
     let groups: Vec<ResourceGroup> = vec![
         (root.join("qml/GitLama"), "GitLama", |_| true),
@@ -64,6 +63,9 @@ fn main() {
         build_desktop_file_shim(&manifest);
     }
     build_native_items(&manifest, &out_dir());
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        build_windows_resource(&manifest, &out);
+    }
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         // Sparkle, loaded at run time from the bundle (sparkle_bridge.m).
         let bridge = manifest.join("src/native/sparkle_bridge.m");
@@ -178,6 +180,79 @@ fn find_rcc() -> Option<PathBuf> {
         }
     }
     None
+}
+
+/// The executable's icon and version information (the Flutter runner's
+/// Runner.rc), compiled with the MSVC resource compiler.
+fn build_windows_resource(manifest: &Path, out: &Path) {
+    let root = manifest.join("../../..");
+    let version_file = root.join("VERSION");
+    let icon = root.join("packaging/windows/app_icon.ico");
+    println!("cargo:rerun-if-changed={}", version_file.display());
+    println!("cargo:rerun-if-changed={}", icon.display());
+    let text = fs::read_to_string(&version_file).expect("read VERSION");
+    let mut lines = text.lines();
+    let marketing = lines.next().unwrap_or("0.0.0").trim().to_owned();
+    let build: u32 = lines
+        .next()
+        .and_then(|line| line.trim().parse().ok())
+        .unwrap_or(0);
+    let numbers: Vec<u32> = marketing
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|part| !part.is_empty())
+        .take(3)
+        .map(|part| part.parse().unwrap_or(0))
+        .collect();
+    let (major, minor, patch) = (
+        numbers.first().copied().unwrap_or(0),
+        numbers.get(1).copied().unwrap_or(0),
+        numbers.get(2).copied().unwrap_or(0),
+    );
+    let rc = out.join("gitlama.rc");
+    fs::write(
+        &rc,
+        format!(
+            r#"#include <winver.h>
+1 ICON "{icon}"
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION {major},{minor},{patch},{build}
+ PRODUCTVERSION {major},{minor},{patch},{build}
+ FILEOS VOS__WINDOWS32
+ FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904e4"
+    BEGIN
+      VALUE "CompanyName", "de.devmil\0"
+      VALUE "FileDescription", "GitLama\0"
+      VALUE "FileVersion", "{marketing}\0"
+      VALUE "InternalName", "gitlama\0"
+      VALUE "LegalCopyright", "Copyright (C) 2026 de.devmil. All rights reserved.\0"
+      VALUE "OriginalFilename", "gitlama.exe\0"
+      VALUE "ProductName", "GitLama\0"
+      VALUE "ProductVersion", "{marketing}\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
+"#,
+            icon = icon.display().to_string().replace('\\', "\\\\"),
+        ),
+    )
+    .expect("write gitlama.rc");
+    let res = out.join("gitlama.res");
+    let status = Command::new("rc.exe")
+        .arg("/nologo")
+        .arg(format!("/fo{}", res.display()))
+        .arg(&rc)
+        .status()
+        .expect("rc.exe: run it from an MSVC developer environment");
+    assert!(status.success(), "rc.exe failed");
+    println!("cargo:rustc-link-arg-bins={}", res.display());
 }
 
 /// Compiles the QGuiApplication::setDesktopFileName shim against Qt's headers.

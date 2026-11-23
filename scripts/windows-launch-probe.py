@@ -11,11 +11,9 @@ import time
 
 # Only reviewed static categories cross the child-output boundary.
 SIGNALS = {
-    "invalid_inspection_window_request": b"invalid_inspection_window_request",
-    "flutter_isolate_failed": b"Could not prepare isolate",
-    "flutter_engine_failed": b"Could not launch engine",
-    "flutter_view_failed": b"Unable to create a Flutter view",
-    "flutter_controller_failed": b"Failed to create view controller",
+    "qt_platform_plugin_failed": b"Could not load the Qt platform plugin",
+    "qml_component_failed": b"QQmlApplicationEngine failed to load component",
+    "graphics_backend_failed": b"Failed to initialize graphics backend",
     "graphics_context_failed": b"Failed to create OpenGL context",
 }
 

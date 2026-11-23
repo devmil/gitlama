@@ -57,7 +57,7 @@ class ReleaseTrustTest(unittest.TestCase):
         raw = verify_signature(manifest, signature, self.public)
         parsed, releases = parse_manifest(raw)
         self.assertEqual(parsed["latest"]["tag"], "v1.2.3-7")
-        self.assertEqual(len(releases[0]), 6)
+        self.assertEqual(len(releases[0]), 7)
         asset = select_asset(raw, platform="macos", architecture="arm64", format_="dmg")
         verify_artifact(candidate / asset.file, asset)
 

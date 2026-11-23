@@ -48,7 +48,7 @@ case "$mode" in
     [[ -n "${CODESIGN_IDENTITY:-}" ]] || { echo "sign-macos-candidate: CODESIGN_IDENTITY is required" >&2; exit 1; }
     signing_identity="$(resolve_identity "$CODESIGN_IDENTITY")"
     codesign --force --deep --options runtime --timestamp \
-      --entitlements "$ROOT/macos/Runner/Release.entitlements" \
+      --entitlements "$ROOT/packaging/macos/GitLama.entitlements" \
       --sign "$signing_identity" "$candidate"
     codesign --verify --strict --deep "$candidate"
     codesign -d --verbose=4 "$candidate" 2>&1 | grep -F 'Authority=Developer ID Application:' >/dev/null

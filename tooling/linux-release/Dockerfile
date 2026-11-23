@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
-ARG FLUTTER_VERSION
-ARG FLUTTER_SHA256
+ARG QT_VERSION=6.11.2
+ARG AQTINSTALL_VERSION=3.3.0
 ARG RUST_VERSION=1.97.1
 # Keep the versioned download and checksum paired; continuous replaces its asset.
 ARG APPIMAGETOOL_SHA256=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
@@ -9,7 +9,8 @@ ARG GIT_VERSION=2.39.5
 ARG GIT_SHA256=c58da92c378df4a986ca33266897a7397e86c22ee266a284d8c2432c39066b59
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PATH="/opt/flutter/bin:/root/.cargo/bin:${PATH}"
+ENV PATH="/opt/Qt/${QT_VERSION}/gcc_64/bin:/root/.cargo/bin:${PATH}"
+ENV QMAKE="/opt/Qt/${QT_VERSION}/gcc_64/bin/qmake"
 # Release runners sit behind a flaky connection: every download retries.
 ENV CARGO_NET_RETRY=10
 ENV CURL_RETRY="--retry 6 --retry-all-errors --retry-delay 10 --connect-timeout 30"
@@ -26,17 +27,36 @@ RUN apt-get update -qq \
         curl \
         dpkg-dev \
         file \
+        g++ \
         gcc \
         git \
         libcurl4-openssl-dev \
         libexpat1-dev \
         libfuse2 \
-        libglu1-mesa \
-        libgtk-3-dev \
+        libdbus-1-3 \
+        libegl1 \
+        libfontconfig1 \
+        libgl-dev \
+        libglib2.0-0 \
+        libwayland-client0 \
+        libwayland-cursor0 \
+        libwayland-egl1 \
+        libx11-xcb1 \
+        libxcb-cursor0 \
+        libxcb-icccm4 \
+        libxcb-image0 \
+        libxcb-keysyms1 \
+        libxcb-randr0 \
+        libxcb-render-util0 \
+        libxcb-shape0 \
+        libxcb-xinerama0 \
+        libxcb-xkb1 \
+        libxkbcommon-x11-0 \
         liblzma-dev \
         make \
-        ninja-build \
+        patchelf \
         pkg-config \
+        python3-pip \
         rpm \
         ruby-dev \
         unzip \
@@ -45,16 +65,16 @@ RUN apt-get update -qq \
         xz-utils \
         zip \
         zlib1g-dev \
+        zstd \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl $CURL_RETRY -fsSL \
-        "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
-        -o /tmp/flutter.tar.xz \
-    && echo "${FLUTTER_SHA256}  /tmp/flutter.tar.xz" | sha256sum -c - \
-    && tar -xJf /tmp/flutter.tar.xz -C /opt \
-    && rm /tmp/flutter.tar.xz \
-    && git config --global --add safe.directory /opt/flutter \
-    && flutter --version
+# Qt's prebuilt Linux release, the one the application bundles privately.
+RUN for attempt in 1 2 3 4 5; do pip3 install --no-cache-dir "aqtinstall==${AQTINSTALL_VERSION}" && break; sleep 15; done \
+    && for attempt in 1 2 3 4 5; do \
+         aqt install-qt linux desktop "${QT_VERSION}" linux_gcc_64 --outputdir /opt/Qt -m qtwaylandcompositor && break; \
+         sleep 30; \
+       done \
+    && qmake -query QT_VERSION | grep -qx "${QT_VERSION}"
 
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends libssl-dev \
@@ -108,4 +128,4 @@ RUN --mount=type=secret,id=github_token \
     && echo "${APPIMAGETOOL_SHA256}  /usr/local/bin/appimagetool" | sha256sum -c - \
     && chmod 0755 /usr/local/bin/appimagetool
 
-WORKDIR /work/Flutter/GitLama
+WORKDIR /work/GitLama

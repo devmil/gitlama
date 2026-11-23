@@ -77,7 +77,6 @@ def _replace_once(text: str, pattern: str, replacement: str, label: str) -> str:
 
 
 def version_updates(root: Path, version: Version) -> dict[Path, str]:
-    pubspec = root / "pubspec.yaml"
     cargo = root / "rust-core/Cargo.toml"
     lock = root / "rust-core/Cargo.lock"
     cargo_text = cargo.read_text(encoding="utf-8")
@@ -92,12 +91,6 @@ def version_updates(root: Path, version: Version) -> dict[Path, str]:
         raise ValueError("cannot update gitlama_core lock version")
     return {
         root / "VERSION": f"{version.marketing}\n{version.build}\n",
-        pubspec: _replace_once(
-            pubspec.read_text(encoding="utf-8"),
-            r"^version:\s+\S+$",
-            f"version: {version.marketing}+{version.build}",
-            "pubspec version",
-        ),
         cargo: cargo_updated,
         lock: lock_updated,
     }

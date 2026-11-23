@@ -117,17 +117,17 @@ if ($PreviousMsiPath) { $upgradeResult = "passed" }
 $installedExe = Join-Path $installRoot "gitlama.exe"
 foreach ($required in @(
     "gitlama.exe",
-    "gitlama_core.dll",
-    "flutter_windows.dll",
-    "data\flutter_assets\AssetManifest.bin",
-    "data\flutter_assets\NOTICES.Z",
-    "data\flutter_assets\THIRD_PARTY_NOTICES.md",
-    "data\flutter_assets\assets\licenses\RUST-DEPENDENCIES.md",
-    "data\flutter_assets\assets\licenses\FLUTTER-DEPENDENCIES.md",
-    "data\flutter_assets\assets\licenses\SYNTAX-GRAMMARS.md"
+    "Qt6Core.dll",
+    "Qt6Quick.dll",
+    "qml\QtQuick\qmldir",
+    "licenses\LICENSE",
+    "licenses\THIRD_PARTY_NOTICES.md",
+    "licenses\RUST-DEPENDENCIES.md",
+    "licenses\QT-RUNTIME.md",
+    "licenses\SYNTAX-GRAMMARS.md"
 )) {
     if (-not (Test-Path -LiteralPath (Join-Path $installRoot $required) -PathType Leaf)) {
-        throw "Installed Flutter or Rust payload is missing: $required"
+        throw "Installed Qt or Rust payload is missing: $required"
     }
 }
 $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($installedExe)

@@ -54,6 +54,9 @@
 
 ## Unreleased Beta
 
+- Rebuild the desktop application in Rust and Qt Quick/QML on the Meridian QML components, replacing Flutter. The application ID (`de.devmil.gitlama`), the settings, recents and other profile data, the Sparkle feed and signing key, the Windows UpgradeCode and the Linux desktop entry stay the same, so installations update in place. Packages bundle a private Qt runtime (Linux: `scripts/stage_linux_bundle.py`; macOS: `macdeployqt` plus the pinned Sparkle 2.10.0 release; Windows: `windeployqt`), the Linux release image builds against Qt on Ubuntu 22.04 instead of Flutter, and the package smoke test renders the first window from the packaged bundle. Release diagnostics record the prebuilt Qt libraries as vendor symbol gaps instead of Dart symbol maps.
+- Publish an Arch Linux package (`gitlama-<version>-<build>-x86_64.pkg.tar.zst`, for Arch Linux and Omarchy). It installs the same `/usr/lib/gitlama` layout as the DEB and RPM, is built with `makepkg` (in an `archlinux:base-devel` container on the release runner) and is qualified with the other Linux formats; its version drops the pre-release hyphen so pacman orders betas before the release. The website offers it for Linux, and release verification still accepts the six-artifact releases published before it.
+
 ## [0.1.0-beta.68] - 2026-11-21
 
 - CI and release builds authenticate the appimagetool download in the Linux release image with the workflow token, so the shared anonymous GitHub API limit (HTTP 403 on hosted runners) no longer fails the Linux job.

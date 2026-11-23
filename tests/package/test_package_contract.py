@@ -10,7 +10,6 @@ from scripts.lib.package_contract import (
     fpm_source_date_epoch,
     leaked_build_path,
     source_date_epoch,
-    without_allowed_flutter_build_metadata,
 )
 from scripts.package import (
     package_linux_tar,
@@ -76,18 +75,13 @@ class PackageContractTest(unittest.TestCase):
         checker = Path("scripts/check_dependencies.py").read_text(encoding="utf-8")
         self.assertIn("path.relative_to(root).as_posix()", checker)
 
-    def test_linux_runner_builds_against_release_image_glib(self) -> None:
-        # The Ubuntu 22.04 release image ships GLib 2.72.
-        for source in Path("linux/runner").glob("*.[ch]*"):
-            self.assertNotIn("G_CONNECT_DEFAULT", source.read_text(encoding="utf-8"), source)
-
     def test_linux_release_image_installs_project_rust_components(self) -> None:
         dockerfile = Path("tooling/linux-release/Dockerfile").read_text(encoding="utf-8")
         toolchain = Path("rust-toolchain.toml").read_text(encoding="utf-8")
         self.assertIn('components = ["rustfmt", "clippy"]', toolchain)
         self.assertIn('rustup component add --toolchain "${RUST_VERSION}" rustfmt clippy', dockerfile)
 
-    def test_platform_qualifiers_require_flutter_runtime_notices(self) -> None:
+    def test_platform_qualifiers_require_qt_runtime_notices(self) -> None:
         for path in (
             Path("scripts/package.py"),
             Path("scripts/qualify-macos-package.py"),
@@ -95,7 +89,7 @@ class PackageContractTest(unittest.TestCase):
             Path("scripts/validate-windows-installer.ps1"),
         ):
             with self.subTest(path=path):
-                self.assertIn("NOTICES.Z", path.read_text(encoding="utf-8"))
+                self.assertIn("QT-RUNTIME.md", path.read_text(encoding="utf-8"))
 
     def test_reads_exact_version_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -106,7 +100,7 @@ class PackageContractTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Version.read(version_file)
 
-    def test_names_cover_the_exact_six_artifacts(self) -> None:
+    def test_names_cover_the_exact_seven_artifacts(self) -> None:
         version = Version("1.2.3-beta.4", 17)
         self.assertEqual(
             {artifact_name(version, *target) for target in TARGETS},
@@ -117,6 +111,7 @@ class PackageContractTest(unittest.TestCase):
                 "GitLama-1.2.3-beta.4-17-linux-x86_64.tar.gz",
                 "gitlama_1.2.3-beta.4-17_amd64.deb",
                 "gitlama-1.2.3-beta.4-17.x86_64.rpm",
+                "gitlama-1.2.3-beta.4-17-x86_64.pkg.tar.zst",
             },
         )
 
@@ -176,46 +171,26 @@ class PackageContractTest(unittest.TestCase):
             self.assertTrue((stage / "usr/share/doc/gitlama/LICENSE").is_file())
             self.assertTrue((stage / "usr/share/doc/gitlama/THIRD_PARTY_NOTICES.md").is_file())
 
-    def test_linux_plugins_use_relocatable_runtime_lookup(self) -> None:
-        cmake = Path("linux/CMakeLists.txt").read_text(encoding="utf-8")
-        self.assertIn("foreach(plugin ${FLUTTER_PLUGIN_LIST})", cmake)
-        self.assertIn("BUILD_WITH_INSTALL_RPATH TRUE", cmake)
-        self.assertIn('INSTALL_RPATH "$ORIGIN"', cmake)
+    def test_linux_bundle_uses_relocatable_runtime_lookup(self) -> None:
+        stage = Path("scripts/stage_linux_bundle.py").read_text(encoding="utf-8")
+        self.assertIn('rpath = "$ORIGIN" if relative == "." else f"$ORIGIN/{relative}"', stage)
+        self.assertIn("Prefix=.\\nLibraries=lib\\nPlugins=plugins\\nQmlImports=qml", stage)
+
+    def test_arch_package_version_sorts_prereleases_first(self) -> None:
+        self.assertEqual(Version("1.2.3-beta.4", 17).arch_pkgver(), "1.2.3beta.4")
+        self.assertEqual(Version("1.2.3", 18).arch_pkgver(), "1.2.3")
 
     def test_linux_qualification_checks_native_package_dependency_names(self) -> None:
         qualifier = Path("scripts/qualify-linux-packages.py").read_text(encoding="utf-8")
-        self.assertIn('"deb": ("libgtk-3-0", "libstdc++6", "libc6", "git")', qualifier)
-        self.assertIn('"rpm": ("gtk3", "libstdc++", "glibc", "git")', qualifier)
+        self.assertIn('"deb": ("libegl1", "libxkbcommon0", "libwayland-client0", "libstdc++6", "libc6", "git")', qualifier)
+        self.assertIn('"rpm": ("libglvnd-egl", "libxkbcommon", "libwayland-client", "libstdc++", "glibc", "git")', qualifier)
+        self.assertIn('"pkg.tar.zst"', qualifier)
         soak = Path("scripts/soak-linux.py").read_text(encoding="utf-8")
         self.assertIn('GITLAMA_PROFILE_ROOT', soak)
         self.assertIn('GITLAMA_RUNTIME_DIR', soak)
         self.assertIn('core.autocrlf', soak)
         self.assertIn('repository.refresh', soak)
         self.assertIn('/proc', soak)
-
-    def test_linux_path_scan_allows_only_flutter_generated_registrant_uri(self) -> None:
-        root = (Path.cwd() / "fixture-source").resolve()
-        root_bytes = root.as_posix().encode()
-        allowed = (
-            f"prefix {root.as_uri()}/.dart_tool/flutter_build/"
-            "dart_plugin_registrant.dart suffix"
-        ).encode()
-        self.assertNotIn(
-            root_bytes,
-            without_allowed_flutter_build_metadata(allowed, "libapp.so", root),
-        )
-        self.assertIn(
-            root_bytes,
-            without_allowed_flutter_build_metadata(allowed, "other.so", root),
-        )
-        self.assertIn(
-            root_bytes,
-            without_allowed_flutter_build_metadata(
-                f"{root.as_uri()}/lib/main.dart".encode(),
-                "libapp.so",
-                root,
-            ),
-        )
 
     def test_linux_path_scan_ignores_ci_root_names_inside_library_uris(self) -> None:
         root = (Path.cwd() / "fixture-source").resolve()

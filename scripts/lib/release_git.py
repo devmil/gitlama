@@ -77,11 +77,8 @@ def metadata_prepared(root: Path, version: Version, channel: str) -> bool:
 
 
 def require_version_sync(root: Path, version: Version) -> None:
-    pubspec = (root / "pubspec.yaml").read_text(encoding="utf-8")
     cargo = (root / "rust-core/Cargo.toml").read_text(encoding="utf-8")
     lock = (root / "rust-core/Cargo.lock").read_text(encoding="utf-8")
-    if f"version: {version.marketing}+{version.build}" not in pubspec:
-        raise ValueError("pubspec version differs from VERSION")
     package_block = f'name = "gitlama_core"\nversion = "{version.marketing}"'
     if f'version = "{version.marketing}"' not in cargo or package_block not in lock:
         raise ValueError("Rust package version differs from VERSION")

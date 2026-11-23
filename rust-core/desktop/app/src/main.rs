@@ -1,6 +1,10 @@
 //! GitLama's composition root: the workbench services, the Qt objects and
 //! the QML window, and every lifetime until exit.
 
+// A window application on Windows: no console opens with it. Run from a
+// terminal it writes there (AttachConsole below), as the Flutter runner did.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod hooks;
 
 use gitlama_qt::{AppState, Commands, Driver, Pump, PumpWaker, WorkspaceState};
@@ -121,7 +125,19 @@ fn install_native_updater() {
     });
 }
 
+#[cfg(windows)]
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn AttachConsole(process_id: u32) -> i32;
+}
+
 fn main() {
+    // Command-line output reaches the terminal that started GitLama.
+    #[cfg(windows)]
+    // SAFETY: attaches this GUI process to its parent's console, if any.
+    unsafe {
+        AttachConsole(u32::MAX);
+    }
     // macOS starts applications with launchd's PATH; restart with the login
     // shell's before any thread exists so Git finds its helpers.
     #[cfg(target_os = "macos")]

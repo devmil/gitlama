@@ -1,5 +1,4 @@
 import importlib.util
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,8 +25,6 @@ class CiWorkflowTest(unittest.TestCase):
     def test_every_platform_restores_the_rust_build_cache_before_compiling(self) -> None:
         self.assertIn("CARGO_INCREMENTAL: '0'", self.workflow)
         cache = step(self.workflow, "Restore Rust build cache")
-        # Flutter's hook runner hides CARGO_* from the build hook, so the
-        # cache must restore the default target path itself.
         self.assertIn("workspaces: rust-core -> target", cache)
         self.assertIn("matrix.platform", cache)
         order = [
@@ -60,22 +57,24 @@ class CiWorkflowTest(unittest.TestCase):
         full = self._commands(["verify.py"])
         for command in self._commands(["verify.py", "--platform"]):
             self.assertIn(command, full)
-        self.assertIn(("flutter", "analyze", "--no-fatal-infos"), full)
+        self.assertIn(("python", "scripts/check_l10n.py"), full)
+        self.assertIn(("cargo", "fmt"), {command[:2] for command in full})
+
+    def test_every_platform_renders_the_built_bundle(self) -> None:
+        build = step(self.workflow, "Build desktop bundle")
+        self.assertIn("scripts/package.py ${{ matrix.format }} --build-only", build)
+        smoke = step(self.workflow, "Render the first window from the bundle")
+        self.assertIn('scripts/native-smoke.py "${{ matrix.bundle }}"', smoke)
+        self.assertNotIn("flutter", self.workflow.lower())
 
     def _commands(self, argv: list[str]) -> list[tuple[str, ...]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / ".fvmrc").write_text('{"flutter": "3.47.5"}\n', encoding="utf-8")
             with (
                 mock.patch.object(verify, "ROOT", root),
                 mock.patch.object(verify.os, "chdir"),
-                mock.patch.object(
-                    verify.subprocess,
-                    "check_output",
-                    return_value=json.dumps({"frameworkVersion": "3.47.5"}),
-                ),
                 mock.patch.object(verify, "run") as run,
-                mock.patch.object(verify, "use_fvm_flutter"),
+                mock.patch.object(verify, "qt_tool", return_value="qmllint"),
                 mock.patch.object(verify, "admit_file_descriptors"),
                 mock.patch.object(verify, "admit_inotify_instances"),
                 mock.patch.object(verify.sys, "argv", argv),
