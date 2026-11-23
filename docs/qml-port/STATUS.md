@@ -96,25 +96,31 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   onion skin over a checkerboard with sizes.
 
 ## Next
-- Inspector: search in contents/blame, image diffs, open in window, +/− counts in the files header.
+Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
+- About (brand_about), tab group dialog, repository icon dialog (stubs in `Actions.qml`),
+  shortcut reference, commit archive (save snapshot as ZIP), repository details,
+  named snapshots, power tools, extensions panel (worktree create, LFS, submodules),
+  integrations panel and settings page, status acceleration settings.
+- History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
+  notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing
+  motion, sync entrance, hosting chips, Gravatar.
+- Hosting (pull requests, checks, links), updates (Sparkle/AppImage and its settings page),
+  CLI forwarding, drag and drop, macOS window configuration.
+- Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
+  remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).
+- Inspector: search in contents/blame, +/− counts in the files header; changed-word marks on
+  wrapped lines.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
-  retry and cancel once clone is ported; row entrance/exit stagger.
+  retry from the logbook; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode
   of its file list, the Continue pulse, file action menus.
-- Settings pages for features not yet ported: integrations, repository binding, remote hosts,
-  custom commands, diff renderer, updates; diagnostics Share on macOS/Windows.
-- Operation center/logbook/activity; busy overlay (MeridianBusyOverlay QML);
-  merge/cherry-pick/revert/integrate/rebase/interactive rebase/restack; clone; repository
-  details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
-- Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
-  changed-word marks on wrapped lines.
+- Settings pages: integrations, repository binding, remote hosts, custom commands, diff
+  renderer, updates; diagnostics Share on macOS/Windows.
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.
-- History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
-  notices (stale upstream, filtered out, collapsed), commit context menu, selection glide,
-  lane lighting/draw/landing motion, sync entrance, hosting chips, Gravatar.
-- Shortcuts bound from the registry; command palette; operation center; settings dialog.
+- Release work: lint gate for GitLama QML, verify.sh, license generator, packaging and CI for
+  every target plus Arch, docs, changelog, performance comparison, moving the checkout.
 
 ## Deferred / notes
 - Found while porting (pre-existing, Flutter too): devmil-git's `parse_unified_patch` rejects
@@ -124,7 +130,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Transfer failure guide: lock listing and removal (repository lock inspection) not yet.
 - Palette: custom integration commands, background run (Cmd+Enter), scope cycling (Tab).
 - Sidebar: MeridianGlide check indicator between current branches; hosting checks/pull
-  requests; worktree deletion flow (`Actions.deleteWorktree` stub).
+  requests.
 - Delegates built through `Loader` components log null reads at engine teardown only.
 - Tab strip accessibility move actions (Flutter custom semantics actions) have no QML equivalent yet.
 - Worktree open menu needs the extensions inventory (extensions family).
