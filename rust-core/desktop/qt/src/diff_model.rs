@@ -419,6 +419,25 @@ mod diff_model {
             self.refresh();
         }
 
+        /// The image change among the loaded rows: {key, oldPath, newPath},
+        /// or null (the Dart imageDiffRow).
+        #[qslot]
+        fn image_row(&self) -> Value {
+            let Some(document) = &self.document else { return Value::Null };
+            let mut found = Value::Null;
+            document.for_each_loaded(|_, row| {
+                if found.is_null() && row.kind == NativeDiffRowKind::Image {
+                    let text = |path: &Option<Vec<u8>>| path.as_deref().map(|path| String::from_utf8_lossy(path).into_owned()).unwrap_or_default();
+                    found = serde_json::json!({
+                        "key": format!("{}:{}", document.request_id(), row.stable_id),
+                        "oldPath": text(&row.old_path),
+                        "newPath": text(&row.new_path),
+                    });
+                }
+            });
+            found
+        }
+
         /// Reads text as Latin-1 (true) or UTF-8.
         #[qslot]
         fn set_latin1(&mut self, latin1: bool) {

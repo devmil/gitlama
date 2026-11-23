@@ -634,8 +634,29 @@ Rectangle {
                             anchors.bottom: parent.bottom
                             width: parent.width
                         }
+                        // An image change shows its images instead of the diff rows.
+                        ImageDiffView {
+                            id: commitImage
+                            visible: commitDiff.visible && row !== null
+                            anchors.fill: commitDiff
+                            source: Store.inspector
+                            load: row => Store.inspector.loadImageDiff(row.key, row.oldPath, row.newPath)
+                            function refresh() {
+                                const next = Store.inspectorDiff ? Store.inspectorDiff.imageRow() : null
+                                if (JSON.stringify(next) !== JSON.stringify(row))
+                                    row = next
+                            }
+                            Connections {
+                                target: Store.inspectorDiff
+                                function onCountChanged() { commitImage.refresh() }
+                                function onDataChanged() { commitImage.refresh() }
+                                function onModelReset() { commitImage.refresh() }
+                            }
+                        }
                         DiffView {
                             id: commitDiff
+                            opacity: commitImage.row === null ? 1 : 0
+                            enabled: commitImage.row === null
                             hunkSource: Store.inspector
                             visible: inspector.paneState.hasDiff === true && (inspector.location.lens === "diff" || inspector.historyLens)
                                 && !inspector.paneState.contentFailure

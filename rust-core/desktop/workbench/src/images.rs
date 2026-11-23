@@ -60,3 +60,39 @@ mod tests {
         assert!(png_data_url(b"hello".to_vec(), 64).is_none());
     }
 }
+
+/// A decoded image as a PNG data URL, at full size.
+pub fn decoded_data_url(decoded: gitlama_contract::image_decoder::NativeDecodedImage) -> Option<String> {
+    let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_raw(decoded.width, decoded.height, decoded.rgba)?;
+    let mut png = Vec::new();
+    image::DynamicImage::ImageRgba8(buffer)
+        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .ok()?;
+    Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
+}
+
+/// An image diff as the presentation shows it: {failed, decodeFailure,
+/// old: {url, width, height, bytes} | null, new: ...}.
+pub fn image_diff_value(result: Option<gitlama_contract::dto::NativeImageDiffResult>) -> serde_json::Value {
+    use gitlama_contract::image_decoder::NativeImageDecodeFailureKind as Failure;
+    let Some(result) = result.filter(|result| result.failure.is_none()) else {
+        return serde_json::json!({"failed": true});
+    };
+    let side = |image: Option<gitlama_contract::image_decoder::NativeDecodedImage>| match image {
+        Some(image) => {
+            let (width, height, bytes) = (image.width, image.height, image.encoded_bytes);
+            match decoded_data_url(image) {
+                Some(url) => serde_json::json!({"url": url, "width": width, "height": height, "bytes": bytes}),
+                None => serde_json::json!({"failed": true, "width": width, "height": height, "bytes": bytes}),
+            }
+        }
+        None => serde_json::Value::Null,
+    };
+    let decode_failure = result.decode_failure.map(|failure| match failure {
+        Failure::Unsupported => "diffImageDecodeUnsupported",
+        Failure::Malformed => "diffImageDecodeMalformed",
+        Failure::TooLarge => "diffImageDecodeTooLarge",
+        Failure::Busy | Failure::TimedOut | Failure::Canceled => "diffImageDecodeTimedOut",
+    });
+    serde_json::json!({"failed": false, "decodeFailure": decode_failure, "old": side(result.old), "new": side(result.new)})
+}

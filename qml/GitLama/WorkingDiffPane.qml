@@ -173,8 +173,29 @@ Rectangle {
             iconName: "file-diff"
             title: L10n.t("workingDiffEmpty")
         }
+        // An image change shows its images instead of the diff rows.
+        ImageDiffView {
+            id: workingImage
+            visible: diff.visible && row !== null
+            anchors.fill: diff
+            source: Store.changes
+            load: row => Store.changes.loadImageDiff(row.key)
+            function refresh() {
+                const next = Store.workingDiff ? Store.workingDiff.imageRow() : null
+                if (JSON.stringify(next) !== JSON.stringify(row))
+                    row = next
+            }
+            Connections {
+                target: Store.workingDiff
+                function onCountChanged() { workingImage.refresh() }
+                function onDataChanged() { workingImage.refresh() }
+                function onModelReset() { workingImage.refresh() }
+            }
+        }
         DiffView {
             id: diff
+            opacity: workingImage.row === null ? 1 : 0
+            enabled: workingImage.row === null
             visible: (pane.detail.rows ?? 0) > 0
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom

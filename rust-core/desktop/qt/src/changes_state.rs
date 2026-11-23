@@ -233,6 +233,9 @@ mod changes_state {
         /// The answer of `search_diff`.
         #[qsignal]
         pub fn diff_searched(&mut self, query: String, case_sensitive: bool, matches: Value);
+        /// The answer of `load_image_diff` for `key`.
+        #[qsignal]
+        pub fn image_diff_loaded(&mut self, key: String, image: Value);
         /// The answer of `load_hunks`.
         #[qsignal]
         pub fn hunks_loaded(&mut self, rows: Value);
@@ -267,6 +270,31 @@ mod changes_state {
                     let matches = document.search(&query, case_sensitive).await;
                     let value = matches.map_or(Value::Null, |rows| Value::from(rows));
                     shared.borrow_mut().diff_searched(query, case_sensitive, value);
+                });
+            });
+        }
+
+        /// Decodes both sides of the working diff's image change: answered by
+        /// `image_diff_loaded` with `key`.
+        #[qslot]
+        fn load_image_diff(&self, key: String) {
+            let Some(commands) = self.commands.clone() else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let detail = &services.working_detail;
+                let (Some(entry), Some(detail_key)) = (detail.entry(), detail.key()) else { return };
+                let Some(identity) = services.workspace.current().map(|session| session.identity) else { return };
+                let (old_path, new_path) = gitlama_workbench::changes::diff_paths(&entry, detail_key.side);
+                let calls = Rc::clone(&services.calls);
+                let shared = Rc::clone(&driver.changes);
+                let side = detail_key.side;
+                rt::spawn_detached(async move {
+                    let result = calls
+                        .repository_session_working_image_diff(identity.native_id, identity.generation, side, old_path, new_path, 8 * 1024 * 1024)
+                        .await
+                        .ok();
+                    let value = rt::blocking(move || gitlama_workbench::images::image_diff_value(result)).await;
+                    shared.borrow_mut().image_diff_loaded(key, value);
                 });
             });
         }

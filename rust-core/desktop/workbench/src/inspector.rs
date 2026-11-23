@@ -1354,6 +1354,19 @@ impl InspectorService {
         Ok(())
     }
 
+    /// The images of an image change of the shown diff, for the image diff.
+    pub async fn image_diff(&self, old_path: Vec<u8>, new_path: Vec<u8>) -> Option<gitlama_contract::dto::NativeImageDiffResult> {
+        let (identity, source) = {
+            let inner = self.inner.borrow();
+            (inner.identity?, inner.diff_source.clone()?)
+        };
+        let (commit, first_parent) = source;
+        self.calls
+            .repository_session_image_diff(identity.native_id, identity.generation, first_parent, commit, old_path, new_path, 8 * 1024 * 1024)
+            .await
+            .ok()
+    }
+
     /// Reloads the shown diff with other display options, keeping its file.
     pub async fn update_diff_options(&self, options: DiffOptions) {
         self.options.set(options);

@@ -92,6 +92,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   minimap, Latin-1 decoding and Show more lines (transient wider context) in the diff view.
 - Find in diff (Meridian QML find bar, added to meridian_ui): whole-diff search in Rust, match
   position, case toggle, stepping with wrap-around, matches marked in rows and minimap.
+- Image diffs (committed and working): both sides decoded by the core, side by side, swipe and
+  onion skin over a checkerboard with sizes.
 
 ## Next
 - Inspector: search in contents/blame, image diffs, open in window, +/− counts in the files header.
@@ -105,7 +107,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   merge/cherry-pick/revert/integrate/rebase/interactive rebase/restack; clone; repository
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
-  image diff, changed-word marks on wrapped lines.
+  changed-word marks on wrapped lines.
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.

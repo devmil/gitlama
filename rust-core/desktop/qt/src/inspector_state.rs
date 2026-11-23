@@ -290,6 +290,9 @@ mod inspector_state {
         /// The answer of `search_diff`.
         #[qsignal]
         pub fn diff_searched(&mut self, query: String, case_sensitive: bool, matches: Value);
+        /// The answer of `load_image_diff` for `key`.
+        #[qsignal]
+        pub fn image_diff_loaded(&mut self, key: String, image: Value);
         /// The answer of `load_hunks`.
         #[qsignal]
         pub fn hunks_loaded(&mut self, rows: Value);
@@ -356,6 +359,25 @@ mod inspector_state {
                     let matches = document.search(&query, case_sensitive).await;
                     let value = matches.map_or(Value::Null, |rows| Value::from(rows));
                     shared.borrow_mut().diff_searched(query, case_sensitive, value);
+                });
+            });
+        }
+
+        /// Decodes both sides of an image change of the shown diff: answered
+        /// by `image_diff_loaded` with `key`.
+        #[qslot]
+        fn load_image_diff(&self, key: String, old_path: String, new_path: String) {
+            let Some(commands) = self.commands.clone() else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let inspector = Rc::clone(&services.inspector);
+                let shared = Rc::clone(&driver.inspector);
+                rt::spawn_detached(async move {
+                    let old = if old_path.is_empty() { new_path.clone() } else { old_path };
+                    let new = if new_path.is_empty() { old.clone() } else { new_path };
+                    let result = inspector.image_diff(old.into_bytes(), new.into_bytes()).await;
+                    let value = rt::blocking(move || gitlama_workbench::images::image_diff_value(result)).await;
+                    shared.borrow_mut().image_diff_loaded(key, value);
                 });
             });
         }
