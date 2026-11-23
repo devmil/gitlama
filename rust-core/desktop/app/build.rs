@@ -35,6 +35,8 @@ fn main() {
         }),
     ];
     let mut document = String::from("<RCC>\n  <qresource prefix=\"/\">\n");
+    // QML and JavaScript compiled ahead of time, with their resource paths.
+    let mut compiled: Vec<(PathBuf, String)> = Vec::new();
     for (directory, alias_root, keep) in &groups {
         println!("cargo:rerun-if-changed={}", directory.display());
         let mut files = Vec::new();
@@ -47,6 +49,12 @@ fn main() {
                 .expect("inside its root")
                 .to_string_lossy()
                 .replace('\\', "/");
+            if file
+                .extension()
+                .is_some_and(|extension| extension == "qml" || extension == "js")
+            {
+                compiled.push((file.clone(), format!("/{alias_root}/{relative}")));
+            }
             document.push_str(&format!(
                 "    <file alias=\"{}/{}\">{}</file>\n",
                 escape(alias_root),
@@ -63,6 +71,7 @@ fn main() {
         build_desktop_file_shim(&manifest);
     }
     build_native_items(&manifest, &out_dir());
+    build_qml_cache(&compiled, &out_dir());
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         build_windows_resource(&manifest, &out);
     }
@@ -163,10 +172,20 @@ fn escape(value: &str) -> String {
 }
 
 fn find_rcc() -> Option<PathBuf> {
-    if let Some(configured) = env::var_os("RCC") {
+    find_qt_tool("RCC", "rcc")
+}
+
+/// A Qt host tool: `variable` overrides it, else the Qt that `QMAKE` (or `qmake6`) names.
+fn find_qt_tool(variable: &str, name: &str) -> Option<PathBuf> {
+    println!("cargo:rerun-if-env-changed={variable}");
+    if let Some(configured) = env::var_os(variable) {
         return Some(PathBuf::from(configured));
     }
-    let exe = if cfg!(windows) { "rcc.exe" } else { "rcc" };
+    let exe = if cfg!(windows) {
+        format!("{name}.exe")
+    } else {
+        name.to_owned()
+    };
     let configured = env::var("QMAKE").ok();
     println!("cargo:rerun-if-env-changed=QMAKE");
     for qmake in configured
@@ -184,7 +203,7 @@ fn find_rcc() -> Option<PathBuf> {
                 && output.status.success()
             {
                 let candidate =
-                    PathBuf::from(String::from_utf8_lossy(&output.stdout).trim()).join(exe);
+                    PathBuf::from(String::from_utf8_lossy(&output.stdout).trim()).join(&exe);
                 if candidate.is_file() {
                     return Some(candidate);
                 }
@@ -297,4 +316,80 @@ fn qt_query(key: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Compiles the embedded QML and JavaScript to bytecode ahead of time (qmlcachegen) and links
+/// it with a loader that serves it for their `qrc:` URLs, so the engine neither parses nor
+/// compiles them at startup. Qt falls back to the embedded source when the bytecode does not
+/// match the Qt it runs with. Without qmlcachegen the build still succeeds, compiling at run
+/// time as before.
+fn build_qml_cache(files: &[(PathBuf, String)], out: &Path) {
+    use qtbridge_build_utils::qt_build::QtInstallation;
+    let directory = out.join("qmlcache");
+    let _ = fs::remove_dir_all(&directory);
+    fs::create_dir_all(&directory).expect("qmlcache directory");
+    let shim = directory.join("qmlcache_init.cpp");
+    let Some(qmlcachegen) = find_qt_tool("QMLCACHEGEN", "qmlcachegen") else {
+        println!("cargo:warning=qmlcachegen was not found; QML compiles at run time");
+        fs::write(&shim, "extern \"C\" void gitlama_init_qml_cache() {}\n").expect("write shim");
+        cc::Build::new()
+            .cpp(true)
+            .file(&shim)
+            .compile("gitlama_qmlcache");
+        return;
+    };
+    // One file per source, in parallel.
+    let outputs: Vec<PathBuf> = (0..files.len())
+        .map(|index| directory.join(format!("unit_{index}.cpp")))
+        .collect();
+    let workers = std::thread::available_parallelism().map_or(4, usize::from);
+    let chunk = files.len().div_ceil(workers.max(1)).max(1);
+    std::thread::scope(|scope| {
+        for (sources, targets) in files.chunks(chunk).zip(outputs.chunks(chunk)) {
+            let qmlcachegen = &qmlcachegen;
+            scope.spawn(move || {
+                for ((file, resource), target) in sources.iter().zip(targets) {
+                    let status = Command::new(qmlcachegen)
+                        .args(["--only-bytecode", "--resource-path"])
+                        .arg(resource)
+                        .arg("-o")
+                        .arg(target)
+                        .arg(file)
+                        .status()
+                        .expect("start qmlcachegen");
+                    assert!(status.success(), "qmlcachegen failed for {resource}");
+                }
+            });
+        }
+    });
+    let loader = directory.join("qmlcache_loader.cpp");
+    let status = Command::new(&qmlcachegen)
+        .args(["--resource-name", "gitlama_qmlcache", "-o"])
+        .arg(&loader)
+        .args(files.iter().map(|(_, resource)| resource))
+        .status()
+        .expect("start qmlcachegen");
+    assert!(status.success(), "qmlcachegen could not write the loader");
+    fs::write(
+        &shim,
+        "int qInitResources_gitlama_qmlcache();\n\
+         extern \"C\" void gitlama_init_qml_cache() { qInitResources_gitlama_qmlcache(); }\n",
+    )
+    .expect("write shim");
+    let qt = QtInstallation::new();
+    let mut builder = cc::Build::new();
+    builder
+        .cpp(true)
+        .std("c++17")
+        .flag_if_supported("/Zc:__cplusplus")
+        .flag_if_supported("/permissive-")
+        .flag_if_supported("-Wno-unused-parameter")
+        .files(&outputs)
+        .file(&loader)
+        .file(&shim);
+    for include in qt.include_dirs(["Core", "Qml"], false) {
+        builder.include(include);
+    }
+    qt.configure_builder(&mut builder);
+    builder.compile("gitlama_qmlcache");
 }

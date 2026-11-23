@@ -10,6 +10,16 @@ import Meridian
 Item {
     id: actionsRoot
 
+    // Dialogs are created the first time they are used: building them all at startup cost
+    // more memory and time than the rest of the window.
+    component Lazy: Loader {
+        active: false
+        function get() {
+            active = true
+            return item
+        }
+    }
+
     required property var window
     /// The shown conflict resolver, which takes the conflict commands.
     property var conflictResolver: null
@@ -23,22 +33,22 @@ Item {
         const payload = payloadText.length > 0 ? JSON.parse(payloadText) : ({})
         switch (kind) {
         case "chooseDirectory":
-            folderDialog.ask(id)
+            folderDialogLazy.get().ask(id)
             return
         case "initializeRepository":
-            initializeDialog.ask(id, payload.initiallyBare === true)
+            initializeDialogLazy.get().ask(id, payload.initiallyBare === true)
             return
         case "remoteHosts":
-            remoteHostsDialog.show(payload.profileId ?? "", payload.choosing === true, id, actionsRoot.answer)
+            remoteHostsDialogLazy.get().show(payload.profileId ?? "", payload.choosing === true, id, actionsRoot.answer)
             return
         case "remoteChooseFolder":
-            remoteDirectoryPicker.ask(id, payload, actionsRoot.answer)
+            remoteDirectoryPickerLazy.get().ask(id, payload, actionsRoot.answer)
             return
         case "remoteInstallHelper":
-            remoteInstallDialog.ask(id, payload, actionsRoot.answer)
+            remoteInstallDialogLazy.get().ask(id, payload, actionsRoot.answer)
             return
         case "remoteAddHost":
-            remoteAddHost.ask(id, payload.alias ?? "")
+            remoteAddHostLazy.get().ask(id, payload.alias ?? "")
             return
         case "confirmDiscard":
             discardConfirm.ask(id, payload)
@@ -48,35 +58,35 @@ Item {
             amendConfirm.open()
             return
         case "confirmSkipHooks":
-            skipHooksDialog.ask(id)
+            skipHooksDialogLazy.get().ask(id)
             return
         case "chooseTransfer":
-            transferDialog.ask(id, payload)
+            transferDialogLazy.get().ask(id, payload)
             return
         case "trustHostKey":
-            hostKeyDialog.ask(id, payload)
+            hostKeyDialogLazy.get().ask(id, payload)
             return
         case "gitCredentials":
-            credentialDialog.ask(id, payload)
+            credentialDialogLazy.get().ask(id, payload)
             return
         case "transferFailure":
-            transferFailureDialog.ask(id, payload)
+            transferFailureDialogLazy.get().ask(id, payload)
             return
         case "chooseRefMutation":
-            refDialog.ask(id, payload)
+            refDialogLazy.get().ask(id, payload)
             return
         case "confirmRefMutation":
-            refConfirm.ask(id, payload)
+            refConfirmLazy.get().ask(id, payload)
             return
         case "editBranch":
-            editBranchDialog.ask(id, payload)
+            editBranchDialogLazy.get().ask(id, payload)
             return
         case "recoverRefTarget":
             recoverTarget.promptId = id
             recoverTarget.open()
             return
         case "chooseStash":
-            stashDialog.ask(id, payload)
+            stashDialogLazy.get().ask(id, payload)
             return
         case "confirmRestore":
             restoreConfirm.ask(id, payload)
@@ -87,19 +97,19 @@ Item {
             worktreeDeleteConfirm.open()
             return
         case "confirmSnapshotRestore":
-            snapshotRestore.ask(id, payload)
+            snapshotRestoreLazy.get().ask(id, payload)
             return
         case "chooseSnapshotBranch":
-            snapshotBranch.promptId = id
-            snapshotBranch.branches = payload.branches ?? []
-            snapshotBranchField.text = ""
-            snapshotBranch.open()
-            snapshotBranchField.forceActiveFocus()
+            snapshotBranchLazy.get().promptId = id
+            snapshotBranchLazy.get().branches = payload.branches ?? []
+            snapshotBranchLazy.get().snapshotBranchFieldItem.text = ""
+            snapshotBranchLazy.get().open()
+            snapshotBranchLazy.get().snapshotBranchFieldItem.forceActiveFocus()
             return
         case "lfsPointer":
-            lfsPointer.promptId = id
-            lfsPointer.pointer = payload
-            lfsPointer.open()
+            lfsPointerLazy.get().promptId = id
+            lfsPointerLazy.get().pointer = payload
+            lfsPointerLazy.get().open()
             return
         case "confirmRenderer":
         case "confirmRendererSave":
@@ -132,7 +142,7 @@ Item {
             snapshotDelete.open()
             return
         case "ignorePath":
-            ignoreDialog.ask(id, payload)
+            ignoreDialogLazy.get().ask(id, payload)
             return
         case "confirmIntegration":
             integrationConfirm.promptId = id
@@ -141,34 +151,34 @@ Item {
             integrationConfirm.open()
             return
         case "confirmStash":
-            stashConfirm.ask(id, payload)
+            stashConfirmLazy.get().ask(id, payload)
             return
         case "chooseHistoryMutation":
-            historyMutationDialog.ask(id, payload)
+            historyMutationDialogLazy.get().ask(id, payload)
             return
         case "confirmHistoryMutation":
-            historyMutationPreview.ask(id, payload)
+            historyMutationPreviewLazy.get().ask(id, payload)
             return
         case "chooseBranchIntegration":
-            branchIntegration.ask(id, payload)
+            branchIntegrationLazy.get().ask(id, payload)
             return
         case "chooseRebaseTarget":
-            rebaseTarget.ask(id, payload)
+            rebaseTargetLazy.get().ask(id, payload)
             return
         case "editRebase":
-            rebaseEditor.ask(id, payload)
+            rebaseEditorLazy.get().ask(id, payload)
             return
         case "confirmRebase":
-            rebasePreview.ask(id, payload)
+            rebasePreviewLazy.get().ask(id, payload)
             return
         case "chooseRestackRoot":
-            restackRoot.ask(id, payload)
+            restackRootLazy.get().ask(id, payload)
             return
         case "reviewRestack":
-            restackPreview.ask(id, payload)
+            restackPreviewLazy.get().ask(id, payload)
             return
         case "chooseCloneSource":
-            cloneSourceDialog.ask(id)
+            cloneSourceDialogLazy.get().ask(id)
             return
         case "confirmSequencer": {
             const abort = payload.action === "abort"
@@ -180,7 +190,7 @@ Item {
             return
         }
         case "confirmCommitCheckout":
-            commitCheckout.ask(id, payload)
+            commitCheckoutLazy.get().ask(id, payload)
             return
         case "offerRefetch":
             refetchConfirm.promptId = id
@@ -192,7 +202,7 @@ Item {
         }
     }
 
-    function showSettings(category) { settingsDialog.show(category ?? "appearance") }
+    function showSettings(category) { settingsDialogLazy.get().show(category ?? "appearance") }
     /// Reviews a pull request of the bound repository in the review workspace.
     function showPullRequestReview(pull) {
         if (pull)
@@ -200,10 +210,10 @@ Item {
     }
     HostingReviewWorkspace { id: reviewWorkspace }
     function showLicenses() {
-        licenseDialog.packages = Store.settings.licenses()
-        licenseDialog.open()
+        licenseDialogLazy.get().packages = Store.settings.licenses()
+        licenseDialogLazy.get().open()
     }
-    function showAbout() { aboutDialog.open() }
+    function showAbout() { aboutDialogLazy.get().open() }
     /// Opens `location` ({commit, base, path, directory, lens, scope}) of the
     /// active repository in an inspection window.
     function openInspectionWindow(location) {
@@ -295,81 +305,111 @@ Item {
         Store.sidebar.selectPane("history")
         Qt.callLater(() => { if (Store.historyPane) Store.historyPane.focusSearch() })
     }
-    ShortcutReferenceDialog { id: shortcutReference }
+    Lazy {
+        id: shortcutReferenceLazy
+        sourceComponent: Component {
+            ShortcutReferenceDialog { id: shortcutReference }
+        }
+    }
     // Where a zip snapshot goes, then its progress.
-    FileDialog {
-        id: archiveDestination
-        property string commit
-        property string prefix
-        fileMode: FileDialog.SaveFile
-        nameFilters: ["*.zip"]
-        defaultSuffix: "zip"
-        onAccepted: {
-            const url = selectedFile.toString()
-            Store.workflows.saveCommitArchive(commit, prefix,
-                url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url)
+    Lazy {
+        id: archiveDestinationLazy
+        sourceComponent: Component {
+            FileDialog {
+                id: archiveDestination
+                property string commit
+                property string prefix
+                fileMode: FileDialog.SaveFile
+                nameFilters: ["*.zip"]
+                defaultSuffix: "zip"
+                onAccepted: {
+                    const url = selectedFile.toString()
+                    Store.workflows.saveCommitArchive(commit, prefix,
+                        url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url)
+                }
+            }
         }
     }
-    MeridianDialog {
-        id: archiveProgress
-        readonly property var archive: Store.workflows ? (Store.workflows.archive ?? ({})) : ({})
-        readonly property bool running: archive.running === true
-        property bool canceled: false
-        onRunningChanged: {
-            if (running) {
-                canceled = false
-                open()
-            } else {
-                close()
+    Lazy {
+        id: archiveProgressLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: archiveProgress
+                readonly property var archive: Store.workflows ? (Store.workflows.archive ?? ({})) : ({})
+                readonly property bool running: archive.running === true
+                property bool canceled: false
+                onRunningChanged: {
+                    if (running) {
+                        canceled = false
+                        open()
+                    } else {
+                        close()
+                    }
+                }
+                closePolicy: C.Popup.NoAutoClose
+                title: L10n.t("archiveProgressTitle")
+                Column {
+                    width: parent ? parent.width : 0
+                    spacing: Theme.space.s4
+                    MeridianProgressBar {
+                        width: parent.width
+                        track: true
+                        persistent: true
+                        value: archiveProgress.archive.started === true && archiveProgress.archive.writing !== true && (archiveProgress.archive.total ?? 0) > 0
+                            ? Math.min(1, archiveProgress.archive.files / archiveProgress.archive.total) : -1
+                    }
+                    MeridianText {
+                        objectName: "commit-archive-progress"
+                        width: parent.width
+                        color: Theme.colors.inkMuted
+                        text: archiveProgress.archive.started !== true ? L10n.t("archiveProgressPreparing")
+                            : archiveProgress.archive.writing === true ? L10n.t("archiveProgressWriting")
+                            : L10n.tn("archiveProgressFiles", { files: archiveProgress.archive.files ?? 0, total: archiveProgress.archive.total ?? 0 })
+                    }
+                }
+                actions: [
+                    MeridianButton {
+                        objectName: "commit-archive-cancel"
+                        text: L10n.t("cancel")
+                        variant: MeridianButton.Quiet
+                        enabled: !archiveProgress.canceled
+                        onClicked: { archiveProgress.canceled = true; Store.workflows.cancelCommitArchive() }
+                    }
+                ]
             }
         }
-        closePolicy: C.Popup.NoAutoClose
-        title: L10n.t("archiveProgressTitle")
-        Column {
-            width: parent ? parent.width : 0
-            spacing: Theme.space.s4
-            MeridianProgressBar {
-                width: parent.width
-                track: true
-                persistent: true
-                value: archiveProgress.archive.started === true && archiveProgress.archive.writing !== true && (archiveProgress.archive.total ?? 0) > 0
-                    ? Math.min(1, archiveProgress.archive.files / archiveProgress.archive.total) : -1
-            }
-            MeridianText {
-                objectName: "commit-archive-progress"
-                width: parent.width
-                color: Theme.colors.inkMuted
-                text: archiveProgress.archive.started !== true ? L10n.t("archiveProgressPreparing")
-                    : archiveProgress.archive.writing === true ? L10n.t("archiveProgressWriting")
-                    : L10n.tn("archiveProgressFiles", { files: archiveProgress.archive.files ?? 0, total: archiveProgress.archive.total ?? 0 })
-            }
-        }
-        actions: [
-            MeridianButton {
-                objectName: "commit-archive-cancel"
-                text: L10n.t("cancel")
-                variant: MeridianButton.Quiet
-                enabled: !archiveProgress.canceled
-                onClicked: { archiveProgress.canceled = true; Store.workflows.cancelCommitArchive() }
-            }
-        ]
     }
-    AboutDialog { id: aboutDialog; onOpenLicenses: actionsRoot.showLicenses() }
+    Lazy {
+        id: aboutDialogLazy
+        sourceComponent: Component {
+            AboutDialog { id: aboutDialog; onOpenLicenses: actionsRoot.showLicenses() }
+        }
+    }
     /// Opens the patch dialog in `mode` for what the active pane shows: the
     /// Changes selection, else History's (or `commit`).
     function showPatchWorkflow(mode, commit) {
         const active = Store.workspace ? Store.workspace.active : null
         if (active && active.pane === "changes")
-            patchDialog.show({ kind: "selection" }, mode)
+            patchDialogLazy.get().show({ kind: "selection" }, mode)
         else
-            patchDialog.show({ kind: "history", commit: commit ?? "" }, mode)
+            patchDialogLazy.get().show({ kind: "history", commit: commit ?? "" }, mode)
     }
     /// Opens the patch dialog for `source` ({kind, ...}; see PatchDialog).
-    function showPatchDialog(source, mode) { patchDialog.show(source, mode) }
-    PatchDialog { id: patchDialog }
+    function showPatchDialog(source, mode) { patchDialogLazy.get().show(source, mode) }
+    Lazy {
+        id: patchDialogLazy
+        sourceComponent: Component {
+            PatchDialog { id: patchDialog }
+        }
+    }
     /// Opens "Select changed lines" for the Changes file `key` on `side`.
-    function showLineSelection(side, key) { lineSelectionDialog.show(side, key) }
-    LineSelectionDialog { id: lineSelectionDialog }
+    function showLineSelection(side, key) { lineSelectionDialogLazy.get().show(side, key) }
+    Lazy {
+        id: lineSelectionDialogLazy
+        sourceComponent: Component {
+            LineSelectionDialog { id: lineSelectionDialog }
+        }
+    }
 
     /// Opens the local folder `path` itself in the file manager.
     function openFolder(path) { Store.workflows.openFolder(path) }
@@ -386,10 +426,20 @@ Item {
         }
         return null
     }
-    function showRepositoryIconDialog(tab) { repositoryIconDialog.show(tab) }
-    function showTabGroupDialog(group, labels) { tabGroupDialog.show(group, labels) }
-    RepositoryIconDialog { id: repositoryIconDialog }
-    TabGroupDialog { id: tabGroupDialog }
+    function showRepositoryIconDialog(tab) { repositoryIconDialogLazy.get().show(tab) }
+    function showTabGroupDialog(group, labels) { tabGroupDialogLazy.get().show(group, labels) }
+    Lazy {
+        id: repositoryIconDialogLazy
+        sourceComponent: Component {
+            RepositoryIconDialog { id: repositoryIconDialog }
+        }
+    }
+    Lazy {
+        id: tabGroupDialogLazy
+        sourceComponent: Component {
+            TabGroupDialog { id: tabGroupDialog }
+        }
+    }
 
     /// Copies `text` and confirms it with `message` in the status bar.
     function copyText(text, message) {
@@ -417,7 +467,7 @@ Item {
         case "showSettings": showSettings(); return
         case "cloneRepository": cloneRepository(); return
         case "showLicenses": showLicenses(); return
-        case "showShortcutReference": shortcutReference.show(); return
+        case "showShortcutReference": shortcutReferenceLazy.get().show(); return
         case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
         case "diffRenderConfigured": Store.settings.diffRenderer("render", ({})); return
         case "showIntegrations": if (Store.shell) Store.shell.togglePanel("integrations"); return
@@ -440,11 +490,11 @@ Item {
             const active = Store.workspace ? Store.workspace.active : null
             if (commit.length === 0 || !active)
                 return
-            archiveDestination.commit = commit
-            archiveDestination.prefix = Store.workflows.archiveName(active.label ?? "", commit)
-            archiveDestination.currentFile = "file://" + StandardPaths.writableLocation(StandardPaths.DownloadLocation).toString().replace("file://", "")
-                + "/" + archiveDestination.prefix + ".zip"
-            archiveDestination.open()
+            archiveDestinationLazy.get().commit = commit
+            archiveDestinationLazy.get().prefix = Store.workflows.archiveName(active.label ?? "", commit)
+            archiveDestinationLazy.get().currentFile = "file://" + StandardPaths.writableLocation(StandardPaths.DownloadLocation).toString().replace("file://", "")
+                + "/" + archiveDestinationLazy.get().prefix + ".zip"
+            archiveDestinationLazy.get().open()
             return
         }
         case "showCommandPalette": commandPalette.show(); return
@@ -519,8 +569,11 @@ Item {
         case "commitCreate": case "commitAmend":
             Store.sidebar.selectPane("changes")
             Qt.callLater(() => {
-                if (!Store.commitEditor)
+                // Changes is built the first time it shows: the editor runs it once created.
+                if (!Store.commitEditor) {
+                    Store.pendingCommitAction = id
                     return
+                }
                 if (id === "commitCreate")
                     Store.commitEditor.submit(false)
                 else
@@ -537,8 +590,8 @@ Item {
                 Notifications.show(Commands.reasonText("contextRequired"), false)
             return
         case "rebaseSquash": case "rebaseFixup": case "rebaseReword": case "rebaseDrop":
-            if (rebaseEditor.opened)
-                rebaseEditor.runCommand(id.slice("rebase".length).toLowerCase())
+            if (rebaseEditorLazy.get().opened)
+                rebaseEditorLazy.get().runCommand(id.slice("rebase".length).toLowerCase())
             return
         case "historyCompare": Store.history.compareSelected(); return
         case "inspectorToggleMaximize": Store.inspectorMaximized = !Store.inspectorMaximized; return
@@ -638,53 +691,83 @@ Item {
         Store.workspace.openRecent(recent.index)
     }
     /// The host profiles, with `profileId` selected.
-    function showRemoteHosts(profileId) { remoteHostsDialog.show(profileId ?? "", false) }
+    function showRemoteHosts(profileId) { remoteHostsDialogLazy.get().show(profileId ?? "", false) }
     /// The record of remote changes.
-    function showRemoteOperations() { remoteOperationsDialog.open() }
+    function showRemoteOperations() { remoteOperationsDialogLazy.get().open() }
 
-    RemoteHostsDialog { id: remoteHostsDialog }
-    RemoteDirectoryPicker { id: remoteDirectoryPicker }
-    RemoteInstallHelperDialog { id: remoteInstallDialog }
-    RemoteOperationsDialog { id: remoteOperationsDialog }
-    RemoteHostEditor {
-        id: remoteAddHost
-        property int promptId: -1
-        function ask(id, alias) {
-            promptId = id
-            add(alias)
+    Lazy {
+        id: remoteHostsDialogLazy
+        sourceComponent: Component {
+            RemoteHostsDialog { id: remoteHostsDialog }
         }
-        onSaved: profileId => {
-            const id = promptId
-            promptId = -1
-            if (id >= 0)
-                actionsRoot.answer(id, profileId)
+    }
+    Lazy {
+        id: remoteDirectoryPickerLazy
+        sourceComponent: Component {
+            RemoteDirectoryPicker { id: remoteDirectoryPicker }
         }
-        onDeclined: {
-            const id = promptId
-            promptId = -1
-            if (id >= 0)
-                actionsRoot.answer(id, null)
+    }
+    Lazy {
+        id: remoteInstallDialogLazy
+        sourceComponent: Component {
+            RemoteInstallHelperDialog { id: remoteInstallDialog }
+        }
+    }
+    Lazy {
+        id: remoteOperationsDialogLazy
+        sourceComponent: Component {
+            RemoteOperationsDialog { id: remoteOperationsDialog }
+        }
+    }
+    Lazy {
+        id: remoteAddHostLazy
+        sourceComponent: Component {
+            RemoteHostEditor {
+                id: remoteAddHost
+                property int promptId: -1
+                function ask(id, alias) {
+                    promptId = id
+                    add(alias)
+                }
+                onSaved: profileId => {
+                    const id = promptId
+                    promptId = -1
+                    if (id >= 0)
+                        actionsRoot.answer(id, profileId)
+                }
+                onDeclined: {
+                    const id = promptId
+                    promptId = -1
+                    if (id >= 0)
+                        actionsRoot.answer(id, null)
+                }
+            }
         }
     }
 
-    FolderDialog {
-        id: folderDialog
-        property int promptId: -1
-        function ask(id) {
-            promptId = id
-            open()
-        }
-        onAccepted: {
-            const url = selectedFolder.toString()
-            const path = url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url
-            actionsRoot.answer(promptId, path)
-            promptId = -1
-        }
-        onRejected: {
-            if (promptId < 0)
-                return
-            actionsRoot.answer(promptId, null)
-            promptId = -1
+    Lazy {
+        id: folderDialogLazy
+        sourceComponent: Component {
+            FolderDialog {
+                id: folderDialog
+                property int promptId: -1
+                function ask(id) {
+                    promptId = id
+                    open()
+                }
+                onAccepted: {
+                    const url = selectedFolder.toString()
+                    const path = url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url
+                    actionsRoot.answer(promptId, path)
+                    promptId = -1
+                }
+                onRejected: {
+                    if (promptId < 0)
+                        return
+                    actionsRoot.answer(promptId, null)
+                    promptId = -1
+                }
+            }
         }
     }
 
@@ -724,127 +807,188 @@ Item {
     }
 
     // Skipping hooks asks for SKIP to be typed.
-    MeridianDialog {
-        id: skipHooksDialog
-        property int promptId: -1
-        function ask(id) {
-            promptId = id
-            skipField.text = ""
-            open()
-            skipField.forceActiveFocus()
-        }
-        readonly property bool confirmed: skipField.text.trim().toUpperCase() === "SKIP"
-        title: L10n.t("commitSkipHooksConfirmTitle")
-        description: L10n.t("commitSkipHooksConfirmBody")
-        submitDisabled: !confirmed
-        onSubmitted: { if (confirmed) { close(); actionsRoot.answer(promptId, true); promptId = -1 } }
-        onRejected: { actionsRoot.answer(promptId, false); promptId = -1 }
-        MeridianTextField {
-            id: skipField
-            width: parent ? parent.width : 0
-            Accessible.name: L10n.t("commitSkipHooksConfirmInput")
-            placeholderText: L10n.t("commitSkipHooksConfirmInput")
-        }
-        actions: [
-            MeridianButton {
-                text: L10n.t("cancel")
-                variant: MeridianButton.Quiet
-                onClicked: skipHooksDialog.reject()
-            },
-            MeridianButton {
-                text: L10n.t("commitSkipHooks")
-                variant: MeridianButton.Danger
-                enabled: skipHooksDialog.confirmed
-                onClicked: skipHooksDialog.submitted()
+    Lazy {
+        id: skipHooksDialogLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: skipHooksDialog
+                property int promptId: -1
+                function ask(id) {
+                    promptId = id
+                    skipField.text = ""
+                    open()
+                    skipField.forceActiveFocus()
+                }
+                readonly property bool confirmed: skipField.text.trim().toUpperCase() === "SKIP"
+                title: L10n.t("commitSkipHooksConfirmTitle")
+                description: L10n.t("commitSkipHooksConfirmBody")
+                submitDisabled: !confirmed
+                onSubmitted: { if (confirmed) { close(); actionsRoot.answer(promptId, true); promptId = -1 } }
+                onRejected: { actionsRoot.answer(promptId, false); promptId = -1 }
+                MeridianTextField {
+                    id: skipField
+                    width: parent ? parent.width : 0
+                    Accessible.name: L10n.t("commitSkipHooksConfirmInput")
+                    placeholderText: L10n.t("commitSkipHooksConfirmInput")
+                }
+                actions: [
+                    MeridianButton {
+                        text: L10n.t("cancel")
+                        variant: MeridianButton.Quiet
+                        onClicked: skipHooksDialog.reject()
+                    },
+                    MeridianButton {
+                        text: L10n.t("commitSkipHooks")
+                        variant: MeridianButton.Danger
+                        enabled: skipHooksDialog.confirmed
+                        onClicked: skipHooksDialog.submitted()
+                    }
+                ]
             }
-        ]
+        }
     }
 
-    StashDialog {
-        id: stashDialog
-        onAnswered: (id, request) => actionsRoot.answer(id, request)
-    }
-    StashConfirmDialog {
-        id: stashConfirm
-        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
-    }
-    HistoryMutationDialog {
-        id: historyMutationDialog
-        onAnswered: (id, request) => actionsRoot.answer(id, request)
-    }
-    HistoryMutationPreviewDialog {
-        id: historyMutationPreview
-        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
-    }
-    BranchIntegrationDialog {
-        id: branchIntegration
-        onAnswered: (id, choice) => actionsRoot.answer(id, choice)
-    }
-    RebaseTargetDialog {
-        id: rebaseTarget
-        onAnswered: (id, branch) => actionsRoot.answer(id, branch)
-    }
-    RebaseEditorDialog {
-        id: rebaseEditor
-        onAnswered: (id, edit) => actionsRoot.answer(id, edit)
-    }
-    RebasePreviewDialog {
-        id: rebasePreview
-        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
-    }
-    RestackRootDialog {
-        id: restackRoot
-        onAnswered: (id, branch) => actionsRoot.answer(id, branch)
-    }
-    RestackPreviewDialog {
-        id: restackPreview
-        onAnswered: (id, acknowledge) => actionsRoot.answer(id, acknowledge)
-    }
-    MeridianDialog {
-        id: cloneSourceDialog
-        property int promptId: -1
-        function ask(id) {
-            promptId = id
-            cloneSource.text = ""
-            open()
-            cloneSource.forceActiveFocus()
-        }
-        function choose() {
-            if (cloneSource.text.trim().length === 0)
-                return
-            close()
-            actionsRoot.answer(promptId, cloneSource.text.trim())
-            promptId = -1
-        }
-        widthClass: MeridianDialog.Form
-        title: L10n.t("cloneRepository")
-        description: L10n.t("cloneSourceDescription")
-        submitDisabled: cloneSource.text.trim().length === 0
-        onSubmitted: choose()
-        onRejected: { actionsRoot.answer(promptId, null); promptId = -1 }
-        Column {
-            width: parent ? parent.width : 0
-            spacing: Theme.space.s2
-            MeridianText { width: parent.width; role: MeridianText.Label; text: L10n.t("cloneSourceLabel") }
-            MeridianTextField {
-                id: cloneSource
-                objectName: "clone-source"
-                width: parent.width
-                monospace: true
-                placeholderText: L10n.t("cloneSourceHint")
-                Accessible.name: L10n.t("cloneSourceLabel")
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText | Qt.ImhUrlCharactersOnly
+    Lazy {
+        id: stashDialogLazy
+        sourceComponent: Component {
+            StashDialog {
+                id: stashDialog
+                onAnswered: (id, request) => actionsRoot.answer(id, request)
             }
         }
-        actions: [
-            MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: cloneSourceDialog.reject() },
-            MeridianButton {
-                text: L10n.t("chooseCloneDestination")
-                variant: MeridianButton.Primary
-                enabled: cloneSource.text.trim().length > 0
-                onClicked: cloneSourceDialog.choose()
+    }
+    Lazy {
+        id: stashConfirmLazy
+        sourceComponent: Component {
+            StashConfirmDialog {
+                id: stashConfirm
+                onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
             }
-        ]
+        }
+    }
+    Lazy {
+        id: historyMutationDialogLazy
+        sourceComponent: Component {
+            HistoryMutationDialog {
+                id: historyMutationDialog
+                onAnswered: (id, request) => actionsRoot.answer(id, request)
+            }
+        }
+    }
+    Lazy {
+        id: historyMutationPreviewLazy
+        sourceComponent: Component {
+            HistoryMutationPreviewDialog {
+                id: historyMutationPreview
+                onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
+            }
+        }
+    }
+    Lazy {
+        id: branchIntegrationLazy
+        sourceComponent: Component {
+            BranchIntegrationDialog {
+                id: branchIntegration
+                onAnswered: (id, choice) => actionsRoot.answer(id, choice)
+            }
+        }
+    }
+    Lazy {
+        id: rebaseTargetLazy
+        sourceComponent: Component {
+            RebaseTargetDialog {
+                id: rebaseTarget
+                onAnswered: (id, branch) => actionsRoot.answer(id, branch)
+            }
+        }
+    }
+    Lazy {
+        id: rebaseEditorLazy
+        sourceComponent: Component {
+            RebaseEditorDialog {
+                id: rebaseEditor
+                onAnswered: (id, edit) => actionsRoot.answer(id, edit)
+            }
+        }
+    }
+    Lazy {
+        id: rebasePreviewLazy
+        sourceComponent: Component {
+            RebasePreviewDialog {
+                id: rebasePreview
+                onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
+            }
+        }
+    }
+    Lazy {
+        id: restackRootLazy
+        sourceComponent: Component {
+            RestackRootDialog {
+                id: restackRoot
+                onAnswered: (id, branch) => actionsRoot.answer(id, branch)
+            }
+        }
+    }
+    Lazy {
+        id: restackPreviewLazy
+        sourceComponent: Component {
+            RestackPreviewDialog {
+                id: restackPreview
+                onAnswered: (id, acknowledge) => actionsRoot.answer(id, acknowledge)
+            }
+        }
+    }
+    Lazy {
+        id: cloneSourceDialogLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: cloneSourceDialog
+                property alias cloneSourceItem: cloneSource
+                property int promptId: -1
+                function ask(id) {
+                    promptId = id
+                    cloneSource.text = ""
+                    open()
+                    cloneSource.forceActiveFocus()
+                }
+                function choose() {
+                    if (cloneSource.text.trim().length === 0)
+                        return
+                    close()
+                    actionsRoot.answer(promptId, cloneSource.text.trim())
+                    promptId = -1
+                }
+                widthClass: MeridianDialog.Form
+                title: L10n.t("cloneRepository")
+                description: L10n.t("cloneSourceDescription")
+                submitDisabled: cloneSource.text.trim().length === 0
+                onSubmitted: choose()
+                onRejected: { actionsRoot.answer(promptId, null); promptId = -1 }
+                Column {
+                    width: parent ? parent.width : 0
+                    spacing: Theme.space.s2
+                    MeridianText { width: parent.width; role: MeridianText.Label; text: L10n.t("cloneSourceLabel") }
+                    MeridianTextField {
+                        id: cloneSource
+                        objectName: "clone-source"
+                        width: parent.width
+                        monospace: true
+                        placeholderText: L10n.t("cloneSourceHint")
+                        Accessible.name: L10n.t("cloneSourceLabel")
+                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText | Qt.ImhUrlCharactersOnly
+                    }
+                }
+                actions: [
+                    MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: cloneSourceDialog.reject() },
+                    MeridianButton {
+                        text: L10n.t("chooseCloneDestination")
+                        variant: MeridianButton.Primary
+                        enabled: cloneSource.text.trim().length > 0
+                        onClicked: cloneSourceDialog.choose()
+                    }
+                ]
+            }
+        }
     }
     MeridianConfirm {
         id: sequencerConfirm
@@ -854,37 +998,62 @@ Item {
         onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
         onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
-    SettingsDialog {
-        id: settingsDialog
-        onLicensesRequested: actionsRoot.showLicenses()
+    Lazy {
+        id: settingsDialogLazy
+        sourceComponent: Component {
+            SettingsDialog {
+                id: settingsDialog
+                onLicensesRequested: actionsRoot.showLicenses()
+            }
+        }
     }
-    MeridianLicenseDialog {
-        id: licenseDialog
-        title: L10n.t("licensesTitle")
-        applicationName: L10n.t("appTitle")
-        applicationVersion: Store.platform.version ?? ""
-        applicationIcon: "qrc:/GitLama/brand/tile-64.png"
-        closeLabel: L10n.t("close")
-        backLabel: L10n.t("licensesBack")
-        filterPlaceholder: L10n.t("licensesFilter")
-        noMatchesLabel: L10n.t("licensesNoMatches")
-        countText: count => L10n.tn("licensesCount", { count: count })
+    Lazy {
+        id: licenseDialogLazy
+        sourceComponent: Component {
+            MeridianLicenseDialog {
+                id: licenseDialog
+                title: L10n.t("licensesTitle")
+                applicationName: L10n.t("appTitle")
+                applicationVersion: Store.platform.version ?? ""
+                applicationIcon: "qrc:/GitLama/brand/tile-64.png"
+                closeLabel: L10n.t("close")
+                backLabel: L10n.t("licensesBack")
+                filterPlaceholder: L10n.t("licensesFilter")
+                noMatchesLabel: L10n.t("licensesNoMatches")
+                countText: count => L10n.tn("licensesCount", { count: count })
+            }
+        }
     }
-    CommitCheckoutDialog {
-        id: commitCheckout
-        onAnswered: (id, choice) => actionsRoot.answer(id, choice)
+    Lazy {
+        id: commitCheckoutLazy
+        sourceComponent: Component {
+            CommitCheckoutDialog {
+                id: commitCheckout
+                onAnswered: (id, choice) => actionsRoot.answer(id, choice)
+            }
+        }
     }
     CommandPalette {
         id: commandPalette
         onRun: id => actionsRoot.runCommand(id, ({}))
     }
-    RefMutationDialog {
-        id: refDialog
-        onAnswered: (id, request) => actionsRoot.answer(id, request)
+    Lazy {
+        id: refDialogLazy
+        sourceComponent: Component {
+            RefMutationDialog {
+                id: refDialog
+                onAnswered: (id, request) => actionsRoot.answer(id, request)
+            }
+        }
     }
-    RefConfirmDialog {
-        id: refConfirm
-        onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
+    Lazy {
+        id: refConfirmLazy
+        sourceComponent: Component {
+            RefConfirmDialog {
+                id: refConfirm
+                onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
+            }
+        }
     }
     // Restoring a file to a commit's version.
     MeridianConfirm {
@@ -932,123 +1101,134 @@ Item {
         onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
     // Replacing the current changes with a snapshot's.
-    MeridianDialog {
-        id: snapshotRestore
-        property int promptId: -1
-        property var payload: ({})
-        property bool acknowledged: false
-        function ask(id, value) {
-            promptId = id
-            payload = value
-            acknowledged = false
-            open()
-        }
-        function answer(value) {
-            const pending = promptId
-            promptId = -1
-            close()
-            actionsRoot.answer(pending, value)
-        }
-        title: L10n.tn("namedSnapshotRestoreTitle", { name: payload.name ?? "" })
-        description: L10n.t("namedSnapshotRestoreSummary")
-        submitDisabled: !acknowledged
-        onSubmitted: answer(true)
-        onRejected: { if (promptId >= 0) { actionsRoot.answer(promptId, false); promptId = -1 } }
-        Column {
-            width: parent ? parent.width : 0
-            spacing: Theme.space.s6
-            Column {
-                visible: (snapshotRestore.payload.paths ?? []).length > 0
-                width: parent.width
-                spacing: Theme.space.s3
-                ListWell {
-                    width: parent.width
-                    implicitHeight: Math.min(view.contentHeight, maxHeight)
-                    model: snapshotRestore.payload.paths ?? []
-                    header: Item {
-                        width: parent ? parent.width : 0
-                        height: restoreCount.implicitHeight + Theme.space.s4
+    Lazy {
+        id: snapshotRestoreLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: snapshotRestore
+                property int promptId: -1
+                property var payload: ({})
+                property bool acknowledged: false
+                function ask(id, value) {
+                    promptId = id
+                    payload = value
+                    acknowledged = false
+                    open()
+                }
+                function answer(value) {
+                    const pending = promptId
+                    promptId = -1
+                    close()
+                    actionsRoot.answer(pending, value)
+                }
+                title: L10n.tn("namedSnapshotRestoreTitle", { name: payload.name ?? "" })
+                description: L10n.t("namedSnapshotRestoreSummary")
+                submitDisabled: !acknowledged
+                onSubmitted: answer(true)
+                onRejected: { if (promptId >= 0) { actionsRoot.answer(promptId, false); promptId = -1 } }
+                Column {
+                    width: parent ? parent.width : 0
+                    spacing: Theme.space.s6
+                    Column {
+                        visible: (snapshotRestore.payload.paths ?? []).length > 0
+                        width: parent.width
+                        spacing: Theme.space.s3
+                        ListWell {
+                            width: parent.width
+                            implicitHeight: Math.min(view.contentHeight, maxHeight)
+                            model: snapshotRestore.payload.paths ?? []
+                            header: Item {
+                                width: parent ? parent.width : 0
+                                height: restoreCount.implicitHeight + Theme.space.s4
+                                MeridianText {
+                                    id: restoreCount
+                                    x: Theme.space.s6
+                                    y: Theme.space.s4
+                                    role: MeridianText.Caption
+                                    color: Theme.colors.inkMuted
+                                    text: L10n.tn("namedSnapshotRestoreFileCount", { count: (snapshotRestore.payload.paths ?? []).length })
+                                }
+                            }
+                            delegate: FileRow {
+                                required property string modelData
+                                width: ListView.view ? ListView.view.width : 0
+                                path: modelData
+                                activeFocusOnTab: false
+                                leading: Component { MeridianIcon { name: "file"; iconSize: MeridianIcon.Small; color: Theme.colors.inkMuted } }
+                            }
+                        }
                         MeridianText {
-                            id: restoreCount
-                            x: Theme.space.s6
-                            y: Theme.space.s4
+                            visible: snapshotRestore.payload.truncated === true
                             role: MeridianText.Caption
                             color: Theme.colors.inkMuted
-                            text: L10n.tn("namedSnapshotRestoreFileCount", { count: (snapshotRestore.payload.paths ?? []).length })
+                            text: L10n.t("namedSnapshotPathsTruncated")
                         }
                     }
-                    delegate: FileRow {
-                        required property string modelData
-                        width: ListView.view ? ListView.view.width : 0
-                        path: modelData
-                        activeFocusOnTab: false
-                        leading: Component { MeridianIcon { name: "file"; iconSize: MeridianIcon.Small; color: Theme.colors.inkMuted } }
+                    MeridianText {
+                        width: parent.width
+                        role: MeridianText.Caption
+                        color: Theme.colors.inkMuted
+                        wrapMode: Text.Wrap
+                        text: L10n.t("namedSnapshotRestoreStash")
+                    }
+                    MeridianCheckbox {
+                        text: L10n.t("namedSnapshotAcknowledgeReplacement")
+                        checked: snapshotRestore.acknowledged
+                        onToggled: snapshotRestore.acknowledged = checked
                     }
                 }
-                MeridianText {
-                    visible: snapshotRestore.payload.truncated === true
-                    role: MeridianText.Caption
-                    color: Theme.colors.inkMuted
-                    text: L10n.t("namedSnapshotPathsTruncated")
-                }
-            }
-            MeridianText {
-                width: parent.width
-                role: MeridianText.Caption
-                color: Theme.colors.inkMuted
-                wrapMode: Text.Wrap
-                text: L10n.t("namedSnapshotRestoreStash")
-            }
-            MeridianCheckbox {
-                text: L10n.t("namedSnapshotAcknowledgeReplacement")
-                checked: snapshotRestore.acknowledged
-                onToggled: snapshotRestore.acknowledged = checked
+                actions: [
+                    MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotRestore.reject() },
+                    MeridianButton {
+                        text: L10n.t("namedSnapshotRestore")
+                        variant: MeridianButton.Danger
+                        enabled: snapshotRestore.acknowledged
+                        onClicked: snapshotRestore.answer(true)
+                    }
+                ]
             }
         }
-        actions: [
-            MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotRestore.reject() },
-            MeridianButton {
-                text: L10n.t("namedSnapshotRestore")
-                variant: MeridianButton.Danger
-                enabled: snapshotRestore.acknowledged
-                onClicked: snapshotRestore.answer(true)
-            }
-        ]
     }
     // A branch from a snapshot.
-    MeridianDialog {
-        id: snapshotBranch
-        property int promptId: -1
-        property var branches: []
-        readonly property string name: snapshotBranchField.text.trim()
-        function answer(value) {
-            const pending = promptId
-            promptId = -1
-            close()
-            actionsRoot.answer(pending, value)
-        }
-        widthClass: MeridianDialog.Form
-        title: L10n.t("namedSnapshotBranchTitle")
-        submitDisabled: name.length === 0
-        onSubmitted: answer(name)
-        onRejected: { if (promptId >= 0) { actionsRoot.answer(promptId, null); promptId = -1 } }
-        ReferenceField {
-            id: snapshotBranchField
-            width: parent ? parent.width : 0
-            label: L10n.t("refMutationName")
-            names: snapshotBranch.branches
-            normalize: true
-            suggestSegments: true
-        }
-        actions: [
-            MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotBranch.reject() },
-            MeridianButton {
-                text: L10n.t("namedSnapshotBranch")
-                variant: MeridianButton.Primary
-                enabled: snapshotBranch.name.length > 0
-                onClicked: snapshotBranch.answer(snapshotBranch.name)
+    Lazy {
+        id: snapshotBranchLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: snapshotBranch
+                property alias snapshotBranchFieldItem: snapshotBranchField
+                property int promptId: -1
+                property var branches: []
+                readonly property string name: snapshotBranchField.text.trim()
+                function answer(value) {
+                    const pending = promptId
+                    promptId = -1
+                    close()
+                    actionsRoot.answer(pending, value)
+                }
+                widthClass: MeridianDialog.Form
+                title: L10n.t("namedSnapshotBranchTitle")
+                submitDisabled: name.length === 0
+                onSubmitted: answer(name)
+                onRejected: { if (promptId >= 0) { actionsRoot.answer(promptId, null); promptId = -1 } }
+                ReferenceField {
+                    id: snapshotBranchField
+                    width: parent ? parent.width : 0
+                    label: L10n.t("refMutationName")
+                    names: snapshotBranch.branches
+                    normalize: true
+                    suggestSegments: true
+                }
+                actions: [
+                    MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotBranch.reject() },
+                    MeridianButton {
+                        text: L10n.t("namedSnapshotBranch")
+                        variant: MeridianButton.Primary
+                        enabled: snapshotBranch.name.length > 0
+                        onClicked: snapshotBranch.answer(snapshotBranch.name)
+                    }
+                ]
             }
-        ]
+        }
     }
     MeridianConfirm {
         id: snapshotDelete
@@ -1062,9 +1242,14 @@ Item {
         onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
         onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
-    IgnoreDialog {
-        id: ignoreDialog
-        onAnswered: (id, entry) => actionsRoot.answer(id, entry)
+    Lazy {
+        id: ignoreDialogLazy
+        sourceComponent: Component {
+            IgnoreDialog {
+                id: ignoreDialog
+                onAnswered: (id, entry) => actionsRoot.answer(id, entry)
+            }
+        }
     }
     // Asks to run a configured tool that needs confirmation.
     MeridianConfirm {
@@ -1098,25 +1283,30 @@ Item {
         id: rendererConfirm
         onAnswered: (id, value) => actionsRoot.answer(id, value)
     }
-    // An LFS pointer's facts (lfsPointer).
-    MeridianDialog {
-        id: lfsPointer
-        objectName: "lfs-pointer-dialog"
-        property int promptId: -1
-        property var pointer: ({})
-        readonly property bool isPointer: pointer.oid !== null && pointer.oid !== undefined
-        title: L10n.t("extensionLfsPointerTitle")
-        description: isPointer ? L10n.t("extensionLfsPointerDescription") : L10n.t("extensionLfsNotPointer")
-        closeLabel: L10n.t("close")
-        onClosed: { if (promptId >= 0) actionsRoot.answer(promptId, true); promptId = -1 }
-        MeridianPropertyList {
-            objectName: "lfs-pointer-details"
-            width: parent ? parent.width : 0
-            properties: [{ label: L10n.t("extensionLfsPointerFile"), value: lfsPointer.pointer.path ?? "", monospace: true }].concat(
-                lfsPointer.isPointer ? [
-                    { label: L10n.t("extensionLfsPointerOid"), value: lfsPointer.pointer.oid, monospace: true },
-                    { label: L10n.t("extensionLfsPointerSize"), value: Labels.byteSize(lfsPointer.pointer.size ?? 0), selectable: false },
-                ] : [])
+    // An LFS pointer's facts (lfsPointerLazy.get()).
+    Lazy {
+        id: lfsPointerLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: lfsPointer
+                objectName: "lfs-pointer-dialog"
+                property int promptId: -1
+                property var pointer: ({})
+                readonly property bool isPointer: pointer.oid !== null && pointer.oid !== undefined
+                title: L10n.t("extensionLfsPointerTitle")
+                description: isPointer ? L10n.t("extensionLfsPointerDescription") : L10n.t("extensionLfsNotPointer")
+                closeLabel: L10n.t("close")
+                onClosed: { if (promptId >= 0) actionsRoot.answer(promptId, true); promptId = -1 }
+                MeridianPropertyList {
+                    objectName: "lfs-pointer-details"
+                    width: parent ? parent.width : 0
+                    properties: [{ label: L10n.t("extensionLfsPointerFile"), value: lfsPointer.pointer.path ?? "", monospace: true }].concat(
+                        lfsPointer.isPointer ? [
+                            { label: L10n.t("extensionLfsPointerOid"), value: lfsPointer.pointer.oid, monospace: true },
+                            { label: L10n.t("extensionLfsPointerSize"), value: Labels.byteSize(lfsPointer.pointer.size ?? 0), selectable: false },
+                        ] : [])
+                }
+            }
         }
     }
     // Author images from Gravatar: what enabling sends.
@@ -1236,9 +1426,14 @@ Item {
             }
         }
     }
-    EditBranchDialog {
-        id: editBranchDialog
-        onAnswered: (id, edit) => actionsRoot.answer(id, edit)
+    Lazy {
+        id: editBranchDialogLazy
+        sourceComponent: Component {
+            EditBranchDialog {
+                id: editBranchDialog
+                onAnswered: (id, edit) => actionsRoot.answer(id, edit)
+            }
+        }
     }
     MeridianConfirm {
         id: recoverTarget
@@ -1250,21 +1445,41 @@ Item {
         onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
         onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
-    TransferDialog {
-        id: transferDialog
-        onAnswered: (id, request) => actionsRoot.answer(id, request)
+    Lazy {
+        id: transferDialogLazy
+        sourceComponent: Component {
+            TransferDialog {
+                id: transferDialog
+                onAnswered: (id, request) => actionsRoot.answer(id, request)
+            }
+        }
     }
-    HostKeyDialog {
-        id: hostKeyDialog
-        onAnswered: (id, trust) => actionsRoot.answer(id, trust)
+    Lazy {
+        id: hostKeyDialogLazy
+        sourceComponent: Component {
+            HostKeyDialog {
+                id: hostKeyDialog
+                onAnswered: (id, trust) => actionsRoot.answer(id, trust)
+            }
+        }
     }
-    CredentialDialog {
-        id: credentialDialog
-        onAnswered: (id, credentials) => actionsRoot.answer(id, credentials)
+    Lazy {
+        id: credentialDialogLazy
+        sourceComponent: Component {
+            CredentialDialog {
+                id: credentialDialog
+                onAnswered: (id, credentials) => actionsRoot.answer(id, credentials)
+            }
+        }
     }
-    TransferFailureDialog {
-        id: transferFailureDialog
-        onAnswered: (id, remedy) => actionsRoot.answer(id, remedy)
+    Lazy {
+        id: transferFailureDialogLazy
+        sourceComponent: Component {
+            TransferFailureDialog {
+                id: transferFailureDialog
+                onAnswered: (id, remedy) => actionsRoot.answer(id, remedy)
+            }
+        }
     }
     MeridianConfirm {
         id: refetchConfirm
@@ -1276,9 +1491,14 @@ Item {
         onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
 
-    InitializeRepositoryDialog {
-        id: initializeDialog
-        onChosen: (id, choice) => actionsRoot.answer(id, choice)
+    Lazy {
+        id: initializeDialogLazy
+        sourceComponent: Component {
+            InitializeRepositoryDialog {
+                id: initializeDialog
+                onChosen: (id, choice) => actionsRoot.answer(id, choice)
+            }
+        }
     }
 
     // Development screenshots can submit the transfer dialog.
@@ -1286,19 +1506,19 @@ Item {
         target: Store
         function onScreenshotStepRequested(name, argument) {
             if (name === "submitTransfer")
-                transferDialog.submit()
+                transferDialogLazy.get().submit()
             else if (name === "refName")
-                refDialog.fill(argument)
+                refDialogLazy.get().fill(argument)
             else if (name === "submitRef")
-                refDialog.submit()
+                refDialogLazy.get().submit()
             else if (name === "confirmRef")
-                refConfirm.submitted()
+                refConfirmLazy.get().submitted()
             else if (name === "submitStash")
-                stashDialog.submit()
+                stashDialogLazy.get().submit()
             else if (name === "confirmStash")
-                stashConfirm.submitted()
+                stashConfirmLazy.get().submitted()
             else if (name === "mutationSource")
-                historyMutationDialog.chooseSource(argument)
+                historyMutationDialogLazy.get().chooseSource(argument)
             else if (name === "patchDestination")
                 Store.patches.chooseDestination(argument)
             else if (name === "patchFile")
@@ -1315,18 +1535,18 @@ Item {
                 worktreeDeleteConfirm.confirmed()
             } else if (name === "lineStage") {
                 Store.lineSelection.stage()
-                lineSelectionDialog.close()
+                lineSelectionDialogLazy.get().close()
             } else if (name === "patchSubmit")
-                patchDialog.submit()
+                patchDialogLazy.get().submit()
             else if (name === "iconDialog")
                 actionsRoot.showRepositoryIconDialog({ id: Store.workspace.activeTabId })
             else if (name === "iconPick") {
                 // iconPick:<icon>=<series index>
                 const parts = argument.split("=")
-                repositoryIconDialog.icon = parts[0]
-                repositoryIconDialog.color = { series: Number(parts[1]) }
+                repositoryIconDialogLazy.get().icon = parts[0]
+                repositoryIconDialogLazy.get().color = { series: Number(parts[1]) }
             } else if (name === "iconSave")
-                repositoryIconDialog.save()
+                repositoryIconDialogLazy.get().save()
             else if (name === "createGroup")
                 Store.workspace.createTabGroup(Store.workspace.activeTabId)
             else if (name === "groupDialog") {
@@ -1335,7 +1555,7 @@ Item {
                     actionsRoot.showTabGroupDialog(group, Store.workspace.tabs.filter(tab => tab.groupId === group.id).map(tab => tab.label))
             } else if (name === "colorWell") {
                 // Opens the custom colour well of the open dialog's colour row.
-                const dialogs = [repositoryIconDialog, tabGroupDialog]
+                const dialogs = [repositoryIconDialogLazy.get(), tabGroupDialogLazy.get()]
                 for (const d of dialogs)
                     if (d.opened) {
                         const well = actionsRoot.findWell(d.contentItem)
@@ -1405,23 +1625,23 @@ Item {
             else if (name === "about")
                 actionsRoot.showAbout()
             else if (name === "submitIgnore")
-                ignoreDialog.submit()
+                ignoreDialogLazy.get().submit()
             else if (name === "submitMutation")
-                historyMutationDialog.finish(argument === "applyOnly")
+                historyMutationDialogLazy.get().finish(argument === "applyOnly")
             else if (name === "confirmMutation")
-                historyMutationPreview.submitted()
+                historyMutationPreviewLazy.get().submitted()
             else if (name === "rebaseAction") {
                 const parts = argument.split("=")
-                rebaseEditor.setAction(Number(parts[0]), parts[1])
+                rebaseEditorLazy.get().setAction(Number(parts[0]), parts[1])
             } else if (name === "rebaseMove") {
                 const parts = argument.split(">")
-                rebaseEditor.move(Number(parts[0]), Number(parts[1]))
+                rebaseEditorLazy.get().move(Number(parts[0]), Number(parts[1]))
             } else if (name === "submitRebaseTarget")
-                rebaseTarget.submit()
+                rebaseTargetLazy.get().submit()
             else if (name === "submitRebase")
-                rebaseEditor.submit()
+                rebaseEditorLazy.get().submit()
             else if (name === "confirmRebase")
-                rebasePreview.submitted()
+                rebasePreviewLazy.get().submitted()
             else if (name === "conflictTake") {
                 const parts = argument.split("=")
                 Store.conflicts.takeRegion(Number(parts[0]), parts[1], false)
@@ -1432,14 +1652,14 @@ Item {
             else if (name === "conflictSelect")
                 Store.conflicts.select(Number(argument), false)
             else if (name === "cloneSource") {
-                cloneSource.text = argument
-                cloneSourceDialog.choose()
+                cloneSourceDialogLazy.get().cloneSourceItem.text = argument
+                cloneSourceDialogLazy.get().choose()
             } else if (name === "chooseFolder") {
                 // Answers the open folder dialog without the platform picker.
-                const pending = folderDialog.promptId
+                const pending = folderDialogLazy.get().promptId
                 if (pending >= 0) {
-                    folderDialog.promptId = -1
-                    folderDialog.close()
+                    folderDialogLazy.get().promptId = -1
+                    folderDialogLazy.get().close()
                     actionsRoot.answer(pending, argument)
                 }
             } else if (name === "settings")

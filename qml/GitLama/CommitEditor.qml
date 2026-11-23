@@ -75,6 +75,12 @@ Rectangle {
     Component.onCompleted: {
         loadDraft()
         Store.commitEditor = editor
+        const pending = Store.pendingCommitAction
+        Store.pendingCommitAction = ""
+        if (pending === "commitCreate")
+            Qt.callLater(() => editor.submit(false))
+        else if (pending === "commitAmend")
+            Qt.callLater(() => editor.prepareAmend())
     }
     Component.onDestruction: if (Store.commitEditor === editor) Store.commitEditor = null
     /// Amend from a command: checks Amend and fills the editor like the box.

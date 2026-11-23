@@ -6,6 +6,9 @@ import QtQuick
 QtObject {
     /// The AppState bridge: startup, appearance, platform, prompts, notices.
     property var app: null
+    /// A commit command that arrived before the commit editor existed ("commitCreate" or
+    /// "commitAmend"); the editor runs it when it is created.
+    property string pendingCommitAction: ""
     /// Moments that play once per session (MeridianMotionMemory): key -> true.
     property var motionSeen: ({})
     /// Marks `key` seen; false when it was already.

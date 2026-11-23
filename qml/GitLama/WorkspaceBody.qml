@@ -99,13 +99,23 @@ Item {
 
         // Changes: the files island beside the diff.
         MeridianEntrance {
-            visible: !workspace.history && body.active !== null && body.active.hasStatus === true && !workspace.conflictFlow
+            id: changesSlot
+            readonly property bool wanted: !workspace.history && body.active !== null && body.active.hasStatus === true && !workspace.conflictFlow
+            // Built the first time Changes shows, then kept, so its lists and draft survive
+            // switching panes without costing memory before.
+            property bool built: false
+            onWantedChanged: if (wanted) built = true
+            Component.onCompleted: if (wanted) built = true
+            visible: wanted
             anchors.fill: parent
-            entranceKey: body.openMotionKey.length > 0 ? body.openMotionKey + "|1" : ""
+            entranceKey: body.openMotionKey.length > 0 && wanted ? body.openMotionKey + "|1" : ""
             delay: GitLamaLayout.openStagger
-            ChangesPane {
+            Loader {
                 anchors.fill: parent
-                onCommand: (id, options) => body.command(id, options)
+                active: changesSlot.built
+                sourceComponent: ChangesPane {
+                    onCommand: (id, options) => body.command(id, options)
+                }
             }
         }
         // A paused operation at conflicts: the resolver replaces Changes.

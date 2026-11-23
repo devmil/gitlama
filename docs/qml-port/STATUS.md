@@ -183,41 +183,69 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   Refresh with spin and failure; worktree open menu; grouped Compass titles. Meridian gained
   MeridianTextMenu (native Cut/Copy/Paste/Select All in every text control).
 
-## Next
-The remaining work, also listed by `docs/qml-port/l10n-pending.txt` (the port is complete
-when it is empty) and by `scripts/audit_command_inventory.py` (`openRemoteRepository`):
-- Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
-  remote_host_dialog, remote_operations, initialize location, repository details host).
-- Inspection windows (inspection_window_app; `historyWindowFailed`, `inspector*` window
-  actions): working-tree Blame/History open there in Flutter.
-- Hosting review workspace and check retry, branch CI decorations (`hostingReview*`,
-  `hostingBranchChecks`, `hostingRequestDetails`, `hostingStale`, `hostingReferenceEmpty`).
-- Diagnostics Share on macOS/Windows; macOS window configuration and open-file events.
-- Motion: History selection glide, lane lighting/draw/landing, sync entrance; Changes flight
-  between lists and long-press row drag (the grip drags today); Logbook stagger.
-- Conflict resolver: wrapped comparison lines, syntax colours; inspector changed-word marks on
-  wrapped lines.
-- Release work: packaging and CI for every target plus Arch, remaining Flutter tooling
-  (package.py, qualify scripts, tests/package, remote_wire generator), docs, changelog,
-  performance comparison, Foundry proposals, moving the checkout.
+- Remote workspaces (2026-11-23): profiles, hosts dialog and editor, remote folder picker,
+  helper installation (bundled, development builds via `scripts/build_dev_helpers.py`),
+  reconnect, per-host access, stale-tab banner and failure page, remote recents and
+  initialization, inspection windows over the main connection. Verified against the real
+  helper locally and over a loopback OpenSSH fixture (`verify_remote_workspaces.py
+  --ssh-loopback`, now Rust tests); not against a real remote host.
+- Persistence parity: the view cache (new schema, disposable) and the hosting link cache (the
+  format earlier releases wrote) are stored again; recovery was inert in Flutter too and is
+  not wired.
+- Platform hooks: macOS unified toolbar, reduce motion, open-document events (`open -a`,
+  Dock drops, Open With) and the diagnostics share sheet; Windows reduce motion and Share UI.
+  Not run on macOS or Windows here (no hosts in this environment).
+- Motion: History lane lighting flow, lane drawing (first load, new working-tree row,
+  transfer arrivals), commit landing and row slide, commit flash and search attention, sync
+  rows entering; Compass glint again (sync tracker); island entrance on first open; rolling
+  sync, dirty and conflict counts; Logbook entry entrance, failure shake and mark swap;
+  command palette rows; description growth; commit failure reveal; diff layout crossfade.
+  Meridian QML gained MeridianEntrance, MeridianMotionMemory, MeridianAttention,
+  MeridianShake, MeridianRollingNumber and MeridianResize.
+- Command palette: custom integration commands, as Flutter listed them.
+- No Flutter build input, generated bridge or Dart reference is left (`check_dependencies.py`
+  guards it); docs describe the Rust and Qt Quick application (ADR 0006).
+
+## Performance against the Flutter build (2026-11-23)
+Same Linux host (Omarchy, Hyprland, Wayland, Mesa), fresh profiles, the port's optimized
+build against the installed Flutter release 0.1.0-beta.67 (build 68), opening the same
+845-commit repository; process RSS and CPU time 22 s after launch, three runs each:
+
+| | Flutter | Rust + Qt Quick |
+| --- | --- | --- |
+| CPU time to settle (repository) | 1.47-1.79 s | 1.71-1.77 s |
+| Idle rendering | none | none |
+| RSS, welcome screen | 157 MB | 207 MB |
+| RSS, repository open | 207-209 MB | 322-323 MB |
+
+Found and fixed on the way: a hidden drop zone kept an infinite animation (and 60 frames
+a second) running; every dialog was built at startup (now created on first use: -184 MB,
+-1.3 s); the QML is compiled to bytecode at build time (qmlcachegen, -0.2 s). The remaining
+memory difference is the QML object tree of the open workspace. Not measured: macOS,
+Windows, large repositories (100k commits), frame timing while scrolling.
+
+## Remaining parity gaps
+Known differences from the Flutter build, none of them data or workflow loss:
+- Motion: the Changes stage flight between lists (NH-4: MeridianTravel, MeridianLift) and
+  long-press row drag (the grip drags today); rebase editor lift and stroke effects (NM-70 to
+  NM-72); the History selection glide (NM-31); rows fading and collapsing when removed
+  (MeridianRemovingRow: Changes rows, Logbook dismiss, the working-tree row); the head chip
+  entering on a commit; the palette growing out of the Compass (NH-6 morph; the palette uses
+  the dialog entrance); sidebar sections revealing (MM-24). Meridian QML still lacks
+  MeridianTravel, MeridianLift, MeridianStroke, MeridianSelectionGlide and MeridianRemovingRow.
+- Conflict resolver: wrapped comparison lines and syntax colours; inspector changed-word marks
+  on wrapped lines.
+- Tab strip accessibility move actions (Flutter custom semantics actions) have no QML
+  equivalent.
+- Memory: about 115 MB more resident memory than the Flutter build with a repository open
+  (see Performance).
+- Not verified here: macOS and Windows builds, packages and native hooks (including the
+  qmlcachegen step there); signing; screen readers; physical displays at fractional scales;
+  a real SSH host.
 
 ## Deferred / notes
 - Found while porting (pre-existing, Flutter too): devmil-git's `parse_unified_patch` rejects
   `git format-patch` output because of its `-- ` signature trailer, so Apply refuses the email
   patches GitLama itself writes (plain unified diffs apply). Fix belongs in devmil-git (helper
   version raise).
-- Palette: custom integration commands, background run (Cmd+Enter), scope cycling (Tab).
-- Sidebar: MeridianGlide check indicator between current branches; hosting checks/pull
-  requests.
-- Delegates built through `Loader` components log null reads at engine teardown only.
-- Tab strip accessibility move actions (Flutter custom semantics actions) have no QML equivalent yet.
-- Remote tab host marks (`hostBuilder`) wait for remote workspaces.
-- View cache persistence (disposable; `NoViewCache` for now; new format allowed).
-- Remote workspaces: router, SSH transport, reconnector (`WorkspaceRemotes` is a stub).
-- `tooling/remote_wire/generate.py` still parses the deleted Dart bindings; rewrite it to
-  Rust-only inputs with byte-identical `generated.rs`.
-- Remove `flutter_rust_bridge:ignore` comments from the contract crate
-  (`--record --keep-version`).
 - Move the diagnostics history into devmil-logging (shared code placement).
-- `extensionWorktreeChooseFolderFailure`: Qt's folder dialog has no failure path; decide
-  whether the message goes or a failure path exists before the pending list can be empty.

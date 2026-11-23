@@ -133,6 +133,8 @@ unsafe extern "system" {
 
 unsafe extern "C" {
     fn gitlama_install_file_open_filter();
+    /// Registers the QML bytecode compiled ahead of time (build.rs).
+    fn gitlama_init_qml_cache();
 }
 
 /// A folder the operating system asked to open (an open-document event); the window opens it
@@ -165,6 +167,8 @@ fn main() {
     install_native_updater();
     gitlama_workbench::diagnostics::info("Launcher", "process_start", &[]);
     set_desktop_file_name();
+    // SAFETY: registers a static table with the QML engine before any engine exists.
+    unsafe { gitlama_init_qml_cache() };
     let mut application = QApp::new();
     application.application_name(APPLICATION_NAME);
     // SAFETY: the GUI application exists; the filter lives as its child.

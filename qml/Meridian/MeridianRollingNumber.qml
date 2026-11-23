@@ -21,10 +21,11 @@ Item {
 
     readonly property string text: _text(value)
     property string _from: ""
-    property string _to: text
+    property string _to: _text(value)
     property bool _up: true
     property real _elapsed: 0
-    property int _previous: value
+    property int _previous: 0
+    Component.onCompleted: _previous = value
     readonly property int _digitStagger: Math.round(Tokens.durations.stagger * 2 / 3)
     readonly property int _columns: Math.max(_from.length, _to.length)
 
@@ -43,13 +44,14 @@ Item {
         if (value === previous)
             return
         roll.stop()
+        // `text` may not have followed `value` yet: format the value itself.
         if (Motion.reduced) {
             _from = ""
-            _to = text
+            _to = _text(value)
             return
         }
         _from = _text(previous)
-        _to = text
+        _to = _text(value)
         _up = value > previous
         roll.duration = Motion.quick + _digitStagger * (_columns - 1)
         _elapsed = 0

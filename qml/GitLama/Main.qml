@@ -229,7 +229,7 @@ Window {
             width: Math.min(GitLamaLayout.dropPromptWidth, parent.width - 2 * Theme.space.s6)
             scale: repositoryDrop.containsDrag ? 1 : Motion.overlayEnterScale
             Behavior on scale { NumberAnimation { duration: Motion.overlay; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.enter } }
-            dropState: MeridianDropZone.Active
+            dropState: repositoryDrop.containsDrag ? MeridianDropZone.Active : MeridianDropZone.Idle
             message: L10n.t("repositoryDropPrompt")
             iconName: "folder-open"
             browsable: false

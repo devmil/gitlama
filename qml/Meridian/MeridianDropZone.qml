@@ -11,6 +11,9 @@ T.AbstractButton {
     enum DropState { Idle, Active, Invalid }
 
     property int dropState: MeridianDropZone.Idle
+    /// Whether the edge's dashes march now: only while Active and shown, so a hidden zone
+    /// keeps no animation (and no frames) running.
+    readonly property bool marching: march.running
     property string message
     property string iconName: "upload"
     property bool browsable: true
@@ -86,10 +89,11 @@ T.AbstractButton {
                 dashPattern: [4, 3]
                 // The dashes march while a drag is over the zone (MM-77).
                 NumberAnimation on dashOffset {
+                    id: march
                     from: 7; to: 0
                     duration: Motion.march
                     loops: Animation.Infinite
-                    running: control.dropState === MeridianDropZone.Active && !Motion.reduced
+                    running: control.dropState === MeridianDropZone.Active && !Motion.reduced && control.visible
                 }
                 PathRectangle {
                     x: 0.5; y: 0.5

@@ -44,6 +44,7 @@ pub mod inspector_actions;
 pub mod integrations;
 pub mod line_selection;
 pub mod locks;
+pub mod memory;
 pub mod navigator;
 pub mod notices;
 pub mod notify;

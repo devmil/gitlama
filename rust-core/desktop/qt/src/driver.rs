@@ -121,6 +121,12 @@ impl Driver {
             if state.startup != phase {
                 state.startup = phase.to_owned();
                 state.startup_changed();
+                // The window has compiled and built its interface: give back what that freed.
+                if phase == "ready" {
+                    gitlama_workbench::memory::release_free_pages_after(
+                        std::time::Duration::from_secs(3),
+                    );
+                }
             }
             let activation = self
                 .app

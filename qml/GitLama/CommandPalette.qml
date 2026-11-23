@@ -13,9 +13,17 @@ T.Popup {
     property string query: ""
     property int selectedIndex: 0
     readonly property var availability: Store.actions ? Store.actions.availability : ({})
+    /// The configured custom commands, listed after the matching commands.
+    readonly property var customCommands: ((Store.settings && Store.settings.tools ? Store.settings.tools.configured : null) ?? [])
+        .filter(tool => tool.kind === "custom")
+    /// Why custom commands cannot run here (a remote host's tab), or "".
+    readonly property string customReason: reasonOf("showIntegrations")
     readonly property var results: {
         const term = query.trim().toLowerCase()
-        return Commands.registry.filter(command => term.length === 0 || Commands.label(command.id).toLowerCase().indexOf(term) >= 0)
+        return Commands.registry
+            .filter(command => term.length === 0 || Commands.label(command.id).toLowerCase().indexOf(term) >= 0)
+            .map(command => ({ id: command.id, custom: false, group: "commands" }))
+            .concat(customCommands.map(tool => ({ id: tool.id, custom: true, group: "custom" })))
     }
     signal run(string id)
 
@@ -34,7 +42,16 @@ T.Popup {
     }
     function activate(index) {
         const command = results[index]
-        if (!command || reasonOf(command.id).length > 0)
+        if (!command)
+            return
+        if (command.custom) {
+            if (customReason.length > 0 || !Store.workflows)
+                return
+            close()
+            Store.workflows.runIntegration(command.id)
+            return
+        }
+        if (reasonOf(command.id).length > 0)
             return
         close()
         run(command.id)
@@ -134,7 +151,10 @@ T.Popup {
             model: commandPalette.results
             MeridianWheelScroll { flickable: list }
             C.ScrollBar.vertical: MeridianScrollBar {}
-            header: Item {
+            section.property: "group"
+            section.delegate: Item {
+                id: groupHeader
+                required property string section
                 width: list.width - list.leftMargin - list.rightMargin
                 height: groupLabel.implicitHeight + Theme.space.s4 + Theme.space.s2
                 MeridianText {
@@ -143,7 +163,8 @@ T.Popup {
                     y: Theme.space.s4
                     role: MeridianText.Overline
                     color: Theme.colors.inkMuted
-                    text: L10n.t("commandGroupCommands").toUpperCase()
+                    text: (groupHeader.section === "custom" ? L10n.t("integrationCustom")
+                                                             : L10n.t("commandGroupCommands")).toUpperCase()
                 }
             }
             delegate: MeridianListRow {
@@ -173,19 +194,20 @@ T.Popup {
                     PauseAnimation { id: rowWait }
                     NumberAnimation { target: row; property: "_enter"; to: 1; duration: Motion.quick; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
                 }
-                readonly property string reason: commandPalette.reasonOf(modelData.id)
+                readonly property bool custom: modelData.custom === true
+                readonly property string reason: custom ? commandPalette.customReason : commandPalette.reasonOf(modelData.id)
                 width: list.width - list.leftMargin - list.rightMargin
-                text: Commands.label(modelData.id)
+                text: custom ? modelData.id : Commands.label(modelData.id)
                 match: commandPalette.query
                 selected: index === commandPalette.selectedIndex
                 islandFocused: true
                 enabled: reason.length === 0
-                subtitle: reason.length > 0 ? Commands.reasonText(reason) : ""
+                subtitle: reason.length > 0 ? Commands.reasonText(reason) : custom ? L10n.t("integrationCustom") : ""
                 focusPolicy: Qt.NoFocus
                 leading: Component {
-                    MeridianIcon { name: Commands.icon(row.modelData.id) }
+                    MeridianIcon { name: row.custom ? "command" : Commands.icon(row.modelData.id) }
                 }
-                trailing: Commands.shortcutLabel(modelData.id).length === 0 ? null : keycap
+                trailing: custom || Commands.shortcutLabel(modelData.id).length === 0 ? null : keycap
                 Component {
                     id: keycap
                     MeridianKbd { keys: [Commands.shortcutLabel(row.modelData.id)]; onAccent: row.solid }
