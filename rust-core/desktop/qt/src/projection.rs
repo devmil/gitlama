@@ -179,6 +179,7 @@ pub fn active(tab: Option<&Tab>, group_name: Option<&str>) -> Value {
         "remote": tab.canonical_identity().is_some_and(|identity| identity.remote.is_some()),
         "pane": tab.navigation.pane.name(),
         "branchFilter": tab.navigation.branch_filter.references(),
+        "remotes": session.map_or_else(Vec::new, |session| session.snapshot.refs.remotes.iter().map(|remote| String::from_utf8_lossy(&remote.name).into_owned()).collect()),
         "selectedIdentity": tab.navigation.selected_identity,
         "branch": branch,
         "detached": branch.is_none() && head_object_id.is_some(),

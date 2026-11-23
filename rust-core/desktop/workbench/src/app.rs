@@ -60,6 +60,8 @@ pub struct Services {
     pub diff_renderers: Rc<crate::diff_renderer::DiffRenderers>,
     pub cli: Rc<crate::cli::CliForwarding>,
     pub updates: Rc<crate::updates::UpdateService>,
+    pub hosting: Rc<crate::hosting::Hosting>,
+    pub repository_hosting: Rc<crate::hosting::RepositoryHosting>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -272,6 +274,8 @@ impl Services {
         let cli = crate::cli::CliForwarding::start(Rc::clone(&workspace), Rc::clone(&transfers), notifier.clone())
             .await
             .map_err(|_| "cli_forwarding")?;
+        let hosting = crate::hosting::Hosting::new(Rc::clone(&settings), notifier.clone()).await;
+        let repository_hosting = crate::hosting::RepositoryHosting::new(Rc::clone(&hosting), notifier.clone());
         let updates = crate::updates::UpdateService::new(Rc::clone(&settings), notifier.clone()).await;
         let diff_renderers = crate::diff_renderer::DiffRenderers::new(
             Rc::clone(&calls),
@@ -313,6 +317,8 @@ impl Services {
             diff_renderers,
             cli,
             updates,
+            hosting,
+            repository_hosting,
             operations,
             conflicts,
             rebases,
@@ -342,6 +348,7 @@ impl Services {
     async fn dispose(&self) {
         self.prompts.cancel_all();
         self.cli.dispose().await;
+        self.hosting.dispose().await;
         self.auto_fetch.dispose();
         self.operations.dispose();
         self.workspace.retire();

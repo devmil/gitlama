@@ -54,6 +54,7 @@ pub struct Driver {
     pub conflict_rows: Rc<RefCell<RowModel>>,
     pub operations: Rc<RefCell<crate::operations_state::OperationsState>>,
     pub patches: Rc<RefCell<crate::patch_state::PatchState>>,
+    pub hosting: Rc<RefCell<crate::hosting_state::HostingState>>,
     pub line_selection: Rc<RefCell<crate::line_selection_state::LineSelectionState>>,
     pub line_rows: Rc<RefCell<RowModel>>,
     /// The history reference scope last seen in the settings; a change
@@ -118,6 +119,9 @@ impl Driver {
                 state.activation = activation;
                 state.activation_changed();
             }
+        }
+        if changed.intersects(Topics::HOSTING | Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION | Topics::STARTUP) {
+            self.project_hosting();
         }
         if changed.intersects(Topics::EVENTS) {
             self.emit_events();
@@ -540,6 +544,75 @@ impl Driver {
             HistorySource { history: Some(Rc::clone(history)), context, head },
             total,
         );
+    }
+
+    /// The accounts page, the active repository's hosting and its linked
+    /// pull requests; follows the active repository and its remotes.
+    fn project_hosting(&self) {
+        let Some(services) = self.app.services() else { return };
+        {
+            let mut state = self.hosting.borrow_mut();
+            if state.hosting.is_none() {
+                state.hosting = Some(Rc::clone(&services.hosting));
+                state.repository_hosting = Some(Rc::clone(&services.repository_hosting));
+            }
+            let revision = services.hosting.revision();
+            if state.credential_revision != Some(revision) {
+                state.credential_revision = Some(revision);
+                services.hosting.read_credentials();
+            }
+        }
+        let remotes: Vec<gitlama_contract::hosting::NativeHostingRemote> = services
+            .workspace
+            .current()
+            .map(|session| {
+                session
+                    .snapshot
+                    .refs
+                    .remotes
+                    .iter()
+                    .map(|remote| gitlama_contract::hosting::NativeHostingRemote {
+                        name: remote.name.clone(),
+                        url: String::from_utf8_lossy(&remote.display_url).into_owned(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        services.repository_hosting.update(services.workspace.active_canonical(), remotes);
+        let accounts = crate::hosting_state::accounts_value(&services.hosting, &services.hosting.credentials());
+        let repository = services.repository_hosting.state_value();
+        let linked = serde_json::Value::Array(
+            services
+                .repository_hosting
+                .linked_pull_requests()
+                .iter()
+                .map(|linked| {
+                    let mut value = gitlama_workbench::hosting::pull_value(&linked.pull);
+                    value["authored"] = serde_json::Value::Bool(linked.authored);
+                    value["viaBranch"] = serde_json::Value::Bool(linked.via_branch);
+                    value
+                })
+                .collect(),
+        );
+        let mut state = self.hosting.borrow_mut();
+        if state.accounts != accounts {
+            state.accounts = accounts;
+            state.accounts_changed();
+        }
+        if state.repository != repository || state.linked != linked {
+            state.repository = repository;
+            state.linked = linked;
+            state.repository_changed();
+        }
+    }
+
+    /// Shows the outcome of a hosting accounts action ("" when it succeeded).
+    pub(crate) fn hosting_result(&self, failure: String) {
+        let mut state = self.hosting.borrow_mut();
+        if state.failure != failure {
+            state.failure = failure;
+            state.failure_changed();
+        }
     }
 
     pub(crate) fn project_inspector(&self) {

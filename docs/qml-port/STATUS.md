@@ -151,6 +151,15 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   run time; it is NOT compiled or tested yet (no macOS here) and packaging must ship
   Sparkle.framework with `SUPublicEDKey`. The Updates category always shows (Flutter hid it
   where unsupported; only development builds are affected).
+- Hosting (part 1): accounts and repository binding in Rust (`workbench/src/hosting.rs`:
+  stored accounts validated at start, save/remove with credential cleanup, sign-in through
+  OAuth or the GitHub/GitLab CLI followed every half second, binding override or automatic
+  resolution, paged resources, batched branch pull-request lookups with pending/moved
+  rechecks, head checks, linked pull requests); Settings › Hosting accounts (cards with
+  enabled/background refresh, reauthorize, remove; add form with preset defaults, CLI
+  detection, setup guide; sign-in progress with the device code) and Repository link. Not
+  signed in against a real provider here. The persistent link cache is not ported (links are
+  looked up again each run).
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):

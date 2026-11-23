@@ -22,6 +22,8 @@ MeridianSettingsDialog {
     readonly property var categories: [
         ["appearance", "palette", "settingsAppearance", "settingsAppearanceDetail"],
         ["git", "branch", "settingsGit", "settingsGitDetail"],
+        ["integrations", "cloud", "settingsIntegrations", "settingsIntegrationsDetail"],
+        ["repositoryBinding", "link", "settingsRepositoryBinding", "settingsRepositoryBindingDetail"],
         ["customCommands", "command", "settingsCustomCommands", "settingsCustomCommandsDetail"],
         ["diffView", "side-by-side", "settingsDiffView", "settingsDiffViewDetail"],
         ["diffRenderer", "file-diff", "settingsDiffRenderer", "settingsDiffRendererDetail"],
@@ -241,6 +243,23 @@ MeridianSettingsDialog {
             color: Theme.colors.inkMuted
             wrapMode: Text.Wrap
             elide: Text.ElideNone
+        }
+    }
+
+    // Hosting accounts ---------------------------------------------------------
+    MeridianSettingsGroup {
+        HostingSettings {
+            width: parent.width
+            section: "accounts"
+        }
+    }
+
+    // Repository binding -------------------------------------------------------
+    MeridianSettingsGroup {
+        HostingSettings {
+            width: parent.width
+            section: "binding"
+            onOpenAccounts: dialog.currentPage = dialog.categories.findIndex(c => c[0] === "integrations")
         }
     }
 

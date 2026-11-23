@@ -209,6 +209,10 @@ fn main() {
     gitlama_qt::PatchState::attach_qobject(&patches);
     patches.borrow_mut().commands = Some(commands.clone());
 
+    let hosting = Rc::new(RefCell::new(gitlama_qt::HostingState::default()));
+    gitlama_qt::HostingState::attach_qobject(&hosting);
+    hosting.borrow_mut().commands = Some(commands.clone());
+
     let line_selection = Rc::new(RefCell::new(gitlama_qt::LineSelectionState::default()));
     gitlama_qt::LineSelectionState::attach_qobject(&line_selection);
     line_selection.borrow_mut().commands = Some(commands.clone());
@@ -222,6 +226,7 @@ fn main() {
         inspector_blame: Rc::clone(&inspector_blame),
         operations: Rc::clone(&operations),
         patches: Rc::clone(&patches),
+        hosting: Rc::clone(&hosting),
         line_selection: Rc::clone(&line_selection),
         line_rows: Rc::clone(&line_rows),
         conflicts: Rc::clone(&conflicts),
@@ -297,6 +302,7 @@ fn main() {
         ("operations", operations.borrow().as_qvariant()),
         ("inspectorBlame", inspector_blame.borrow().as_qvariant()),
         ("patches", patches.borrow().as_qvariant()),
+        ("hosting", hosting.borrow().as_qvariant()),
         ("lineSelection", line_selection.borrow().as_qvariant()),
         ("lineRows", line_rows.borrow().as_qvariant()),
     ];

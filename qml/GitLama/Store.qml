@@ -41,6 +41,10 @@ QtObject {
     /// The OperationsState bridge (logbook, activity).
     property var operations: null
     property var patches: null
+    /// Hosting: accounts, the active repository's binding and resources.
+    property var hosting: null
+    /// The accounts page (development screenshots drive its form).
+    property var hostingSettings: null
     property var lineSelection: null
     property var lineRows: null
     /// The workspace shell, which owns the floating panels.
@@ -107,6 +111,12 @@ QtObject {
             // inspectorFileMenu:<file>[=<action>]
             const parts = argument.split("=")
             inspectorView.runFileAction(Number(parts[0]), parts[1] ?? "")
+        } else if (name === "hostingForm" && hostingSettings) {
+            // hostingForm:<preset>: opens the add-account form for a preset.
+            hostingSettings.addExpanded = true
+            hostingSettings.selectPreset(argument.length > 0 ? argument : "github")
+        } else if (name === "hostingGuide" && hostingSettings) {
+            hostingSettings.showGuide()
         } else if (name === "drop" && workspace) {
             // drop:<path>|<path>…: as if the paths were dropped on the window.
             workspace.openDropped(argument.split("|"))

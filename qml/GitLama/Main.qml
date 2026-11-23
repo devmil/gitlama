@@ -28,6 +28,7 @@ Window {
     required property var conflictRows
     required property var operations
     required property var patches
+    required property var hosting
     required property var lineSelection
     required property var lineRows
     required property var inspectorBlame
@@ -106,6 +107,7 @@ Window {
         Store.conflictRows = conflictRows
         Store.operations = operations
         Store.patches = patches
+        Store.hosting = hosting
         Store.lineSelection = lineSelection
         Store.lineRows = lineRows
         Store.inspectorBlame = inspectorBlame

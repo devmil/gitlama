@@ -28,6 +28,7 @@ pub mod entry;
 pub mod extensions;
 pub mod file_actions;
 pub mod history;
+pub mod hosting;
 pub mod history_mutations;
 pub mod history_rows;
 pub mod images;
