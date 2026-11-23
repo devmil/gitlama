@@ -22,12 +22,44 @@ mod workflows_state {
         pub(crate) file_browser: String,
         /// A snapshot being saved: {running, started, files, total, writing}.
         pub(crate) archive: Value,
+        /// The named snapshots panel (snapshots.rs panel_value).
+        pub(crate) snapshots: Value,
     }
 
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
         qproperty!("fileBrowser", Member = file_browser, Notify = file_browser_changed);
         qproperty!("archive", Member = archive, Notify = archive_changed);
+        qproperty!("snapshots", Member = snapshots, Notify = snapshots_changed);
+
+        #[qsignal]
+        pub fn snapshots_changed(&mut self);
+
+        /// Named snapshots: `action` is load, more, create, restore, branch,
+        /// delete or select; `options` carries id, name, includeUntracked,
+        /// keepIndex.
+        #[qslot]
+        fn snapshot(&self, action: String, options: Value) {
+            self.with_services(move |services| {
+                let snapshots = Rc::clone(&services.snapshots);
+                let id = options["id"].as_str().and_then(|id| id.parse::<u64>().ok());
+                match (action.as_str(), id) {
+                    ("select", Some(id)) => snapshots.select(id),
+                    ("load", _) => rt::spawn_detached(async move { snapshots.load(true).await }),
+                    ("more", _) => rt::spawn_detached(async move { snapshots.load(false).await }),
+                    ("create", _) => {
+                        let name = options["name"].as_str().unwrap_or_default().to_owned();
+                        let untracked = options["includeUntracked"].as_bool().unwrap_or(true);
+                        let keep = options["keepIndex"].as_bool().unwrap_or(false);
+                        rt::spawn_detached(async move { snapshots.create(name, untracked, keep).await })
+                    }
+                    ("restore", Some(id)) => rt::spawn_detached(async move { snapshots.restore(id).await }),
+                    ("branch", Some(id)) => rt::spawn_detached(async move { snapshots.branch(id).await }),
+                    ("delete", Some(id)) => rt::spawn_detached(async move { snapshots.delete(id).await }),
+                    _ => {}
+                }
+            });
+        }
 
         #[qsignal]
         pub fn archive_changed(&mut self);

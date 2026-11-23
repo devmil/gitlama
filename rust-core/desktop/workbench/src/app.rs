@@ -53,6 +53,7 @@ pub struct Services {
     pub inspector_actions: Rc<crate::inspector_actions::InspectorActions>,
     pub patches: Rc<crate::patches::PatchService>,
     pub archives: Rc<crate::archive::ArchiveService>,
+    pub snapshots: Rc<crate::snapshots::SnapshotService>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -244,6 +245,14 @@ impl Services {
         );
         let patches = crate::patches::PatchService::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&history), Rc::clone(&changes));
         let archives = crate::archive::ArchiveService::new(Rc::clone(&calls), Rc::clone(&workspace), Rc::clone(&notices), notifier.clone());
+        let snapshots = crate::snapshots::SnapshotService::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&navigator),
+            Rc::clone(&prompts),
+            Rc::clone(&notices),
+            notifier.clone(),
+        );
         let extensions =
             crate::extensions::Extensions::new(
                 Rc::clone(&calls),
@@ -260,6 +269,7 @@ impl Services {
             inspector_actions,
             patches,
             archives,
+            snapshots,
             operations,
             conflicts,
             rebases,

@@ -74,6 +74,21 @@ Item {
             worktreeDeleteConfirm.path = payload.path ?? ""
             worktreeDeleteConfirm.open()
             return
+        case "confirmSnapshotRestore":
+            snapshotRestore.ask(id, payload)
+            return
+        case "chooseSnapshotBranch":
+            snapshotBranch.promptId = id
+            snapshotBranch.branches = payload.branches ?? []
+            snapshotBranchField.text = ""
+            snapshotBranch.open()
+            snapshotBranchField.forceActiveFocus()
+            return
+        case "confirmSnapshotDelete":
+            snapshotDelete.promptId = id
+            snapshotDelete.name = payload.name ?? ""
+            snapshotDelete.open()
+            return
         case "ignorePath":
             ignoreDialog.ask(id, payload)
             return
@@ -263,6 +278,7 @@ Item {
         case "cloneRepository": cloneRepository(); return
         case "showLicenses": showLicenses(); return
         case "showShortcutReference": shortcutReference.show(); return
+        case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
         case "showRepositoryDetails": if (Store.shell) Store.shell.showRepositoryDetails(); return
         case "saveCommitArchive": {
             const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
@@ -671,6 +687,136 @@ Item {
         onConfirmed: { actions.answer(promptId, true); promptId = -1 }
         onCancelled: { actions.answer(promptId, false); promptId = -1 }
     }
+    // Replacing the current changes with a snapshot's (the Dart
+    // NamedSnapshotRestoreDialog).
+    MeridianDialog {
+        id: snapshotRestore
+        property int promptId: -1
+        property var payload: ({})
+        property bool acknowledged: false
+        function ask(id, value) {
+            promptId = id
+            payload = value
+            acknowledged = false
+            open()
+        }
+        function answer(value) {
+            const pending = promptId
+            promptId = -1
+            close()
+            actions.answer(pending, value)
+        }
+        title: L10n.tn("namedSnapshotRestoreTitle", { name: payload.name ?? "" })
+        description: L10n.t("namedSnapshotRestoreSummary")
+        submitDisabled: !acknowledged
+        onSubmitted: answer(true)
+        onRejected: { if (promptId >= 0) { actions.answer(promptId, false); promptId = -1 } }
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s6
+            Column {
+                visible: (snapshotRestore.payload.paths ?? []).length > 0
+                width: parent.width
+                spacing: Theme.space.s3
+                ListWell {
+                    width: parent.width
+                    implicitHeight: Math.min(view.contentHeight, maxHeight)
+                    model: snapshotRestore.payload.paths ?? []
+                    header: Item {
+                        width: parent ? parent.width : 0
+                        height: restoreCount.implicitHeight + Theme.space.s4
+                        MeridianText {
+                            id: restoreCount
+                            x: Theme.space.s6
+                            y: Theme.space.s4
+                            role: MeridianText.Caption
+                            color: Theme.colors.inkMuted
+                            text: L10n.tn("namedSnapshotRestoreFileCount", { count: (snapshotRestore.payload.paths ?? []).length })
+                        }
+                    }
+                    delegate: FileRow {
+                        required property string modelData
+                        width: ListView.view ? ListView.view.width : 0
+                        path: modelData
+                        activeFocusOnTab: false
+                        leading: Component { MeridianIcon { name: "file"; iconSize: MeridianIcon.Small; color: Theme.colors.inkMuted } }
+                    }
+                }
+                MeridianText {
+                    visible: snapshotRestore.payload.truncated === true
+                    role: MeridianText.Caption
+                    color: Theme.colors.inkMuted
+                    text: L10n.t("namedSnapshotPathsTruncated")
+                }
+            }
+            MeridianText {
+                width: parent.width
+                role: MeridianText.Caption
+                color: Theme.colors.inkMuted
+                wrapMode: Text.Wrap
+                text: L10n.t("namedSnapshotRestoreStash")
+            }
+            MeridianCheckbox {
+                text: L10n.t("namedSnapshotAcknowledgeReplacement")
+                checked: snapshotRestore.acknowledged
+                onToggled: snapshotRestore.acknowledged = checked
+            }
+        }
+        actions: [
+            MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotRestore.reject() },
+            MeridianButton {
+                text: L10n.t("namedSnapshotRestore")
+                variant: MeridianButton.Danger
+                enabled: snapshotRestore.acknowledged
+                onClicked: snapshotRestore.answer(true)
+            }
+        ]
+    }
+    // A branch from a snapshot.
+    MeridianDialog {
+        id: snapshotBranch
+        property int promptId: -1
+        property var branches: []
+        readonly property string name: snapshotBranchField.text.trim()
+        function answer(value) {
+            const pending = promptId
+            promptId = -1
+            close()
+            actions.answer(pending, value)
+        }
+        widthClass: MeridianDialog.Form
+        title: L10n.t("namedSnapshotBranchTitle")
+        submitDisabled: name.length === 0
+        onSubmitted: answer(name)
+        onRejected: { if (promptId >= 0) { actions.answer(promptId, null); promptId = -1 } }
+        ReferenceField {
+            id: snapshotBranchField
+            width: parent ? parent.width : 0
+            label: L10n.t("refMutationName")
+            names: snapshotBranch.branches
+        }
+        actions: [
+            MeridianButton { text: L10n.t("cancel"); variant: MeridianButton.Quiet; onClicked: snapshotBranch.reject() },
+            MeridianButton {
+                text: L10n.t("namedSnapshotBranch")
+                variant: MeridianButton.Primary
+                enabled: snapshotBranch.name.length > 0
+                onClicked: snapshotBranch.answer(snapshotBranch.name)
+            }
+        ]
+    }
+    MeridianConfirm {
+        id: snapshotDelete
+        property int promptId: -1
+        property string name
+        title: L10n.t("namedSnapshotDeleteTitle")
+        description: L10n.tn("namedSnapshotDeleteMessage", { name: name })
+        confirmLabel: L10n.t("delete")
+        cancelLabel: L10n.t("cancel")
+        destructive: true
+        onConfirmed: { actions.answer(promptId, true); promptId = -1 }
+        onCancelled: { actions.answer(promptId, false); promptId = -1 }
+    }
     IgnoreDialog {
         id: ignoreDialog
         onAnswered: (id, entry) => actions.answer(id, entry)
@@ -815,6 +961,12 @@ Item {
                 const selected = (Store.history.state.selectedIds ?? []).filter(id => id !== "wip")
                 Store.workflows.saveCommitArchive(selected[0], Store.workflows.archiveName(Store.workspace.active.label ?? "", selected[0]), argument)
             }
+            else if (name === "snapshotAction") {
+                const entry = (Store.workflows.snapshots.entries ?? [])[0]
+                if (entry) Store.workflows.snapshot(argument, { id: entry.id })
+            }
+            else if (name === "snapshotCreate")
+                Store.workflows.snapshot("create", { name: argument, includeUntracked: true, keepIndex: false })
             else if (name === "about")
                 showAbout()
             else if (name === "submitIgnore")

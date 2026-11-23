@@ -56,6 +56,7 @@ SidebarSectionRow 1.0 SidebarSectionRow.qml
 SidebarGroupLabel 1.0 SidebarGroupLabel.qml
 ShortcutReferenceDialog 1.0 ShortcutReferenceDialog.qml
 SidebarRail 1.0 SidebarRail.qml
+SnapshotsPanel 1.0 SnapshotsPanel.qml
 RefChip 1.0 RefChip.qml
 AuthorAvatar 1.0 AuthorAvatar.qml
 HistoryRow 1.0 HistoryRow.qml

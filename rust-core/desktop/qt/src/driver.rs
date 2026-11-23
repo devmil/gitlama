@@ -137,10 +137,15 @@ impl Driver {
                 "total": progress.total,
                 "writing": progress.writing,
             });
+            let snapshots = gitlama_workbench::snapshots::panel_value(&services.snapshots.panel());
             let mut workflows = self.workflows.borrow_mut();
             if workflows.archive != value {
                 workflows.archive = value;
                 workflows.archive_changed();
+            }
+            if workflows.snapshots != snapshots {
+                workflows.snapshots = snapshots;
+                workflows.snapshots_changed();
             }
         }
         if changed.intersects(Topics::OPERATIONS | Topics::WORKSPACE)

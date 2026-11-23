@@ -10,8 +10,12 @@ Rectangle {
     color: Theme.colors.ground
 
     readonly property var active: Store.workspace.active
-    property bool operationsVisible: false
-    property bool operationsMounted: false
+    /// The one floating panel shown: operations, snapshots, extensions,
+    /// integrations, powerTools, or "".
+    property string panel: ""
+    /// Panels still built (one plays its exit while another enters).
+    property var mounted: ({})
+    readonly property bool operationsVisible: panel === "operations"
     property bool activityVisible: false
     readonly property var activityIsland: activity.item
     /// The operation the toolbar's Compass shows, with its progress.
@@ -35,14 +39,28 @@ Rectangle {
         }
     }
 
-    function toggleOperations() {
-        if (operationsVisible) {
-            operationsVisible = false
-        } else {
-            operationsMounted = true
-            operationsVisible = true
+    function togglePanel(name) {
+        if (panel === name) {
+            panel = ""
+            return
         }
+        const next = Object.assign({}, mounted)
+        next[name] = true
+        mounted = next
+        panel = name
     }
+    function closePanel(name) {
+        if (panel === name)
+            panel = ""
+    }
+    function unmountPanel(name) {
+        if (panel === name)
+            return
+        const next = Object.assign({}, mounted)
+        delete next[name]
+        mounted = next
+    }
+    function toggleOperations() { togglePanel("operations") }
     Component.onCompleted: Store.shell = shell
 
     function command(id, options) {
@@ -131,15 +149,28 @@ Rectangle {
     // The logbook, below the toolbar at the trailing edge.
     Loader {
         id: logbook
-        active: shell.operationsMounted
+        active: shell.mounted.operations === true
         x: shell.width - width - Theme.space.s3
         y: toolbar.height + tabs.height + Theme.space.s2
         z: 10
         sourceComponent: LogbookPanel {
-            shown: shell.operationsVisible
-            onCloseRequested: shell.operationsVisible = false
-            onHidden: shell.operationsMounted = false
+            shown: shell.panel === "operations"
+            onCloseRequested: shell.closePanel("operations")
+            onHidden: shell.unmountPanel("operations")
             onShowDetails: key => shell.activityVisible = true
+        }
+    }
+    // Named snapshots, in the same place.
+    Loader {
+        active: shell.mounted.snapshots === true
+        x: shell.width - width - Theme.space.s3
+        y: toolbar.height + tabs.height + Theme.space.s2
+        z: 10
+        sourceComponent: SnapshotsPanel {
+            shown: shell.panel === "snapshots"
+            availableHeight: shell.height - y - Metrics.statusBarHeight - Theme.space.s4
+            onCloseRequested: shell.closePanel("snapshots")
+            onHidden: shell.unmountPanel("snapshots")
         }
     }
 }
