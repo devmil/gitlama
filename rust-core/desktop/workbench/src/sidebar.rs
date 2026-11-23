@@ -662,8 +662,30 @@ impl Filter {
 struct Worktrees {
     revision: u64,
     session: u64,
+    /// What the inventory was read for: a newer snapshot with the same inputs keeps it.
+    inputs: Rc<InventoryInputs>,
     inventory: Option<Rc<NativeExtensionInventory>>,
     loading: bool,
+}
+
+/// What the worktree, submodule and Git LFS inventory depends on. A refresh that finds these
+/// as they were (a watched file that did not change the status, the scan that closes the
+/// watch gap) does not run the inventory's Git commands again.
+#[derive(PartialEq)]
+struct InventoryInputs {
+    status: Option<gitlama_contract::dto::NativeRepositoryStatus>,
+    counts: gitlama_contract::dto::NativeRepositoryRefCounts,
+    branches: Vec<gitlama_contract::dto::NativeRepositoryReference>,
+}
+
+impl InventoryInputs {
+    fn of(snapshot: &NativeRepositorySnapshot) -> Self {
+        Self {
+            status: snapshot.status.clone(),
+            counts: snapshot.ref_counts.clone(),
+            branches: snapshot.refs.branches.clone(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -807,12 +829,17 @@ impl SidebarService {
             return;
         }
         {
-            let inner = self.inner.borrow();
-            if let Some(worktrees) = &inner.worktrees
+            let mut inner = self.inner.borrow_mut();
+            if let Some(worktrees) = inner.worktrees.as_mut()
                 && worktrees.session == session
-                && worktrees.revision == snapshot.revision
             {
-                return;
+                if worktrees.revision == snapshot.revision {
+                    return;
+                }
+                if *worktrees.inputs == InventoryInputs::of(snapshot) {
+                    worktrees.revision = snapshot.revision;
+                    return;
+                }
             }
         }
         let previous = self
@@ -824,11 +851,17 @@ impl SidebarService {
         self.inner.borrow_mut().worktrees = Some(Worktrees {
             revision: snapshot.revision,
             session,
+            inputs: Rc::new(InventoryInputs::of(snapshot)),
             inventory: previous,
             loading: true,
         });
         let this = Rc::clone(self);
-        let revision = snapshot.revision;
+        let inputs = self
+            .inner
+            .borrow()
+            .worktrees
+            .as_ref()
+            .map(|worktrees| Rc::clone(&worktrees.inputs));
         let request = self
             .calls
             .repository_session_extensions(session, generation);
@@ -836,9 +869,13 @@ impl SidebarService {
             let result = request.await;
             let inventory = result.ok().and_then(|result| result.inventory).map(Rc::new);
             let mut inner = this.inner.borrow_mut();
+            // Answers the load started for these inputs, even when snapshots with the same
+            // inputs arrived meanwhile.
             if let Some(worktrees) = inner.worktrees.as_mut()
                 && worktrees.session == session
-                && worktrees.revision == revision
+                && inputs
+                    .as_ref()
+                    .is_some_and(|inputs| Rc::ptr_eq(inputs, &worktrees.inputs))
             {
                 worktrees.loading = false;
                 if inventory.is_some() {

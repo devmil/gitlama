@@ -14,6 +14,21 @@ Item {
 
     /// A DiffModel.
     property var model: null
+
+    // A diff line's number in the gutter.
+    component GutterNumber: MeridianText {
+        property int value: 0
+        width: GitLamaLayout.diffGutterWidth
+        // A wrapped line keeps its number on the first row.
+        height: GitLamaLayout.diffLineHeight
+        rightPadding: Theme.space.s4
+        horizontalAlignment: Text.AlignRight
+        verticalAlignment: Text.AlignVCenter
+        role: MeridianText.CodeSm
+        tabular: true
+        text: value > 0 ? String(value) : ""
+        color: Theme.colors.inkMuted
+    }
     property string layout: "unified"
     property bool showIndicators: true
     /// Long lines wrap instead of scrolling sideways.
@@ -510,9 +525,9 @@ Item {
             width: list.width
             /// The text point at `x`, `y` of the row, on `side` when given (a drag stays on it).
             function textPoint(x, y, side) {
-                const cell = !view.split ? firstCell
-                    : side === "old" ? firstCell : side === "new" ? secondCell
-                    : x >= secondCell.x ? secondCell : firstCell
+                const cell = !view.split || !line.secondCell ? firstCell
+                    : side === "old" ? firstCell : side === "new" ? line.secondCell
+                    : x >= secondCellLoader.x ? line.secondCell : firstCell
                 const at = line.mapToItem(cell, x, y)
                 return cell.textPoint(at.x, at.y)
             }
@@ -520,7 +535,9 @@ Item {
                 return line.text.length
             }
             /// The tallest wrapped text of the row's cells.
-            readonly property real wrappedHeight: Math.max(GitLamaLayout.diffLineHeight, firstCell.textHeight, secondCell.visible ? secondCell.textHeight : 0)
+            /// The split layout's new side, when shown.
+            readonly property Cell secondCell: secondCellLoader.item as Cell
+            readonly property real wrappedHeight: Math.max(GitLamaLayout.diffLineHeight, firstCell.textHeight, secondCell ? secondCell.textHeight : 0)
             height: loading ? GitLamaLayout.diffLineHeight
                 : view.wrap && lineRow ? wrappedHeight
                 : kind === "hunk" ? GitLamaLayout.hunkHeaderHeight
@@ -563,84 +580,96 @@ Item {
             }
 
             // A file's header: activating it folds or unfolds the file.
-            Item {
-                visible: line.kind === "file"
+            // Built only for rows of its kind; most rows are lines.
+            Loader {
+                active: line.kind === "file"
                 anchors.fill: parent
-                Accessible.role: Accessible.Button
-                Accessible.name: view.collapsed[line.stableId] ? L10n.t("diffExpandFile") : L10n.t("diffCollapseFile")
-                Accessible.description: line.text
-                Accessible.ignored: !visible
-                MeridianIcon {
-                    id: fileChevron
-                    x: Theme.space.s4
-                    anchors.verticalCenter: parent.verticalCenter
-                    name: "chevron-down"
-                    iconSize: MeridianIcon.Small
-                    rotation: view.collapsed[line.stableId] ? -90 : 0
-                    Behavior on rotation { NumberAnimation { duration: Motion.quick } }
-                }
-                MeridianText {
-                    x: fileChevron.x + fileChevron.width + Theme.space.s3
-                    width: parent.width - x - Theme.space.s3
-                    anchors.verticalCenter: parent.verticalCenter
-                    role: MeridianText.CodeSm
-                    text: line.text
-                    elide: Text.ElideRight
+                sourceComponent: Item {
+                    anchors.fill: parent
+                    Accessible.role: Accessible.Button
+                    Accessible.name: view.collapsed[line.stableId] ? L10n.t("diffExpandFile") : L10n.t("diffCollapseFile")
+                    Accessible.description: line.text
+                    Accessible.ignored: !visible
+                    MeridianIcon {
+                        id: fileChevron
+                        x: Theme.space.s4
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: "chevron-down"
+                        iconSize: MeridianIcon.Small
+                        rotation: view.collapsed[line.stableId] ? -90 : 0
+                        Behavior on rotation { NumberAnimation { duration: Motion.quick } }
+                    }
+                    MeridianText {
+                        x: fileChevron.x + fileChevron.width + Theme.space.s3
+                        width: parent.width - x - Theme.space.s3
+                        anchors.verticalCenter: parent.verticalCenter
+                        role: MeridianText.CodeSm
+                        text: line.text
+                        elide: Text.ElideRight
+                    }
                 }
             }
 
             // A hunk's header: its range, then the code it is in.
-            DiffHunkHeader {
-                visible: line.kind === "hunk"
-                width: parent.width
-                height: parent.height
-                diff: view
-                stableId: line.kind === "hunk" ? line.stableId : ""
-                range: line.hunkRange
-                text: line.hunkText
+            // Built only for rows of its kind; most rows are lines.
+            Loader {
+                active: line.kind === "hunk"
+                anchors.fill: parent
+                sourceComponent: DiffHunkHeader {
+                    diff: view
+                    stableId: line.kind === "hunk" ? line.stableId : ""
+                    range: line.hunkRange
+                    text: line.hunkText
+                }
             }
 
-            MeridianText {
-                visible: line.kind === "noNewline"
+            // Built only for rows of its kind; most rows are lines.
+            Loader {
+                active: line.kind === "noNewline"
                 x: Theme.space.s5
                 anchors.verticalCenter: parent.verticalCenter
-                role: MeridianText.Caption
-                text: L10n.t("diffNoNewline")
-                color: Theme.colors.inkMuted
+                sourceComponent: MeridianText {
+                    role: MeridianText.Caption
+                    text: L10n.t("diffNoNewline")
+                    color: Theme.colors.inkMuted
+                }
             }
 
             // Binary, image, submodule, mode-only and too-large files: a
             // binary or too large file names its size and type.
-            MeridianEmptyState {
-                id: fallbackState
-                readonly property int byteCount: {
-                    const size = Number(line.text.split(":")[0])
-                    return line.text.length > 0 && Number.isInteger(size) ? size : -1
-                }
-                readonly property string extension: {
-                    const name = (line.newPath || line.oldPath).split("/").pop()
-                    const dot = name.lastIndexOf(".")
-                    return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : L10n.t("diffFileTypeUnknown")
-                }
-                visible: line.fallback && !line.loading
+            // Built only for rows of its kind; most rows are lines.
+            Loader {
+                active: line.fallback && !line.loading
                 anchors.fill: parent
-                compact: true
-                iconName: line.kind === "image" ? "image" : line.kind === "submodule" ? "box"
-                    : line.kind === "tooLarge" ? "triangle-alert" : "file-diff"
-                title: line.invalid ? L10n.t("diffEncodingInvalid")
-                    : line.kind === "binary" ? L10n.t("diffBinaryFallback")
-                    : line.kind === "image" ? L10n.t("diffImageFallback")
-                    : line.kind === "submodule" ? L10n.t("diffSubmoduleFallback")
-                    : line.kind === "modeOnly" ? L10n.tn("diffModeOnlyFallback", { modes: line.text })
-                    : line.text.endsWith(":0:0") ? L10n.t("diffLargeFileInformation") : L10n.t("diffTooLargeFallback")
-                message: byteCount >= 0 && (line.kind === "tooLarge" || line.kind === "binary")
-                    ? L10n.tn("diffFileSize", { size: Labels.byteSize(byteCount) }) + "\n" + L10n.tn("diffFileType", { extension: extension })
-                    : ""
-                MeridianButton {
-                    objectName: "diff-show-as-text"
-                    visible: line.kind === "binary" && view.canShowAsText
-                    text: L10n.t("showBinaryAsText")
-                    onClicked: view.showAsText()
+                sourceComponent: MeridianEmptyState {
+                    id: fallbackState
+                    readonly property int byteCount: {
+                        const size = Number(line.text.split(":")[0])
+                        return line.text.length > 0 && Number.isInteger(size) ? size : -1
+                    }
+                    readonly property string extension: {
+                        const name = (line.newPath || line.oldPath).split("/").pop()
+                        const dot = name.lastIndexOf(".")
+                        return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : L10n.t("diffFileTypeUnknown")
+                    }
+                    compact: true
+                    iconName: line.kind === "image" ? "image" : line.kind === "submodule" ? "box"
+                        : line.kind === "tooLarge" ? "triangle-alert" : "file-diff"
+                    title: line.invalid ? L10n.t("diffEncodingInvalid")
+                        : line.kind === "binary" ? L10n.t("diffBinaryFallback")
+                        : line.kind === "image" ? L10n.t("diffImageFallback")
+                        : line.kind === "submodule" ? L10n.t("diffSubmoduleFallback")
+                        : line.kind === "modeOnly" ? L10n.tn("diffModeOnlyFallback", { modes: line.text })
+                        : line.text.endsWith(":0:0") ? L10n.t("diffLargeFileInformation") : L10n.t("diffTooLargeFallback")
+                    message: byteCount >= 0 && (line.kind === "tooLarge" || line.kind === "binary")
+                        ? L10n.tn("diffFileSize", { size: Labels.byteSize(byteCount) }) + "\n" + L10n.tn("diffFileType", { extension: extension })
+                        : ""
+                    MeridianButton {
+                        objectName: "diff-show-as-text"
+                        visible: line.kind === "binary" && view.canShowAsText
+                        text: L10n.t("showBinaryAsText")
+                        onClicked: view.showAsText()
+                    }
                 }
             }
 
@@ -682,21 +711,14 @@ Item {
                 Row {
                     visible: !cell.blank
                     height: parent.height
-                    Repeater {
-                        model: !cell.active ? [] : cell.unified ? [line.oldLine, line.newLine] : [cell.number]
-                        delegate: MeridianText {
-                            required property int modelData
-                            width: GitLamaLayout.diffGutterWidth
-                            // A wrapped line keeps its number on the first row.
-                            height: GitLamaLayout.diffLineHeight
-                            rightPadding: Theme.space.s4
-                            horizontalAlignment: Text.AlignRight
-                            verticalAlignment: Text.AlignVCenter
-                            role: MeridianText.CodeSm
-                            tabular: true
-                            text: modelData > 0 ? String(modelData) : ""
-                            color: Theme.colors.inkMuted
-                        }
+                    // The line numbers: old and new on a unified row, the side's own when split.
+                    // Two fixed texts rather than a repeater, which rebuilt them on every rebind.
+                    GutterNumber {
+                        value: !cell.active ? 0 : cell.unified ? line.oldLine : cell.number
+                    }
+                    GutterNumber {
+                        visible: cell.unified
+                        value: cell.active && cell.unified ? line.newLine : 0
                     }
                     MeridianText {
                         width: GitLamaLayout.diffSignWidth
@@ -803,14 +825,18 @@ Item {
                     height: parent.height
                     color: Theme.colors.line
                 }
-                Cell {
-                    id: secondCell
-                    visible: view.split
-                    active: view.split && firstCell.active
+                // The new side exists only in the split layout.
+                Loader {
+                    id: secondCellLoader
+                    active: view.split
                     width: (parent.width - Metrics.hairline) / 2
-                    unified: false
-                    oldSide: false
-                    runs: line.runsNew
+                    height: parent.height
+                    sourceComponent: Cell {
+                        active: firstCell.active
+                        unified: false
+                        oldSide: false
+                        runs: line.runsNew
+                    }
                 }
             }
 

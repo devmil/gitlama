@@ -303,6 +303,36 @@ struct RowView {
 }
 
 impl RowView {
+    /// The offsets in `ROLES` of the roles whose values differ from `other`'s.
+    fn changed_roles(&self, other: &Self) -> Vec<usize> {
+        let changed = [
+            self.stable_id != other.stable_id,
+            self.kind != other.kind,
+            self.loading != other.loading,
+            self.old_line != other.old_line,
+            self.new_line != other.new_line,
+            self.text != other.text,
+            self.runs_old != other.runs_old,
+            self.runs_new != other.runs_new,
+            self.marks != other.marks,
+            self.file_kind != other.file_kind,
+            self.old_path != other.old_path,
+            self.new_path != other.new_path,
+            self.selectable != other.selectable,
+            self.truncated != other.truncated,
+            self.invalid != other.invalid,
+            self.section_end != other.section_end,
+            self.hunk_range != other.hunk_range,
+            self.hunk_text != other.hunk_text,
+        ];
+        debug_assert_eq!(changed.len(), ROLES.len());
+        changed
+            .iter()
+            .enumerate()
+            .filter_map(|(offset, changed)| changed.then_some(offset))
+            .collect()
+    }
+
     fn loading(index: u64) -> Self {
         Self {
             stable_id: format!("loading-{index}"),
@@ -425,6 +455,8 @@ mod diff_model {
         palette: SyntaxPalette,
         total: i32,
         rows: RefCell<HashMap<i32, Rc<RowView>>>,
+        /// Rows QML was given as loading placeholders: they report every role once loaded.
+        placeholders: RefCell<HashSet<i32>>,
         shown_revision: u64,
         /// Text is read as Latin-1 instead of UTF-8.
         latin1: bool,
@@ -785,6 +817,7 @@ mod diff_model {
                 RowView::of(native, document, &self.palette, self.latin1)
             }) else {
                 document.ensure(row as u64);
+                self.placeholders.borrow_mut().insert(row);
                 return Rc::new(RowView::loading(row as u64));
             };
             let view = Rc::new(view);
@@ -792,17 +825,54 @@ mod diff_model {
             view
         }
 
+        /// Rows or colours arrived: every row QML has read is built again and reports only the
+        /// roles that changed (colours arriving leave the text, marks and numbers bound), and
+        /// the placeholders it was shown report every role. Rows it never read report nothing.
         fn refresh(&mut self) {
-            self.rows.borrow_mut().clear();
-            if self.total > 0 {
-                let top = self.create_index(0, 0, 0);
-                let bottom = self.create_index(self.total - 1, 0, 0);
-                self.data_changed(&top, &bottom);
+            let shown = std::mem::take(&mut *self.rows.borrow_mut());
+            let placeholders = std::mem::take(&mut *self.placeholders.borrow_mut());
+            let mut changes: Vec<(i32, Vec<usize>)> = Vec::new();
+            for (row, before) in shown {
+                if row >= self.total {
+                    continue;
+                }
+                let after = self.view(row);
+                let roles = after.changed_roles(&before);
+                if !roles.is_empty() {
+                    changes.push((row, roles));
+                }
+            }
+            let every: Vec<usize> = (0..ROLES.len()).collect();
+            for row in placeholders {
+                if row < self.total {
+                    changes.push((row, every.clone()));
+                }
+            }
+            changes.sort_by_key(|(row, _)| *row);
+            // Neighbouring rows with the same roles share one signal.
+            let mut index = 0;
+            while index < changes.len() {
+                let (first, roles) = &changes[index];
+                let mut last = *first;
+                let mut next = index + 1;
+                while next < changes.len()
+                    && changes[next].0 == last + 1
+                    && changes[next].1 == *roles
+                {
+                    last = changes[next].0;
+                    next += 1;
+                }
+                let top = self.create_index(*first, 0, 0);
+                let bottom = self.create_index(last, 0, 0);
+                let roles: Vec<i32> = roles
+                    .iter()
+                    .map(|offset| FIRST_ROLE + *offset as i32)
+                    .collect();
+                self.data_changed_roles(&top, &bottom, &roles);
+                index = next;
             }
         }
 
-        /// Shows `document` (None shows nothing). The same document only
-        /// refreshes when rows or colours arrived.
         /// Starts waiting to clear the shown rows: the publication to clear after, or None when
         /// a clear already waits or there were no rows to keep (cleared at once).
         pub fn defer_clear(&mut self) -> Option<u64> {
@@ -824,6 +894,8 @@ mod diff_model {
             }
         }
 
+        /// Shows `document` (None shows nothing). The same document only
+        /// refreshes when rows or colours arrived.
         pub fn publish(&mut self, document: Option<Rc<DiffDocument>>) {
             self.publications += 1;
             self.clear_pending = None;
@@ -848,6 +920,7 @@ mod diff_model {
             self.shown_revision = document.as_ref().map_or(0, |document| document.revision());
             self.document = document;
             self.rows.borrow_mut().clear();
+            self.placeholders.borrow_mut().clear();
             let previous = self.total;
             if total > previous {
                 self.begin_insert_rows(&QModelIndex::default(), previous, total - 1);

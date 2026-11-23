@@ -1038,7 +1038,8 @@ impl HistoryService {
             })
     }
 
-    fn restore_detail(&self) {
+    /// Shows the selected commit in the inspector again when it shows something else.
+    pub(crate) fn restore_detail(&self) {
         let Some(page) = self.inner.borrow().current.page.clone() else {
             return;
         };

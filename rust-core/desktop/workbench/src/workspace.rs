@@ -408,6 +408,9 @@ struct Inner {
     draining: HashSet<u64>,
     drain_tick: u64,
     heads: FollowedHeads,
+    /// The tab and snapshot History was last loaded for: entering History again keeps what it
+    /// shows while nothing History depends on changed.
+    history_basis: Option<(u64, Rc<NativeRepositorySnapshot>)>,
 }
 
 /// Window callbacks the workspace calls.
@@ -473,6 +476,7 @@ impl WorkspaceService {
                 draining: HashSet::new(),
                 drain_tick: 0,
                 heads: FollowedHeads::default(),
+                history_basis: None,
             }),
             drain: RefCell::new(PeriodicHandle::default()),
             drain_interval: Duration::from_millis(20),
@@ -2409,6 +2413,11 @@ impl WorkspaceService {
         };
         let kept = self.take_head_reveal(&tab);
         let reveal = reveal.or(kept);
+        if entering && reveal.is_none() && self.history_is_current(&tab, &session) {
+            self.history.restore_detail();
+            return;
+        }
+        self.inner.borrow_mut().history_basis = Some((tab_id, Rc::clone(&session.snapshot)));
         let this = Rc::clone(self);
         match reveal {
             Some(reveal) => rt::spawn_detached(async move {
@@ -2428,6 +2437,34 @@ impl WorkspaceService {
                 })
             }
         }
+    }
+
+    /// Whether History still shows `tab`'s complete graph and nothing it depends on changed
+    /// since it was loaded: switching back to History then reloads nothing, which on a large
+    /// repository rebuilt the graph, the selection and the inspected commit every time.
+    fn history_is_current(&self, tab: &Tab, session: &SessionState) -> bool {
+        let state = self.history.current();
+        if self.history.identity() != Some(session.identity)
+            || state.phase != crate::history::LoadPhase::Complete
+        {
+            return false;
+        }
+        let Some(page) = state.page.as_ref() else {
+            return false;
+        };
+        // A commit chosen elsewhere meanwhile (the sidebar) is selected by a load.
+        if let Some(selected) = &tab.navigation.selected_identity
+            && !page.selected_object_ids.contains(selected)
+        {
+            return false;
+        }
+        let inner = self.inner.borrow();
+        inner
+            .history_basis
+            .as_ref()
+            .is_some_and(|(basis_tab, basis)| {
+                *basis_tab == tab.id && !history_projection_changed(basis, &session.snapshot)
+            })
     }
 
     fn take_head_reveal(&self, tab: &Tab) -> Option<String> {
