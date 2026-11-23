@@ -240,9 +240,7 @@ fn display(bytes: &[u8]) -> Option<Display> {
     let mut utf16_at = vec![0; bytes.len() + 1];
     let mut units = 0;
     for (offset, ch) in source.char_indices() {
-        for byte in offset..offset + ch.len_utf8() {
-            utf16_at[byte] = units;
-        }
+        utf16_at[offset..offset + ch.len_utf8()].fill(units);
         if ch == '\t' {
             text.extend(std::iter::repeat_n(' ', TAB_WIDTH));
             units += TAB_WIDTH;

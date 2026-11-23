@@ -601,9 +601,7 @@ impl InspectorService {
     /// The synchronous start of [`Self::navigate`]: records `location` in
     /// the navigation and returns it when it still has to be shown.
     fn record(&self, location: Location, push: bool) -> Option<Location> {
-        if self.inner.borrow().identity.is_none() {
-            return None;
-        }
+        self.inner.borrow().identity?;
         let next = location.normalized();
         let mut inner = self.inner.borrow_mut();
         let shown = inner.navigation.current().cloned();
@@ -774,10 +772,9 @@ impl InspectorService {
         if target_changed
             && emit_target
             && previous.location.as_ref().map(|location| &location.target) != Some(&location.target)
+            && let Some(listener) = self.on_target.borrow().as_ref()
         {
-            if let Some(listener) = self.on_target.borrow().as_ref() {
-                listener(&location.target);
-            }
+            listener(&location.target);
         }
         self.publish(InspectorState {
             location: Some(location.clone()),
@@ -1637,11 +1634,7 @@ impl InspectorService {
         };
         let mut result = load(change).await?;
         if change.is_none()
-            && result
-                .failure
-                .as_ref()
-                .map(|failure| FailureCode::from(failure))
-                == Some(FailureCode::TooLarge)
+            && result.failure.as_ref().map(FailureCode::from) == Some(FailureCode::TooLarge)
         {
             // Two distant commits can differ by more than one patch may hold;
             // their file list still loads, and so does each file's diff.

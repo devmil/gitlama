@@ -443,6 +443,8 @@ impl ConflictService {
             .map(|(identity, _, _)| (identity.native_id, identity.generation))
             .collect();
         sessions.retain(|key, _| open.contains(key));
+        // A new session starts loading, unlike its default.
+        #[allow(clippy::unwrap_or_default)]
         let session = sessions
             .entry((identity.native_id, identity.generation))
             .or_insert_with(ConflictSession::new);

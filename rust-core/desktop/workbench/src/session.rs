@@ -279,8 +279,7 @@ pub fn display_path(identity: &NativePathIdentity) -> String {
 /// The last path segment of a path string.
 pub fn path_label(path: &str) -> String {
     path.split(['/', '\\'])
-        .filter(|segment| !segment.is_empty())
-        .next_back()
+        .rfind(|segment| !segment.is_empty())
         .unwrap_or(path)
         .to_owned()
 }

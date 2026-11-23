@@ -43,27 +43,6 @@ pub fn png_data_url(bytes: Vec<u8>, max_side: u32) -> Option<String> {
     ))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_png_becomes_a_bounded_data_url() {
-        let image = ImageBuffer::from_pixel(256, 128, Rgba([10u8, 20, 30, 255]));
-        let mut png = Vec::new();
-        image::DynamicImage::ImageRgba8(image)
-            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
-            .unwrap();
-        let url = png_data_url(png, 64).unwrap();
-        assert!(url.starts_with("data:image/png;base64,"));
-    }
-
-    #[test]
-    fn text_is_not_an_image() {
-        assert!(png_data_url(b"hello".to_vec(), 64).is_none());
-    }
-}
-
 /// A decoded image as a PNG data URL, at full size.
 pub fn decoded_data_url(
     decoded: gitlama_contract::image_decoder::NativeDecodedImage,
@@ -110,4 +89,25 @@ pub fn image_diff_value(
         Failure::Busy | Failure::TimedOut | Failure::Canceled => "diffImageDecodeTimedOut",
     });
     serde_json::json!({"failed": false, "decodeFailure": decode_failure, "old": side(result.old), "new": side(result.new)})
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_png_becomes_a_bounded_data_url() {
+        let image = ImageBuffer::from_pixel(256, 128, Rgba([10u8, 20, 30, 255]));
+        let mut png = Vec::new();
+        image::DynamicImage::ImageRgba8(image)
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let url = png_data_url(png, 64).unwrap();
+        assert!(url.starts_with("data:image/png;base64,"));
+    }
+
+    #[test]
+    fn text_is_not_an_image() {
+        assert!(png_data_url(b"hello".to_vec(), 64).is_none());
+    }
 }

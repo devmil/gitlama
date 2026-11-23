@@ -421,7 +421,7 @@ mod inspector_state {
                 let shared = Rc::clone(&driver.inspector);
                 rt::spawn_detached(async move {
                     let matches = document.search(&query, case_sensitive).await;
-                    let value = matches.map_or(Value::Null, |rows| Value::from(rows));
+                    let value = matches.map_or(Value::Null, Value::from);
                     shared
                         .borrow_mut()
                         .diff_searched(query, case_sensitive, value);

@@ -953,7 +953,8 @@ impl HistoryService {
             if complete.selected_object_ids.contains(selected) {
                 continue;
             }
-            match self
+            // A selected commit can disappear when the repository changes.
+            if let Ok(page) = self
                 .select_native(
                     identity,
                     complete.request_id,
@@ -965,14 +966,10 @@ impl HistoryService {
                 )
                 .await
             {
-                Ok(page) => {
-                    complete = page;
-                    if !self.accepts(identity, operation) {
-                        return Ok(());
-                    }
+                complete = page;
+                if !self.accepts(identity, operation) {
+                    return Ok(());
                 }
-                // A selected commit can disappear when the repository changes.
-                Err(_) => {}
             }
         }
         self.inner.borrow_mut().retained_selected = complete.selected_object_ids.clone();

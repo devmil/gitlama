@@ -6,6 +6,10 @@
 //! [`gitlama_core::api`] on the blocking pool and publish what changed
 //! through [`notify::Notifier`]; the Qt layer projects their state.
 
+// Service hooks and projections carry callback types; workflows take their
+// collaborators explicitly.
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+
 pub mod acceleration;
 pub mod app;
 pub mod appearance;

@@ -7,10 +7,6 @@ use gitlama_workbench::session::{basename, display_path};
 use gitlama_workbench::workspace::{Pane, Tab, TabGroup, TabPhase};
 use serde_json::{Value, json};
 
-pub fn path_text(identity: &NativePathIdentity) -> String {
-    display_path(identity)
-}
-
 pub fn recents(recents: &[NativePathIdentity]) -> Value {
     Value::Array(
         recents

@@ -338,6 +338,8 @@ struct Inner {
     disposed: bool,
     connection_epochs: HashMap<String, u64>,
     tab_epochs: HashMap<u64, u64>,
+    // Remote workspaces reopen their tabs after a reconnect (not ported yet).
+    #[allow(dead_code)]
     reopening: HashSet<u64>,
     draining: HashSet<u64>,
     drain_tick: u64,
@@ -360,6 +362,8 @@ pub struct WorkspaceService {
     pub history: Rc<HistoryService>,
     settings: Option<Rc<SettingsService>>,
     view_cache: Rc<dyn SessionViewCache>,
+    // Remote workspaces: the router and reconnector (a stub until ported).
+    #[allow(dead_code)]
     remotes: Rc<dyn WorkspaceRemotes>,
     hooks: RefCell<WorkspaceHooks>,
     notifier: Notifier,
@@ -421,6 +425,7 @@ impl WorkspaceService {
         *self.hooks.borrow_mut() = hooks;
     }
 
+    #[allow(dead_code)]
     fn this(&self) -> Rc<Self> {
         self.this.borrow().upgrade().expect("workspace alive")
     }

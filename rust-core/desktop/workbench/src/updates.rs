@@ -114,7 +114,7 @@ pub fn parse_index(bytes: &[u8]) -> Result<Vec<Release>, Failure> {
             channel,
         });
     }
-    releases.sort_by(|left, right| right.build.cmp(&left.build));
+    releases.sort_by_key(|release| std::cmp::Reverse(release.build));
     Ok(releases)
 }
 

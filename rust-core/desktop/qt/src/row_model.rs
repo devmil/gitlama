@@ -293,9 +293,7 @@ mod row_model {
                         })
                         .map(|(offset, _)| FIRST_ROLE + offset as i32)
                         .collect();
-                    for row in first..=last {
-                        self.rows[row] = rows[row].clone();
-                    }
+                    self.rows[first..=last].clone_from_slice(&rows[first..=last]);
                     let top = self.create_index(first as i32, 0, 0);
                     let bottom = self.create_index(last as i32, 0, 0);
                     self.data_changed_roles(&top, &bottom, &roles);
