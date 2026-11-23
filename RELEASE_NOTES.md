@@ -54,6 +54,8 @@
 - GitLama is now a native Qt application instead of a Flutter one. It looks and works as before and keeps your settings, recent repositories and other data, so it updates in place.
 - GitLama is available for Arch Linux and Omarchy as a pacman package. Install it with `sudo pacman -U` from the downloads page.
 - History no longer sometimes says a repository is unavailable right after you open it. Hosts receive a new GitLama helper.
+- Repositories whose branches point at commits that are missing locally open normally again; before, they showed no history and no branches. Hosts receive a new GitLama helper.
+- Very large repositories open faster and stay smoother: history loads once, switching back to History is instant, and selecting commits redraws less.
 
 ## [0.1.0-beta.68] - 2026-11-21
 

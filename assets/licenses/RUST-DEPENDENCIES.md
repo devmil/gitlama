@@ -7284,7 +7284,7 @@ DEALINGS IN THE SOFTWARE.
 ## devmil-git 0.1.0
 
 Declared license: `MIT`  
-Source: `git+https://github.com/devmil/devmil-rust-git?rev=88e6c995ed77b465e028db649ab591de1c230fdd#88e6c995ed77b465e028db649ab591de1c230fdd`
+Source: `git+https://github.com/devmil/devmil-rust-git?rev=834d2b15678b7c3a6a85bc05762691d44f746b7c#834d2b15678b7c3a6a85bc05762691d44f746b7c`
 
 ### LICENSE
 

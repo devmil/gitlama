@@ -2,7 +2,7 @@
 # Raise the version for any change to what the helper accepts, returns or does; read
 # "Remote helper compatibility" in AGENTS.md. Record with
 # scripts/check_helper_compatibility.py --record.
-version 24
+version 25
 contract f8b2b2324127452e0d95dd5e7c8eeeb68795bd9f4470e4f3a390fd68b5a3538b
-recorded-for 24
-shared-git 88e6c995ed77b465e028db649ab591de1c230fdd
+recorded-for 25
+shared-git 834d2b15678b7c3a6a85bc05762691d44f746b7c
