@@ -191,23 +191,9 @@ def main() -> int:
                 )
 
     used = used_keys(english_keys)
-    pending_file = ROOT / "docs/qml-port/l10n-pending.txt"
-    pending = set()
-    if pending_file.is_file():
-        pending = {
-            line.strip()
-            for line in pending_file.read_text(encoding="utf-8").splitlines()
-            if line.strip() and not line.startswith("#")
-        }
-    unused = sorted(english_keys - used - pending)
+    unused = sorted(english_keys - used)
     if unused:
         errors.append(f"unused messages ({len(unused)}): {unused}")
-    done = sorted(pending & used)
-    if done:
-        errors.append(f"ported messages still listed in {pending_file.relative_to(ROOT)}: {done}")
-    gone = sorted(pending - english_keys)
-    if gone:
-        errors.append(f"pending messages missing from the catalogs: {gone}")
 
     by_english: dict[str, dict[str, list[str]]] = {}
     for key in sorted(english_keys & german_keys):
@@ -233,7 +219,7 @@ def main() -> int:
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 0 if report else 1
-    print(f"localization catalogs valid: {len(english_keys)} messages ({len(pending)} awaiting the port)")
+    print(f"localization catalogs valid: {len(english_keys)} messages")
     return 0
 
 

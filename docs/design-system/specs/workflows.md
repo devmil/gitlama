@@ -7,7 +7,7 @@ Companions: [`../tokens/gitlama-tokens.json`](../tokens/gitlama-tokens.json), [`
 
 This file covers workflows that leave the normal History or Changes arrangement. They stay inside the repository window: the toolbar with the Compass, the repo tabs, the Logbook and the status bar remain available. A workflow replaces the islands to the right of the sidebar with its own islands.
 
-Every workflow uses Rust-owned stable identities and typed commands. Flutter renders the current projection, restores focus by stable identity, and keeps no durable row state.
+Every workflow uses Rust-owned stable identities and typed commands. The interface renders the current projection, restores focus by stable identity, and keeps no durable row state.
 
 ## Shared composition
 

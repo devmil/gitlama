@@ -11,6 +11,10 @@ if [[ "${1:-}" == "--release" ]]; then
   shift
 fi
 cargo build --manifest-path "$root/rust-core/Cargo.toml" -p gitlama --profile "$profile"
+# The helpers this build offers to install on remote hosts.
+if [[ "${GITLAMA_DEV_REMOTE_HELPER:-1}" != "0" ]]; then
+  python3 "$root/scripts/build_dev_helpers.py" || true
+fi
 export GITLAMA_QML_DIR="$root/qml"
 export QT_FORCE_STDERR_LOGGING=1
 # A separate profile runs as its own instance, not forwarded to an

@@ -1,5 +1,4 @@
 import QtQuick
-import Meridian
 
 // A host's automatic reconnection for a banner or a tab: the status texts, counting down each second while an attempt is
 // due, and the actions Install helper, Reconnect (now / try again) and Stop.
@@ -29,7 +28,7 @@ QtObject {
         }
     }
     property Timer ticker: Timer {
-        interval: 1000
+        interval: GitLamaLayout.reconnectCountdownTick
         repeat: true
         onTriggered: reconnect.seconds = Math.max(0, Math.ceil((reconnect.dueAt - Date.now()) / 1000))
     }

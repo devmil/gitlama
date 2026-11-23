@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import Meridian
 
 // UI feedback shared by the whole window: the status bar message, which expires after
 // 8 seconds, and a failure dialog for each failed action the user started.
@@ -21,7 +22,7 @@ QtObject {
     }
 
     property Timer expiry: Timer {
-        interval: 8000
+        interval: Motion.toastAction
         onTriggered: {
             root.message = ""
             root.error = false

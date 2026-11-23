@@ -21,6 +21,42 @@ use std::time::Duration;
 const POLL: Duration = Duration::from_millis(100);
 /// The most commands one poll handles.
 const BATCH: usize = 8;
+/// The most paths the operating system may queue before the window takes them.
+const OPEN_QUEUE: usize = 64;
+/// The longest path accepted from the operating system.
+const OPEN_PATH_LIMIT: usize = 32 * 1024;
+
+/// Folders the operating system asked GitLama to open (macOS Launch Services delivers
+/// `open -a GitLama <folder>` and Finder drops as open-document events, possibly before the
+/// window is ready). They wait here until the forwarding loop opens them.
+static OPEN_REQUESTS: std::sync::Mutex<std::collections::VecDeque<Vec<u8>>> =
+    std::sync::Mutex::new(std::collections::VecDeque::new());
+
+/// Queues a folder the operating system asked to open. False when the path is empty, too
+/// long, contains NUL or the queue is full.
+pub fn queue_open_request(path: &[u8]) -> bool {
+    if path.is_empty() || path.len() > OPEN_PATH_LIMIT || path.contains(&0) {
+        return false;
+    }
+    let Ok(mut queue) = OPEN_REQUESTS.lock() else {
+        return false;
+    };
+    if queue.len() >= OPEN_QUEUE {
+        return false;
+    }
+    queue.push_back(path.to_vec());
+    true
+}
+
+fn take_open_requests() -> Vec<Vec<u8>> {
+    OPEN_REQUESTS.lock().map_or_else(
+        |_| Vec::new(),
+        |mut queue| {
+            let count = queue.len().min(BATCH);
+            queue.drain(..count).collect()
+        },
+    )
+}
 
 pub struct CliForwarding {
     workspace: Rc<WorkspaceService>,
@@ -105,6 +141,7 @@ impl CliForwarding {
                 return;
             }
             service.drain().await;
+            service.open_requested().await;
             drop(service);
             rt::sleep(POLL).await;
         }
@@ -126,6 +163,23 @@ impl CliForwarding {
             self.dispatch(command).await;
         }
         self.polling.set(false);
+    }
+
+    /// Opens the folders the operating system asked for, in the order it delivered them.
+    async fn open_requested(&self) {
+        for path in take_open_requests() {
+            if self.disposed.get() {
+                return;
+            }
+            self.activate();
+            let identity = NativePathIdentity {
+                platform: NativePathPlatform::Unix,
+                units: path.iter().map(|byte| u16::from(*byte)).collect(),
+                remote: None,
+            };
+            // A failure shows in the repository's own state.
+            let _ = self.workspace.open_recent(identity).await;
+        }
     }
 
     async fn respond(&self, command: &NativeCliCommand, response: NativeCliResponseKind) {
@@ -231,6 +285,25 @@ mod tests {
             pull_strategy: None,
             remote_alias: None,
         }
+    }
+
+    #[test]
+    fn open_requests_are_bounded_and_taken_in_order() {
+        assert!(!queue_open_request(b""));
+        assert!(!queue_open_request(b"/a\0b"));
+        assert!(!queue_open_request(&vec![b'a'; OPEN_PATH_LIMIT + 1]));
+        assert!(queue_open_request(b"/first"));
+        assert!(queue_open_request(b"/second"));
+        assert_eq!(
+            take_open_requests(),
+            vec![b"/first".to_vec(), b"/second".to_vec()]
+        );
+        for _ in 0..OPEN_QUEUE {
+            assert!(queue_open_request(b"/many"));
+        }
+        assert!(!queue_open_request(b"/full"));
+        assert_eq!(take_open_requests().len(), BATCH);
+        while !take_open_requests().is_empty() {}
     }
 
     #[test]

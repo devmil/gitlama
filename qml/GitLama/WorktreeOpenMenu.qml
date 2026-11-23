@@ -1,5 +1,4 @@
 import QtQuick
-import Meridian
 
 // The worktree row's open menu: the
 // repository's worktrees that are not open, then Add worktree. It opens

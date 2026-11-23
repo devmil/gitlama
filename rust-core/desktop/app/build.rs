@@ -75,6 +75,14 @@ fn main() {
             .flag("-fobjc-arc")
             .compile("gitlama_sparkle_bridge");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        // The window chrome, reduce motion and the share sheet (macos_window.m).
+        let window = manifest.join("src/native/macos_window.m");
+        println!("cargo:rerun-if-changed={}", window.display());
+        cc::Build::new()
+            .file(&window)
+            .flag("-fobjc-arc")
+            .compile("gitlama_macos_window");
+        println!("cargo:rustc-link-lib=framework=AppKit");
         // Qt frameworks are linked by @rpath: the app bundle's Frameworks
         // folder, and Qt's own for development runs (packaging removes it).
         println!("cargo:rustc-link-arg=-Wl,-rpath,@executable_path/../Frameworks");
@@ -114,6 +122,10 @@ fn build_native_items(manifest: &Path, out: &Path) {
         qt.run_moc(&header, &moc);
         builder.file(&source).file(&moc);
     }
+    // Open-document events (no moc: the filter declares no signals or properties).
+    let file_open = manifest.join("src/native/file_open.cpp");
+    println!("cargo:rerun-if-changed={}", file_open.display());
+    builder.file(&file_open);
     builder
         .include(manifest.join("src/native"))
         .flag_if_supported("/Zc:__cplusplus")

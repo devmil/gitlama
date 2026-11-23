@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import Meridian
 
 // A repository tab's context menu: open its folder, copy its path, rename,
 // icon, groups and close.

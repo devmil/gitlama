@@ -15,7 +15,7 @@ GitLama's motion is about **history taking shape**. The graph is the hero. Motio
 
 ## GitLama motion values
 
-These are added to `GitLamaMotion` in `lib/app/gitlama_layout.dart`. Anything not listed comes from the Meridian tokens.
+These live in the motion section of `qml/GitLama/GitLamaLayout.qml`. Anything not listed comes from the Meridian tokens.
 
 | Name | Value | Use |
 |---|---|---|
@@ -221,5 +221,5 @@ Switching between already-open tabs uses MM-74 (island content swap), not this.
 2. **Recycled rows never replay.** The history and changes lists are virtualised. Any one-time effect (attention tint, entrance, lane draw) is keyed in `MeridianMotionMemory` by a stable key (object id plus trigger sequence). The current commit flash, a `TweenAnimationBuilder` keyed by sequence, replays when the row scrolls out and back; NH-1 fixes that.
 3. **Only one travel at a time per island.** NH-1's chip travel and NH-4's row flight use `MeridianTravel`; a second flight lands the first instantly.
 4. **Background activity is quiet.** Background fetches, file watchers and status refreshes only roll numbers and change states. They never trigger a highlight, a travel, a stagger or an attention tint, apart from MM-23 for a row the person is looking at that changed underneath them.
-5. **No literal durations or curves.** `scripts/check_meridian_usage.py` rejects `Curves.` and `Duration(` in animation parameters under `lib/`. Timers and debounces use named constants in `GitLamaMotion` or `MeridianDurations`.
-6. **Evidence.** Every NH item has a widget test that pumps its timeline at the listed times and asserts the values. Every NM item is covered by a test that asserts its end state and zero duration under `disableAnimations`.
+5. **No literal durations or curves.** `scripts/check_meridian_usage.py` rejects a literal `duration` or `interval` in `qml/GitLama`. Animations, timers and debounces use Meridian's `Motion` or the named constants in `GitLamaLayout`.
+6. **Evidence.** Every NH item is checked against its timeline at the listed times, and every NM item reaches its end state with zero duration when motion is reduced (`Theme.reducedMotion`).

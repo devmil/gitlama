@@ -497,6 +497,18 @@ MeridianSettingsDialog {
                 text: L10n.t("diagnosticsSave")
                 onClicked: saveDialog.open()
             }
+            // The platform's share sheet: macOS and Windows, as the text stays in memory.
+            MeridianButton {
+                id: shareButton
+                visible: Store.hooks !== null && Store.hooks.canShare()
+                text: L10n.t("diagnosticsShare")
+                onClicked: {
+                    const origin = shareButton.mapToItem(null, 0, 0)
+                    const shown = Store.hooks.shareText(diagnostics.preview, L10n.t("diagnosticsTitle"),
+                                                        origin.x, origin.y, shareButton.width, shareButton.height)
+                    diagnostics.status = shown ? "" : L10n.t("diagnosticsFailed")
+                }
+            }
             MeridianButton {
                 text: L10n.t("diagnosticsCancel")
                 onClicked: { diagnostics.preview = ""; diagnostics.status = "" }

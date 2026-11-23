@@ -215,4 +215,13 @@ QtObject {
     readonly property int openStagger: 40
     readonly property int pullLanesDelay: 60
     readonly property int paletteMorph: 300
+    // Debounces and holds of timers
+    readonly property int commitDraftDebounce: 300
+    readonly property int reviewDraftDebounce: 250
+    readonly property int conflictCountCollapseDelay: 200
+    readonly property int conflictsResolvedHold: 1200
+    readonly property int continuePulseDelay: 200
+    readonly property int reconnectCountdownTick: 1000
+    readonly property int remoteCheckSettle: 3000
+    readonly property int screenshotSettle: 2500
 }

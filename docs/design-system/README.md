@@ -39,6 +39,6 @@ Meridian grew here and was extracted into the shared package `meridian_ui`. GitL
 ## Working with it
 
 - View: open `specimens/index.html` in a browser. It needs no build step or network.
-- Change a token: edit `tokens/gitlama-tokens.json`, run `python3 scripts/check_design_contract.py --write-css`, then update `app_theme.dart`. The check enforces the contrast floors listed in the manifest.
+- Change a token: edit `tokens/gitlama-tokens.json`, run `python3 scripts/check_design_contract.py --write-css`, then run `python3 scripts/generate_meridian_theme.py` to regenerate `qml/GitLama/GitColors.qml` (shared tokens change in meridian_ui). The check enforces the contrast floors listed in the manifest.
 - Change a component: update its `components/<Name>.md`, the reference in `components/reference/`, and its specimen together. Then bump `MANIFEST.json` `version`.
 - Add an icon: see [`assets/README.md`](assets/README.md).

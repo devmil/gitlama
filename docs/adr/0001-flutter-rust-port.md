@@ -1,6 +1,6 @@
 # ADR 0001: preserve QSpline behavior through a Flutter/Rust boundary
 
-Accepted 2026-09-19.
+Accepted 2026-09-19. Superseded on 2026-11-23 by [ADR 0006](0006-rust-qt-quick-application.md): GitLama is now a Rust application with a Qt Quick interface.
 
 GitLama takes over the user experience, design and features of QSpline, an earlier Rust and Qt Quick Git client by the same author. Use Flutter for presentation and lifecycle, retain Rust ownership of Git semantics and authoritative repository state, and use one generated FRB bridge. Dart services project state and expose commands; repositories own the bridge. Use installed Git through devmil-git, not a new libgit2 implementation.
 

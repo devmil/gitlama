@@ -1,13 +1,13 @@
 # Remote workspace protocol, version 1.0
 
 Status: implemented contract for the R1 read surface and the R2 write families. The Rust
-helper (`rust-core/remote-helper`) and the Dart client (`lib/repositories/impl/remote/`) both
+helper (`rust-core/remote-helper`) and the client (`rust-core/desktop/workbench/src/remote/`) both
 follow this document. Capabilities, write families and their capabilities, outcomes, error
 codes, bulk methods and limits come from one source, `tooling/remote_wire/contract.json`, which
-`tooling/remote_wire/generate.py` turns into `rust-core/application/src/wire/contract.rs` and
-`lib/models/remote_contract.g.dart`. Both test suites read the accept/reject vectors in
-`rust-core/remote-helper/fixtures/contract_vectors.json` (`remote-helper/tests/contract.rs`,
-`test/remote/contract_vectors_test.dart`), and the helper test checks that the error codes below
+`tooling/remote_wire/generate.py` turns into `rust-core/application/src/wire/contract.rs`, which
+the helper and the client share. The helper tests read the accept/reject vectors in
+`rust-core/remote-helper/fixtures/contract_vectors.json` (`remote-helper/tests/contract.rs`), and
+the helper test checks that the error codes below
 match the contract. Change the contract, this document and the vectors together.
 
 The helper runs as `gitlama-remote-helper --stdio`, started by the client through a fixed SSH
@@ -49,8 +49,9 @@ parsing failure is a protocol violation and closes the connection.
   any change to what it accepts or returns raises that version.
 
 The repository value types (`NativeHistoryResult`, `NativeDiffResult` and so on) are encoded by
-generated codecs (`tooling/remote_wire/generate.py`). Field names are the Dart (camelCase)
-names; enum values are the Dart value names.
+generated codecs (`tooling/remote_wire/generate.py`). Field names are the camelCase Rust field
+names; enum values are the variant names with a lowercase first letter (`continue_`,
+`deferred_` and `operator_` keep the trailing underscore released helpers send).
 
 ## Launch
 
@@ -250,10 +251,10 @@ and is never presented.
 
 ## Methods
 
-Request arguments and results for repository reads are the generated codecs of the bridge
+Request arguments and results for repository reads are the generated codecs of the core
 function of the same name (`repositorySessionHistoryLoad` and so on). The method set is closed;
-`READ_METHODS` in `rust-core/application/src/wire/generated.rs` and `remoteReadMethods` in
-`lib/repositories/impl/repository_session_calls.g.dart` list the reads. Every other name is
+`READ_METHODS` in `rust-core/application/src/wire/generated.rs` lists the reads, and the client's
+routing in `rust-core/desktop/workbench/src/remote/calls.rs` is generated from the same surface. Every other name is
 answered `unsupportedCommand`. There is no command that runs Git, a shell, an arbitrary
 executable or writes a file on behalf of the client.
 

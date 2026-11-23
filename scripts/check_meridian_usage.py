@@ -43,6 +43,10 @@ GEOMETRY = re.compile(
 )
 
 
+# Animations and timers take their durations from Meridian's Motion or GitLamaLayout.
+LITERAL_TIME = re.compile(r"\b(duration|interval)\s*:\s*[0-9]+\s*(;|$)")
+
+
 def violations():
     found = []
     for path in sorted(QML.glob("*.qml")):
@@ -60,6 +64,8 @@ def violations():
                 found.append(f"{where}: {base} bypasses Meridian")
             if name not in COLOUR_FILES and COLOUR_LITERAL.search(code):
                 found.append(f"{where}: literal colour; use a theme or GitColors token")
+            if name not in LAYOUT_FILES and LITERAL_TIME.search(code):
+                found.append(f"{where}: literal duration; use Motion or a GitLamaLayout constant")
             if name not in LAYOUT_FILES:
                 match = GEOMETRY.match(code)
                 if match and float(match.group("value")) not in (0.0, 1.0):

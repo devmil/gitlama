@@ -344,8 +344,8 @@
   },
   "implementationRules": [
     "Rust owns durable identity, selection, graph layout, diff and staging semantics, operation state, persistence and background work.",
-    "Flutter renders bounded projections, restores focus by stable identity and never keeps durable row state.",
-    "Widgets read colours, spacing, radii and motion only from GitLamaTheme and AppTokens, which are derived from tokens/gitlama-tokens.json.",
+    "The QML interface renders bounded projections, restores focus by stable identity and never keeps durable row state.",
+    "QML reads colours, spacing, radii and motion only from Meridian (Theme, Motion) and GitLama's GitColors and GitLamaLayout; GitColors is generated from tokens/gitlama-tokens.json.",
     "Icons come only from the Lucide 1.37.0 set in assets/icons/lucide."
   ],
   "sourceFiles": [

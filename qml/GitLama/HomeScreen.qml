@@ -1,5 +1,4 @@
 import QtQuick
-import Meridian
 
 // The window: the workspace while repositories are open, the welcome screen
 // otherwise.

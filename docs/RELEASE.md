@@ -1,6 +1,6 @@
 # Release preparation
 
-GitLama has one canonical two-line `VERSION` file. Release preparation derives `pubspec.yaml`, `rust-core/Cargo.toml`, the GitLama package entry in `rust-core/Cargo.lock`, release documents, artifact names and the annotated tag from those two values.
+GitLama has one canonical two-line `VERSION` file. Release preparation derives `rust-core/Cargo.toml`, the GitLama package entry in `rust-core/Cargo.lock`, release documents, artifact names and the annotated tag from those two values.
 
 The **Publish GitLama release** workflow (`.github/workflows/release.yml`) is started manually with exactly two choices:
 
@@ -9,18 +9,15 @@ The **Publish GitLama release** workflow (`.github/workflows/release.yml`) is st
 
 Every bump except `none` increments the global build. Stable patch, minor and major bumps produce stable SemVer. The same choices on the beta channel produce `-beta.1`; `beta` starts or increments the beta number. Stable rejects prerelease versions. Beta rejects versions that do not end in `-beta.N` or `-rc.N`.
 
-## Flutter SDK archive
+## Qt version
 
-`.fvmrc` selects Flutter for both local and container builds. When changing it,
-refresh `tooling/flutter-linux.sha256` from the exact stable Linux x64 entry in
-[Flutter's official release manifest](https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json).
-Keep the SHA-256 and archive filename together, for example
-`<sha256>  flutter_linux_<version>-stable.tar.xz`.
-
-`python3 scripts/flutter_linux_archive.py` validates the archive identity against
-`.fvmrc` and prints the digest used by the release container. The qualifier runs
-this before creating its stage or building the image; the image still checks
-the downloaded bytes with `sha256sum -c` before extraction.
+The CI and release workflows, `scripts/install-qt-windows.py` and
+`tooling/linux-release/Dockerfile` install the same Qt release (`QT_VERSION`: install-qt-action on the macOS and
+Linux runners, aqtinstall in the Linux release image, and Qt's own online
+repository on Windows, which aqtinstall cannot read for Qt 6.11). Change
+them together; `scripts/collect-debug-symbols.py` records the Qt version of every
+build, and collection refuses a release whose units used different Qt versions.
+The Linux image builds on Ubuntu 22.04 so the packages keep the glibc 2.35 floor.
 
 ## Transaction
 
@@ -39,10 +36,11 @@ the downloaded bytes with `sha256sum -c` before extraction.
    with the macOS SDK.
 3. **macos**, **linux** and **windows** check out the same commit, bundle the
    helpers, build, sign where configured and qualify only their native packages.
-4. **collect** accepts exactly the six target names, writes `release-state.json`
-   with their byte counts and SHA-256 digests, verifies the diagnostics set, and
-   signs the publication candidate: the signed manifest, its signature and the
-   public key next to the six packages.
+4. **collect** accepts exactly the target names of `packaging/targets.json`
+   (seven packages, among them the Arch Linux package), writes
+   `release-state.json` with their byte counts and SHA-256 digests, verifies the
+   diagnostics set, and signs the publication candidate: the signed manifest, its
+   signature and the public key next to the packages.
 5. **publish** creates and pushes the annotated `vVERSION-BUILD` tag, creates a
    draft GitHub release for it, uploads every signed file, downloads each one
    again and compares exact bytes, and only then publishes the release. It then
@@ -54,25 +52,15 @@ A failed target leaves the preparation commit untagged and runs no publication
 job. Pushes made by the workflow token do not start other workflows, so the
 release commits do not rebuild the application in CI. `scripts/ci_scope.py` reads
 a pushed range: website, documentation and signed release metadata, and a
-preparation whose `pubspec.yaml`, `rust-core/Cargo.toml` and `rust-core/Cargo.lock`
+preparation whose `VERSION`, `rust-core/Cargo.toml` and `rust-core/Cargo.lock`
 differ only in the version, run `scripts/verify.py --source` on one runner. Any
 other path, a range without a known start, and a manual dispatch build and test
 every platform.
 
-The Linux container fetches the complete locked Rust graph before invoking
-Flutter, while any shared-dependency Git rewrite is available. Native hooks
-then use `CARGO_NET_OFFLINE=true` for GitLama’s prefetched workspace; hooks
-intentionally filter out `GIT_CONFIG_*`. The `CARGO_GITLAMA_PREFETCHED` marker
-leaves independent Cargokit plugin graphs online in their parent environment.
-A cold container must not rely on another runner's Cargo cache.
-
-macOS packaging prepares an owned source overlay for the pinned `objective_c`
-9.3.0 hook to enable DWARF, verifies the original hook hash, and builds with
-`--no-pub` so Flutter preserves that resolved overlay. It never edits the shared
-Pub cache or relaxes required native-symbol coverage. A receipt of both hook
-hashes is retained with diagnostic provenance; collection searches hook outputs
-while their linked objects still exist. A dependency update requires reviewing
-the hook patch again.
+The Linux container fetches the complete locked Rust graph (`cargo fetch
+--locked`) before it builds, while any shared-dependency Git rewrite the CI
+forwards is available; the builds then run on that prefetched graph. A cold
+container must not rely on another runner's Cargo cache.
 
 Windows installed-launch qualification uses `GITLAMA_PROFILE_ROOT` for each
 synthetic profile and preserves the account’s `APPDATA` and `LOCALAPPDATA`,
@@ -107,7 +95,7 @@ uninstall checks remain required.
 
 ## Private crash diagnostics
 
-Target jobs also collect matching native symbols, Dart maps and provenance from
+Target jobs also collect matching native symbols and provenance from
 the exact packaged build. Collection validates the seven archives before
 publication and keeps them as a workflow artifact of the release run. They are
 excluded from public release assets and the update manifest. See
@@ -139,9 +127,9 @@ Rebuilding changed bytes under an existing tag is forbidden.
 
 The website step renders `webfront/appcast.xml` from the verified index, before it replaces the index pointer. Sparkle reads `https://devmil.de/gitlama/appcast.xml`. Linux and Windows read `https://devmil.de/gitlama/_data/releases.json` when the user checks for updates. Both are served by the GitHub Pages site of this repository.
 
-`macos/Runner/Info.plist` pins the feed and the public key. Package qualification compares both with the versioned trust root in the mounted application. Releases published before the updater carry no update signature and stay out of the appcast; recovery of such a release publishes a feed without it.
+`packaging/macos/Info.plist.in` pins the feed and the public key. Package qualification compares both with the versioned trust root in the mounted application. Releases published before the updater carry no update signature and stay out of the appcast; recovery of such a release publishes a feed without it.
 
-`python3 scripts/generate-release-fixture.py` refreshes the index and appcast fixtures that the package tests and the Dart update tests share. They are signed with a key that exists only for tests.
+`python3 scripts/generate-release-fixture.py` refreshes the index and appcast fixtures that the package tests and the update service tests share. They are signed with a key that exists only for tests.
 
 ## Local checks
 
@@ -155,7 +143,7 @@ git commit
 python3 scripts/release.py tag --channel beta
 ```
 
-`python3 scripts/release-state.py candidate` closes a complete six-file directory.
+`python3 scripts/release-state.py candidate` closes a complete directory of the packages `packaging/targets.json` lists.
 
 ## Signed metadata and immutable publication
 
@@ -166,7 +154,7 @@ with `--key-file` or through `GITLAMA_RELEASE_PRIVATE_KEY`, either a
 standard-base64 32-byte seed or PEM. CI decodes it from the
 `RELEASE_SIGNING_KEY_BASE64` secret into a disposable owner-only file. Do not reuse another product's update key.
 
-`scripts/release.py manifest` closes the exact six packages into a canonical,
+`scripts/release.py manifest` closes the exact packages into a canonical,
 bounded JSON document and retains the five newest stable and five newest beta
 records. It verifies the previous document's detached signature before merging
 and rejects a replayed build. `sign` signs the exact JSON bytes. `verify` works
@@ -226,7 +214,7 @@ bypass this gate or replace authenticated IPC with an insecure fallback.
 The manual **Diagnose Windows IPC credential storage** workflow compiles and
 tests the production Windows IPC/protocol modules directly through
 `tests/native_windows_ipc`. It checks the supported-persistence policy and a real
-Credential Manager token write/read/delete without a Flutter build. The release
+Credential Manager token write/read/delete without building the application. The release
 runs this boundary check after Rust setup as well. The token remains inside
 Windows Credential Manager; disabled credential storage still refuses startup,
 and pipe ACLs, peer SID checks, replay protection and acknowledgements are

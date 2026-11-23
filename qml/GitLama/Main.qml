@@ -135,7 +135,7 @@ Window {
         id: screenshot
         property string path
         property var steps: []
-        interval: 2500
+        interval: GitLamaLayout.screenshotSettle
         function start(request) {
             const parts = request.split(";")
             path = parts[0]

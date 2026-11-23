@@ -28,7 +28,7 @@ MeridianDialog {
         settle.restart()
     }
     onOperationsChanged: checking = ({})
-    Timer { id: settle; interval: 3000; onTriggered: dialog.checking = ({}) }
+    Timer { id: settle; interval: GitLamaLayout.remoteCheckSettle; onTriggered: dialog.checking = ({}) }
 
     widthClass: MeridianDialog.Workflow
     title: L10n.t("remoteOperationsTitle")

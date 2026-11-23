@@ -5,7 +5,7 @@ Topology oracle: [`graph-fixtures.json`](graph-fixtures.json) (G-LANE-01). Row l
 
 ## 1. Scope
 
-The History island renders commit topology as spline lanes, one fixed-extent row per commit, virtualized to 100 000+ rows. Rust owns topology, lane assignment, ancestry lighting, selection identity and row geometry. Flutter paints the supplied projection and sends typed input. Graph, ref chips and subject share the left region of a row. Author, short hash and relative date form a group pinned to the right edge. Those fields line up across rows, but they are not configurable table columns.
+The History island renders commit topology as spline lanes, one fixed-extent row per commit, virtualized to 100 000+ rows. Rust owns topology, lane assignment, ancestry lighting, selection identity and row geometry. The interface paints the supplied projection and sends typed input. Graph, ref chips and subject share the left region of a row. Author, short hash and relative date form a group pinned to the right edge. Those fields line up across rows, but they are not configurable table columns.
 
 ## 2. Geometry
 
@@ -110,7 +110,7 @@ The single selection contract is in [`interaction-accessibility.md`](interaction
 ## 10. Virtualization
 
 - Row height is fixed per density. The WIP row uses the standard height.
-- Each row paints from its own projection slice (segments carry from/to lanes and kinds). Continuity is never derived from neighbouring widgets.
+- Each row paints from its own projection slice (segments carry from/to lanes and kinds). Continuity is never derived from neighbouring rows.
 - Node hit area: 14 px around the lane centre on its row; the rest of the row is the row hit area. Fixtures carry `virtualization.realizedWindow` to test recycling.
 - Search keeps matching rows at full contrast and dims non-matches (list and graph) to 0.3. The match count shows in the search field's trailing text.
 
@@ -119,5 +119,5 @@ The single selection contract is in [`interaction-accessibility.md`](interaction
 1. `graph-fixtures.json`: `expectedLanes`, `expectedShapes` and `expectedLaneSegments` match on all 21 fixtures (`cargo test` in `rust-core`, `graph::tests`).
 2. `graph-row-layout-fixtures.json` resolves the sparse, dense, offscreen, clipped and 130% cases exactly.
 3. Scrolling the 40-row virtualization window across [0, 40) causes zero lane reassignments and no seams at window edges.
-4. Flutter captures follow [`capture-matrix.json`](capture-matrix.json): both themes, all densities, 130% text scale, 12-character hashes, long authors and refs, crossing and octopus edges, and a scrolled mid-history viewport.
+4. Captures follow [`capture-matrix.json`](capture-matrix.json): both themes, all densities, 130% text scale, 12-character hashes, long authors and refs, crossing and octopus edges, and a scrolled mid-history viewport.
 5. Pointer, keyboard and screen-reader replay after filtering, same-target reveal, recycling, density change and resize select and copy the same OID.

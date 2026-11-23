@@ -645,6 +645,7 @@ dependencies = [
  "qtbridge",
  "qtbridge-build-utils",
  "serde_json",
+ "windows",
 ]
 
 [[package]]

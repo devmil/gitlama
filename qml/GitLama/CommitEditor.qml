@@ -89,7 +89,7 @@ Rectangle {
     }
     Timer {
         id: draftTimer
-        interval: 300
+        interval: GitLamaLayout.commitDraftDebounce
         onTriggered: Store.commit.updateDraft(subjectField.text, descriptionField.text)
     }
     function draftEdited() {

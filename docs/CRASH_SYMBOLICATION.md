@@ -9,13 +9,13 @@ source later.
 ## What is retained
 
 Each archive contains a manifest, the native images from the shipped payload,
-matching native symbols where available, Dart split-debug maps, version/build,
-source commit, Flutter framework and engine revisions, Dart/Rust toolchain
-versions, dependency locks and shared-source pins. The desktop manifests bind
-these to the final six installer SHA-256 hashes. macOS collection mounts the
+matching native symbols where available, version/build, source commit, the Qt
+version, the Rust toolchain, dependency locks and shared-source pins. The desktop
+manifests bind these to the SHA-256 hashes of every final installer of the
+release (the formats in `packaging/targets.json`). macOS collection mounts the
 signed/notarized DMG read-only, so it examines the thinned, signed payload.
 The Windows bundle has already been signed and packaged; Linux qualification
-checks the payload used by all four formats.
+checks the payload used by all its package formats.
 
 Native matching uses **Mach-O UUID per architecture**, **ELF GNU build ID**, or
 **PE CodeView/PDB GUID and age**. A filename, version, helper compatibility ID
@@ -27,18 +27,18 @@ Rust release builds retain limited debug information in their build outputs.
 Linux C++ builds retain line tables; Windows release builds produce PDBs while
 keeping optimization. Packaging strips debug sections from Linux runtime
 copies, and helper packaging strips/signs a copy instead of destroying Cargo's
-original. Dart builds use `--split-debug-info` without enabling obfuscation.
-Symbols are excluded from the user installers.
+original. Symbols are excluded from the user installers.
 
-First-party symbols and the macOS/Windows Flutter engine symbols are required.
-The pinned Linux Flutter SDK does not supply engine DWARF. Its exact stripped
-image, build ID and engine revision are retained, and the index explicitly
-records this vendor gap. Missing Sparkle or Microsoft runtime symbols are also
-recorded as vendor gaps, never as successful symbol coverage. Locally built
-plugins are required to have matching symbols. A future matching vendor symbol
-file can be associated by native identity; an unrelated debug engine cannot
-symbolicate the shipped engine. This workflow does not build a custom Flutter
-engine or promise that every vendor frame has a source line.
+First-party symbols (the `gitlama` executable with its native Qt Quick items and
+the remote helpers) are required. Qt's prebuilt release ships without DWARF:
+the Qt libraries, frameworks and plugins in the payload are retained with their
+identities and recorded as the vendor gap `qt_prebuilt_symbols_external` (Qt
+publishes matching debug archives for its releases). Missing Sparkle or
+Microsoft runtime symbols are also recorded as vendor gaps, never as successful
+symbol coverage. A future matching vendor symbol file can be associated by
+native identity; an unrelated debug build cannot symbolicate the shipped one.
+This workflow does not rebuild Qt or promise that every vendor frame has a
+source line.
 
 ## Collection and retention
 
@@ -47,8 +47,8 @@ Target jobs upload five CI handoffs: three desktop jobs and two helper jobs
 (each helper job supplies two architectures).
 
 Before publication, `scripts/retain-debug-symbols.py` verifies the complete
-seven-unit set, all native symbol identities, dependency/toolchain consistency,
-Dart map presence, bundled-helper identities and final installer digests. It
+seven-unit set, all native symbol identities, dependency, toolchain and Qt
+version consistency, bundled-helper identities and final installer digests. It
 writes an immutable snapshot:
 
 ```text
@@ -64,7 +64,7 @@ symbolicatable after the artifact expires; this code does not keep a copy
 elsewhere. Workflow artifacts are readable by everyone who can read the
 repository. The archives contain symbols of open source code built on
 GitHub-hosted runners, so they name only runner paths, but keep crash reports
-themselves private. The six-package signed update manifest and the public
+themselves private. The signed update manifest and the public
 release assets never include diagnostics.
 
 The archive verifier refuses unsafe members, digest mismatches, more than
@@ -88,7 +88,7 @@ collection gate refuses. Never publish those packages as release candidates.
 3. Verify/list the relevant archive and extract it into a new private directory:
 
    ```bash
-   python3 scripts/inspect-debug-symbols.py ARCHIVE --image FlutterMacOS
+   python3 scripts/inspect-debug-symbols.py ARCHIVE --image gitlama
    python3 scripts/inspect-debug-symbols.py ARCHIVE --extract private-symbols
    ```
 
@@ -101,7 +101,7 @@ collection gate refuses. Never publish those packages as release candidates.
    available, or resolve individual frames using the manifest's DWARF file:
 
    ```bash
-   atos -arch arm64 -o path/to/dSYM/Contents/Resources/DWARF/FlutterMacOS \
+   atos -arch arm64 -o path/to/dSYM/Contents/Resources/DWARF/gitlama \
      -l IMAGE_LOAD_ADDRESS FRAME_ADDRESS
    ```
 
@@ -121,13 +121,10 @@ collection gate refuses. Never publish those packages as release candidates.
    copying a newly compiled PDB under the expected filename does not make it
    compatible. Use the archived image if the debugger also needs its PE image.
 
-7. For a Dart AOT stack, use the matching target's retained map:
-
-   ```bash
-   flutter symbolize --input dart-stack.txt --debug-info path/to/app.TARGET.symbols
-   ```
-
-   OS native frames and Dart stack traces use different symbolication paths.
+7. A Rust panic prints its own backtrace when `RUST_BACKTRACE=1` is set; its
+   frames resolve against the same retained symbols. QML errors name the QML
+   file and line of the embedded resource, which matches the release's source
+   commit.
 
 Apple documents [binary/dSYM UUID matching](https://developer.apple.com/documentation/xcode/locating-a-missing-debug-symbol-file)
 and [native frame symbolication](https://developer.apple.com/documentation/xcode/adding-identifiable-symbol-names-to-a-crash-report).

@@ -53,7 +53,7 @@ Item {
     }
     Timer {
         id: conflictCollapse
-        interval: 200
+        interval: GitLamaLayout.conflictCountCollapseDelay
         onTriggered: if (compass.conflicts === 0) compass._showConflictCount = false
     }
 

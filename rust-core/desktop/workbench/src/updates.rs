@@ -355,6 +355,22 @@ mod tests {
     }
 
     #[test]
+    fn the_published_index_format_reads() {
+        // The fixture scripts/generate-release-fixture.py writes with the production rules,
+        // shared with the package tests.
+        let releases = parse_index(include_bytes!(
+            "../../../../test/fixtures/release_index.json"
+        ))
+        .expect("the published index format");
+        assert_eq!(releases[0].build, 42);
+        assert_eq!(
+            latest(&releases, Channel::Beta).unwrap().version,
+            "1.5.0-beta.1"
+        );
+        assert_eq!(latest(&releases, Channel::Stable).unwrap().version, "1.4.0");
+    }
+
+    #[test]
     fn the_index_lists_releases_newest_first() {
         let releases = parse_index(&index(json!([
             {"version": "0.1.0", "build": 3, "channel": "stable"},

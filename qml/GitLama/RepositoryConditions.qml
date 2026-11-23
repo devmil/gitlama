@@ -65,7 +65,7 @@ Column {
     }
     Timer {
         id: resolvedTimer
-        interval: 1200
+        interval: GitLamaLayout.conflictsResolvedHold
         onTriggered: {
             conditions.recentlyResolved = false
             conditions.pulseContinue = false
@@ -73,7 +73,7 @@ Column {
     }
     Timer {
         id: pulseTimer
-        interval: 200
+        interval: GitLamaLayout.continuePulseDelay
         onTriggered: if (conditions.conflictCount === 0) conditions.pulseContinue = true
     }
 

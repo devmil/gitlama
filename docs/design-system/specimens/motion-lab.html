@@ -409,7 +409,7 @@ section.part>p{margin:0 0 16px;color:var(--ink-muted);max-width:75ch}
         <p class="spec">Balls travel for 600 ms so the curves are comparable. In the UI the curves run at their token durations.</p></article>
       <article class="island demo wide"><header><span class="id">springs</span><h3>Springs (mass 1)</h3><span class="sp" style="flex:1"></span><button class="btn press" id="playSprings">Play</button></header>
         <div class="stage"><div class="curves" id="springs"></div></div>
-        <p class="spec">Flutter: <code>SpringDescription.withDampingRatio(mass: 1, stiffness, ratio)</code>. Web: a generated <code>linear()</code> easing sampled every 8 ms.</p></article>
+        <p class="spec">Qt Quick: Meridian's <code>SpringSpec</code> (stiffness, damping ratio). Web: a generated <code>linear()</code> easing sampled every 8 ms.</p></article>
       <article class="island demo wide"><header><span class="id">durations</span><h3>Duration scale</h3></header>
         <div class="stage"><div class="ruler" id="ruler"></div></div>
         <p class="spec">Click a row to play that duration. Everything in the working UI stays under 320 ms; <code>motion-celebrate</code> and <code>motion-attention</code> are the only exceptions.</p></article>

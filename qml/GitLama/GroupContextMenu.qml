@@ -1,5 +1,4 @@
 import QtQuick
-import Meridian
 
 // A tab group chip's context menu.
 CommandMenu {

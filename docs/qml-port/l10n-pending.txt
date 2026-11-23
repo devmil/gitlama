@@ -1,4 +1,0 @@
-# Messages of Flutter features the Rust/QML port has not wired up yet.
-# scripts/check_l10n.py accepts them as unused while listed and fails when a
-# listed key gets used. The port is complete when this file is empty.
-diagnosticsShare

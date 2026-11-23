@@ -9,7 +9,7 @@ GitLama first shipped without update checking, downloading or installation. It p
 
 ## Decision
 
-macOS uses Sparkle 2, pinned to one resolved Swift package revision. The runner starts the updater when Dart configures it with the feed and the release channel. Sparkle checks once a day after the user agrees, shows its own windows, verifies the package and installs it.
+macOS uses Sparkle 2, pinned to one release by version and SHA-256 in `scripts/package.py` and bundled in the application. The native bridge (`sparkle_bridge.m`) starts the updater when the update service configures it with the release channel; the feed is fixed in the bridge. Sparkle checks once a day after the user agrees, shows its own windows, verifies the package and installs it.
 
 Linux and Windows have no installer integration. When the user checks, the application reads the public release index over HTTPS, compares build numbers and offers the downloads page. It downloads and opens nothing from the index: the page address is fixed in the application. The request follows no redirect and accepts at most 1 MiB.
 

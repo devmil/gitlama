@@ -1,42 +1,27 @@
-# Linux rounded-window rendering — 2026-10-05
+# Linux window rendering
 
-The Linux main window now uses GTK3 native rounded borders around a rectangular
-accelerated Flutter surface, replacing the libhandy offscreen content mask.
-The 8px smooth curve is kept outside Flutter by 2px horizontal/3px vertical
-floating insets. Shadows, native resize edges and integrated app window controls
-remain. Maximized, tiled, fullscreen and solid-CSD states remove those insets.
+On Linux the main window is a frameless Qt Quick window (`Qt.FramelessWindowHint` in
+`qml/GitLama/Main.qml`) that draws its own caption in the top toolbar row, the way GTK
+applications with client-side decorations do. Qt renders the window through its default
+scene graph backend for the session (OpenGL or Vulkan on Wayland and X11); there is no
+offscreen content mask or toolkit wrapper around the surface.
 
-The existing caption channel sends the active Meridian ground as ARGB32 to a
-window-owned GTK CSS provider. Updates are coalesced for unchanged colors and
-stale deferred callbacks are discarded. The native method validates the ARGB32
-payload. Other platforms retain their current window setup.
+- **Window buttons** follow the desktop's configuration: `PlatformHooks.captionLayout`
+  reads GNOME's `button-layout` (`gtk-decoration-layout`), and `WindowControls` shows the
+  buttons it names at the leading and trailing ends of the toolbar. `@none` shows none.
+- **Moving and maximizing**: `WindowDragArea` covers the empty toolbar; a drag starts the
+  compositor's move (`startSystemMove`) and a double click toggles maximized.
+- **Resizing**: `LinuxResizeEdges` puts 6px grips along the edges and corners that start
+  the compositor's resize (`startSystemResize`). Tiling compositors such as Hyprland
+  manage the size themselves and never deliver these.
+- **Text scale** follows GNOME's `text-scaling-factor` (`PlatformHooks.textScale`) so GitLama
+  matches the GTK applications beside it.
+- **Desktop identity**: the Wayland app ID and the desktop entry are `de.devmil.gitlama`,
+  so docks, launchers and window rules keep matching after an update from earlier releases.
 
-Build and distribution dependencies no longer require or bundle libhandy.
-Rust build-profile selection was already correct and was left intact.
+macOS keeps the native frame with a unified, transparent toolbar title bar
+(`PlatformHooks.configureWindow`); Windows keeps the native frame.
 
-## Completed checks
-
-- Native accelerated-content fixture compiled with warnings treated as errors.
-- Adwaita light/dark at 1× and 2×: opaque rectangular GL content, smooth
-  transparent outer corners, exact floating insets, native background updates,
-  resize, maximize/restore, all tiled classes, solid CSD, fullscreen/restore.
-- Caption regression: initial light color, no duplicate same-theme update,
-  dark color update, and existing platform/window-control behavior.
-- Full scripts/verify.sh passed: analysis, 661 Flutter tests, Rust tests, package tests and architecture/design/plan checks.
-
-## Performance scope
-
-ProcessLama's matched wrapper experiment averaged 32.43% with libhandy and
-18.35% with the selected native border, using the same optimized Rust core.
-Its final release app averaged 17.85% across two cold launches. This establishes
-the mechanism on that workload; no equivalent CPU percentage is claimed for
-Gitlama, whose rendering and application workloads differ.
-
-The production Linux release build succeeded with the pinned Flutter 3.47.5 SDK.
-The bundled Rust library matched the Cargo release output byte-for-byte; no
-kernel_blob.bin or libhandy was bundled. A copied bundle cold-launched outside
-the checkout with fresh profile/runtime/XDG roots. Every ELF dependency resolved;
-/proc maps verified the engine, Dart AOT and optimized core loaded from that
-bundle. The app stayed running until the probe terminated its process group.
-
-Optimized core SHA-256: `436030715c5faea1474a3ab10f95939d6f91f37960cf1a786e44a370a630a4a5`.
+The port ran on Arch Linux (Omarchy, Hyprland, Wayland). Moving and resizing on floating
+compositors, other desktops (GNOME, KDE, X11 sessions) and fractional scaling have not been
+checked yet.

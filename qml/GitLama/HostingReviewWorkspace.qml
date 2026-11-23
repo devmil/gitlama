@@ -37,7 +37,7 @@ MeridianDialogSurface {
 
     Timer {
         id: draftTimer
-        interval: 250
+        interval: GitLamaLayout.reviewDraftDebounce
         onTriggered: Store.hosting.reviewSaveDraft()
     }
 

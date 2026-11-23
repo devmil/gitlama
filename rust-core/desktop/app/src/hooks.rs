@@ -6,6 +6,19 @@ unsafe extern "C" {
     fn gitlama_keyboard_modifiers() -> i32;
 }
 
+#[cfg(target_os = "macos")]
+unsafe extern "C" {
+    fn gitlama_configure_windows();
+    fn gitlama_system_reduce_motion() -> bool;
+    fn gitlama_share_text(
+        text: *const std::ffi::c_char,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> bool;
+}
+
 #[qobject(ConvertToCamelCase)]
 mod platform_hooks {
     #[derive(Default)]
@@ -14,7 +27,53 @@ mod platform_hooks {
     impl PlatformHooks {
         /// Gives macOS windows the unified, transparent toolbar title bar.
         #[qslot]
-        fn configure_window(&self) {}
+        fn configure_window(&self) {
+            #[cfg(target_os = "macos")]
+            // SAFETY: configures the application's windows on the GUI thread.
+            unsafe {
+                super::gitlama_configure_windows();
+            }
+        }
+
+        /// Whether `shareText` can offer the platform's share sheet: macOS and Windows.
+        #[qslot]
+        fn can_share(&self) -> bool {
+            cfg!(any(target_os = "macos", target_os = "windows"))
+        }
+
+        /// Offers `text` to the platform's share sheet under the localized `title`, anchored
+        /// below the rectangle (window coordinates, logical pixels). No file is written. False
+        /// when it cannot be shown.
+        #[qslot]
+        fn share_text(
+            &self,
+            text: String,
+            title: String,
+            x: f64,
+            y: f64,
+            width: f64,
+            height: f64,
+        ) -> bool {
+            #[cfg(target_os = "macos")]
+            {
+                let _ = title;
+                let Ok(text) = std::ffi::CString::new(text) else {
+                    return false;
+                };
+                // SAFETY: a NUL-terminated string valid for the call, on the GUI thread.
+                unsafe { super::gitlama_share_text(text.as_ptr(), x, y, width, height) }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                let _ = (x, y, width, height);
+                super::windows_share::share_text(&text, &title)
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            {
+                let _ = (text, title, x, y, width, height);
+                false
+            }
+        }
 
         /// Development: `GITLAMA_SCREENSHOT=<png>[;<step>...]` saves the
         /// window after startup (optionally after steps) and quits.
@@ -55,7 +114,16 @@ mod platform_hooks {
                 gsettings("org.gnome.desktop.interface", "enable-animations")
                     .is_some_and(|value| value == "false")
             }
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(target_os = "macos")]
+            // SAFETY: reads the accessibility setting on the GUI thread.
+            unsafe {
+                super::gitlama_system_reduce_motion()
+            }
+            #[cfg(target_os = "windows")]
+            {
+                super::windows_share::reduce_motion()
+            }
+            #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
             {
                 false
             }
@@ -89,3 +157,67 @@ mod platform_hooks {
 }
 
 pub use platform_hooks::PlatformHooks;
+
+#[cfg(target_os = "windows")]
+mod windows_share {
+    use windows::ApplicationModel::DataTransfer::{DataRequestedEventArgs, DataTransferManager};
+    use windows::Foundation::TypedEventHandler;
+    use windows::Win32::UI::Input::KeyboardAndMouse::GetActiveWindow;
+    use windows::Win32::UI::Shell::IDataTransferManagerInterop;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SPI_GETCLIENTAREAANIMATION, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
+    };
+    use windows::core::{HSTRING, factory};
+
+    /// Shows the Share UI for the active window with `text` as its data.
+    pub fn share_text(text: &str, title: &str) -> bool {
+        let shown = || -> windows::core::Result<()> {
+            // SAFETY: the active window of this (the GUI) thread.
+            let window = unsafe { GetActiveWindow() };
+            if window.is_invalid() {
+                return Err(windows::core::Error::empty());
+            }
+            let interop = factory::<DataTransferManager, IDataTransferManagerInterop>()?;
+            // SAFETY: a valid top-level window of this process.
+            let manager: DataTransferManager = unsafe { interop.GetForWindow(window)? };
+            let text = HSTRING::from(text);
+            let title = HSTRING::from(title);
+            let token = std::sync::Arc::new(std::sync::Mutex::new(None::<i64>));
+            let handler_token = std::sync::Arc::clone(&token);
+            let handler = TypedEventHandler::<DataTransferManager, DataRequestedEventArgs>::new(
+                move |sender, args| {
+                    let request = args.ok()?.Request()?;
+                    let data = request.Data()?;
+                    data.Properties()?.SetTitle(&title)?;
+                    data.SetText(&text)?;
+                    // One request per Share: the handler removes itself.
+                    if let Some(token) = handler_token.lock().ok().and_then(|mut slot| slot.take())
+                    {
+                        let _ = sender.ok()?.RemoveDataRequested(token);
+                    }
+                    Ok(())
+                },
+            );
+            *token.lock().map_err(|_| windows::core::Error::empty())? =
+                Some(manager.DataRequested(&handler)?);
+            // SAFETY: the same window the manager belongs to.
+            unsafe { interop.ShowShareUIForWindow(window) }
+        };
+        shown().is_ok()
+    }
+
+    /// Windows' "Show animations in Windows" setting, off meaning reduce motion.
+    pub fn reduce_motion() -> bool {
+        let mut animations = windows::core::BOOL(1);
+        // SAFETY: SPI_GETCLIENTAREAANIMATION writes one BOOL.
+        let read = unsafe {
+            SystemParametersInfoW(
+                SPI_GETCLIENTAREAANIMATION,
+                0,
+                Some((&raw mut animations).cast()),
+                SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+            )
+        };
+        read.is_ok() && !animations.as_bool()
+    }
+}

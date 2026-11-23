@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import Meridian
 
 // The loading and failed-start screen: the mark at the centre (where the

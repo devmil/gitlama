@@ -131,6 +131,22 @@ unsafe extern "system" {
     fn AttachConsole(process_id: u32) -> i32;
 }
 
+unsafe extern "C" {
+    fn gitlama_install_file_open_filter();
+}
+
+/// A folder the operating system asked to open (an open-document event); the window opens it
+/// once it is ready.
+#[unsafe(no_mangle)]
+extern "C" fn gitlama_file_open_requested(path: *const std::ffi::c_char, length: usize) {
+    if path.is_null() {
+        return;
+    }
+    // SAFETY: the filter passes `length` bytes of a live QByteArray for this call.
+    let bytes = unsafe { std::slice::from_raw_parts(path.cast::<u8>(), length) };
+    let _ = gitlama_workbench::cli::queue_open_request(bytes);
+}
+
 fn main() {
     // Command-line output reaches the terminal that started GitLama.
     #[cfg(windows)]
@@ -151,6 +167,8 @@ fn main() {
     set_desktop_file_name();
     let mut application = QApp::new();
     application.application_name(APPLICATION_NAME);
+    // SAFETY: the GUI application exists; the filter lives as its child.
+    unsafe { gitlama_install_file_open_filter() };
     assert!(
         qtbridge::qresource::register_bytes(RESOURCES),
         "failed to register the embedded QML resource"
