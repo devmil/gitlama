@@ -231,6 +231,16 @@ impl Driver {
                 workflows.busy_changed();
             }
         }
+        if changed.intersects(Topics::SETTINGS | Topics::UPDATES)
+            && let Some(services) = self.app.services()
+        {
+            let updates = services.updates.value();
+            let mut settings = self.settings.borrow_mut();
+            if settings.updates != updates {
+                settings.updates = updates;
+                settings.updates_changed();
+            }
+        }
         if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::OPERATIONS | Topics::SESSION | Topics::INSPECTOR)
             && let Some(services) = self.app.services()
         {

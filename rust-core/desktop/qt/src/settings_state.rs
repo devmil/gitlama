@@ -97,6 +97,9 @@ mod settings_state {
         pub(crate) acceleration: Value,
         /// The diff renderer: {configured, result, card} (diff_renderer.rs value).
         pub(crate) renderer: Value,
+        /// Updates: {supported, installsUpdates, installed, channel,
+        /// checking, status, failure, downloadsUrl} (updates.rs value).
+        pub(crate) updates: Value,
     }
 
     impl SettingsState {
@@ -124,6 +127,27 @@ mod settings_state {
                     "enable" => rt::spawn_detached(async move { acceleration.enable(false).await }),
                     "enableFromSettings" => rt::spawn_detached(async move { acceleration.enable(true).await }),
                     "dismiss" => acceleration.dismiss(),
+                    _ => {}
+                }
+            });
+        }
+
+        qproperty!("updates", Member = updates, Notify = updates_changed);
+        #[qsignal]
+        pub fn updates_changed(&mut self);
+
+        /// Updates: `action` is check, or channel with `value` stable|beta.
+        #[qslot]
+        fn update_action(&self, action: String, value: String) {
+            self.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let updates = Rc::clone(&services.updates);
+                match action.as_str() {
+                    "check" => rt::spawn_detached(async move { updates.check().await }),
+                    "channel" => {
+                        let Some(channel) = gitlama_workbench::updates::Channel::parse(&value) else { return };
+                        rt::spawn_detached(async move { updates.select_channel(channel).await })
+                    }
                     _ => {}
                 }
             });

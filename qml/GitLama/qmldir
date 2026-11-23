@@ -62,6 +62,7 @@ ExternalMergeAction 1.0 ExternalMergeAction.qml
 BranchFilterEditor 1.0 BranchFilterEditor.qml
 PowerToolsPanel 1.0 PowerToolsPanel.qml
 CustomCommandsPage 1.0 CustomCommandsPage.qml
+UpdatesPage 1.0 UpdatesPage.qml
 DiffRendererPage 1.0 DiffRendererPage.qml
 DiffRendererConfirm 1.0 DiffRendererConfirm.qml
 StatusAccelerationSettings 1.0 StatusAccelerationSettings.qml

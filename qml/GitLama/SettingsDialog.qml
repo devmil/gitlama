@@ -27,6 +27,7 @@ MeridianSettingsDialog {
         ["diffRenderer", "file-diff", "settingsDiffRenderer", "settingsDiffRendererDetail"],
         ["shortcuts", "shortcuts", "settingsShortcuts", "settingsShortcutsDetail"],
         ["accessibility", "accessibility", "settingsAccessibility", "settingsAccessibilityDetail"],
+        ["updates", "download", "settingsUpdates", "settingsUpdatesDetail"],
         ["diagnostics", "activity", "diagnosticsTitle", "diagnosticsDescription"],
         ["licenses", "info", "licensesTitle", "settingsLicensesDetail"],
     ]
@@ -387,6 +388,9 @@ MeridianSettingsDialog {
             onChosen: v => dialog.updateAppearance({ reduceMotion: v })
         }
     }
+
+    // Updates ------------------------------------------------------------------
+    UpdatesPage {}
 
     // Diagnostics --------------------------------------------------------------
     // devmil_logging's DiagnosticControls: one column, space-4 apart.

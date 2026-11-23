@@ -144,6 +144,13 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   remote workspaces are ported. `scripts/run-dev.sh` gives each profile its own instance.
 - Repository drops: folders dropped on the window open as repositories (others are
   rejected), with the drop prompt over the window while dragging and the summary after.
+- Updates: Settings › Updates (installed version, release channel, check); Linux and Windows
+  check the public release index over HTTPS with curl (bounded, no redirect) and offer the
+  downloads page — checked live on Linux. macOS drives Sparkle through
+  `desktop/app/src/native/sparkle_bridge.m`, which loads Sparkle.framework from the bundle at
+  run time; it is NOT compiled or tested yet (no macOS here) and packaging must ship
+  Sparkle.framework with `SUPublicEDKey`. The Updates category always shows (Flutter hid it
+  where unsupported; only development builds are affected).
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
@@ -151,15 +158,14 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
   settings pages (with hosting).
 - History: selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.
-- Hosting (pull requests, checks, links), updates (Sparkle/AppImage and its settings page),
-  macOS window configuration, macOS open-file events.
+- Hosting (pull requests, checks, links), macOS window configuration, macOS open-file events.
 - Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
   remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).
 - Inspector: changed-word marks on wrapped lines.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry from the logbook; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours.
-- Settings pages: integrations, repository binding, remote hosts, updates; diagnostics Share on macOS/Windows.
+- Settings pages: integrations, repository binding, remote hosts; diagnostics Share on macOS/Windows.
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.

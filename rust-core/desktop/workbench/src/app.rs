@@ -59,6 +59,7 @@ pub struct Services {
     pub acceleration: Rc<crate::acceleration::Acceleration>,
     pub diff_renderers: Rc<crate::diff_renderer::DiffRenderers>,
     pub cli: Rc<crate::cli::CliForwarding>,
+    pub updates: Rc<crate::updates::UpdateService>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -271,6 +272,7 @@ impl Services {
         let cli = crate::cli::CliForwarding::start(Rc::clone(&workspace), Rc::clone(&transfers), notifier.clone())
             .await
             .map_err(|_| "cli_forwarding")?;
+        let updates = crate::updates::UpdateService::new(Rc::clone(&settings), notifier.clone()).await;
         let diff_renderers = crate::diff_renderer::DiffRenderers::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -310,6 +312,7 @@ impl Services {
             acceleration,
             diff_renderers,
             cli,
+            updates,
             operations,
             conflicts,
             rebases,

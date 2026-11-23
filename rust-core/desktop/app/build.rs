@@ -65,6 +65,11 @@ fn main() {
     }
     build_native_items(&manifest, &out_dir());
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        // Sparkle, loaded at run time from the bundle (sparkle_bridge.m).
+        let bridge = manifest.join("src/native/sparkle_bridge.m");
+        println!("cargo:rerun-if-changed={}", bridge.display());
+        cc::Build::new().file(&bridge).flag("-fobjc-arc").compile("gitlama_sparkle_bridge");
+        println!("cargo:rustc-link-lib=framework=Foundation");
         // Qt frameworks are linked by @rpath: the app bundle's Frameworks
         // folder, and Qt's own for development runs (packaging removes it).
         println!("cargo:rustc-link-arg=-Wl,-rpath,@executable_path/../Frameworks");

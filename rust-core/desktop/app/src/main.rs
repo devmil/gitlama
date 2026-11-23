@@ -89,6 +89,27 @@ fn forwarding_failed_message() -> String {
         .unwrap_or_else(|| "GitLama could not forward the command safely.".to_owned())
 }
 
+/// Sparkle, through the Objective-C bridge (sparkle_bridge.m).
+#[cfg(target_os = "macos")]
+fn install_native_updater() {
+    unsafe extern "C" {
+        fn gitlama_sparkle_loaded() -> bool;
+        fn gitlama_sparkle_configure(channel: *const std::ffi::c_char) -> bool;
+        fn gitlama_sparkle_check() -> bool;
+    }
+    fn loaded() -> bool {
+        unsafe { gitlama_sparkle_loaded() }
+    }
+    fn configure(channel: &str) -> bool {
+        let Ok(channel) = std::ffi::CString::new(channel) else { return false };
+        unsafe { gitlama_sparkle_configure(channel.as_ptr()) }
+    }
+    fn check() -> bool {
+        unsafe { gitlama_sparkle_check() }
+    }
+    gitlama_workbench::updates::set_native_updater(gitlama_workbench::updates::NativeUpdater { loaded, configure, check });
+}
+
 fn main() {
     // macOS starts applications with launchd's PATH; restart with the login
     // shell's before any thread exists so Git finds its helpers.
@@ -97,6 +118,8 @@ fn main() {
 
     // A command for the running window is handed to it; this process ends.
     forward_or_continue();
+    #[cfg(target_os = "macos")]
+    install_native_updater();
     gitlama_workbench::diagnostics::info("Launcher", "process_start", &[]);
     set_desktop_file_name();
     let mut application = QApp::new();
