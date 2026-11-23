@@ -13,6 +13,7 @@ LinuxResizeEdges 1.0 LinuxResizeEdges.qml
 StartupScreen 1.0 StartupScreen.qml
 WindowControls 1.0 WindowControls.qml
 WindowDragArea 1.0 WindowDragArea.qml
+WindowGeometry 1.0 WindowGeometry.qml
 singleton Labels 1.0 Labels.qml
 singleton Notifications 1.0 Notifications.qml
 AboutDialog 1.0 AboutDialog.qml

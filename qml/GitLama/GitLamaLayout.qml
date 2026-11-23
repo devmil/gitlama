@@ -166,6 +166,14 @@ QtObject {
     readonly property real windowDefaultHeight: 800
     readonly property real windowMinimumWidth: 900
     readonly property real windowMinimumHeight: 600
+    // The settings keep frames up to this extent.
+    readonly property real windowMaximumExtent: 16384
+    // A saved frame keeps its position when a screen shows this much of it.
+    readonly property real windowVisibleOverlap: 100
+    // Frame changes are saved after this pause.
+    readonly property int windowGeometrySaveDelay: 250
+    // The window shows without its saved frame when settings take longer.
+    readonly property int windowRestoreTimeout: 2000
     // An inspection window opens at this size.
     readonly property real inspectionWindowWidth: 1100
     readonly property real inspectionWindowHeight: 760

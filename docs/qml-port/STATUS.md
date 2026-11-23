@@ -8,7 +8,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   embedded QML, Meridian vendored, l10n generator (ICU plurals/selects), git colour tokens,
   startup screen, Linux caption chrome, screenshot hook (`GITLAMA_SCREENSHOT`).
 - Workbench runtime (`rt`): local executor, blocking pool, timers.
-- Settings service (same native store and path), diagnostics history.
+- Settings service (same native store and path), diagnostics history; the main window keeps its frame (size, position where the platform allows it, maximized) in `appearance.window*` as Flutter did.
 - Session call seam generated from api.rs + helper dispatcher
   (`tooling/remote_wire/generate_calls.py`): local + remote routing.
 - Session model, history service, workspace service (tabs, groups, worktrees, drain,

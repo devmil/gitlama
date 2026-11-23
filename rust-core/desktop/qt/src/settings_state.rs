@@ -238,7 +238,8 @@ mod settings_state {
                 match action.as_str() {
                     "open" => rt::spawn_detached(async move { tools.open().await }),
                     "runDiscovered" => {
-                        let index = options["index"].as_u64().unwrap_or(u64::MAX) as usize;
+                        let index =
+                            crate::json::whole(&options["index"]).unwrap_or(u64::MAX) as usize;
                         rt::spawn_detached(async move { tools.run_discovered(index).await })
                     }
                     "run" => {
@@ -279,8 +280,7 @@ mod settings_state {
                     .with(|document| document.auto_fetch.clone());
                 let next = NativeAutoFetchSettings {
                     enabled: value["enabled"].as_bool().unwrap_or(current.enabled),
-                    interval_minutes: value["intervalMinutes"]
-                        .as_u64()
+                    interval_minutes: crate::json::whole(&value["intervalMinutes"])
                         .and_then(|minutes| u32::try_from(minutes).ok())
                         .filter(|minutes| *minutes > 0)
                         .unwrap_or(current.interval_minutes),

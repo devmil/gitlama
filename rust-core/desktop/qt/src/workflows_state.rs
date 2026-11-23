@@ -92,7 +92,7 @@ mod workflows_state {
             self.with_services(move |services| {
                 let extensions = Rc::clone(&services.extensions);
                 let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
-                let index = options["index"].as_u64().unwrap_or(u64::MAX) as usize;
+                let index = crate::json::whole(&options["index"]).unwrap_or(u64::MAX) as usize;
                 let row = match action.as_str() {
                     "openWorktree" => Some(PanelAction::OpenWorktree(index)),
                     "deleteWorktree" => Some(PanelAction::DeleteWorktree(index)),
@@ -136,7 +136,7 @@ mod workflows_state {
             self.with_services(move |services| {
                 let tools = Rc::clone(&services.power_tools);
                 let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
-                let owner = options["owner"].as_u64().unwrap_or(0);
+                let owner = crate::json::whole(&options["owner"]).unwrap_or(0);
                 match action.as_str() {
                     "open" => rt::spawn_detached(async move { tools.open(owner).await }),
                     "close" => tools.close(owner),

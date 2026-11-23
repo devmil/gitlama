@@ -127,7 +127,7 @@ pub fn bytes_of(value: &Value) -> Option<Vec<u8>> {
     value
         .as_array()?
         .iter()
-        .map(|byte| byte.as_u64().and_then(|byte| u8::try_from(byte).ok()))
+        .map(|byte| crate::json::whole(byte).and_then(|byte| u8::try_from(byte).ok()))
         .collect()
 }
 

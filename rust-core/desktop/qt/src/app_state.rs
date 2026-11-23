@@ -100,7 +100,9 @@ mod app_state {
                 let Some(services) = driver.app.services() else {
                     return;
                 };
-                let Value::Object(fields) = patch else { return };
+                let Value::Object(fields) = crate::json::integral_numbers(patch) else {
+                    return;
+                };
                 let mut document = services.settings.current();
                 let Ok(Value::Object(mut current)) = serde_json::to_value(&document.appearance)
                 else {

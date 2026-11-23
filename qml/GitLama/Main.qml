@@ -52,7 +52,8 @@ Window {
     height: GitLamaLayout.windowDefaultHeight
     minimumWidth: GitLamaLayout.windowMinimumWidth
     minimumHeight: GitLamaLayout.windowMinimumHeight
-    visible: true
+    // Shown by `frame` with the saved geometry.
+    visible: false
     title: L10n.t("appTitle")
     color: Theme.colors.ground
     // Linux draws its own caption in the toolbar; macOS keeps the native
@@ -124,7 +125,7 @@ Window {
         systemReducedMotion = hooks.reduceMotion()
         Theme.textScale = hooks.textScale()
         Store.captionLayout = _parseCaptionLayout(hooks.captionLayout())
-        Qt.callLater(() => appWindow.hooks.configureWindow())
+        _restoreFrame()
         const request = hooks.screenshotRequest()
         if (request.length > 0)
             screenshot.start(request)
@@ -187,7 +188,33 @@ Window {
         // Inspection windows close with the main window.
         if (Store.actions)
             Store.actions.closeInspectionWindows()
+        frame.save()
         app.flushSettings()
+    }
+
+    WindowGeometry {
+        id: frame
+        window: appWindow
+        update: patch => appWindow.app.updateAppearance(patch)
+        // Native window setup (macOS toolbar) needs the shown window.
+        onRestoredChanged: Qt.callLater(() => appWindow.hooks.configureWindow())
+    }
+    // The saved frame arrives with the settings; a failed start shows the window as it is.
+    function _restoreFrame() {
+        if (appWindow.appearance.windowMaximized !== undefined)
+            frame.restore(appWindow.appearance)
+        else if (appWindow.app.startup === "failed")
+            frame.reveal()
+    }
+    onAppearanceChanged: _restoreFrame()
+    Connections {
+        target: appWindow.app
+        function onStartupChanged() { appWindow._restoreFrame() }
+    }
+    Timer {
+        running: !frame.restored
+        interval: GitLamaLayout.windowRestoreTimeout
+        onTriggered: frame.reveal()
     }
 
     MeridianGround { anchors.fill: parent }
