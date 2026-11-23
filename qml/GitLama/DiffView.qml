@@ -496,12 +496,9 @@ Item {
                                 y: lineText.y
                                 width: textCell.width
                                 sourceComponent: Item {
-                                    TextEdit {
+                                    TextLayoutProbe {
                                         id: measure
                                         width: textCell.width
-                                        opacity: 0
-                                        readOnly: true
-                                        activeFocusOnPress: false
                                         wrapMode: TextEdit.WrapAnywhere
                                         font: Theme.type.code
                                         text: line.text
