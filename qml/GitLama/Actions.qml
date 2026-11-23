@@ -138,7 +138,8 @@ Item {
         licenseDialog.packages = Store.settings.licenses()
         licenseDialog.open()
     }
-    function showAbout() {}
+    function showAbout() { aboutDialog.open() }
+    AboutDialog { id: aboutDialog; onOpenLicenses: actions.showLicenses() }
     /// Opens the patch dialog in `mode` for what the active pane shows: the
     /// Changes selection, else History's (or `commit`).
     function showPatchWorkflow(mode, commit) {
@@ -695,6 +696,8 @@ Item {
                 lineSelectionDialog.close()
             } else if (name === "patchSubmit")
                 patchDialog.submit()
+            else if (name === "about")
+                showAbout()
             else if (name === "submitIgnore")
                 ignoreDialog.submit()
             else if (name === "submitMutation")

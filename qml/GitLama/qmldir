@@ -14,6 +14,7 @@ WindowControls 1.0 WindowControls.qml
 WindowDragArea 1.0 WindowDragArea.qml
 singleton Labels 1.0 Labels.qml
 singleton Notifications 1.0 Notifications.qml
+AboutDialog 1.0 AboutDialog.qml
 Actions 1.0 Actions.qml
 InitializeRepositoryDialog 1.0 InitializeRepositoryDialog.qml
 RecentRepositoryList 1.0 RecentRepositoryList.qml
