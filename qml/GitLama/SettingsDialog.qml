@@ -37,6 +37,8 @@ MeridianSettingsDialog {
         currentPage = Math.max(0, index)
         if (category === "customCommands")
             customCommands.start()
+        if (Store.settings)
+            Store.settings.statusAcceleration("read")
         recordingCommand = ""
         if (Store.settings)
             Store.settings.showFailure("")
@@ -224,6 +226,10 @@ MeridianSettingsDialog {
             destructive: true
             onConfirmed: Store.settings.resetRepository()
             onClosed: resetRepository.forceActiveFocus()
+        }
+        StatusAccelerationSettings {
+            visible: dialog.repository !== null
+            width: parent.width
         }
         MeridianText {
             visible: dialog.repository === null

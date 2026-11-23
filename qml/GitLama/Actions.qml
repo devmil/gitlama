@@ -1040,6 +1040,8 @@ Item {
                 const split = argument.indexOf("=")
                 Store.workflows.extension(split < 0 ? argument : argument.slice(0, split), split < 0 ? ({}) : JSON.parse(argument.slice(split + 1)))
             }
+            else if (name === "statusAcceleration")
+                Store.settings.statusAcceleration(argument)
             else if (name === "settingsTool") {
                 // settingsTool:<action>=<options json>
                 const split = argument.indexOf("=")

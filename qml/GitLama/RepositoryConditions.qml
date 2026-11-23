@@ -60,9 +60,12 @@ Column {
     }
     Timer { id: resolvedTimer; interval: 1200; onTriggered: conditions.recentlyResolved = false }
 
-    padding: items.length > 0 ? Theme.space.s3 : 0
+    /// The slow-status offer of the active session, or null.
+    readonly property var acceleration: Store.settings && Store.settings.acceleration ? (Store.settings.acceleration.offer ?? null) : null
+
+    padding: items.length > 0 || acceleration !== null ? Theme.space.s3 : 0
     spacing: Theme.space.s3
-    visible: items.length > 0
+    visible: items.length > 0 || acceleration !== null
 
     Repeater {
         model: conditions.items
@@ -101,6 +104,28 @@ Column {
                 disabledReason: conditions.abortReason.length > 0 ? Commands.reasonText(conditions.abortReason) : ""
                 onClicked: conditions.command("rebaseAbort")
             }
+        }
+    }
+    MeridianBanner {
+        objectName: "status-acceleration-offer"
+        visible: conditions.acceleration !== null
+        width: conditions.width - 2 * conditions.padding
+        tone: conditions.acceleration && conditions.acceleration.failed ? MeridianBanner.Error : MeridianBanner.Info
+        iconName: conditions.acceleration && conditions.acceleration.failed ? "circle-x" : "gauge"
+        message: !conditions.acceleration ? ""
+            : conditions.acceleration.failed ? L10n.t("statusAccelerationFailed")
+            : L10n.tn(conditions.acceleration.monitor ? "statusAccelerationOffer" : "statusAccelerationOfferCacheOnly",
+                      { seconds: conditions.acceleration.seconds })
+        dismissible: true
+        dismissLabel: L10n.t("statusAccelerationDismiss")
+        onDismissed: Store.settings.statusAcceleration("dismiss")
+        MeridianButton {
+            visible: conditions.acceleration !== null && !conditions.acceleration.failed
+            text: L10n.t("statusAccelerationEnable")
+            variant: MeridianButton.Primary
+            controlSize: MeridianButton.Small
+            enabled: conditions.acceleration !== null && !conditions.acceleration.enabling
+            onClicked: Store.settings.statusAcceleration("enable")
         }
     }
 }

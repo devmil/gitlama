@@ -6,6 +6,7 @@
 //! [`gitlama_core::api`] on the blocking pool and publish what changed
 //! through [`notify::Notifier`]; the Qt layer projects their state.
 
+pub mod acceleration;
 pub mod app;
 pub mod archive;
 pub mod appearance;

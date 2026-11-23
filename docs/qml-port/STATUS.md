@@ -116,12 +116,14 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Settings › Tools and commands (Custom commands): tools found on this computer, configured
   tools (run after a command preview, delete), and the add form validated by the core before
   it is stored; Add integration opens it with the name field focused.
+- Status acceleration: the slow-status offer (once per session after a slow first scan,
+  enable or dismiss) under the repository conditions, and Settings › Git › Faster change
+  checks (untracked cache, file system monitor, last scan, turn on).
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
 - Integrations panel (the hosting resources view) and the Integrations/Repository binding
-  settings pages (with hosting), diff renderer (settings card and inspector rendering),
-  status acceleration settings.
+  settings pages (with hosting), diff renderer (settings card and inspector rendering).
 - History: branch filter editor, view options (other refs), search scopes, reflog, collapse,
   notices (stale upstream, filtered out, collapsed), selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.

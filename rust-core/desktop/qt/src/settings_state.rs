@@ -92,6 +92,9 @@ mod settings_state {
         pub(crate) failure: String,
         /// The Custom commands page (tools.rs page_value).
         pub(crate) tools: Value,
+        /// Git's status accelerators of the active session: {offer, settings}
+        /// (acceleration.rs value).
+        pub(crate) acceleration: Value,
     }
 
     impl SettingsState {
@@ -102,6 +105,27 @@ mod settings_state {
         pub fn page_changed(&mut self);
         #[qsignal]
         pub fn failure_changed(&mut self);
+
+        qproperty!("acceleration", Member = acceleration, Notify = acceleration_changed);
+        #[qsignal]
+        pub fn acceleration_changed(&mut self);
+
+        /// Status accelerators: `action` is read (for the settings), enable
+        /// (from the offer), enableFromSettings or dismiss (the offer).
+        #[qslot]
+        fn status_acceleration(&self, action: String) {
+            self.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let acceleration = Rc::clone(&services.acceleration);
+                match action.as_str() {
+                    "read" => rt::spawn_detached(async move { acceleration.read().await }),
+                    "enable" => rt::spawn_detached(async move { acceleration.enable(false).await }),
+                    "enableFromSettings" => rt::spawn_detached(async move { acceleration.enable(true).await }),
+                    "dismiss" => acceleration.dismiss(),
+                    _ => {}
+                }
+            });
+        }
 
         qproperty!("tools", Member = tools, Notify = tools_changed);
         #[qsignal]

@@ -212,7 +212,7 @@ impl Driver {
                 workflows.busy_changed();
             }
         }
-        if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::OPERATIONS)
+        if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::OPERATIONS | Topics::SESSION)
             && let Some(services) = self.app.services()
         {
             let tools = gitlama_workbench::tools::page_value(
@@ -220,10 +220,18 @@ impl Driver {
                 &services.tools.configured(),
                 services.workspace.current().is_some(),
             );
+            if changed.intersects(Topics::SESSION | Topics::WORKSPACE) {
+                services.acceleration.check_offer();
+            }
+            let acceleration = services.acceleration.value();
             let mut settings = self.settings.borrow_mut();
             if settings.tools != tools {
                 settings.tools = tools;
                 settings.tools_changed();
+            }
+            if settings.acceleration != acceleration {
+                settings.acceleration = acceleration;
+                settings.acceleration_changed();
             }
         }
         if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::SESSION)
