@@ -179,6 +179,10 @@ Item {
             }
             T.TextArea {
                 id: editor
+
+                MeridianTextMenu {
+                    id: editorMenu
+                }
                 width: flick.contentWidth
                 implicitWidth: contentWidth + leftPadding + rightPadding
                 implicitHeight: contentHeight + topPadding + bottomPadding
@@ -196,6 +200,12 @@ Item {
                 enabled: !root.busy
                 Accessible.role: Accessible.EditableText
                 Accessible.name: L10n.t("conflictResult")
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
+                        editorMenu.openAtCursor()
+                        event.accepted = true
+                    }
+                }
                 onTextChanged: if (root._boundRevision === Store.conflicts.textRevision && text !== Store.conflicts.resultText) Store.conflicts.editResult(text)
                 onCursorRectangleChanged: {
                     if (!activeFocus)

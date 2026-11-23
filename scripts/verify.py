@@ -147,6 +147,8 @@ def main():
     run(sys.executable, 'scripts/check_architecture.py')
     run(sys.executable, 'scripts/check_dependencies.py')
     run(sys.executable, 'scripts/check_meridian_usage.py')
+    run(sys.executable, 'scripts/check_design_contract.py')
+    run(sys.executable, 'scripts/audit_command_inventory.py')
 
 
 if __name__ == '__main__':

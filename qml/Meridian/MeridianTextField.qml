@@ -55,6 +55,12 @@ T.TextField {
     persistentSelection: false
 
     Accessible.role: Accessible.EditableText
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
+            textMenu.openAtCursor()
+            event.accepted = true
+        }
+    }
     Accessible.description: error ? Accessible.description : ""
 
     onRejectCountChanged: if (rejectCount > 0)
@@ -186,5 +192,9 @@ T.TextField {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.space.s1
         }
+    }
+
+    MeridianTextMenu {
+        id: textMenu
     }
 }

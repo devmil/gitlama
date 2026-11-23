@@ -61,6 +61,11 @@ Window {
     Binding { target: Theme; property: "iconAliases"; value: GitLamaIcons.aliases }
     Binding {
         target: Theme
+        property: "textMenuLabels"
+        value: ({ cut: L10n.t("textMenuCut"), copy: L10n.t("textMenuCopy"), paste: L10n.t("textMenuPaste"), selectAll: L10n.t("textMenuSelectAll") })
+    }
+    Binding {
+        target: Theme
         property: "mode"
         value: Store.screenshotTheme === "dark" ? Theme.Dark
              : Store.screenshotTheme === "light" ? Theme.Light

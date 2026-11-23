@@ -31,6 +31,8 @@ QtObject {
     /// An app's semantic icon names for Lucide icons (`fetch` →
     /// `arrow-down-to-line`), as Flutter's `MeridianTheme.resolve(icons:)`.
     property var iconAliases: ({})
+    /// The text editing menu's labels (MeridianTextMenu), localized by the app.
+    property var textMenuLabels: ({ cut: "Cut", copy: "Copy", paste: "Paste", selectAll: "Select All" })
 
     readonly property var brandInfo: Tokens.brands[brand] ?? Tokens.brands[Tokens.brandIds[0]]
     readonly property bool dark: mode === Theme.Dark || (mode === Theme.System && systemDark)

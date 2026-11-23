@@ -14,6 +14,8 @@ Item {
     property alias placeholderText: area.placeholderText
     property alias readOnly: area.readOnly
     property alias textArea: area
+    /// The text editing menu (open from code with `openAtCursor()`).
+    property alias textMenu: areaMenu
     property bool error: false
     property bool monospace: false
     property int minimumLines: 2
@@ -83,6 +85,12 @@ Item {
             Accessible.role: Accessible.EditableText
             Accessible.name: root.Accessible.name
             onEditingFinished: root.editingFinished()
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
+                    areaMenu.openAtCursor()
+                    event.accepted = true
+                }
+            }
             // Keeps the cursor in view while typing.
             onCursorRectangleChanged: {
                 if (cursorRectangle.y < flick.contentY)
@@ -101,6 +109,10 @@ Item {
                 color: area.placeholderTextColor
                 text: area.placeholderText
                 Accessible.ignored: true
+            }
+
+            MeridianTextMenu {
+                id: areaMenu
             }
         }
     }

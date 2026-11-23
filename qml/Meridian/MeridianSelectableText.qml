@@ -41,6 +41,12 @@ TextEdit {
     selectedTextColor: Theme.colors.ink
     readOnly: true
     selectByMouse: selectable
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
+            textMenu.openAtCursor()
+            event.accepted = true
+        }
+    }
     activeFocusOnPress: selectable
     activeFocusOnTab: false
     wrapMode: TextEdit.Wrap
@@ -54,5 +60,10 @@ TextEdit {
     FontMetrics {
         id: fontMetrics
         font: root.font
+    }
+
+    MeridianTextMenu {
+        id: textMenu
+        enabled: root.selectable
     }
 }

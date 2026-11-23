@@ -1468,54 +1468,6 @@
   "@indexLockUnavailable": {
     "description": "Generic safe index lock failure."
   },
-  "galleryTitle": "GitLama component gallery",
-  "@galleryTitle": {
-    "description": "Title of the internal shared-component gallery."
-  },
-  "galleryOpenRepository": "Open repository",
-  "@galleryOpenRepository": {
-    "description": "Gallery label for repository opening."
-  },
-  "galleryUnavailableAction": "Unavailable action with a deliberately long label",
-  "@galleryUnavailableAction": {
-    "description": "Gallery disabled-action stress label."
-  },
-  "galleryUnavailableReason": "No repository is open",
-  "@galleryUnavailableReason": {
-    "description": "Reason the gallery action is disabled."
-  },
-  "galleryLoadingRepository": "Loading repository",
-  "@galleryLoadingRepository": {
-    "description": "Gallery busy button label."
-  },
-  "galleryRefresh": "Refresh",
-  "@galleryRefresh": {
-    "description": "Refresh action label."
-  },
-  "galleryWorkspaceMenu": "Workspace menu",
-  "@galleryWorkspaceMenu": {
-    "description": "Gallery menu accessible label."
-  },
-  "galleryHistory": "History",
-  "@galleryHistory": {
-    "description": "History workspace label in the gallery."
-  },
-  "galleryChanges": "Changes",
-  "@galleryChanges": {
-    "description": "Changes workspace label in the gallery."
-  },
-  "galleryActivity": "Activity",
-  "@galleryActivity": {
-    "description": "Activity workspace label in the gallery."
-  },
-  "galleryBranchRow": "main  A long branch label that must remain accessible",
-  "@galleryBranchRow": {
-    "description": "Gallery row label used to test elision and semantics."
-  },
-  "galleryCurrent": "Current checkout",
-  "@galleryCurrent": {
-    "description": "Accessible current-checkout state."
-  },
   "historyObjectIdCopied": "Full value copied.",
   "@historyObjectIdCopied": {
     "description": "Confirmation after copying a full history-row value."
@@ -1995,6 +1947,9 @@
   },
   "findNoMatches": "No matches",
   "findSearching": "Searching…",
+  "@findSearching": {
+    "description": "A find bar's status while the search runs."
+  },
   "@findNoMatches": {
     "description": "Find bar counter when a search found nothing."
   },
@@ -5562,17 +5517,6 @@
   "@cliForwardingFailed": {
     "description": "CLI forwarding failure written before the app UI starts."
   },
-  "galleryStatus": "Activations: {count} · Menu: {menu}",
-  "@galleryStatus": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "menu": {
-        "type": "String"
-      }
-    }
-  },
   "@stageHunk": {
     "description": "Stage one complete diff hunk."
   },
@@ -5589,219 +5533,11 @@
   "unstageHunk": "Unstage hunk",
   "discardHunk": "Discard hunk",
   "transferForceHelp": "For commits you have rewritten. Refused if someone else pushed to it since your last fetch.",
-  "gallerySectionButton": "Button",
-  "gallerySectionIconButton": "IconButton",
-  "gallerySectionToolbarButton": "ToolbarButton",
-  "gallerySectionCheckbox": "Checkbox",
-  "gallerySectionSegmented": "Segmented",
-  "gallerySectionSelect": "Select",
-  "gallerySectionTextField": "TextField",
-  "gallerySectionCompass": "Compass",
-  "gallerySectionPalette": "Palette",
-  "gallerySectionRepoTabs": "RepoTabs",
-  "gallerySectionSidebarRow": "SidebarRow",
-  "gallerySectionAvatar": "Avatar",
-  "gallerySectionCommitRow": "CommitRow",
-  "gallerySectionComposer": "Composer",
-  "gallerySectionDiffHunk": "DiffHunk",
-  "galleryDiffSampleHunk": "@@ -169,3 +169,12 @@ jobs:",
-  "@galleryDiffSampleHunk": {
-    "description": "Sample hunk header in the component gallery."
-  },
-  "galleryDiffSampleContext": "  run: |",
-  "@galleryDiffSampleContext": {
-    "description": "Sample unchanged code line in the component gallery."
-  },
-  "galleryDiffSampleDeleted": "    old_value = 1",
-  "@galleryDiffSampleDeleted": {
-    "description": "Sample deleted code line in the component gallery."
-  },
-  "galleryDiffSampleAdded": "    new_value = 2",
-  "@galleryDiffSampleAdded": {
-    "description": "Sample added code line in the component gallery."
-  },
-  "galleryDiffSamplePath": "lib/app/main.dart",
-  "@galleryDiffSamplePath": {
-    "description": "Sample file path in the component gallery."
-  },
-  "gallerySectionFileRow": "FileRow",
-  "gallerySectionGraph": "Graph",
-  "gallerySectionRefChip": "RefChip",
-  "gallerySectionStatusGlyph": "StatusGlyph",
-  "gallerySectionSyncBadge": "SyncBadge",
-  "gallerySectionBanner": "Banner",
-  "gallerySectionKbd": "Kbd",
-  "gallerySectionLogbook": "Logbook",
-  "gallerySectionDialog": "Dialog",
-  "gallerySectionIsland": "Island",
-  "gallerySectionSettingsRow": "SettingsRow",
   "galleryPaletteMove": "Move",
   "galleryPaletteRun": "Run",
   "galleryPaletteBackground": "Run in background",
   "galleryPaletteScope": "Scope",
-  "galleryCommitToMain": "Commit to main",
-  "galleryPush": "Push",
-  "galleryCopyHash": "Copy hash",
-  "galleryDiscardThreeFiles": "Discard 3 files",
-  "galleryDiscard": "Discard",
-  "galleryFetching": "Fetching…",
-  "galleryPull": "Pull",
-  "galleryCommit": "Commit",
-  "galleryStageHunk": "Stage hunk",
-  "galleryShowAllFiles": "Show all 42 files",
-  "galleryFilter": "Filter",
-  "gallerySideBySide": "Side by side",
-  "galleryUnified": "Unified",
-  "galleryMore": "More",
-  "galleryCopy": "Copy",
-  "galleryStage": "Stage",
-  "galleryDelete": "Delete",
-  "galleryFetch": "Fetch",
-  "galleryStash": "Stash",
-  "galleryBranch": "Branch",
-  "galleryMerge": "Merge",
-  "gallerySignCommit": "Sign commit",
-  "galleryAmend": "Amend",
-  "galleryStageAllMixed": "Stage all (2 of 5)",
-  "galleryBypassHooks": "Bypass hooks",
-  "galleryFetchAutomatically": "Fetch automatically",
-  "galleryIncludeTags": "Include tags",
-  "galleryModified": "Modified",
-  "galleryAdded": "Added",
-  "galleryDeleted": "Deleted",
-  "galleryRenamed": "Renamed",
-  "galleryCopied": "Copied",
-  "galleryConflict": "Conflict",
-  "galleryUntracked": "Untracked",
-  "galleryIgnored": "Ignored",
-  "galleryTwoConflicts": "2 conflicts",
-  "galleryMichaelLamers": "Michael Lamers",
-  "galleryGitLamaReleaseBot": "GitLama Release Bot",
-  "galleryAuthorHandle": "ada",
-  "galleryAdaGit": "Ada Git",
-  "gallerySearchCommits": "Search commits, authors, hashes",
-  "galleryRefPlaceholder": "refs/heads/main",
-  "galleryRefValue": "feature/spline-graph",
-  "galleryInvalidRef": "feature/..bad",
-  "galleryInvalidRefMessage": "Branch names cannot contain “..”",
-  "galleryRebasePaused": "Rebase paused at 3 of 7.",
-  "galleryRebaseConflicts": "2 files still have conflicts in lib/app.",
-  "galleryAbort": "Abort",
-  "galleryContinue": "Continue",
-  "galleryPushRejected": "Push rejected.",
-  "galleryPushRejectedMessage": "origin/main has 6 commits you don’t have.",
-  "galleryPullFirst": "Pull first",
-  "galleryAuthFailed": "Authentication failed for git.example.com.",
-  "galleryTokenExpired": "The token expired on 24 Sep.",
-  "galleryUpdateCredentials": "Update credentials",
-  "galleryLfsMessage": "This repository uses Git LFS. 14 files are pointers until you fetch them.",
   "galleryDiffLayout": "Diff layout",
-  "galleryFileList": "File list",
-  "gallerySplit": "Split",
-  "galleryList": "List",
-  "galleryTree": "Tree",
-  "galleryThemeSystem": "System",
-  "galleryDates": "Dates",
-  "galleryRemotes": "Remotes",
-  "galleryDensityHelp": "Changes row height only. Text and icons stay the same size.",
-  "galleryRemotesHelp": "Every 10 minutes, in the background. Shown in the Logbook.",
-  "galleryRebaseTitle": "Rebase windows-soak-cleanup onto origin/main",
-  "galleryRebaseDescription": "4 commits will be replayed on top of 6 new commits from origin/main.",
-  "galleryAutostash": "Autostash",
-  "galleryRebase": "Rebase",
-  "galleryFourCommits": "4 commits",
-  "galleryFocusedIsland": "Focused island: 1px polar-soft halo, solid polar selection.",
-  "galleryUnfocusedIsland": "Unfocused island: selection drops to polar-soft.",
-  "galleryDetail": "Detail",
-  "galleryPaletteQuery": "reb",
-  "galleryPaletteCommands": "Commands",
-  "galleryPaletteBranches": "Branches",
-  "galleryPaletteRecent": "Recent",
-  "galleryPaletteRebaseTarget": "Rebase windows-soak-cleanup onto origin/main",
-  "galleryPaletteInteractiveRebase": "Interactive rebase…",
-  "galleryPaletteLastCommits": "last 5 commits",
-  "galleryPaletteBranchRef": "feature/rebuild-graph-cache",
-  "galleryPaletteOrigin": "origin",
-  "galleryPaletteAbortRebase": "Abort rebase",
-  "galleryPaletteYesterday": "yesterday",
-  "@gallerySectionButton": {
-    "description": "Meridian gallery specimen text for gallerySectionButton."
-  },
-  "@gallerySectionIconButton": {
-    "description": "Meridian gallery specimen text for gallerySectionIconButton."
-  },
-  "@gallerySectionToolbarButton": {
-    "description": "Meridian gallery specimen text for gallerySectionToolbarButton."
-  },
-  "@gallerySectionCheckbox": {
-    "description": "Meridian gallery specimen text for gallerySectionCheckbox."
-  },
-  "@gallerySectionSegmented": {
-    "description": "Meridian gallery specimen text for gallerySectionSegmented."
-  },
-  "@gallerySectionSelect": {
-    "description": "Meridian gallery specimen text for gallerySectionSelect."
-  },
-  "@gallerySectionTextField": {
-    "description": "Meridian gallery specimen text for gallerySectionTextField."
-  },
-  "@gallerySectionCompass": {
-    "description": "Meridian gallery specimen text for gallerySectionCompass."
-  },
-  "@gallerySectionPalette": {
-    "description": "Meridian gallery specimen text for gallerySectionPalette."
-  },
-  "@gallerySectionRepoTabs": {
-    "description": "Meridian gallery specimen text for gallerySectionRepoTabs."
-  },
-  "@gallerySectionSidebarRow": {
-    "description": "Meridian gallery specimen text for gallerySectionSidebarRow."
-  },
-  "@gallerySectionAvatar": {
-    "description": "Meridian gallery specimen text for gallerySectionAvatar."
-  },
-  "@gallerySectionCommitRow": {
-    "description": "Meridian gallery specimen text for gallerySectionCommitRow."
-  },
-  "@gallerySectionComposer": {
-    "description": "Meridian gallery specimen text for gallerySectionComposer."
-  },
-  "@gallerySectionDiffHunk": {
-    "description": "Meridian gallery specimen text for gallerySectionDiffHunk."
-  },
-  "@gallerySectionFileRow": {
-    "description": "Meridian gallery specimen text for gallerySectionFileRow."
-  },
-  "@gallerySectionGraph": {
-    "description": "Meridian gallery specimen text for gallerySectionGraph."
-  },
-  "@gallerySectionRefChip": {
-    "description": "Meridian gallery specimen text for gallerySectionRefChip."
-  },
-  "@gallerySectionStatusGlyph": {
-    "description": "Meridian gallery specimen text for gallerySectionStatusGlyph."
-  },
-  "@gallerySectionSyncBadge": {
-    "description": "Meridian gallery specimen text for gallerySectionSyncBadge."
-  },
-  "@gallerySectionBanner": {
-    "description": "Meridian gallery specimen text for gallerySectionBanner."
-  },
-  "@gallerySectionKbd": {
-    "description": "Meridian gallery specimen text for gallerySectionKbd."
-  },
-  "@gallerySectionLogbook": {
-    "description": "Meridian gallery specimen text for gallerySectionLogbook."
-  },
-  "@gallerySectionDialog": {
-    "description": "Meridian gallery specimen text for gallerySectionDialog."
-  },
-  "@gallerySectionIsland": {
-    "description": "Meridian gallery specimen text for gallerySectionIsland."
-  },
-  "@gallerySectionSettingsRow": {
-    "description": "Meridian gallery specimen text for gallerySectionSettingsRow."
-  },
   "@galleryPaletteMove": {
     "description": "Meridian gallery specimen text for galleryPaletteMove."
   },
@@ -5814,260 +5550,8 @@
   "@galleryPaletteScope": {
     "description": "Meridian gallery specimen text for galleryPaletteScope."
   },
-  "@galleryCommitToMain": {
-    "description": "Meridian gallery specimen text for galleryCommitToMain."
-  },
-  "@galleryPush": {
-    "description": "Meridian gallery specimen text for galleryPush."
-  },
-  "@galleryCopyHash": {
-    "description": "Meridian gallery specimen text for galleryCopyHash."
-  },
-  "@galleryDiscardThreeFiles": {
-    "description": "Meridian gallery specimen text for galleryDiscardThreeFiles."
-  },
-  "@galleryDiscard": {
-    "description": "Meridian gallery specimen text for galleryDiscard."
-  },
-  "@galleryFetching": {
-    "description": "Meridian gallery specimen text for galleryFetching."
-  },
-  "@galleryPull": {
-    "description": "Meridian gallery specimen text for galleryPull."
-  },
-  "@galleryCommit": {
-    "description": "Meridian gallery specimen text for galleryCommit."
-  },
-  "@galleryStageHunk": {
-    "description": "Meridian gallery specimen text for galleryStageHunk."
-  },
-  "@galleryShowAllFiles": {
-    "description": "Meridian gallery specimen text for galleryShowAllFiles."
-  },
-  "@galleryFilter": {
-    "description": "Meridian gallery specimen text for galleryFilter."
-  },
-  "@gallerySideBySide": {
-    "description": "Meridian gallery specimen text for gallerySideBySide."
-  },
-  "@galleryUnified": {
-    "description": "Meridian gallery specimen text for galleryUnified."
-  },
-  "@galleryMore": {
-    "description": "Meridian gallery specimen text for galleryMore."
-  },
-  "@galleryCopy": {
-    "description": "Meridian gallery specimen text for galleryCopy."
-  },
-  "@galleryStage": {
-    "description": "Meridian gallery specimen text for galleryStage."
-  },
-  "@galleryDelete": {
-    "description": "Meridian gallery specimen text for galleryDelete."
-  },
-  "@galleryFetch": {
-    "description": "Meridian gallery specimen text for galleryFetch."
-  },
-  "@galleryStash": {
-    "description": "Meridian gallery specimen text for galleryStash."
-  },
-  "@galleryBranch": {
-    "description": "Meridian gallery specimen text for galleryBranch."
-  },
-  "@galleryMerge": {
-    "description": "Meridian gallery specimen text for galleryMerge."
-  },
-  "@gallerySignCommit": {
-    "description": "Meridian gallery specimen text for gallerySignCommit."
-  },
-  "@galleryAmend": {
-    "description": "Meridian gallery specimen text for galleryAmend."
-  },
-  "@galleryStageAllMixed": {
-    "description": "Meridian gallery specimen text for galleryStageAllMixed."
-  },
-  "@galleryBypassHooks": {
-    "description": "Meridian gallery specimen text for galleryBypassHooks."
-  },
-  "@galleryFetchAutomatically": {
-    "description": "Meridian gallery specimen text for galleryFetchAutomatically."
-  },
-  "@galleryIncludeTags": {
-    "description": "Meridian gallery specimen text for galleryIncludeTags."
-  },
-  "@galleryModified": {
-    "description": "Meridian gallery specimen text for galleryModified."
-  },
-  "@galleryAdded": {
-    "description": "Meridian gallery specimen text for galleryAdded."
-  },
-  "@galleryDeleted": {
-    "description": "Meridian gallery specimen text for galleryDeleted."
-  },
-  "@galleryRenamed": {
-    "description": "Meridian gallery specimen text for galleryRenamed."
-  },
-  "@galleryCopied": {
-    "description": "Meridian gallery specimen text for galleryCopied."
-  },
-  "@galleryConflict": {
-    "description": "Meridian gallery specimen text for galleryConflict."
-  },
-  "@galleryUntracked": {
-    "description": "Meridian gallery specimen text for galleryUntracked."
-  },
-  "@galleryIgnored": {
-    "description": "Meridian gallery specimen text for galleryIgnored."
-  },
-  "@galleryTwoConflicts": {
-    "description": "Meridian gallery specimen text for galleryTwoConflicts."
-  },
-  "@galleryMichaelLamers": {
-    "description": "Meridian gallery specimen text for galleryMichaelLamers."
-  },
-  "@galleryGitLamaReleaseBot": {
-    "description": "Meridian gallery specimen text for galleryGitLamaReleaseBot."
-  },
-  "@galleryAuthorHandle": {
-    "description": "Meridian gallery specimen text for galleryAuthorHandle."
-  },
-  "@galleryAdaGit": {
-    "description": "Meridian gallery specimen text for galleryAdaGit."
-  },
-  "@gallerySearchCommits": {
-    "description": "Meridian gallery specimen text for gallerySearchCommits."
-  },
-  "@galleryRefPlaceholder": {
-    "description": "Meridian gallery specimen text for galleryRefPlaceholder."
-  },
-  "@galleryRefValue": {
-    "description": "Meridian gallery specimen text for galleryRefValue."
-  },
-  "@galleryInvalidRef": {
-    "description": "Meridian gallery specimen text for galleryInvalidRef."
-  },
-  "@galleryInvalidRefMessage": {
-    "description": "Meridian gallery specimen text for galleryInvalidRefMessage."
-  },
-  "@galleryRebasePaused": {
-    "description": "Meridian gallery specimen text for galleryRebasePaused."
-  },
-  "@galleryRebaseConflicts": {
-    "description": "Meridian gallery specimen text for galleryRebaseConflicts."
-  },
-  "@galleryAbort": {
-    "description": "Meridian gallery specimen text for galleryAbort."
-  },
-  "@galleryContinue": {
-    "description": "Meridian gallery specimen text for galleryContinue."
-  },
-  "@galleryPushRejected": {
-    "description": "Meridian gallery specimen text for galleryPushRejected."
-  },
-  "@galleryPushRejectedMessage": {
-    "description": "Meridian gallery specimen text for galleryPushRejectedMessage."
-  },
-  "@galleryPullFirst": {
-    "description": "Meridian gallery specimen text for galleryPullFirst."
-  },
-  "@galleryAuthFailed": {
-    "description": "Meridian gallery specimen text for galleryAuthFailed."
-  },
-  "@galleryTokenExpired": {
-    "description": "Meridian gallery specimen text for galleryTokenExpired."
-  },
-  "@galleryUpdateCredentials": {
-    "description": "Meridian gallery specimen text for galleryUpdateCredentials."
-  },
-  "@galleryLfsMessage": {
-    "description": "Meridian gallery specimen text for galleryLfsMessage."
-  },
   "@galleryDiffLayout": {
     "description": "Meridian gallery specimen text for galleryDiffLayout."
-  },
-  "@galleryFileList": {
-    "description": "Meridian gallery specimen text for galleryFileList."
-  },
-  "@gallerySplit": {
-    "description": "Meridian gallery specimen text for gallerySplit."
-  },
-  "@galleryList": {
-    "description": "Meridian gallery specimen text for galleryList."
-  },
-  "@galleryTree": {
-    "description": "Meridian gallery specimen text for galleryTree."
-  },
-  "@galleryThemeSystem": {
-    "description": "Meridian gallery specimen text for galleryThemeSystem."
-  },
-  "@galleryDates": {
-    "description": "Meridian gallery specimen text for galleryDates."
-  },
-  "@galleryRemotes": {
-    "description": "Meridian gallery specimen text for galleryRemotes."
-  },
-  "@galleryDensityHelp": {
-    "description": "Meridian gallery specimen text for galleryDensityHelp."
-  },
-  "@galleryRemotesHelp": {
-    "description": "Meridian gallery specimen text for galleryRemotesHelp."
-  },
-  "@galleryRebaseTitle": {
-    "description": "Meridian gallery specimen text for galleryRebaseTitle."
-  },
-  "@galleryRebaseDescription": {
-    "description": "Meridian gallery specimen text for galleryRebaseDescription."
-  },
-  "@galleryAutostash": {
-    "description": "Meridian gallery specimen text for galleryAutostash."
-  },
-  "@galleryRebase": {
-    "description": "Meridian gallery specimen text for galleryRebase."
-  },
-  "@galleryFourCommits": {
-    "description": "Meridian gallery specimen text for galleryFourCommits."
-  },
-  "@galleryFocusedIsland": {
-    "description": "Meridian gallery specimen text for galleryFocusedIsland."
-  },
-  "@galleryUnfocusedIsland": {
-    "description": "Meridian gallery specimen text for galleryUnfocusedIsland."
-  },
-  "@galleryDetail": {
-    "description": "Meridian gallery specimen text for galleryDetail."
-  },
-  "@galleryPaletteQuery": {
-    "description": "Meridian gallery specimen text for galleryPaletteQuery."
-  },
-  "@galleryPaletteCommands": {
-    "description": "Meridian gallery specimen text for galleryPaletteCommands."
-  },
-  "@galleryPaletteBranches": {
-    "description": "Meridian gallery specimen text for galleryPaletteBranches."
-  },
-  "@galleryPaletteRecent": {
-    "description": "Meridian gallery specimen text for galleryPaletteRecent."
-  },
-  "@galleryPaletteRebaseTarget": {
-    "description": "Meridian gallery specimen text for galleryPaletteRebaseTarget."
-  },
-  "@galleryPaletteInteractiveRebase": {
-    "description": "Meridian gallery specimen text for galleryPaletteInteractiveRebase."
-  },
-  "@galleryPaletteLastCommits": {
-    "description": "Meridian gallery specimen text for galleryPaletteLastCommits."
-  },
-  "@galleryPaletteBranchRef": {
-    "description": "Meridian gallery specimen text for galleryPaletteBranchRef."
-  },
-  "@galleryPaletteOrigin": {
-    "description": "Meridian gallery specimen text for galleryPaletteOrigin."
-  },
-  "@galleryPaletteAbortRebase": {
-    "description": "Meridian gallery specimen text for galleryPaletteAbortRebase."
-  },
-  "@galleryPaletteYesterday": {
-    "description": "Meridian gallery specimen text for galleryPaletteYesterday."
   },
   "compassConflicts": "{count, plural, =1{1 conflict} other{{count} conflicts}}",
   "@compassConflicts": {
@@ -9916,5 +9400,21 @@
   "diagnosticsSaved": "Diagnostics saved.",
   "@diagnosticsSaved": {
     "description": "User-controlled diagnostic capture and export: diagnosticsSaved"
+  },
+  "textMenuCut": "Cut",
+  "@textMenuCut": {
+    "description": "The text editing menu of fields and selectable text: textMenuCut"
+  },
+  "textMenuCopy": "Copy",
+  "@textMenuCopy": {
+    "description": "The text editing menu of fields and selectable text: textMenuCopy"
+  },
+  "textMenuPaste": "Paste",
+  "@textMenuPaste": {
+    "description": "The text editing menu of fields and selectable text: textMenuPaste"
+  },
+  "textMenuSelectAll": "Select All",
+  "@textMenuSelectAll": {
+    "description": "The text editing menu of fields and selectable text: textMenuSelectAll"
   }
 }

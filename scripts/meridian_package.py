@@ -1,44 +1,31 @@
-"""Locate the resolved meridian_ui package and GitLama's icon names.
+"""Locate the vendored Meridian QML module and GitLama's icon names.
 
-meridian_ui is a pinned Git dependency; `flutter pub get` records where it
-was resolved in .dart_tool/package_config.json.
+Meridian's QML module is vendored into qml/Meridian by scripts/sync-meridian.sh.
 """
 from pathlib import Path
 import json
 import re
-from urllib.parse import urlparse
-from urllib.request import url2pathname
 
 ROOT = Path(__file__).resolve().parent.parent
-ALIASES = ROOT / "lib/app/gitlama_icons.dart"
-ALIAS_PREFIX = "packages/meridian_ui/assets/icons/"
+ALIASES = Path("qml/GitLama/GitLamaIcons.qml")
 
 
 def meridian_root(root: Path = ROOT) -> Path:
-    config = json.loads((root / ".dart_tool/package_config.json").read_text(encoding="utf-8"))
-    for package in config["packages"]:
-        if package["name"] == "meridian_ui":
-            uri = package["rootUri"]
-            if uri.startswith("file:"):
-                return Path(url2pathname(urlparse(uri).path))
-            return (root / ".dart_tool" / uri).resolve()
-    raise SystemExit("meridian_ui is not resolved: run flutter pub get")
+    module = root / "qml/Meridian"
+    if not (module / "qmldir").is_file():
+        raise SystemExit("qml/Meridian is not vendored: run scripts/sync-meridian.sh")
+    return module
 
 
 def meridian_icon_names(root: Path = ROOT) -> set[str]:
-    spec = json.loads((meridian_root(root) / "tokens/icons.json").read_text(encoding="utf-8"))
-    return {icon["name"] for icon in spec["icons"]}
+    icons = (meridian_root(root) / "IconData.qml").read_text(encoding="utf-8")
+    return set(json.loads(re.search(r"readonly property var names: (\[.*?\])", icons).group(1)))
 
 
 def gitlama_icon_aliases(root: Path = ROOT) -> dict[str, str]:
     """Alias name -> the Meridian icon name it draws."""
-    source = (root / ALIASES.relative_to(ROOT)).read_text(encoding="utf-8")
-    return {
-        alias: target
-        for alias, target in re.findall(
-            r"'([a-z0-9-]+)':\s*'" + re.escape(ALIAS_PREFIX) + r"([a-z0-9-]+)\.svg'", source
-        )
-    }
+    source = (root / ALIASES).read_text(encoding="utf-8")
+    return dict(re.findall(r'"([a-z0-9-]+)"\s*:\s*"([a-z0-9-]+)"', source))
 
 
 def available_icon_names(root: Path = ROOT) -> set[str]:

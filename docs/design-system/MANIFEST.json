@@ -111,7 +111,7 @@
     "inspector": "specs/inspector.md",
     "interactionAccessibility": "specs/interaction-accessibility.md",
     "captures": "specs/capture-matrix.json",
-    "flutter": "FLUTTER_ADAPTATION.md"
+    "qml": "QML_ADAPTATION.md"
   },
   "fixtureOracles": {
     "graph": {
@@ -349,9 +349,9 @@
     "Icons come only from the Lucide 1.37.0 set in assets/icons/lucide."
   ],
   "sourceFiles": [
-    "FLUTTER_ADAPTATION.md",
     "GLOSSARY.md",
     "MANIFEST.json",
+    "QML_ADAPTATION.md",
     "README.md",
     "assets/README.md",
     "assets/brand/gitlama-mark.svg",
