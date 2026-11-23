@@ -40,6 +40,7 @@ MeridianSurface 1.0 MeridianSurface.qml
 MeridianToast 1.0 MeridianToast.qml
 MeridianToastHost 1.0 MeridianToastHost.qml
 MeridianDialog 1.0 MeridianDialog.qml
+MeridianDialogSurface 1.0 MeridianDialogSurface.qml
 MeridianConfirm 1.0 MeridianConfirm.qml
 MeridianMenu 1.0 MeridianMenu.qml
 MeridianMenuItem 1.0 MeridianMenuItem.qml

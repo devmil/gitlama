@@ -64,6 +64,7 @@ pub struct Services {
     pub hosting: Rc<crate::hosting::Hosting>,
     pub avatars: Rc<crate::avatars::Avatars>,
     pub repository_hosting: Rc<crate::hosting::RepositoryHosting>,
+    pub hosting_review: Rc<crate::hosting_review::HostingReview>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -335,6 +336,14 @@ impl Services {
             Rc::clone(&workspace),
             notifier.clone(),
         );
+        let hosting_review = crate::hosting_review::HostingReview::new(
+            {
+                let hosting = Rc::clone(&hosting);
+                Box::new(move || hosting.connections())
+            },
+            Rc::clone(&prompts),
+            notifier.clone(),
+        );
         let locks = crate::locks::RepositoryLocks::new(
             Rc::clone(&calls),
             Rc::clone(&workspace),
@@ -376,6 +385,7 @@ impl Services {
             hosting,
             avatars,
             repository_hosting,
+            hosting_review,
             operations,
             conflicts,
             rebases,

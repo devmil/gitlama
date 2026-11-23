@@ -730,6 +730,11 @@ impl Driver {
             state.linked = linked;
             state.repository_changed();
         }
+        let review = services.hosting_review.value();
+        if state.review != review {
+            state.review = review;
+            state.review_changed();
+        }
     }
 
     /// The sidebar's pull request rows (the Dart _pullRequestEntries): the

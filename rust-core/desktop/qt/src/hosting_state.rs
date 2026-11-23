@@ -85,6 +85,8 @@ mod hosting_state {
         pub(crate) repository_hosting: Option<Rc<gitlama_workbench::hosting::RepositoryHosting>>,
         /// The accounts revision whose credentials were last read.
         pub(crate) credential_revision: Option<u64>,
+        /// The open pull request review (see `HostingReview::value`), or null.
+        pub(crate) review: Value,
     }
 
     impl HostingState {
@@ -96,6 +98,7 @@ mod hosting_state {
         );
         qproperty!("linked", Member = linked, Notify = repository_changed);
         qproperty!("failure", Member = failure, Notify = failure_changed);
+        qproperty!("review", Member = review, Notify = review_changed);
 
         #[qsignal]
         pub fn accounts_changed(&mut self);
@@ -103,6 +106,90 @@ mod hosting_state {
         pub fn repository_changed(&mut self);
         #[qsignal]
         pub fn failure_changed(&mut self);
+        #[qsignal]
+        pub fn review_changed(&mut self);
+
+        /// Opens the review of `pull` ({number, headSha}) of the bound
+        /// repository.
+        #[qslot]
+        fn review_open(
+            &self,
+            connection_id: String,
+            repository: String,
+            number: i64,
+            head_sha: String,
+        ) {
+            self.review(move |review| async move {
+                review
+                    .open(connection_id, repository, number.max(0) as u64, head_sha)
+                    .await
+            });
+        }
+        /// Development screenshots only: shows a sample review.
+        #[qslot]
+        fn review_show_sample(&self) {
+            if std::env::var_os("GITLAMA_SCREENSHOT").is_none() {
+                return;
+            }
+            self.review(|review| async move {
+                review.show_page(gitlama_workbench::hosting_review::sample_page())
+            });
+        }
+        #[qslot]
+        fn review_toggle_folder(&self, identity: String) {
+            self.review(move |review| async move { review.toggle_folder(identity) });
+        }
+        #[qslot]
+        fn review_load_more(&self) {
+            self.review(|review| async move { review.load_more().await });
+        }
+        #[qslot]
+        fn review_select(&self, stable_id: String) {
+            self.review(move |review| async move { review.select(stable_id) });
+        }
+        /// "comment", "approve" or "requestChanges".
+        #[qslot]
+        fn review_set_action(&self, action: String) {
+            self.review(move |review| async move {
+                review.set_action(gitlama_workbench::hosting_review::action_of(&action));
+                review.save_draft().await;
+            });
+        }
+        /// Keeps the review text (saved by `review_save_draft`).
+        #[qslot]
+        fn review_set_body(&self, body: String) {
+            self.review(move |review| async move { review.set_body(body) });
+        }
+        #[qslot]
+        fn review_save_draft(&self) {
+            self.review(|review| async move { review.save_draft().await });
+        }
+        #[qslot]
+        fn review_add_inline(&self, anchor_id: String, path: String, line: i64, body: String) {
+            self.review(move |review| async move {
+                review.add_inline(anchor_id, path, line.max(0) as u64, body);
+                review.save_draft().await;
+            });
+        }
+        #[qslot]
+        fn review_remove_inline(&self, stable_id: String) {
+            self.review(move |review| async move {
+                review.remove_inline(stable_id);
+                review.save_draft().await;
+            });
+        }
+        #[qslot]
+        fn review_submit(&self) {
+            self.review(|review| async move { review.submit().await });
+        }
+        #[qslot]
+        fn review_retry_check(&self, stable_id: String) {
+            self.review(move |review| async move { review.retry_check(stable_id).await });
+        }
+        #[qslot]
+        fn review_close(&self) {
+            self.review(|review| async move { review.close().await });
+        }
 
         /// The defaults of preset `preset`, with `web_base` for a
         /// self-hosted one: {webBaseUrl, apiBaseUrl, capabilities,
@@ -365,6 +452,22 @@ mod hosting_state {
             self.spawn_reporting(move |hosting| async move {
                 hosting.authorize(connection, new_connection).await
             });
+        }
+
+        fn review<F, Fut>(&self, action: F)
+        where
+            F: FnOnce(Rc<gitlama_workbench::hosting_review::HostingReview>) -> Fut + 'static,
+            Fut: std::future::Future<Output = ()> + 'static,
+        {
+            if let Some(commands) = &self.commands {
+                commands.post(move |driver| {
+                    if let Some(services) = driver.app.services() {
+                        gitlama_workbench::rt::spawn_detached(action(Rc::clone(
+                            &services.hosting_review,
+                        )));
+                    }
+                });
+            }
         }
 
         fn with(&self, action: impl FnOnce(Rc<Hosting>, &Self) + 'static) {

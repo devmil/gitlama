@@ -116,6 +116,8 @@ QtObject {
     readonly property real reviewCommentRailWidth: 280
     readonly property real reviewDrawerBreakpoint: 1280
     readonly property real reviewDrawerWidth: 360
+    /// The review drawer's least body height.
+    readonly property real reviewDrawerMinHeight: 200
     readonly property real welcomeMarkSize: 64
     readonly property real licenseMarkSize: 40
     readonly property real aboutMarkSize: 96

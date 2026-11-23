@@ -93,6 +93,16 @@ Item {
         case "confirmRendererSave":
             rendererConfirm.ask(id, payload)
             return
+        case "confirmHostingReview":
+            reviewConfirm.promptId = id
+            reviewConfirm.payload = payload
+            reviewConfirm.open()
+            return
+        case "confirmCheckRetry":
+            checkRetryConfirm.promptId = id
+            checkRetryConfirm.payload = payload
+            checkRetryConfirm.open()
+            return
         case "confirmIndexLock":
             indexLockConfirm.promptId = id
             indexLockConfirm.sizeBytes = payload.sizeBytes ?? 0
@@ -171,12 +181,12 @@ Item {
     }
 
     function showSettings(category) { settingsDialog.show(category ?? "appearance") }
-    /// Reviews a pull request (the review workspace); until it is ported,
-    /// its page opens in the browser.
+    /// Reviews a pull request of the bound repository in the review workspace.
     function showPullRequestReview(pull) {
-        if (pull && Store.hosting.openable(pull.webUrl))
-            Qt.openUrlExternally(pull.webUrl)
+        if (pull)
+            reviewWorkspace.show(pull)
     }
+    HostingReviewWorkspace { id: reviewWorkspace }
     function showLicenses() {
         licenseDialog.packages = Store.settings.licenses()
         licenseDialog.open()
@@ -949,6 +959,70 @@ Item {
         cancelLabel: L10n.t("avatarGravatarNotNow")
         onConfirmed: Store.workflows.setGravatar(true)
     }
+    // Submitting a review after showing its exact request.
+    MeridianConfirm {
+        id: reviewConfirm
+        objectName: "hosting-review-authorize"
+        property int promptId: -1
+        property var payload: ({})
+        closePolicy: C.Popup.NoAutoClose
+        widthClass: MeridianDialog.Form
+        title: L10n.t("hostingReviewAuthorize")
+        confirmLabel: L10n.t("hostingReviewSubmit")
+        cancelLabel: L10n.t("cancel")
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s6
+            MeridianText {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: L10n.tn("hostingReviewAuthorizeSummary", { number: reviewConfirm.payload.number ?? 0 })
+            }
+            MeridianPropertyList {
+                width: parent.width
+                properties: [
+                    { label: L10n.t("hostingReviewAction"), value: reviewWorkspace.actionLabel(reviewConfirm.payload.action ?? "comment"), selectable: false },
+                    { label: L10n.t("hostingReviewInlineComments"), value: String(reviewConfirm.payload.inlineCount ?? 0), selectable: false },
+                ]
+            }
+            GitCommands {
+                width: parent.width
+                title: L10n.t("hostingRequestDetails")
+                commands: reviewConfirm.payload.commands ?? []
+            }
+        }
+    }
+    // Re-running a check after showing its exact request.
+    MeridianConfirm {
+        id: checkRetryConfirm
+        objectName: "hosting-check-retry-authorize"
+        property int promptId: -1
+        property var payload: ({})
+        closePolicy: C.Popup.NoAutoClose
+        widthClass: MeridianDialog.Form
+        title: L10n.t("hostingCheckRetryAuthorize")
+        confirmLabel: L10n.t("hostingCheckRetry")
+        cancelLabel: L10n.t("cancel")
+        onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
+        onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
+        Column {
+            width: parent ? parent.width : 0
+            spacing: Theme.space.s4
+            MeridianText {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: L10n.tn("hostingCheckRetrySummary", { name: checkRetryConfirm.payload.name ?? "" })
+            }
+            GitCommands {
+                width: parent.width
+                title: L10n.t("hostingRequestDetails")
+                commands: checkRetryConfirm.payload.commands ?? []
+            }
+        }
+    }
+
     // Removing Git's index lock (the Dart confirmIndexLockRemoval).
     MeridianConfirm {
         id: indexLockConfirm
@@ -1152,6 +1226,10 @@ Item {
             }
             else if (name === "snapshotCreate")
                 Store.workflows.snapshot("create", { name: argument, includeUntracked: true, keepIndex: false })
+            else if (name === "reviewSample") {
+                Store.hosting.reviewShowSample()
+                reviewWorkspace.open()
+            }
             else if (name === "about")
                 actionsRoot.showAbout()
             else if (name === "submitIgnore")

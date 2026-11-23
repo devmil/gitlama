@@ -36,6 +36,7 @@ pub mod history;
 pub mod history_mutations;
 pub mod history_rows;
 pub mod hosting;
+pub mod hosting_review;
 pub mod images;
 pub mod inspector;
 pub mod inspector_actions;
