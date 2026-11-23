@@ -15,6 +15,16 @@ Item {
     property var model: null
     property string layout: "unified"
     property bool showIndicators: true
+    /// Long lines wrap instead of scrolling sideways.
+    property bool wrap: false
+    /// A strip beside the rows marks where lines were added and removed.
+    property bool showMinimap: false
+    /// "utf8" or "latin1".
+    property string encoding: "utf8"
+    onEncodingChanged: if (model) model.setLatin1(encoding === "latin1")
+    /// Hunk headers offer Show more lines when set.
+    property bool canShowMoreContext: false
+    signal showMoreContext()
     /// Files whose sections are folded, by file row stable id.
     property var collapsed: ({})
     /// The horizontal scroll of the text columns.
@@ -23,7 +33,7 @@ Item {
     readonly property bool split: layout === "sideBySide"
     readonly property real gutters: (split ? GitLamaLayout.diffGutterWidth : 2 * GitLamaLayout.diffGutterWidth) + GitLamaLayout.diffSignWidth
     readonly property real textWidth: split ? (list.width - Metrics.hairline) / 2 - gutters - Theme.space.s6 : list.width - gutters - Theme.space.s6
-    readonly property real maximumOffset: Math.max(0, widestText - textWidth)
+    readonly property real maximumOffset: wrap ? 0 : Math.max(0, widestText - textWidth)
 
     signal rowActivated(int index, string kind)
 
@@ -64,7 +74,7 @@ Item {
             positionAt(target)
     }
 
-    onModelChanged: { textOffset = 0; widestText = 0 }
+    onModelChanged: { textOffset = 0; widestText = 0; if (model) model.setLatin1(encoding === "latin1") }
     onMaximumOffsetChanged: textOffset = Math.min(textOffset, maximumOffset)
 
     // The syntax palette, checked against the surfaces lines are drawn on.
@@ -110,7 +120,10 @@ Item {
 
     ListView {
         id: list
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: parent.width - (minimap.visible ? minimap.width : 0)
         clip: true
         model: view.model
         boundsBehavior: Flickable.StopAtBounds
@@ -155,7 +168,10 @@ Item {
                 : Theme.colors.pane
 
             width: list.width
+            /// The tallest wrapped text of the row's cells.
+            readonly property real wrappedHeight: Math.max(GitLamaLayout.diffLineHeight, firstCell.textHeight, secondCell.visible ? secondCell.textHeight : 0)
             height: loading ? GitLamaLayout.diffLineHeight
+                : view.wrap && lineRow ? wrappedHeight
                 : kind === "hunk" ? GitLamaLayout.hunkHeaderHeight
                 : kind === "file" ? Theme.size.row
                 : fallback ? GitLamaLayout.diffFallbackHeight
@@ -223,10 +239,19 @@ Item {
                 }
                 MeridianText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: Math.max(0, parent.width - x)
+                    width: Math.max(0, parent.width - x - (moreButton.visible ? moreButton.width + parent.spacing : 0))
                     role: MeridianText.CodeSm
                     text: line.hunkText
                     elide: Text.ElideRight
+                }
+                MeridianIconButton {
+                    id: moreButton
+                    visible: view.canShowMoreContext
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: L10n.t("diffShowMoreLines")
+                    iconName: "chevrons-down-up"
+                    controlSize: MeridianButton.Small
+                    onClicked: view.showMoreContext()
                 }
             }
 
@@ -261,6 +286,7 @@ Item {
                 property string styled
                 readonly property int number: oldSide ? line.oldLine : line.newLine
                 readonly property bool blank: !unified && ((oldSide && line.added) || (!oldSide && line.deleted))
+                readonly property real textHeight: view.wrap && !blank ? lineText.implicitHeight + 2 * Theme.space.s1 : 0
                 height: line.height
                 clip: true
 
@@ -272,7 +298,8 @@ Item {
                         delegate: MeridianText {
                             required property int modelData
                             width: GitLamaLayout.diffGutterWidth
-                            height: line.height
+                            // A wrapped line keeps its number on the first row.
+                            height: GitLamaLayout.diffLineHeight
                             rightPadding: Theme.space.s4
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignVCenter
@@ -284,7 +311,7 @@ Item {
                     }
                     MeridianText {
                         width: GitLamaLayout.diffSignWidth
-                        height: line.height
+                        height: GitLamaLayout.diffLineHeight
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         role: MeridianText.Code
@@ -299,10 +326,10 @@ Item {
                         Item {
                             x: -view.textOffset
                             height: parent.height
-                            width: lineText.implicitWidth
-                            // Changed words.
+                            width: view.wrap ? textCell.width : lineText.implicitWidth
+                            // Changed words (wrapped lines show none).
                             Repeater {
-                                model: line.marks
+                                model: view.wrap ? [] : line.marks
                                 delegate: Rectangle {
                                     required property var modelData
                                     x: code.advanceWidth(line.text.substring(0, modelData[0]))
@@ -315,12 +342,14 @@ Item {
                             }
                             Text {
                                 id: lineText
-                                anchors.verticalCenter: parent.verticalCenter
+                                y: view.wrap ? Theme.space.s1 : (parent.height - height) / 2
+                                width: view.wrap ? textCell.width : undefined
+                                wrapMode: view.wrap ? Text.WrapAnywhere : Text.NoWrap
                                 font: Theme.type.code
                                 color: Theme.colors.ink
                                 textFormat: cell.styled.length > 0 ? Text.StyledText : Text.PlainText
                                 text: cell.styled.length > 0 ? cell.styled : line.text
-                                onImplicitWidthChanged: if (implicitWidth > view.widestText) view.widestText = implicitWidth
+                                onImplicitWidthChanged: if (!view.wrap && implicitWidth > view.widestText) view.widestText = implicitWidth
                             }
                         }
                     }
@@ -332,6 +361,7 @@ Item {
                 width: parent.width
                 height: parent.height
                 Cell {
+                    id: firstCell
                     width: view.split ? (parent.width - Metrics.hairline) / 2 : parent.width
                     unified: !view.split
                     oldSide: view.split
@@ -344,6 +374,7 @@ Item {
                     color: Theme.colors.line
                 }
                 Cell {
+                    id: secondCell
                     visible: view.split
                     width: (parent.width - Metrics.hairline) / 2
                     unified: false
@@ -374,6 +405,71 @@ Item {
         }
     }
 
+    // The minimap (the Dart DiffMinimap): where lines were added and
+    // removed over the whole diff, and the part on screen; a click scrolls
+    // there.
+    Item {
+        id: minimap
+        objectName: "diff-minimap"
+        visible: view.showMinimap && view.model !== null && list.count > 0
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: GitLamaLayout.diffMinimapWidth
+        readonly property real maximum: Math.max(0, list.contentHeight - list.height)
+        readonly property real viewportFraction: list.contentHeight <= 0 ? 1 : list.height / list.contentHeight
+        readonly property real offsetFraction: maximum <= 0 ? 0 : (list.contentY - list.originY) / maximum
+        Canvas {
+            id: minimapCanvas
+            anchors.fill: parent
+            onPaint: {
+                const context = getContext("2d")
+                context.reset()
+                if (!view.model)
+                    return
+                const buckets = Math.max(1, Math.floor(height))
+                const map = view.model.changeMap(buckets)
+                for (let i = 0; i < map.length; ++i) {
+                    if (map[i] === 0)
+                        continue
+                    context.fillStyle = String(map[i] === 1 ? Theme.colors.success : GitColors.deleted)
+                    context.fillRect(0, i * height / buckets, width, 1)
+                }
+            }
+        }
+        Rectangle {
+            x: Metrics.hairline / 2
+            width: parent.width - Metrics.hairline
+            height: Math.max(2, minimap.viewportFraction * parent.height)
+            y: minimap.offsetFraction * (parent.height - height)
+            color: "transparent"
+            border.width: Metrics.hairline
+            border.color: Theme.colors.lineStrong
+        }
+        MouseArea {
+            anchors.fill: parent
+            onPressed: mouse => {
+                const available = 1 - minimap.viewportFraction
+                if (available <= 0 || height <= 0)
+                    return
+                const fraction = Math.max(0, Math.min(1, (mouse.y / height - minimap.viewportFraction / 2) / available))
+                list.contentY = list.originY + fraction * minimap.maximum
+            }
+        }
+        Timer {
+            id: minimapRepaint
+            interval: GitLamaLayout.detailDebounce
+            onTriggered: minimapCanvas.requestPaint()
+        }
+        Connections {
+            target: view.model
+            function onCountChanged() { minimapRepaint.restart() }
+            function onDataChanged() { minimapRepaint.restart() }
+        }
+        onHeightChanged: minimapRepaint.restart()
+        onVisibleChanged: if (visible) minimapRepaint.restart()
+    }
+
     HoverHandler { id: viewHover }
     // Sideways scrolling moves only the text, under the fixed gutters.
     WheelHandler {
@@ -388,7 +484,7 @@ Item {
         visible: view.maximumOffset > 0
         orientation: Qt.Horizontal
         anchors.left: parent.left
-        anchors.right: parent.right
+        anchors.right: list.right
         anchors.bottom: parent.bottom
         anchors.leftMargin: view.gutters
         size: view.textWidth / Math.max(1, view.widestText)

@@ -167,6 +167,29 @@ struct Display {
     utf16_at: Vec<usize>,
 }
 
+/// `bytes` decoded as Latin-1 (every byte is one character) for showing.
+fn display_latin1(bytes: &[u8]) -> Display {
+    let mut text = String::with_capacity(bytes.len());
+    let mut utf16_at = vec![0; bytes.len() + 1];
+    let mut units = 0;
+    for (offset, byte) in bytes.iter().enumerate() {
+        utf16_at[offset] = units;
+        match *byte {
+            b'\t' => {
+                text.extend(std::iter::repeat_n(' ', TAB_WIDTH));
+                units += TAB_WIDTH;
+            }
+            b'\r' | b'\n' => {}
+            byte => {
+                text.push(char::from(byte));
+                units += 1;
+            }
+        }
+    }
+    utf16_at[bytes.len()] = units;
+    Display { text, utf16_at }
+}
+
 fn display(bytes: &[u8]) -> Option<Display> {
     let source = std::str::from_utf8(bytes).ok()?;
     let mut text = String::with_capacity(source.len());
@@ -303,9 +326,9 @@ impl RowView {
         }
     }
 
-    fn of(row: &NativeDiffRow, document: &DiffDocument, palette: &SyntaxPalette) -> Self {
+    fn of(row: &NativeDiffRow, document: &DiffDocument, palette: &SyntaxPalette, latin1: bool) -> Self {
         let kind = kind_name(row.kind);
-        let shown = display(&row.text);
+        let shown = if latin1 { Some(display_latin1(&row.text)) } else { display(&row.text) };
         let text = shown.as_ref().map(|display| display.text.clone()).unwrap_or_default();
         let line_row = matches!(
             row.kind,
@@ -376,6 +399,8 @@ mod diff_model {
         total: i32,
         rows: RefCell<HashMap<i32, Rc<RowView>>>,
         shown_revision: u64,
+        /// Text is read as Latin-1 instead of UTF-8.
+        latin1: bool,
     }
 
     impl DiffModel {
@@ -392,6 +417,36 @@ mod diff_model {
         fn set_palette(&mut self, palette: Value) {
             self.palette = SyntaxPalette::from_value(&palette);
             self.refresh();
+        }
+
+        /// Reads text as Latin-1 (true) or UTF-8.
+        #[qslot]
+        fn set_latin1(&mut self, latin1: bool) {
+            if self.latin1 != latin1 {
+                self.latin1 = latin1;
+                self.refresh();
+            }
+        }
+
+        /// The minimap: for `buckets` slices of the rows, 0 when the loaded
+        /// rows there change nothing, 1 for additions, 2 for deletions, 3
+        /// for both.
+        #[qslot]
+        fn change_map(&self, buckets: i32) -> Vec<i32> {
+            let buckets = buckets.max(1) as usize;
+            let mut map = vec![0; buckets];
+            let (Some(document), true) = (&self.document, self.total > 0) else { return map };
+            let total = self.total as usize;
+            document.for_each_loaded(|at, row| {
+                let mark = match row.kind {
+                    NativeDiffRowKind::Addition => 1,
+                    NativeDiffRowKind::Deletion => 2,
+                    _ => return,
+                };
+                let bucket = (at as usize * buckets / total).min(buckets - 1);
+                map[bucket] |= mark;
+            });
+            map
         }
 
         /// Reads the colours of rows `first..=last` (the rows on screen).
@@ -518,7 +573,7 @@ mod diff_model {
             let Some(document) = &self.document else {
                 return Rc::new(RowView::loading(row as u64));
             };
-            let Some(view) = document.with_row(row as u64, |native| RowView::of(native, document, &self.palette)) else {
+            let Some(view) = document.with_row(row as u64, |native| RowView::of(native, document, &self.palette, self.latin1)) else {
                 document.ensure(row as u64);
                 return Rc::new(RowView::loading(row as u64));
             };

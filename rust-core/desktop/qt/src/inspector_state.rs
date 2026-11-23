@@ -513,6 +513,17 @@ mod inspector_state {
             }
         }
 
+        /// Shows three more unchanged lines around each hunk, for this diff
+        /// only (the stored preference stays).
+        #[qslot]
+        fn show_more_context(&self) {
+            self.with_inspector(|inspector| async move {
+                let mut options = inspector.diff_options();
+                options.context_lines = (options.context_lines + 3).min(10_000);
+                inspector.update_diff_options(options).await;
+            });
+        }
+
         /// Loads the blame page holding line `index` (0-based).
         #[qslot]
         fn ensure_blame_row(&self, index: i32) {

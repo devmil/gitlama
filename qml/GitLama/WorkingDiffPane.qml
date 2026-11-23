@@ -138,24 +138,22 @@ Rectangle {
                 spacing: Theme.space.s1
                 MeridianIconButton {
                     text: L10n.t("diffPreviousHunk")
-                    iconName: "chevron-up"
+                    iconName: "arrow-up-to-line"
                     controlSize: MeridianButton.Small
                     onClicked: diff.nextHunk(false)
                 }
                 MeridianIconButton {
                     text: L10n.t("diffNextHunk")
-                    iconName: "chevron-down"
+                    iconName: "arrow-down-to-line"
                     controlSize: MeridianButton.Small
                     onClicked: diff.nextHunk(true)
                 }
-                MeridianIconButton {
-                    readonly property bool split: !!pane.detail.options && pane.detail.options.layout === "sideBySide"
-                    text: Commands.label("diffToggleLayout")
-                    iconName: split ? "rows-2" : "columns-2"
-                    controlSize: MeridianButton.Small
-                    active: split
-                    onClicked: Store.changes.setDiffOptions(pane.detail.options.contextLines, "preserve",
-                                                            split ? "unified" : "sideBySide", pane.detail.forceText === true)
+                DiffViewingActions {
+                    anchors.verticalCenter: parent.verticalCenter
+                    encoding: diff.encoding
+                    onEncodingChosen: value => diff.encoding = value
+                    setOptions: (context, whitespace, layout) =>
+                        Store.changes.setDiffOptions(context, whitespace, layout, pane.detail.forceText === true)
                 }
             }
             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
@@ -177,6 +175,11 @@ Rectangle {
             width: parent.width
             model: Store.workingDiff
             layout: pane.detail.options ? pane.detail.options.layout : "unified"
+            wrap: Store.appearance.diffWrap === true
+            showIndicators: Store.appearance.diffIndicators !== false
+            showMinimap: Store.appearance.diffMinimap !== false
+            canShowMoreContext: !!pane.detail.options && pane.detail.options.contextLines < 10000
+            onShowMoreContext: Store.changes.showMoreContext()
             lineSelection: true
             selectedRows: pane.selectedRows
             onRowsSelected: rows => Store.changes.setSelectedRows(rows)

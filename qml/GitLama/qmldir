@@ -57,7 +57,9 @@ HistoryPane 1.0 HistoryPane.qml
 StatusGlyph 1.0 StatusGlyph.qml
 FileActionMenu 1.0 FileActionMenu.qml
 FileRow 1.0 FileRow.qml
+DiffToolbar 1.0 DiffToolbar.qml
 DiffView 1.0 DiffView.qml
+DiffViewingActions 1.0 DiffViewingActions.qml
 CommitSummaryCard 1.0 CommitSummaryCard.qml
 InspectorView 1.0 InspectorView.qml
 ChangesSection 1.0 ChangesSection.qml

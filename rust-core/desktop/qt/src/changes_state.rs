@@ -418,6 +418,18 @@ mod changes_state {
             });
         }
 
+        /// Shows three more unchanged lines around each hunk of the working
+        /// diff, for this diff only.
+        #[qslot]
+        fn show_more_context(&self) {
+            self.with_services(|services| {
+                let detail = &services.working_detail;
+                let mut options = detail.options();
+                options.context_lines = (options.context_lines + 3).min(10_000);
+                detail.set_options(options, detail.force_text());
+            });
+        }
+
         fn with_tab(&self, action: impl FnOnce(&Services, u64) + 'static) {
             self.with_services(move |services| {
                 if let Some(tab) = services.workspace.active_tab_id() {

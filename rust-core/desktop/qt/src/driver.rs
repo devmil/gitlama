@@ -187,10 +187,12 @@ impl Driver {
             let options = services
                 .settings
                 .with(|document| gitlama_workbench::inspector::DiffOptions::of(&document.appearance));
-            if services.working_detail.options() != options {
+            // Context widened by Show more context lasts until the stored
+            // preferences change.
+            if changed.intersects(Topics::SETTINGS) && services.working_detail.options() != options {
                 services.working_detail.set_options(options, services.working_detail.force_text());
             }
-            if services.inspector.diff_options() != options {
+            if changed.intersects(Topics::SETTINGS) && services.inspector.diff_options() != options {
                 let inspector = Rc::clone(&services.inspector);
                 gitlama_workbench::rt::spawn_detached(async move { inspector.update_diff_options(options).await });
             }

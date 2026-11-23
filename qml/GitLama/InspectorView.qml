@@ -505,10 +505,53 @@ Rectangle {
                             controlSize: MeridianButton.Small
                             onClicked: inspector.filesHidden = false
                         }
+                        // The diff's toolbar: hunks, viewing options, a patch of it.
+                        DiffToolbar {
+                            id: diffToolbar
+                            objectName: "commit-diff-toolbar"
+                            visible: inspector.location !== null && inspector.location.lens === "diff" && !inspector.historyLens
+                                && inspector.paneState.hasDiff === true
+                            anchors.top: showFiles.visible ? showFiles.bottom : parent.top
+                            width: parent.width
+                            height: visible ? implicitHeight : 0
+                            path: inspector.location && inspector.location.path ? inspector.location.path : L10n.t("diffAllFiles")
+                            MeridianIconButton {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: L10n.t("diffPreviousHunk")
+                                iconName: "arrow-up-to-line"
+                                controlSize: MeridianButton.Small
+                                onClicked: commitDiff.nextHunk(false)
+                            }
+                            MeridianIconButton {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: L10n.t("diffNextHunk")
+                                iconName: "arrow-down-to-line"
+                                controlSize: MeridianButton.Small
+                                onClicked: commitDiff.nextHunk(true)
+                            }
+                            DiffViewingActions {
+                                anchors.verticalCenter: parent.verticalCenter
+                                encoding: commitDiff.encoding
+                                onEncodingChosen: value => commitDiff.encoding = value
+                                setOptions: (context, whitespace, layout) => Store.inspector.setDiffOptions(context, whitespace, layout)
+                            }
+                            pinned: MeridianIconButton {
+                                objectName: "commit-diff-create-patch"
+                                text: L10n.t("diffCreatePatch")
+                                iconName: "file-diff"
+                                controlSize: MeridianButton.Small
+                                onClicked: {
+                                    const location = inspector.location
+                                    const file = location.path ? inspector.files.find(changed => changed.path === location.path) : null
+                                    const paths = !file ? [] : file.oldPath.length > 0 && file.oldPath !== file.path ? [file.oldPath, file.path] : [file.path]
+                                    Store.actions.showPatchDialog({ kind: "diff", base: location.base ?? "", commit: location.commit, paths: paths }, "create")
+                                }
+                            }
+                        }
                         MeridianProgressBar {
                             id: progress
                             visible: inspector.paneState.contentLoading === true && inspector.location.lens !== "contents"
-                            anchors.top: showFiles.visible ? showFiles.bottom : parent.top
+                            anchors.top: diffToolbar.visible ? diffToolbar.bottom : showFiles.visible ? showFiles.bottom : parent.top
                             width: parent.width
                         }
                         MeridianBanner {
@@ -579,9 +622,16 @@ Rectangle {
                             width: parent.width
                         }
                         DiffView {
+                            id: commitDiff
                             visible: inspector.paneState.hasDiff === true && (inspector.location.lens === "diff" || inspector.historyLens)
                                 && !inspector.paneState.contentFailure
-                            anchors.top: historyHeader.visible ? historyHeader.bottom : progress.visible ? progress.bottom : showFiles.visible ? showFiles.bottom : parent.top
+                            wrap: Store.appearance.diffWrap === true
+                            showIndicators: Store.appearance.diffIndicators !== false
+                            showMinimap: Store.appearance.diffMinimap !== false
+                            canShowMoreContext: !!inspector.paneState.options && inspector.paneState.options.contextLines < 10000
+                            onShowMoreContext: Store.inspector.showMoreContext()
+                            anchors.top: historyHeader.visible ? historyHeader.bottom : progress.visible ? progress.bottom
+                                : diffToolbar.visible ? diffToolbar.bottom : showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
                             width: parent.width
                             model: Store.inspectorDiff
