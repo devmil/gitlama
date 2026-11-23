@@ -24,6 +24,7 @@ MeridianSettingsDialog {
         ["git", "branch", "settingsGit", "settingsGitDetail"],
         ["customCommands", "command", "settingsCustomCommands", "settingsCustomCommandsDetail"],
         ["diffView", "side-by-side", "settingsDiffView", "settingsDiffViewDetail"],
+        ["diffRenderer", "file-diff", "settingsDiffRenderer", "settingsDiffRendererDetail"],
         ["shortcuts", "shortcuts", "settingsShortcuts", "settingsShortcutsDetail"],
         ["accessibility", "accessibility", "settingsAccessibility", "settingsAccessibilityDetail"],
         ["diagnostics", "activity", "diagnosticsTitle", "diagnosticsDescription"],
@@ -39,6 +40,7 @@ MeridianSettingsDialog {
             customCommands.start()
         if (Store.settings)
             Store.settings.statusAcceleration("read")
+        diffRendererPage.reset()
         recordingCommand = ""
         if (Store.settings)
             Store.settings.showFailure("")
@@ -310,6 +312,14 @@ MeridianSettingsDialog {
             value: dialog.appearance.diffMinimap ? "on" : "off"
             valueLabel: dialog.onOff
             onChosen: v => dialog.updateAppearance({ diffMinimap: v === "on" })
+        }
+    }
+
+    // Diff renderer --------------------------------------------------------------
+    MeridianSettingsGroup {
+        DiffRendererPage {
+            id: diffRendererPage
+            width: parent.width
         }
     }
 

@@ -61,6 +61,8 @@ PowerTools 1.0 PowerTools.qml
 BranchFilterEditor 1.0 BranchFilterEditor.qml
 PowerToolsPanel 1.0 PowerToolsPanel.qml
 CustomCommandsPage 1.0 CustomCommandsPage.qml
+DiffRendererPage 1.0 DiffRendererPage.qml
+DiffRendererConfirm 1.0 DiffRendererConfirm.qml
 StatusAccelerationSettings 1.0 StatusAccelerationSettings.qml
 ExtensionsPanel 1.0 ExtensionsPanel.qml
 RefChip 1.0 RefChip.qml

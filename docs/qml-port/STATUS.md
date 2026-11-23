@@ -127,11 +127,15 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   commits banner.
 - Inspector: the contents lens header (path, size) with find (case, stepping, marked lines),
   and the +/− counts of the whole change in the files header.
+- Diff renderer: Settings › Diff renderer (validated by the core, confirmed with its commands,
+  stored, deleted) and Render diff in the inspector (preview with limits and exact commands,
+  progress, fallback banner, plain-text output with Use built-in; Render with configured
+  renderer command).
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
 - Integrations panel (the hosting resources view) and the Integrations/Repository binding
-  settings pages (with hosting), diff renderer (settings card and inspector rendering).
+  settings pages (with hosting).
 - History: selection glide, lane lighting/draw/landing
   motion, sync entrance, hosting chips, Gravatar.
 - Hosting (pull requests, checks, links), updates (Sparkle/AppImage and its settings page),
@@ -143,8 +147,7 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
   retry from the logbook; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode
   of its file list, the Continue pulse, file action menus.
-- Settings pages: integrations, repository binding, remote hosts, custom commands, diff
-  renderer, updates; diagnostics Share on macOS/Windows.
+- Settings pages: integrations, repository binding, remote hosts, updates; diagnostics Share on macOS/Windows.
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.

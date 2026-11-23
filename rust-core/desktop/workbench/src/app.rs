@@ -57,6 +57,7 @@ pub struct Services {
     pub power_tools: Rc<crate::power_tools::PowerTools>,
     pub tools: Rc<crate::tools::ToolsPage>,
     pub acceleration: Rc<crate::acceleration::Acceleration>,
+    pub diff_renderers: Rc<crate::diff_renderer::DiffRenderers>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
     pub refs: Rc<crate::refs::RefService>,
@@ -265,6 +266,14 @@ impl Services {
             Rc::clone(&notices),
             notifier.clone(),
         );
+        let diff_renderers = crate::diff_renderer::DiffRenderers::new(
+            Rc::clone(&calls),
+            Rc::clone(&workspace),
+            Rc::clone(&inspector),
+            Rc::clone(&settings),
+            Rc::clone(&prompts),
+            notifier.clone(),
+        );
         let acceleration = crate::acceleration::Acceleration::new(Rc::clone(&calls), Rc::clone(&workspace), notifier.clone());
         let tools = crate::tools::ToolsPage::new(
             Rc::clone(&calls),
@@ -294,6 +303,7 @@ impl Services {
             power_tools,
             tools,
             acceleration,
+            diff_renderers,
             operations,
             conflicts,
             rebases,

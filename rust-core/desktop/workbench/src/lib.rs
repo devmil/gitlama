@@ -21,6 +21,7 @@ pub mod conflict_draft;
 pub mod conflicts;
 pub mod commands;
 pub mod diagnostics;
+pub mod diff_renderer;
 pub mod diff_doc;
 pub mod entry;
 pub mod extensions;

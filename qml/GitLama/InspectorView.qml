@@ -11,6 +11,9 @@ Rectangle {
 
     readonly property var paneState: Store.inspector ? (Store.inspector.state ?? ({})) : ({})
     readonly property var location: paneState.location ?? null
+    /// The configured diff renderer and its run for the shown diff.
+    readonly property var renderer: Store.settings ? (Store.settings.renderer ?? ({})) : ({})
+    readonly property var rendererResult: renderer.result ?? null
     readonly property var summary: paneState.summary ?? null
     readonly property var files: paneState.files ?? []
     property bool filesHidden: false
@@ -574,6 +577,16 @@ Rectangle {
                                 onEncodingChosen: value => commitDiff.encoding = value
                                 setOptions: (context, whitespace, layout) => Store.inspector.setDiffOptions(context, whitespace, layout)
                             }
+                            MeridianIconButton {
+                                objectName: "commit-diff-renderer"
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: inspector.renderer.configured === true ? L10n.t("diffRendererRun") : L10n.t("diffRendererNotConfigured")
+                                iconName: "wand-sparkles"
+                                controlSize: MeridianButton.Small
+                                enabled: inspector.renderer.configured === true
+                                    && !(inspector.rendererResult !== null && inspector.rendererResult.state === "pending")
+                                onClicked: Store.settings.diffRenderer("render", ({}))
+                            }
                             pinned: MeridianIconButton {
                                 objectName: "commit-diff-create-patch"
                                 text: L10n.t("diffCreatePatch")
@@ -681,6 +694,31 @@ Rectangle {
                                 function onModelReset() { commitImage.refresh() }
                             }
                         }
+                        // The renderer's progress or why it fell back to the built-in diff.
+                        Item {
+                            id: rendererStatus
+                            readonly property var result: inspector.rendererResult
+                            visible: diffToolbar.visible && result !== null && result.state !== "ready"
+                            anchors.top: progress.visible ? progress.bottom : diffToolbar.bottom
+                            width: parent.width
+                            height: !visible ? 0 : result.state === "pending" ? rendererProgress.height
+                                : rendererFailure.implicitHeight + 2 * Theme.space.s3
+                            MeridianProgressBar {
+                                id: rendererProgress
+                                visible: rendererStatus.result !== null && rendererStatus.result.state === "pending"
+                                width: parent.width
+                            }
+                            MeridianBanner {
+                                id: rendererFailure
+                                objectName: "commit-diff-renderer-failure"
+                                visible: !rendererProgress.visible
+                                x: Theme.space.s3
+                                y: Theme.space.s3
+                                width: parent.width - 2 * Theme.space.s3
+                                tone: MeridianBanner.Error
+                                message: rendererStatus.result ? L10n.t(rendererStatus.result.failure) : ""
+                            }
+                        }
                         DiffView {
                             id: commitDiff
                             opacity: commitImage.row === null ? 1 : 0
@@ -693,12 +731,55 @@ Rectangle {
                             showMinimap: Store.appearance.diffMinimap !== false
                             canShowMoreContext: !!inspector.paneState.options && inspector.paneState.options.contextLines < 10000
                             onShowMoreContext: Store.inspector.showMoreContext()
-                            anchors.top: historyHeader.visible ? historyHeader.bottom : progress.visible ? progress.bottom
+                            anchors.top: rendererStatus.visible ? rendererStatus.bottom
+                                : historyHeader.visible ? historyHeader.bottom : progress.visible ? progress.bottom
                                 : diffToolbar.visible ? diffToolbar.bottom : showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
                             width: parent.width
                             model: Store.inspectorDiff
                             layout: inspector.paneState.options ? inspector.paneState.options.layout : "unified"
+                        }
+                        // The renderer's plain text in place of the diff.
+                        Rectangle {
+                            objectName: "commit-diff-renderer-output"
+                            visible: commitDiff.visible && inspector.rendererResult !== null && inspector.rendererResult.state === "ready"
+                            anchors.fill: commitDiff
+                            color: Theme.colors.pane
+                            MeridianListRow {
+                                id: rendererHeader
+                                width: parent.width
+                                text: inspector.rendererResult && inspector.rendererResult.title ? inspector.rendererResult.title : L10n.t("diffRendererTitle")
+                                subtitle: L10n.t("diffRendererPlainText")
+                                trailing: Component {
+                                    MeridianButton {
+                                        text: L10n.t("diffRendererUseBuiltIn")
+                                        variant: MeridianButton.Quiet
+                                        onClicked: Store.settings.diffRenderer("useBuiltIn", ({}))
+                                    }
+                                }
+                            }
+                            MeridianHairline { id: rendererRule; anchors.top: rendererHeader.bottom; width: parent.width }
+                            Flickable {
+                                id: rendererScroll
+                                anchors.top: rendererRule.bottom
+                                anchors.bottom: parent.bottom
+                                width: parent.width
+                                clip: true
+                                contentWidth: width
+                                contentHeight: rendererText.implicitHeight + 2 * Theme.space.s5
+                                boundsBehavior: Flickable.StopAtBounds
+                                MeridianWheelScroll { flickable: rendererScroll }
+                                C.ScrollBar.vertical: MeridianScrollBar {}
+                                MeridianSelectableText {
+                                    id: rendererText
+                                    x: Theme.space.s5
+                                    y: Theme.space.s5
+                                    width: rendererScroll.width - 2 * Theme.space.s5
+                                    wrapMode: Text.Wrap
+                                    text: inspector.rendererResult && inspector.rendererResult.text ? inspector.rendererResult.text : ""
+                                    Accessible.description: inspector.rendererResult && inspector.rendererResult.accessibilityText ? inspector.rendererResult.accessibilityText : ""
+                                }
+                            }
                         }
                         MeridianEmptyState {
                             visible: inspector.location !== null && inspector.location.lens === "blame" && inspector.paneState.hasBlame !== true

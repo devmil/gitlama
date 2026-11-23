@@ -89,6 +89,10 @@ Item {
             lfsPointer.pointer = payload
             lfsPointer.open()
             return
+        case "confirmRenderer":
+        case "confirmRendererSave":
+            rendererConfirm.ask(id, payload)
+            return
         case "confirmBisect":
             bisectConfirm.promptId = id
             bisectConfirm.action = payload.action ?? "start"
@@ -290,6 +294,7 @@ Item {
         case "showLicenses": showLicenses(); return
         case "showShortcutReference": shortcutReference.show(); return
         case "showSnapshots": if (Store.shell) Store.shell.togglePanel("snapshots"); return
+        case "diffRenderConfigured": Store.settings.diffRenderer("render", ({})); return
         case "showPowerTools": if (Store.shell) Store.shell.togglePanel("powerTools"); return
         case "addIntegration": showSettings("customCommands"); return
         case "addWorktree": if (Store.shell) Store.shell.togglePanel("extensions"); return
@@ -865,6 +870,10 @@ Item {
             }
         }
     }
+    DiffRendererConfirm {
+        id: rendererConfirm
+        onAnswered: (id, value) => actions.answer(id, value)
+    }
     // An LFS pointer's facts (lfsPointer).
     MeridianDialog {
         id: lfsPointer
@@ -1051,6 +1060,12 @@ Item {
                 if (Store.shell && Store.shell.extensionsPanel)
                     Store.shell.extensionsPanel.showCreateWorktree()
             }
+            else if (name === "confirmRenderer") {
+                rendererConfirm.close()
+                rendererConfirm.confirmed()
+            }
+            else if (name === "rendererSave")
+                Store.settings.diffRenderer("save", JSON.parse(argument))
             else if (name === "confirmBisect") {
                 bisectConfirm.close()
                 bisectConfirm.confirmed()

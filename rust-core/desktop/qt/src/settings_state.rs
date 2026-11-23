@@ -95,6 +95,8 @@ mod settings_state {
         /// Git's status accelerators of the active session: {offer, settings}
         /// (acceleration.rs value).
         pub(crate) acceleration: Value,
+        /// The diff renderer: {configured, result, card} (diff_renderer.rs value).
+        pub(crate) renderer: Value,
     }
 
     impl SettingsState {
@@ -122,6 +124,36 @@ mod settings_state {
                     "enable" => rt::spawn_detached(async move { acceleration.enable(false).await }),
                     "enableFromSettings" => rt::spawn_detached(async move { acceleration.enable(true).await }),
                     "dismiss" => acceleration.dismiss(),
+                    _ => {}
+                }
+            });
+        }
+
+        qproperty!("renderer", Member = renderer, Notify = renderer_changed);
+        #[qsignal]
+        pub fn renderer_changed(&mut self);
+
+        /// The diff renderer: `action` is render, useBuiltIn, save (id,
+        /// title, executable, arguments) or remove.
+        #[qslot]
+        fn diff_renderer(&self, action: String, options: Value) {
+            self.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let renderers = Rc::clone(&services.diff_renderers);
+                let text = |key: &str| options[key].as_str().unwrap_or_default().to_owned();
+                match action.as_str() {
+                    "render" => rt::spawn_detached(async move { renderers.render().await }),
+                    "useBuiltIn" => renderers.use_built_in(),
+                    "remove" => rt::spawn_detached(async move { renderers.remove().await }),
+                    "save" => {
+                        let form = gitlama_workbench::diff_renderer::Form {
+                            id: text("id"),
+                            title: text("title"),
+                            executable: text("executable"),
+                            arguments: text("arguments"),
+                        };
+                        rt::spawn_detached(async move { renderers.save(form).await })
+                    }
                     _ => {}
                 }
             });

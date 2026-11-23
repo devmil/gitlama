@@ -215,9 +215,15 @@ impl Driver {
                 workflows.busy_changed();
             }
         }
-        if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::OPERATIONS | Topics::SESSION)
+        if changed.intersects(Topics::SETTINGS | Topics::WORKSPACE | Topics::OPERATIONS | Topics::SESSION | Topics::INSPECTOR)
             && let Some(services) = self.app.services()
         {
+            let renderer = services.diff_renderers.value();
+            if self.settings.borrow().renderer != renderer {
+                let mut settings = self.settings.borrow_mut();
+                settings.renderer = renderer;
+                settings.renderer_changed();
+            }
             let tools = gitlama_workbench::tools::page_value(
                 &services.tools.page(),
                 &services.tools.configured(),
