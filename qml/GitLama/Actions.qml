@@ -139,6 +139,7 @@ Item {
         licenseDialog.open()
     }
     function showAbout() { aboutDialog.open() }
+    ShortcutReferenceDialog { id: shortcutReference }
     AboutDialog { id: aboutDialog; onOpenLicenses: actions.showLicenses() }
     /// Opens the patch dialog in `mode` for what the active pane shows: the
     /// Changes selection, else History's (or `commit`).
@@ -201,6 +202,7 @@ Item {
         case "showSettings": showSettings(); return
         case "cloneRepository": cloneRepository(); return
         case "showLicenses": showLicenses(); return
+        case "showShortcutReference": shortcutReference.show(); return
         case "showCommandPalette": commandPalette.show(); return
         case "fetch":
         case "remoteFetch":
