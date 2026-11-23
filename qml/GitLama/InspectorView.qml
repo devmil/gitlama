@@ -738,6 +738,24 @@ Rectangle {
                             width: parent.width
                             model: Store.inspectorDiff
                             layout: inspector.paneState.options ? inspector.paneState.options.layout : "unified"
+                            canShowAsText: inspector.paneState.forceText !== true
+                            onShowAsText: Store.inspector.showAsText()
+                            // Lines select for copying (the Dart CommitDiffPane selection).
+                            lineSelection: true
+                            patchSource: Store.inspector
+                            onRowsSelected: rows => selectedRows = rows
+                            onLineMenuRequested: (x, y) => {
+                                commitLineMenu.items = commitDiff.copyMenuItems().slice(1)
+                                commitLineMenu.show(commitDiff, x, y)
+                            }
+                            Connections {
+                                target: Store.inspectorDiff
+                                function onModelReset() { commitDiff.selectedRows = [] }
+                            }
+                            CommandMenu {
+                                id: commitLineMenu
+                                onSelected: value => commitDiff.runCopyMenuItem(value)
+                            }
                         }
                         // The renderer's plain text in place of the diff.
                         Rectangle {

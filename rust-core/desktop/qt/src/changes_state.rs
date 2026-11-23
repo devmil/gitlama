@@ -283,6 +283,49 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
     }
 }
 
+/// Stages (or unstages) these rows of the working diff: lines, or a hunk's
+/// header row for all its lines.
+fn stage_row_ids(services: &Services, tab: u64, rows: Vec<String>) {
+    let detail = &services.working_detail;
+    let (Some(key), Some(entry), Some(document)) =
+        (detail.key(), detail.entry(), detail.document())
+    else {
+        return;
+    };
+    if rows.is_empty() {
+        return;
+    }
+    let changes = Rc::clone(&services.changes);
+    let request = document.request_id();
+    rt::spawn_detached(async move {
+        changes
+            .stage(
+                tab,
+                key.side,
+                NativeStagingScope::Rows,
+                vec![entry],
+                Some(request),
+                rows,
+                Some(key.identity),
+            )
+            .await
+    });
+}
+
+/// Discards these rows of the working diff after a review.
+fn discard_row_ids(services: &Services, tab: u64, rows: Vec<String>) {
+    let detail = &services.working_detail;
+    let (Some(entry), Some(document)) = (detail.entry(), detail.document()) else {
+        return;
+    };
+    if rows.is_empty() {
+        return;
+    }
+    let changes = Rc::clone(&services.changes);
+    let request = document.request_id();
+    rt::spawn_detached(async move { changes.discard(tab, vec![entry], Some(request), rows).await });
+}
+
 #[qobject(ConvertToCamelCase)]
 mod changes_state {
     use super::*;
@@ -311,6 +354,10 @@ mod changes_state {
         /// The answer of `load_hunks`.
         #[qsignal]
         pub fn hunks_loaded(&mut self, rows: Value);
+        /// The answer of `copy_patch`: the patch text, empty when the
+        /// selected rows hold no change or the diff was replaced.
+        #[qsignal]
+        pub fn patch_ready(&mut self, patch: String);
         /// A move started or ended, for the lists' animations.
         #[qsignal]
         pub fn effect(&mut self, kind: String, payload: String);
@@ -405,6 +452,35 @@ mod changes_state {
                         rt::blocking(move || gitlama_workbench::images::image_diff_value(result))
                             .await;
                     shared.borrow_mut().image_diff_loaded(key, value);
+                });
+            });
+        }
+
+        /// The patch of these rows of the shown diff (Copy as patch),
+        /// answered by `patch_ready`; Latin-1 text when `latin1`.
+        #[qslot]
+        fn copy_patch(&self, rows: Vec<String>, latin1: bool) {
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(document) = services.working_detail.document() else {
+                    return;
+                };
+                let shared = Rc::clone(&driver.changes);
+                let patch = document.selection_patch(rows);
+                rt::spawn_detached(async move {
+                    let text = patch.await.map_or_else(String::new, |bytes| {
+                        if latin1 {
+                            bytes.iter().map(|byte| char::from(*byte)).collect()
+                        } else {
+                            String::from_utf8_lossy(&bytes).into_owned()
+                        }
+                    });
+                    shared.borrow_mut().patch_ready(text);
                 });
             });
         }
@@ -600,52 +676,38 @@ mod changes_state {
         #[qslot]
         fn stage_rows(&self) {
             self.with_tab(|services, tab| {
-                let detail = &services.working_detail;
-                let (Some(key), Some(entry), Some(document)) =
-                    (detail.key(), detail.entry(), detail.document())
-                else {
-                    return;
-                };
-                let rows: Vec<String> = detail.selected_rows().into_iter().collect();
-                if rows.is_empty() {
-                    return;
-                }
-                let changes = Rc::clone(&services.changes);
-                let request = document.request_id();
-                rt::spawn_detached(async move {
-                    changes
-                        .stage(
-                            tab,
-                            key.side,
-                            NativeStagingScope::Rows,
-                            vec![entry],
-                            Some(request),
-                            rows,
-                            Some(key.identity),
-                        )
-                        .await
-                });
+                let rows: Vec<String> = services
+                    .working_detail
+                    .selected_rows()
+                    .into_iter()
+                    .collect();
+                stage_row_ids(services, tab, rows);
             });
+        }
+
+        /// Stages (or unstages) one hunk: its header row stands for its lines.
+        #[qslot]
+        fn stage_hunk(&self, row: String) {
+            self.with_tab(move |services, tab| stage_row_ids(services, tab, vec![row]));
         }
 
         /// Discards the diff's selected lines after a review.
         #[qslot]
         fn discard_rows(&self) {
             self.with_tab(|services, tab| {
-                let detail = &services.working_detail;
-                let (Some(entry), Some(document)) = (detail.entry(), detail.document()) else {
-                    return;
-                };
-                let rows: Vec<String> = detail.selected_rows().into_iter().collect();
-                if rows.is_empty() {
-                    return;
-                }
-                let changes = Rc::clone(&services.changes);
-                let request = document.request_id();
-                rt::spawn_detached(async move {
-                    changes.discard(tab, vec![entry], Some(request), rows).await
-                });
+                let rows: Vec<String> = services
+                    .working_detail
+                    .selected_rows()
+                    .into_iter()
+                    .collect();
+                discard_row_ids(services, tab, rows);
             });
+        }
+
+        /// Discards one hunk after a review.
+        #[qslot]
+        fn discard_hunk(&self, row: String) {
+            self.with_tab(move |services, tab| discard_row_ids(services, tab, vec![row]));
         }
 
         /// Chooses the diff's selected lines.

@@ -461,6 +461,9 @@ pub struct InspectorService {
     notifier: Notifier,
     inner: RefCell<Inner>,
     options: Cell<DiffOptions>,
+    /// The shown diff reads a binary file as text (Show as text); a new
+    /// location reads it as Git decides again.
+    force_text: Cell<bool>,
     /// Targets reached inside the inspector, for the graph to follow.
     on_target: RefCell<Option<Box<dyn Fn(&Target)>>>,
     this: RefCell<Weak<Self>>,
@@ -513,6 +516,7 @@ impl InspectorService {
                 tree_token: 0,
             }),
             options: Cell::new(DiffOptions::default()),
+            force_text: Cell::new(false),
             on_target: RefCell::new(None),
             this: RefCell::new(Weak::new()),
         });
@@ -593,6 +597,7 @@ impl InspectorService {
         from_host: bool,
         parent_hint: Option<Vec<String>>,
     ) {
+        self.force_text.set(false);
         if let Some(next) = self.record(location, push) {
             self.show(next, !from_host, parent_hint, false).await;
         }
@@ -1170,7 +1175,7 @@ impl InspectorService {
             whitespace: options.whitespace,
             layout: options.layout,
             maximum_rows: DIFF_PAGE_ROWS as u32,
-            force_text: false,
+            force_text: self.force_text.get(),
         }
     }
 
@@ -1534,7 +1539,7 @@ impl InspectorService {
             whitespace: options.whitespace,
             layout: options.layout,
             maximum_rows: DIFF_PAGE_ROWS as u32,
-            force_text: false,
+            force_text: self.force_text.get(),
         };
         let result = self
             .calls
@@ -1702,6 +1707,17 @@ impl InspectorService {
             )
             .await
             .ok()
+    }
+
+    /// Whether the shown diff reads a binary file as text.
+    pub fn force_text(&self) -> bool {
+        self.force_text.get()
+    }
+
+    /// Reloads the shown diff reading its binary file as text.
+    pub async fn show_as_text(&self) {
+        self.force_text.set(true);
+        self.update_diff_options(self.options.get()).await;
     }
 
     /// Reloads the shown diff with other display options, keeping its file.

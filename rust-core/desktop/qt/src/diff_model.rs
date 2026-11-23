@@ -12,7 +12,7 @@ use qtbridge::qtbridge_type_lib::{QByteArray, QHash, QModelIndex, QVariant};
 use qtbridge::{QAbstractItemModel, QAbstractItemModelBase};
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::row_model::to_qvariant;
@@ -567,6 +567,68 @@ mod diff_model {
             }
         }
 
+        /// The text of the selected rows in diff order (Copy lines).
+        #[qslot]
+        fn selection_text(&self, ids: Vec<String>) -> String {
+            let Some(document) = &self.document else {
+                return String::new();
+            };
+            let wanted: HashSet<String> = ids.into_iter().collect();
+            let mut lines: Vec<(u64, String)> = Vec::new();
+            document.for_each_loaded(|at, row| {
+                if wanted.contains(&row.stable_id) {
+                    let text = if self.latin1 {
+                        row.text.iter().map(|byte| char::from(*byte)).collect()
+                    } else {
+                        String::from_utf8_lossy(&row.text).into_owned()
+                    };
+                    lines.push((at, text));
+                }
+            });
+            lines.sort_by_key(|(at, _)| *at);
+            lines
+                .into_iter()
+                .map(|(_, text)| text)
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+
+        /// The index of the first loaded row among `ids`, or -1: the row the
+        /// selection's actions float over.
+        #[qslot]
+        fn first_index_of(&self, ids: Vec<String>) -> i32 {
+            let Some(document) = &self.document else {
+                return -1;
+            };
+            let wanted: HashSet<String> = ids.into_iter().collect();
+            let mut first = -1;
+            document.for_each_loaded(|at, row| {
+                let at = at as i32;
+                if wanted.contains(&row.stable_id) && (first < 0 || at < first) {
+                    first = at;
+                }
+            });
+            first
+        }
+
+        /// Whether the selected rows hold an added or removed line.
+        #[qslot]
+        fn selection_has_change(&self, ids: Vec<String>) -> bool {
+            let Some(document) = &self.document else {
+                return false;
+            };
+            let wanted: HashSet<String> = ids.into_iter().collect();
+            let mut change = false;
+            document.for_each_loaded(|_, row| {
+                change |= wanted.contains(&row.stable_id)
+                    && matches!(
+                        row.kind,
+                        NativeDiffRowKind::Addition | NativeDiffRowKind::Deletion
+                    );
+            });
+            change
+        }
+
         /// The stable ids of the line rows from `first` to `last` (a Shift range).
         #[qslot]
         fn line_ids(&self, first: i32, last: i32) -> Vec<String> {
@@ -591,6 +653,38 @@ mod diff_model {
                 at -= 1;
             }
             -1
+        }
+
+        /// The hunk header the line at `index` belongs to, for the header
+        /// pinned above a scrolled diff: {index, stableId, hunkRange,
+        /// hunkText}, or null at a file header or before the first hunk.
+        #[qslot]
+        fn hunk_header_for(&self, index: i32) -> Value {
+            let Some(document) = &self.document else {
+                return Value::Null;
+            };
+            let (mut hunk, mut file) = (-1, -1);
+            document.for_each_loaded(|at, row| {
+                let at = at as i32;
+                if at > index {
+                    return;
+                }
+                match row.kind {
+                    NativeDiffRowKind::Hunk => hunk = hunk.max(at),
+                    NativeDiffRowKind::File => file = file.max(at),
+                    _ => {}
+                }
+            });
+            if hunk < 0 || hunk < file {
+                return Value::Null;
+            }
+            let view = self.view(hunk);
+            json!({
+                "index": hunk,
+                "stableId": view.stable_id,
+                "hunkRange": view.hunk_range,
+                "hunkText": view.hunk_text,
+            })
         }
 
         /// The index of the next (or previous) hunk header from `index`, or -1.

@@ -14,9 +14,39 @@ Rectangle {
     readonly property bool staged: detail.side === "staged"
     readonly property var selectedRows: detail.selectedRows ?? []
     readonly property bool canDiscardLines: !staged && detail.untracked !== true
+    // Staging is refused only for a repository on another computer that
+    // does not allow it (the Dart remote stage reason).
+    readonly property string stageDisabledReason: {
+        const reason = Commands.reason("stageSelection")
+        return reason.startsWith("remote") ? Commands.reasonText(reason) : ""
+    }
     readonly property bool busy: paneState.busy === true
 
     color: Theme.colors.pane
+
+    // Development screenshots: `diffRow:<index>` scrolls the diff to a row;
+    // `stageHunk:<n>` stages (or unstages) the n-th hunk.
+    Connections {
+        target: Store
+        function onScreenshotStepRequested(name, argument) {
+            if (name === "diffRow") {
+                diff.positionAt(Number(argument))
+            } else if (name === "diffSelect" && Store.workingDiff) {
+                // diffSelect:<first>-<last> selects those rows' lines.
+                const range = argument.split("-").map(Number)
+                Store.changes.setSelectedRows(Store.workingDiff.lineIds(range[0], range[1]))
+            } else if (name === "diffCopy") {
+                diff.runCopyMenuItem(argument === "patch" ? "copyPatch" : "copyLines")
+            } else if (name === "stageHunk" && Store.workingDiff) {
+                let at = -1
+                for (let n = 0; n <= Number(argument); ++n)
+                    at = Store.workingDiff.hunkFrom(at, true)
+                const header = at < 0 ? null : Store.workingDiff.hunkHeaderFor(at)
+                if (header)
+                    Store.changes.stageHunk(header.stableId)
+            }
+        }
+    }
 
     // The pane's header: the file's status.
     Item {
@@ -109,29 +139,6 @@ Rectangle {
             width: parent.width
             height: Theme.size.control + 2 * Theme.space.s2
             Row {
-                x: Theme.space.s4
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.space.s2
-                MeridianButton {
-                    visible: pane.selectedRows.length > 0
-                    text: pane.staged ? L10n.t("diffSelectionUnstage") : L10n.t("diffSelectionStage")
-                    iconName: pane.staged ? "minus" : "plus"
-                    controlSize: MeridianButton.Small
-                    variant: MeridianButton.Secondary
-                    enabled: !pane.busy
-                    onClicked: Store.changes.stageRows()
-                }
-                MeridianButton {
-                    visible: pane.selectedRows.length > 0 && pane.canDiscardLines
-                    text: L10n.t("diffSelectionDiscard")
-                    iconName: "trash"
-                    controlSize: MeridianButton.Small
-                    variant: MeridianButton.Danger
-                    enabled: !pane.busy
-                    onClicked: Store.changes.discardRows()
-                }
-            }
-            Row {
                 anchors.right: parent.right
                 anchors.rightMargin: Theme.space.s4
                 anchors.verticalCenter: parent.verticalCenter
@@ -208,21 +215,66 @@ Rectangle {
             showMinimap: Store.appearance.diffMinimap !== false
             canShowMoreContext: !!pane.detail.options && pane.detail.options.contextLines < 10000
             onShowMoreContext: Store.changes.showMoreContext()
+            hunkActions: pane.detail.forceText !== true
+            canShowAsText: pane.detail.forceText !== true
+            onShowAsText: {
+                const preferences = Store.appearance
+                Store.changes.setDiffOptions(preferences.diffContextLines ?? 3, preferences.diffWhitespace ?? "preserve",
+                                             preferences.diffLayout ?? "unified", true)
+            }
+            hunkStagedSide: pane.staged
+            canDiscardHunks: pane.canDiscardLines
+            hunkActionsEnabled: !pane.busy
+            hunkStageDisabledReason: pane.stageDisabledReason
+            onStageHunk: stableId => Store.changes.stageHunk(stableId)
+            onDiscardHunk: stableId => Store.changes.discardHunk(stableId)
             lineSelection: true
             selectedRows: pane.selectedRows
             onRowsSelected: rows => Store.changes.setSelectedRows(rows)
             onLineMenuRequested: (x, y) => {
+                // The destructive entry goes last (the Dart withDestructiveLast).
                 lineMenu.items = [
                     { title: pane.staged ? L10n.t("diffSelectionUnstage") : L10n.t("diffSelectionStage"),
                       icon: pane.staged ? "minus" : "plus", enabled: !pane.busy, value: "stage" },
-                ].concat(pane.canDiscardLines ? [{ separator: true },
+                ].concat(diff.copyMenuItems()).concat(pane.canDiscardLines ? [{ separator: true },
                     { title: L10n.t("diffSelectionDiscard"), icon: "trash", danger: true, enabled: !pane.busy, value: "discard" }] : [])
                 lineMenu.show(diff, x, y)
+            }
+            patchSource: Store.changes
+            // Stage or unstage, and discard, the selected lines: floating
+            // over the first of them (the Dart _selectionActions).
+            selectionActions: Component {
+                Row {
+                    spacing: Theme.space.s2
+                    MeridianButton {
+                        objectName: "diff-selection-stage"
+                        text: pane.staged ? L10n.t("diffSelectionUnstage") : L10n.t("diffSelectionStage")
+                        controlSize: MeridianButton.Small
+                        enabled: !pane.busy && pane.stageDisabledReason.length === 0
+                        disabledReason: pane.stageDisabledReason
+                        onClicked: Store.changes.stageRows()
+                    }
+                    MeridianButton {
+                        objectName: "diff-selection-discard"
+                        visible: pane.canDiscardLines
+                        text: L10n.t("diffSelectionDiscard")
+                        controlSize: MeridianButton.Small
+                        enabled: !pane.busy
+                        onClicked: Store.changes.discardRows()
+                    }
+                }
             }
         }
         CommandMenu {
             id: lineMenu
-            onSelected: value => value === "stage" ? Store.changes.stageRows() : Store.changes.discardRows()
+            onSelected: value => {
+                if (diff.runCopyMenuItem(value))
+                    return
+                if (value === "stage")
+                    Store.changes.stageRows()
+                else if (value === "discard")
+                    Store.changes.discardRows()
+            }
         }
     }
 }

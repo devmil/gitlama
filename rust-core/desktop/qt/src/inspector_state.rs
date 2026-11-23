@@ -297,6 +297,7 @@ pub fn project(
             "whitespace": whitespace_name(options.whitespace),
             "layout": match options.layout { NativeDiffLayout::Unified => "unified", NativeDiffLayout::SideBySide => "sideBySide" },
         },
+        "forceText": inspector.force_text(),
     })
 }
 
@@ -329,6 +330,10 @@ mod inspector_state {
         /// The answer of `load_hunks`.
         #[qsignal]
         pub fn hunks_loaded(&mut self, rows: Value);
+        /// The answer of `copy_patch`: the patch text, empty when the
+        /// selected rows hold no change or the diff was replaced.
+        #[qsignal]
+        pub fn patch_ready(&mut self, patch: String);
 
         #[qslot]
         fn back(&self) {
@@ -460,6 +465,35 @@ mod inspector_state {
                         rt::blocking(move || gitlama_workbench::images::image_diff_value(result))
                             .await;
                     shared.borrow_mut().image_diff_loaded(key, value);
+                });
+            });
+        }
+
+        /// The patch of these rows of the shown diff (Copy as patch),
+        /// answered by `patch_ready`; Latin-1 text when `latin1`.
+        #[qslot]
+        fn copy_patch(&self, rows: Vec<String>, latin1: bool) {
+            let Some(commands) = self.commands.clone() else {
+                return;
+            };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(document) = services.inspector.current().diff else {
+                    return;
+                };
+                let shared = Rc::clone(&driver.inspector);
+                let patch = document.selection_patch(rows);
+                rt::spawn_detached(async move {
+                    let text = patch.await.map_or_else(String::new, |bytes| {
+                        if latin1 {
+                            bytes.iter().map(|byte| char::from(*byte)).collect()
+                        } else {
+                            String::from_utf8_lossy(&bytes).into_owned()
+                        }
+                    });
+                    shared.borrow_mut().patch_ready(text);
                 });
             });
         }
@@ -736,6 +770,12 @@ mod inspector_state {
                     }
                 });
             }
+        }
+
+        /// Reloads the shown diff reading its binary file as text.
+        #[qslot]
+        fn show_as_text(&self) {
+            self.with_inspector(|inspector| async move { inspector.show_as_text().await });
         }
 
         /// Shows three more unchanged lines around each hunk, for this diff

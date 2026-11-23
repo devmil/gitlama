@@ -72,6 +72,28 @@ impl DiffDocument {
         })
     }
 
+    /// The patch of the selected rows (Copy as patch): their change lines
+    /// with the context they need; `None` when they hold no change or the
+    /// diff has been replaced.
+    pub fn selection_patch(
+        &self,
+        rows: Vec<String>,
+    ) -> impl std::future::Future<Output = Option<Vec<u8>>> + 'static {
+        let call = self.calls.repository_session_diff_selection_patch(
+            self.identity.native_id,
+            self.identity.generation,
+            self.request_id,
+            self.origin == NativeDiffSyntaxOrigin::Working,
+            rows,
+        );
+        async move {
+            call.await
+                .ok()
+                .filter(|result| result.failure.is_none())
+                .and_then(|result| result.patch)
+        }
+    }
+
     pub fn request_id(&self) -> u64 {
         self.request_id
     }

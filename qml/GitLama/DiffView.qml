@@ -35,6 +35,20 @@ Item {
     /// Hunk headers offer Show more lines when set.
     property bool canShowMoreContext: false
     signal showMoreContext()
+    /// A binary file's row offers Show as text.
+    property bool canShowAsText: false
+    signal showAsText()
+
+    /// Hunk headers offer Stage (or Unstage) and Discard (a working diff).
+    property bool hunkActions: false
+    /// The diff shows staged changes: its hunks unstage.
+    property bool hunkStagedSide: false
+    property bool canDiscardHunks: false
+    property bool hunkActionsEnabled: true
+    /// Why staging is unavailable (an unmerged file); empty when it is.
+    property string hunkStageDisabledReason
+    signal stageHunk(string stableId)
+    signal discardHunk(string stableId)
     /// Files whose sections are folded, by file row stable id.
     property var collapsed: ({})
     /// The horizontal scroll of the text columns.
@@ -59,6 +73,7 @@ Item {
     function selectLine(index, stableId, modifiers) {
         if (!lineSelection)
             return
+        list.forceActiveFocus()
         let rows
         if ((modifiers & Qt.ShiftModifier) && selectionAnchor >= 0) {
             rows = model.lineIds(Math.min(selectionAnchor, index), Math.max(selectionAnchor, index))
@@ -76,6 +91,58 @@ Item {
 
     function positionAt(index) {
         list.positionViewAtIndex(index, ListView.Beginning)
+    }
+
+    /// Actions shown over the first selected line while lines are selected
+    /// and that line is on screen (the Dart selectionActions).
+    property Component selectionActions: null
+
+    /// The bridge that builds a selection's patch (copyPatch, patchReady).
+    property var patchSource: null
+    property bool _patchPending: false
+    /// Copies the selected lines' text (Ctrl+C, Copy lines).
+    function copyLines() {
+        if (!model || selectedRows.length === 0)
+            return
+        Store.actions.copyText(model.selectionText(selectedRows), L10n.t("diffSelectionCopied"))
+    }
+    /// Copies the selected lines as a patch.
+    function copyPatch() {
+        if (!patchSource || selectedRows.length === 0)
+            return
+        _patchPending = true
+        patchSource.copyPatch(selectedRows, encoding === "latin1")
+    }
+    /// The copy entries of the selected lines' menu, after the caller's own.
+    function copyMenuItems() {
+        const items = [{ separator: true },
+            { title: L10n.t("diffCopyLines"), icon: "copy", value: "copyLines", shortcut: Store.isMac ? "Cmd+C" : "Ctrl+C" }]
+        if (patchSource)
+            items.push({ title: L10n.t("diffCopyAsPatch"), icon: "file-diff", value: "copyPatch",
+                         enabled: model !== null && model.selectionHasChange(selectedRows) })
+        return items
+    }
+    /// Runs a copy entry of `copyMenuItems`; false for other values.
+    function runCopyMenuItem(value) {
+        if (value === "copyLines")
+            copyLines()
+        else if (value === "copyPatch")
+            copyPatch()
+        else
+            return false
+        return true
+    }
+    Connections {
+        target: view.patchSource
+        function onPatchReady(patch) {
+            if (!view._patchPending)
+                return
+            view._patchPending = false
+            if (patch.length === 0)
+                Notifications.show(L10n.t("diffPatchUnavailable"), false)
+            else
+                Store.actions.copyText(patch, L10n.t("diffPatchCopied"))
+        }
     }
     /// The bridge that lists every hunk of the diff (loadHunks,
     /// hunksLoaded); without one only loaded hunks are stepped through.
@@ -174,6 +241,12 @@ Item {
         reuseItems: true
         cacheBuffer: 360
         keyNavigationEnabled: false
+        Keys.onPressed: event => {
+            if (event.matches(StandardKey.Copy) && view.selectedRows.length > 0) {
+                view.copyLines()
+                event.accepted = true
+            }
+        }
         onContentYChanged: syntaxTimer.restart()
         onHeightChanged: syntaxTimer.restart()
 
@@ -259,10 +332,14 @@ Item {
                 }
             }
 
-            // A file's header.
+            // A file's header: activating it folds or unfolds the file.
             Item {
                 visible: line.kind === "file"
                 anchors.fill: parent
+                Accessible.role: Accessible.Button
+                Accessible.name: view.collapsed[line.stableId] ? L10n.t("diffExpandFile") : L10n.t("diffCollapseFile")
+                Accessible.description: line.text
+                Accessible.ignored: !visible
                 MeridianIcon {
                     id: fileChevron
                     x: Theme.space.s4
@@ -283,34 +360,14 @@ Item {
             }
 
             // A hunk's header: its range, then the code it is in.
-            Row {
+            DiffHunkHeader {
                 visible: line.kind === "hunk"
-                x: Theme.space.s5
-                width: parent.width - x - Theme.space.s3
+                width: parent.width
                 height: parent.height
-                spacing: Theme.space.s4
-                MeridianText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    role: MeridianText.CodeSm
-                    text: line.hunkRange
-                    color: Theme.colors.inkMuted
-                }
-                MeridianText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.max(0, parent.width - x - (moreButton.visible ? moreButton.width + parent.spacing : 0))
-                    role: MeridianText.CodeSm
-                    text: line.hunkText
-                    elide: Text.ElideRight
-                }
-                MeridianIconButton {
-                    id: moreButton
-                    visible: view.canShowMoreContext
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: L10n.t("diffShowMoreLines")
-                    iconName: "chevrons-down-up"
-                    controlSize: MeridianButton.Small
-                    onClicked: view.showMoreContext()
-                }
+                diff: view
+                stableId: line.kind === "hunk" ? line.stableId : ""
+                range: line.hunkRange
+                text: line.hunkText
             }
 
             MeridianText {
@@ -322,8 +379,19 @@ Item {
                 color: Theme.colors.inkMuted
             }
 
-            // Binary, image, submodule, mode-only and too-large files.
+            // Binary, image, submodule, mode-only and too-large files: a
+            // binary or too large file names its size and type.
             MeridianEmptyState {
+                id: fallbackState
+                readonly property int byteCount: {
+                    const size = Number(line.text.split(":")[0])
+                    return line.text.length > 0 && Number.isInteger(size) ? size : -1
+                }
+                readonly property string extension: {
+                    const name = (line.newPath || line.oldPath).split("/").pop()
+                    const dot = name.lastIndexOf(".")
+                    return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : L10n.t("diffFileTypeUnknown")
+                }
                 visible: line.fallback && !line.loading
                 anchors.fill: parent
                 compact: true
@@ -335,6 +403,15 @@ Item {
                     : line.kind === "submodule" ? L10n.t("diffSubmoduleFallback")
                     : line.kind === "modeOnly" ? L10n.tn("diffModeOnlyFallback", { modes: line.text })
                     : line.text.endsWith(":0:0") ? L10n.t("diffLargeFileInformation") : L10n.t("diffTooLargeFallback")
+                message: byteCount >= 0 && (line.kind === "tooLarge" || line.kind === "binary")
+                    ? L10n.tn("diffFileSize", { size: Labels.byteSize(byteCount) }) + "\n" + L10n.tn("diffFileType", { extension: extension })
+                    : ""
+                MeridianButton {
+                    objectName: "diff-show-as-text"
+                    visible: line.kind === "binary" && view.canShowAsText
+                    text: L10n.t("showBinaryAsText")
+                    onClicked: view.showAsText()
+                }
             }
 
             component Cell: Item {
@@ -531,6 +608,76 @@ Item {
         }
         onHeightChanged: minimapRepaint.restart()
         onVisibleChanged: if (visible) minimapRepaint.restart()
+    }
+
+    // The header of the hunk the top line belongs to stays pinned while its
+    // own row is scrolled away (unwrapped diffs, as Flutter).
+    Rectangle {
+        id: pinnedHunk
+        property var header: null
+        function refresh() {
+            if (view.wrap || !view.model) {
+                header = null
+                return
+            }
+            const top = list.indexAt(0, list.contentY + 1)
+            const found = top < 0 ? null : view.model.hunkHeaderFor(top)
+            header = found && found.index < top ? found : null
+        }
+        visible: header !== null
+        anchors.left: list.left
+        anchors.top: list.top
+        width: list.width
+        height: GitLamaLayout.hunkHeaderHeight
+        color: Theme.colors.paneAlt
+        Connections {
+            target: list
+            function onContentYChanged() { pinnedHunk.refresh() }
+            function onCountChanged() { pinnedHunk.refresh() }
+        }
+        Connections {
+            target: view
+            function onWrapChanged() { pinnedHunk.refresh() }
+            function onModelChanged() { pinnedHunk.refresh() }
+        }
+        // Clicks on the pinned header never reach the rows below it.
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons }
+        DiffHunkHeader {
+            anchors.fill: parent
+            diff: view
+            stableId: pinnedHunk.header ? pinnedHunk.header.stableId : ""
+            range: pinnedHunk.header ? pinnedHunk.header.hunkRange : ""
+            text: pinnedHunk.header ? pinnedHunk.header.hunkText : ""
+        }
+        Rectangle { width: parent.width; height: Metrics.hairline; color: Theme.colors.line }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: Metrics.hairline; color: Theme.colors.line }
+    }
+
+    // The selection's actions float at the top right of its first line.
+    Loader {
+        id: selectionActionsLoader
+        property int rowIndex: -1
+        property real rowY: 0
+        function refresh() {
+            rowIndex = view.model && view.selectedRows.length > 0 ? view.model.firstIndexOf(view.selectedRows) : -1
+            const item = rowIndex < 0 ? null : list.itemAtIndex(rowIndex)
+            rowY = item ? item.y - list.contentY : -1
+        }
+        active: view.selectionActions !== null && view.selectedRows.length > 0
+        sourceComponent: view.selectionActions
+        visible: active && rowIndex >= 0 && rowY >= 0 && rowY < list.height
+        x: list.x + list.width - width - Theme.space.s6
+        y: list.y + rowY - Theme.space.s1
+        z: 2
+        Connections {
+            target: list
+            function onContentYChanged() { selectionActionsLoader.refresh() }
+            function onCountChanged() { selectionActionsLoader.refresh() }
+        }
+        Connections {
+            target: view
+            function onSelectedRowsChanged() { Qt.callLater(selectionActionsLoader.refresh) }
+        }
     }
 
     HoverHandler { id: viewHover }
