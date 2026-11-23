@@ -153,6 +153,8 @@ QtObject {
             inspector.selectFile(argument)
         } else if (name === "open" && workspace)
             workspace.openPath(argument)
+        else if (name === "newTab" && workspace)
+            workspace.addRepositoryChooser()
         screenshotStepRequested(name, argument)
     }
     /// Overrides the theme for a development screenshot.

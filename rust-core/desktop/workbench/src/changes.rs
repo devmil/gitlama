@@ -134,6 +134,35 @@ pub fn discard_kind_of(entries: &[NativeStatusEntry]) -> Option<NativeDiscardKin
     }
 }
 
+/// The status letter of `entry` on `side` (the Dart changeStatusCode).
+pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'static str {
+    if entry.kind == NativeStatusEntryKind::Unmerged {
+        return "U";
+    }
+    if entry.kind == NativeStatusEntryKind::Untracked {
+        return "?";
+    }
+    if entry.kind == NativeStatusEntryKind::Ignored {
+        return "!";
+    }
+    if entry.kind == NativeStatusEntryKind::Rename {
+        return "R";
+    }
+    match if side == NativeStagingSide::Staged {
+        entry.index
+    } else {
+        entry.worktree
+    } {
+        NativeChangeKind::Added => "A",
+        NativeChangeKind::Deleted => "D",
+        NativeChangeKind::Renamed => "R",
+        NativeChangeKind::Copied => "C",
+        NativeChangeKind::UpdatedButUnmerged => "U",
+        NativeChangeKind::TypeChanged | NativeChangeKind::Modified => "M",
+        NativeChangeKind::Unmodified => "!",
+    }
+}
+
 /// The Git paths a command on `entries` takes: each once, with rename sources.
 pub fn unique_command_paths(entries: &[NativeStatusEntry]) -> Vec<Vec<u8>> {
     let mut seen = HashSet::new();

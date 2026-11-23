@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls.Basic as C
 import Meridian
 
 // The stash dialog (the Dart StashInputDialog): a message and what to stash
@@ -20,6 +19,23 @@ MeridianDialog {
     property bool includeUntracked: false
     property bool keepIndex: false
     property var selected: []
+    // Development screenshots: `stashSelect:<index>` picks files to stash.
+    Connections {
+        target: Store
+        function onScreenshotStepRequested(name, argument) {
+            if (name === "stashSelect" && dialog.opened) {
+                dialog.selecting = true
+                if (argument.length > 0)
+                    dialog.toggle(Number(argument))
+            }
+        }
+    }
+    function toggle(index) {
+        const next = selected.filter(item => item !== index)
+        if (next.length === selected.length)
+            next.push(index)
+        selected = next
+    }
     readonly property string targetBranch: (payload.branches ?? []).indexOf(branchField.text.trim()) >= 0 ? branchField.text.trim() : ""
     readonly property bool valid: (!rename || message.text.trim().length > 0) && (!auto || targetBranch.length > 0)
         && (!(push && selecting) || selected.length > 0)
@@ -101,34 +117,58 @@ MeridianDialog {
                 onClicked: dialog.selecting = true
             }
         }
-        // The files to stash.
-        Rectangle {
+        // The files to stash (the Dart stash file picker): the count and
+        // Select all or none over rows of status and path.
+        ListWell {
             visible: dialog.push && dialog.selecting
             width: parent.width
-            height: Math.min(GitLamaLayout.dialogListMaxHeight, files.contentHeight + 2 * Theme.space.s1)
-            radius: Theme.radius.md
-            color: Theme.colors.pane
-            border.color: Theme.colors.line
-            ListView {
-                id: files
-                anchors.fill: parent
-                anchors.margins: Theme.space.s1
-                clip: true
-                model: dialog.tracked
-                C.ScrollBar.vertical: MeridianScrollBar {}
-                delegate: MeridianCheckbox {
-                    required property string modelData
-                    required property int index
-                    width: files.width
-                    text: modelData
-                    checked: dialog.selected.indexOf(index) >= 0
-                    onToggled: {
-                        const next = dialog.selected.filter(item => item !== index)
-                        if (checked)
-                            next.push(index)
-                        dialog.selected = next
+            model: dialog.tracked
+            header: Item {
+                width: ListView.view ? ListView.view.width : 0
+                height: selectAll.height + Theme.space.s3
+                MeridianText {
+                    x: Theme.space.s6
+                    anchors.verticalCenter: selectAll.verticalCenter
+                    role: MeridianText.Caption
+                    color: Theme.colors.inkMuted
+                    text: L10n.tn("stashSelectionCount", { selected: dialog.selected.length, count: dialog.tracked.length })
+                }
+                MeridianButton {
+                    id: selectAll
+                    objectName: "stash-select-all"
+                    readonly property bool all: dialog.selected.length === dialog.tracked.length
+                    y: Theme.space.s3
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.space.s3
+                    variant: MeridianButton.Quiet
+                    controlSize: MeridianButton.Small
+                    text: all ? L10n.t("stashSelectNone") : L10n.t("stashSelectAll")
+                    onClicked: dialog.selected = all ? [] : dialog.tracked.map((_, index) => index)
+                }
+            }
+            delegate: MeridianListRow {
+                id: fileEntry
+                required property string modelData
+                required property int index
+                objectName: "stash-file-" + index
+                width: ListView.view.width
+                text: modelData
+                leading: Component {
+                    Row {
+                        spacing: Theme.space.s3
+                        MeridianCheckbox {
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: dialog.selected.indexOf(fileEntry.index) >= 0
+                            onToggled: dialog.toggle(fileEntry.index)
+                            Accessible.name: fileEntry.modelData
+                        }
+                        StatusGlyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            status: (dialog.payload.trackedStatus ?? [])[fileEntry.index] ?? "M"
+                        }
                     }
                 }
+                onClicked: dialog.toggle(index)
             }
         }
         MeridianText {

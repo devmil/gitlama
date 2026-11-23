@@ -397,18 +397,33 @@ FocusScope {
                                     visible: !fileRow.folder
                                     spacing: Theme.space.s2
                                     MeridianIcon {
-                                        visible: fileRow.file.deletion !== null && fileRow.file.deletion !== undefined
+                                        id: deletionIcon
+                                        readonly property string presence: fileRow.file.deletion ?? ""
+                                        visible: presence.length > 0
                                         anchors.verticalCenter: parent.verticalCenter
                                         name: "trash-2"
                                         iconSize: MeridianIcon.Small
                                         color: Theme.colors.danger
+                                        HoverHandler { id: deletionHover }
+                                        MeridianTooltip {
+                                            text: deletionIcon.presence.length > 0
+                                                ? L10n.t("conflictPresence" + deletionIcon.presence.charAt(0).toUpperCase() + deletionIcon.presence.slice(1)) : ""
+                                            shown: deletionHover.hovered
+                                        }
                                     }
+                                    // A file to review, or one GitLama cannot merge line by line.
                                     MeridianIcon {
                                         visible: fileRow.file.remaining === null || fileRow.file.remaining === 0
                                         anchors.verticalCenter: parent.verticalCenter
                                         name: "circle-alert"
                                         iconSize: MeridianIcon.Small
                                         color: Theme.colors.attention
+                                        HoverHandler { id: reviewHover }
+                                        MeridianTooltip {
+                                            text: fileRow.file.remaining === 0 ? L10n.t("conflictReviewFile")
+                                                : fileRow.file.kind === "binary" ? L10n.t("conflictBinaryFile") : L10n.t("conflictHugeFile")
+                                            shown: reviewHover.hovered
+                                        }
                                     }
                                     MeridianCount {
                                         visible: (fileRow.file.remaining ?? 0) > 0

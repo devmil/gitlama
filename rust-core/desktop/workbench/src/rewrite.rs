@@ -10,6 +10,7 @@ use crate::notices::Notices;
 use crate::prompts::Prompts;
 use crate::session::{SessionError, SessionIdentity, display_path};
 use crate::workspace::{Pane, WorkspaceService};
+use gitlama_contract::dto::NativeStagingSide;
 use gitlama_contract::dto::{
     NativeRefMutationExecutionState, NativeRefMutationKind, NativeRefMutationRequest,
     NativeRefMutationWarning, NativeStatusEntryKind,
@@ -249,6 +250,15 @@ impl RewriteService {
             "initialMessage": if kind == NativeStashKind::Rename { stash.map(|stash| text(&stash.subject)) } else { None },
             "initialTargetBranch": target_branch,
             "tracked": entries.iter().filter(|entry| entry.kind != NativeStatusEntryKind::Untracked).map(|entry| display_path(&entry.path)).collect::<Vec<_>>(),
+            // Each tracked file's status letter on the side it changed.
+            "trackedStatus": entries
+                .iter()
+                .filter(|entry| entry.kind != NativeStatusEntryKind::Untracked)
+                .map(|entry| {
+                    let side = if crate::changes::is_unstaged(entry) { NativeStagingSide::Unstaged } else { NativeStagingSide::Staged };
+                    crate::changes::status_code(entry, side)
+                })
+                .collect::<Vec<_>>(),
             "untracked": entries.iter().filter(|entry| entry.kind == NativeStatusEntryKind::Untracked).count(),
             "branches": snapshot.refs.branches.iter().map(|branch| text(&branch.name)).collect::<Vec<_>>(),
         });

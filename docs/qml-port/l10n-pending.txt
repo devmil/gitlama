@@ -1,15 +1,8 @@
 # Messages of Flutter features the Rust/QML port has not wired up yet.
 # scripts/check_l10n.py accepts them as unused while listed and fails when a
 # listed key gets used. The port is complete when this file is empty.
-blameAgeDays
-blameAgeHours
-blameAgeMinutes
-blameAgeMonths
-blameAgeYears
-brandWelcome
 clonePasswordOrToken
 commandRenameBranch
-conflictReviewFile
 diagnosticsShare
 editBranchUpstreamUnknown
 extensionWorktreeChooseFolderFailure
@@ -278,6 +271,5 @@ repositoryDetailsHostWithAlias
 repositoryTitleInGroup
 settingsRemoteHosts
 settingsRemoteHostsDetail
-stashSelectionCount
 workspaceRefreshFailed
 worktreeListFailed

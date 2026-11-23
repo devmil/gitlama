@@ -14,8 +14,20 @@ Item {
     readonly property real lineHeight: GitLamaLayout.diffLineHeight
     property real widest: 0
 
+    // How long ago the line changed, compactly (the Dart _blameAge).
     function age(seconds) {
-        return seconds > 0 ? Labels.historyDate(seconds, Store.appearance.dateFormat ?? "relative") : ""
+        if (seconds <= 0)
+            return ""
+        const elapsed = Math.max(0, Math.floor(Date.now() / 1000) - seconds)
+        if (elapsed < 3600)
+            return L10n.tn("blameAgeMinutes", { count: Math.max(1, Math.floor(elapsed / 60)) })
+        if (elapsed < 86400)
+            return L10n.tn("blameAgeHours", { count: Math.floor(elapsed / 3600) })
+        if (elapsed < 86400 * 30)
+            return L10n.tn("blameAgeDays", { count: Math.floor(elapsed / 86400) })
+        if (elapsed < 86400 * 365)
+            return L10n.tn("blameAgeMonths", { count: Math.floor(elapsed / (86400 * 30)) })
+        return L10n.tn("blameAgeYears", { count: Math.floor(elapsed / (86400 * 365)) })
     }
 
     CommandMenu {

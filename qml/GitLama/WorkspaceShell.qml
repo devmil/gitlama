@@ -114,11 +114,20 @@ Rectangle {
             id: body
             width: parent.width
             height: shell.height - toolbar.height - tabs.height - statusBar.height - (activity.visible ? activity.height + Theme.space.s3 : 0)
+            readonly property bool choosing: Store.workspace !== null && Store.workspace.active !== null
+                && Store.workspace.active.phase === "choosing"
             WorkspaceBody {
                 anchors.fill: parent
+                visible: !body.choosing
                 // Keyboard focus stays out while an operation holds the tab.
                 enabled: busyLoader.active === false
                 onCommand: (id, options) => shell.command(id, options)
+            }
+            // A new tab chooses its repository (the Dart RepositoryChooser).
+            Loader {
+                anchors.fill: parent
+                active: body.choosing
+                sourceComponent: RepositoryChooser { tab: Store.workspace.active }
             }
             // The active tab's blocking operation holds the repository area;
             // the area keeps its place so its scroll positions survive.

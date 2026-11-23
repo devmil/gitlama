@@ -6,7 +6,7 @@ use crate::inspector_state::parse_whitespace;
 use crate::plumbing::Commands;
 use gitlama_contract::diff::NativeDiffLayout;
 use gitlama_contract::dto::{
-    NativeChangeKind, NativeStagingPhase, NativeStagingScope, NativeStagingSide, NativeStatusEntry,
+    NativeStagingPhase, NativeStagingScope, NativeStagingSide, NativeStatusEntry,
     NativeStatusEntryKind,
 };
 use gitlama_workbench::app::Services;
@@ -58,34 +58,7 @@ fn file_label(entry: &NativeStatusEntry, basename: bool) -> String {
     }
 }
 
-/// The status letter of `entry` on `side` (the Dart changeStatusCode).
-pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'static str {
-    if entry.kind == NativeStatusEntryKind::Unmerged {
-        return "U";
-    }
-    if entry.kind == NativeStatusEntryKind::Untracked {
-        return "?";
-    }
-    if entry.kind == NativeStatusEntryKind::Ignored {
-        return "!";
-    }
-    if entry.kind == NativeStatusEntryKind::Rename {
-        return "R";
-    }
-    match if side == NativeStagingSide::Staged {
-        entry.index
-    } else {
-        entry.worktree
-    } {
-        NativeChangeKind::Added => "A",
-        NativeChangeKind::Deleted => "D",
-        NativeChangeKind::Renamed => "R",
-        NativeChangeKind::Copied => "C",
-        NativeChangeKind::UpdatedButUnmerged => "U",
-        NativeChangeKind::TypeChanged | NativeChangeKind::Modified => "M",
-        NativeChangeKind::Unmodified => "!",
-    }
-}
+pub use gitlama_workbench::changes::status_code;
 
 /// Whether `entry` matches every whitespace-separated term of `query`.
 pub fn filter_matches(entry: &NativeStatusEntry, query: &str) -> bool {
