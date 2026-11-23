@@ -98,6 +98,13 @@ Item {
     signal lineMenuRequested(real x, real y)
 
     function rowSelected(id) { return selectedRows.indexOf(id) >= 0 }
+    /// Whether the line at row `index` is selected (rows that are not lines are not).
+    function lineChosenAt(index) {
+        if (!model || index < 0 || selectedRows.length === 0)
+            return false
+        const ids = model.lineIds(index, index)
+        return ids.length > 0 && selectedRows.indexOf(ids[0]) >= 0
+    }
     function selectLine(index, stableId, modifiers) {
         if (!lineSelection)
             return
@@ -117,8 +124,19 @@ Item {
         rowsSelected(rows)
     }
 
+    /// Scrolls row `index` into the middle of the view. Rows far away are placed from estimated
+    /// heights and load as placeholders, so the position is corrected once they have settled;
+    /// the middle also keeps the row clear of the pinned hunk header.
     function positionAt(index) {
-        list.positionViewAtIndex(index, ListView.Beginning)
+        list.positionViewAtIndex(index, ListView.Center)
+        positionSettle.index = index
+        positionSettle.restart()
+    }
+    Timer {
+        id: positionSettle
+        property int index: -1
+        interval: GitLamaLayout.detailDebounce
+        onTriggered: if (index >= 0 && index < list.count) list.positionViewAtIndex(index, ListView.Center)
     }
 
     // ---------------------------------------------------------------- text selection
@@ -509,6 +527,8 @@ Item {
 
             readonly property bool lineRow: kind === "context" || kind === "addition" || kind === "deletion"
             readonly property bool chosen: view.lineSelection && lineRow && view.selectedRows.indexOf(stableId) >= 0
+            readonly property bool chosenAbove: chosen && view.lineChosenAt(index - 1)
+            readonly property bool chosenBelow: chosen && view.lineChosenAt(index + 1)
             readonly property bool added: kind === "addition"
             readonly property bool deleted: kind === "deletion"
             readonly property bool fallback: kind === "binary" || kind === "image" || kind === "submodule"
@@ -558,13 +578,15 @@ Item {
                     scale: line.currentMatch ? 1 : 1.08
                     Behavior on scale { NumberAnimation { duration: Motion.quick; easing.type: Easing.OutBack } }
                 }
-                // The frame around a run of selected lines.
-                Rectangle {
+                // One frame around a run of selected lines: its sides on every line, its top
+                // and bottom only where the run starts and ends.
+                Item {
                     visible: line.chosen
                     anchors.fill: parent
-                    color: "transparent"
-                    border.width: Metrics.hairline
-                    border.color: Theme.colors.accent
+                    Rectangle { width: Metrics.hairline; height: parent.height; color: Theme.colors.accent }
+                    Rectangle { x: parent.width - width; width: Metrics.hairline; height: parent.height; color: Theme.colors.accent }
+                    Rectangle { visible: !line.chosenAbove; width: parent.width; height: Metrics.hairline; color: Theme.colors.accent }
+                    Rectangle { visible: !line.chosenBelow; y: parent.height - height; width: parent.width; height: Metrics.hairline; color: Theme.colors.accent }
                 }
                 Rectangle {
                     visible: line.kind === "hunk"

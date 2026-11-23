@@ -176,7 +176,8 @@ impl Driver {
         {
             self.project_history();
         }
-        if changed.intersects(Topics::INSPECTOR) {
+        // The file list's list or tree mode is a setting: changing it reshapes the shown files.
+        if changed.intersects(Topics::INSPECTOR | Topics::SETTINGS) {
             self.project_inspector();
         }
         if changed.intersects(

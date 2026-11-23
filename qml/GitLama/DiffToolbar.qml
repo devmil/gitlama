@@ -40,6 +40,9 @@ Rectangle {
         width: Math.max(0, pinnedRow.x - x - Theme.space.s2)
         height: parent.height
         contentWidth: strip.implicitWidth
+        // Room for the focus ring of the first and last control, which the clip cut off.
+        leftMargin: Metrics.focusRingWidth + Metrics.focusRingOffset
+        rightMargin: Metrics.focusRingWidth + Metrics.focusRingOffset
         flickableDirection: Flickable.HorizontalFlick
         boundsBehavior: Flickable.StopAtBounds
         clip: true

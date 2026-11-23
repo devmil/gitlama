@@ -64,6 +64,8 @@ MeridianDialog {
     }
 
     widthClass: MeridianDialog.Workflow
+    // Managing hosts can be left with the ✕; choosing a folder also has Cancel.
+    closeLabel: L10n.t("close")
     title: choosing ? L10n.t("openRemoteRepository") : L10n.t("remoteHosts")
     description: L10n.t("remoteHostsIntro")
     submitDisabled: !choosing || !canChoose
@@ -357,6 +359,13 @@ MeridianDialog {
     }
 
     actions: [
+        MeridianButton {
+            objectName: "remote-cancel"
+            visible: dialog.choosing
+            text: L10n.t("cancel")
+            variant: MeridianButton.Quiet
+            onClicked: dialog.reject()
+        },
         MeridianButton {
             objectName: "remote-add-host"
             text: L10n.t("remoteAddHost")

@@ -9,6 +9,8 @@ Item {
 
     property int sequence: 0
     property bool changed: false
+    /// Whether the band is on its way; the pill clips to its rounded shape only meanwhile.
+    readonly property bool sweeping: band.visible
     property real _progress: 0
     property int _previous: sequence
 

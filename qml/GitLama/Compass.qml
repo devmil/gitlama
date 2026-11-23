@@ -86,9 +86,12 @@ Item {
         border.color: hover.hovered ? Theme.colors.lineStrong : Theme.clear(Theme.colors.lineStrong)
         Behavior on border.color { ColorAnimation { duration: Motion.hoverFor(hover.hovered) } }
         clip: true
-        layer.enabled: true
+        // Only the sweep needs the rounded clip of a layer. A permanent layer drew the text
+        // through a texture, which a fractional position or scale left blurred.
+        layer.enabled: glintBand.sweeping
 
         CompassGlint {
+            id: glintBand
             anchors.fill: parent
             sequence: compass.syncSequence
             changed: compass.syncChanged

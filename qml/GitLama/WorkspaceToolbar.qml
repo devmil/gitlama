@@ -139,8 +139,9 @@ Item {
         readonly property real slot: Theme.size.control + Theme.space.s2
         readonly property real available: trailing.x - (leading.x + leading.width) - 2 * Theme.space.s4
         anchors.verticalCenter: parent.verticalCenter
-        x: Math.max(leading.x + leading.width + Theme.space.s4,
-                    Math.min((toolbar.width - width) / 2, trailing.x - Theme.space.s4 - width))
+        // Whole pixels keep the text sharp.
+        x: Math.round(Math.max(leading.x + leading.width + Theme.space.s4,
+                               Math.min((toolbar.width - width) / 2, trailing.x - Theme.space.s4 - width)))
         spacing: 0
         Item { width: centre.slot; height: 1 }
         Compass {
