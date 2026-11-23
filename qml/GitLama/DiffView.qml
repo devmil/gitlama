@@ -22,6 +22,16 @@ Item {
     /// "utf8" or "latin1".
     property string encoding: "utf8"
     onEncodingChanged: if (model) model.setLatin1(encoding === "latin1")
+    /// The rows of the found matches and the current one (-1 for none).
+    property var searchMatches: []
+    property int currentSearch: -1
+    readonly property var searchSet: {
+        const set = {}
+        for (const row of searchMatches)
+            set[row] = true
+        return set
+    }
+    onSearchMatchesChanged: if (minimap.visible) minimapCanvas.requestPaint()
     /// Hunk headers offer Show more lines when set.
     property bool canShowMoreContext: false
     signal showMoreContext()
@@ -162,7 +172,11 @@ Item {
             readonly property bool deleted: kind === "deletion"
             readonly property bool fallback: kind === "binary" || kind === "image" || kind === "submodule"
                 || kind === "modeOnly" || kind === "tooLarge" || invalid
-            readonly property color fill: added ? Theme.colors.successBg
+            readonly property bool currentMatch: view.currentSearch === index
+            readonly property bool searchMatch: view.searchSet[index] === true
+            readonly property color fill: currentMatch ? Theme.colors.accentSoft
+                : searchMatch ? Theme.colors.paneHover
+                : added ? Theme.colors.successBg
                 : deleted ? GitColors.deletedBg
                 : kind === "hunk" || kind === "noNewline" ? Theme.colors.paneAlt
                 : Theme.colors.pane
@@ -180,6 +194,16 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 color: line.chosen ? Theme.blend(line.fill, Theme.colors.accent, GitLamaLayout.opacityDiffSelectedLine) : line.fill
+                // The current match is framed.
+                Rectangle {
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.width: Metrics.hairline
+                    border.color: Theme.colors.accent
+                    opacity: line.currentMatch ? 1 : 0
+                    scale: line.currentMatch ? 1 : 1.08
+                    Behavior on scale { NumberAnimation { duration: Motion.quick; easing.type: Easing.OutBack } }
+                }
                 // The frame around a run of selected lines.
                 Rectangle {
                     visible: line.chosen
@@ -435,6 +459,11 @@ Item {
                     context.fillStyle = String(map[i] === 1 ? Theme.colors.success : GitColors.deleted)
                     context.fillRect(0, i * height / buckets, width, 1)
                 }
+                // Found matches over the changes.
+                const total = view.model.count()
+                context.fillStyle = String(Theme.colors.accent)
+                for (const row of view.searchMatches)
+                    context.fillRect(0, row / Math.max(1, total) * height, width, 1)
             }
         }
         Rectangle {

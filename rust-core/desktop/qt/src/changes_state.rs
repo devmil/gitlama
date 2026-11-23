@@ -230,6 +230,12 @@ mod changes_state {
 
         #[qsignal]
         pub fn state_changed(&mut self);
+        /// The answer of `search_diff`.
+        #[qsignal]
+        pub fn diff_searched(&mut self, query: String, case_sensitive: bool, matches: Value);
+        /// The answer of `load_hunks`.
+        #[qsignal]
+        pub fn hunks_loaded(&mut self, rows: Value);
         /// A move started or ended, for the lists' animations.
         #[qsignal]
         pub fn effect(&mut self, kind: String, payload: String);
@@ -245,6 +251,38 @@ mod changes_state {
                 let shown: HashSet<String> =
                     status.entries.iter().filter(|entry| filter_matches(entry, &text)).map(change_key).collect();
                 services.changes.retain(tab.id, &shown);
+            });
+        }
+
+        /// The rows of the shown diff that contain `query`: answered by
+        /// `diff_searched` (matches null when the search failed).
+        #[qslot]
+        fn search_diff(&self, query: String, case_sensitive: bool) {
+            let Some(commands) = self.commands.clone() else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(document) = services.working_detail.document() else { return };
+                let shared = Rc::clone(&driver.changes);
+                rt::spawn_detached(async move {
+                    let matches = document.search(&query, case_sensitive).await;
+                    let value = matches.map_or(Value::Null, |rows| Value::from(rows));
+                    shared.borrow_mut().diff_searched(query, case_sensitive, value);
+                });
+            });
+        }
+
+        /// Every hunk header row of the shown diff: answered by `hunks_loaded`.
+        #[qslot]
+        fn load_hunks(&self) {
+            let Some(commands) = self.commands.clone() else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(document) = services.working_detail.document() else { return };
+                let shared = Rc::clone(&driver.changes);
+                rt::spawn_detached(async move {
+                    let rows = document.hunks().await;
+                    shared.borrow_mut().hunks_loaded(Value::from(rows));
+                });
             });
         }
 

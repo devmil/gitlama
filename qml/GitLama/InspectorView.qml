@@ -111,6 +111,11 @@ Rectangle {
         }
     }
     Component.onCompleted: Store.inspectorView = inspector
+    /// Development screenshots: finds `query` in the shown diff.
+    function find(query) {
+        commitFind.text = query
+        commitFind.activate(false)
+    }
     /// Development screenshots: builds file `index`'s menu and runs `action`.
     function runFileAction(index, action) {
         showFileMenu(files[index], inspector, 10, 10)
@@ -515,6 +520,14 @@ Rectangle {
                             width: parent.width
                             height: visible ? implicitHeight : 0
                             path: inspector.location && inspector.location.path ? inspector.location.path : L10n.t("diffAllFiles")
+                            DiffFind {
+                                id: commitFind
+                                anchors.verticalCenter: parent.verticalCenter
+                                objectName: "commit-diff-search"
+                                searcher: Store.inspector
+                                view: commitDiff
+                                diffKey: inspector.location ? inspector.location.commit + ":" + (inspector.location.base ?? "") + ":" + (inspector.location.path ?? "") : null
+                            }
                             MeridianIconButton {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: L10n.t("diffPreviousHunk")

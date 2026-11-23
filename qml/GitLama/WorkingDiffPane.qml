@@ -148,6 +148,12 @@ Rectangle {
                     controlSize: MeridianButton.Small
                     onClicked: diff.nextHunk(true)
                 }
+                DiffFind {
+                    anchors.verticalCenter: parent.verticalCenter
+                    searcher: Store.changes
+                    view: diff
+                    diffKey: (pane.detail.identity ?? "") + ":" + (pane.detail.side ?? "")
+                }
                 DiffViewingActions {
                     anchors.verticalCenter: parent.verticalCenter
                     encoding: diff.encoding

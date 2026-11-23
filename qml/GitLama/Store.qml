@@ -80,6 +80,8 @@ QtObject {
         else if (name === "size") {
             const parts = argument.split("x")
             screenshotSize = Qt.size(Number(parts[0]), Number(parts[1]))
+        } else if (name === "diffFind" && inspectorView) {
+            inspectorView.find(argument)
         } else if (name === "appearance") {
             app.updateAppearance(JSON.parse(argument))
         } else if (name === "inspectorScope") {

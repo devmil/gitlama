@@ -115,6 +115,36 @@ impl DiffDocument {
         }
     }
 
+    /// The rows that contain `query` (at most 1000, as in Flutter), or None
+    /// when the search failed or the diff moved on.
+    pub async fn search(&self, query: &str, case_sensitive: bool) -> Option<Vec<u32>> {
+        let result = self
+            .calls
+            .repository_session_diff_search(
+                self.identity.native_id,
+                self.identity.generation,
+                self.request_id,
+                query.as_bytes().to_vec(),
+                case_sensitive,
+                1000,
+            )
+            .await
+            .ok()?;
+        (result.failure.is_none() && result.request_id == self.request_id && !self.retired.get()).then_some(result.matches)
+    }
+
+    /// The rows of every hunk header, loaded or not.
+    pub async fn hunks(&self) -> Vec<u32> {
+        match self
+            .calls
+            .repository_session_diff_hunks(self.identity.native_id, self.identity.generation, self.request_id, 10_000)
+            .await
+        {
+            Ok(result) if result.failure.is_none() && result.request_id == self.request_id => result.positions,
+            _ => Vec::new(),
+        }
+    }
+
     /// Loads the page of row `index` unless it is loaded or loading.
     pub fn ensure(self: &Rc<Self>, index: u64) {
         if index >= self.total || self.retired.get() {

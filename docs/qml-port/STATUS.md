@@ -90,6 +90,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
 - Diff toolbar (path, hunk navigation, wrap, whitespace, context lines, minimap, text encoding,
   layout, markers, create patch) for the inspector and the working diff; wrapped lines, the
   minimap, Latin-1 decoding and Show more lines (transient wider context) in the diff view.
+- Find in diff (Meridian QML find bar, added to meridian_ui): whole-diff search in Rust, match
+  position, case toggle, stepping with wrap-around, matches marked in rows and minimap.
 
 ## Next
 - Inspector: search in contents/blame, image diffs, open in window, +/− counts in the files header.
@@ -103,7 +105,7 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   merge/cherry-pick/revert/integrate/rebase/interactive rebase/restack; clone; repository
   details; patch; archive; power tools; integrations; extensions (worktrees, LFS, submodules).
 - Inspector lenses: contents, blame, file history, All files tree; tree mode of file lists;
-  diff find (content search), image diff, changed-word marks on wrapped lines.
+  image diff, changed-word marks on wrapped lines, whole-diff hunk navigation (loaded hunks only).
 - Changes: drag between lists, flight animation.
 - Working-tree Blame/History opens an inspection window in Flutter when windows are available;
   the port shows it in the History inspector until inspection windows are ported.

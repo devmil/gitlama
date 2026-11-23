@@ -287,6 +287,12 @@ mod inspector_state {
 
         #[qsignal]
         pub fn state_changed(&mut self);
+        /// The answer of `search_diff`.
+        #[qsignal]
+        pub fn diff_searched(&mut self, query: String, case_sensitive: bool, matches: Value);
+        /// The answer of `load_hunks`.
+        #[qsignal]
+        pub fn hunks_loaded(&mut self, rows: Value);
 
         #[qslot]
         fn back(&self) {
@@ -334,6 +340,38 @@ mod inspector_state {
                     _ => Lens::Diff,
                 };
                 inspector.navigate(Location { lens, anchor: 0, ..location }, true, false, None).await;
+            });
+        }
+
+        /// The rows of the shown diff that contain `query`: answered by
+        /// `diff_searched` (matches null when the search failed).
+        #[qslot]
+        fn search_diff(&self, query: String, case_sensitive: bool) {
+            let Some(commands) = self.commands.clone() else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(document) = services.inspector.current().diff else { return };
+                let shared = Rc::clone(&driver.inspector);
+                rt::spawn_detached(async move {
+                    let matches = document.search(&query, case_sensitive).await;
+                    let value = matches.map_or(Value::Null, |rows| Value::from(rows));
+                    shared.borrow_mut().diff_searched(query, case_sensitive, value);
+                });
+            });
+        }
+
+        /// Every hunk header row of the shown diff: answered by `hunks_loaded`.
+        #[qslot]
+        fn load_hunks(&self) {
+            let Some(commands) = self.commands.clone() else { return };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(document) = services.inspector.current().diff else { return };
+                let shared = Rc::clone(&driver.inspector);
+                rt::spawn_detached(async move {
+                    let rows = document.hunks().await;
+                    shared.borrow_mut().hunks_loaded(Value::from(rows));
+                });
             });
         }
 

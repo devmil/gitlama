@@ -25,6 +25,7 @@ MeridianBusyOverlay 1.0 MeridianBusyOverlay.qml
 MeridianProgressBar 1.0 MeridianProgressBar.qml
 MeridianBanner 1.0 MeridianBanner.qml
 MeridianEmptyState 1.0 MeridianEmptyState.qml
+MeridianFindBar 1.0 MeridianFindBar.qml
 SizeScale 1.0 SizeScale.qml
 RadiusScale 1.0 RadiusScale.qml
 SpaceScale 1.0 SpaceScale.qml
