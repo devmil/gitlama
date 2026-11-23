@@ -166,6 +166,15 @@ Item {
     property int _handledSync: -1
     property int _handledCommit: -1
     property string _pendingLanding: ""
+    // The commit flash, the search match reached (NM-33) and a transfer's arriving rows (NH-2).
+    property string flashObjectId: ""
+    property int flashSequence: 0
+    property string attentionObjectId: ""
+    property int attentionSequence: 0
+    property int _searchIndexSeen: -1
+    property int _searchMatchesSeen: -1
+    property var syncEntranceIds: []
+    property int syncEntranceSequence: 0
 
     function _visibleRows() {
         return Math.max(1, Math.ceil(list.height / Theme.size.row))
@@ -213,13 +222,26 @@ Item {
                 const last = first + _visibleRows()
                 const indices = (sync.newRows ?? []).map(id => Store.historyRows.indexOf(id))
                     .filter(index => index >= first && index < last).sort((a, b) => a - b)
+                syncEntranceSequence = sync.sequence
+                syncEntranceIds = indices.slice(0, Motion.staggerMax).map(index => Store.historyRows.objectIdAt(index))
                 if (indices.length > 0)
                     graphMotion.drawLanes(indices[0], indices.length, GitLamaLayout.pullLanesDelay)
             }
         }
+        const matches = state.searchMatches ?? 0
+        const searchIndex = state.searchIndex ?? -1
+        if (matches === _searchMatchesSeen && searchIndex !== _searchIndexSeen && searchIndex >= 0
+                && _searchIndexSeen >= 0 && (state.currentObjectId ?? "").length > 0) {
+            attentionObjectId = state.currentObjectId
+            attentionSequence += 1
+        }
+        _searchMatchesSeen = matches
+        _searchIndexSeen = searchIndex
         const committed = state.lastCommit
         if (committed && committed.sequence > _handledCommit) {
             _handledCommit = committed.sequence
+            flashObjectId = committed.objectId
+            flashSequence = committed.sequence
             _pendingLanding = committed.amend ? ""
                 : Store.markMotionSeen("gitlama-commit-land|" + repository + "|" + committed.sequence) ? committed.objectId : ""
         }
@@ -668,6 +690,10 @@ Item {
                 dateFormat: pane.dateFormat
                 selectedHere: objectId === pane.selectedObjectId
                 motion: graphMotion
+                flashTrigger: objectId === pane.flashObjectId ? pane.flashSequence : 0
+                attentionTrigger: objectId === pane.attentionObjectId ? pane.attentionSequence : 0
+                entranceOrder: pane.syncEntranceIds.indexOf(objectId)
+                entranceKey: entranceOrder >= 0 ? "history-sync-row|" + objectId + "|" + pane.syncEntranceSequence : ""
                 onActivated: (objectId, toggle) => pane.select(objectId, toggle)
                 onDoubleActivated: objectId => pane.command("checkoutCommit", { initialTarget: objectId })
                 onCopyRequested: value => Store.actions.copyText(value, L10n.t("historyObjectIdCopied"))

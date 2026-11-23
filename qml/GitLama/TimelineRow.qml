@@ -32,19 +32,57 @@ Item {
     Accessible.name: verb + (target.length > 0 ? " " + target : "") + ", " + metadata
     Accessible.selected: selected
 
-    property string _previous: state_
-    property real shakeX: 0
-    onState_Changed: {
-        if (shakeOnFailure && _previous !== "failed" && state_ === "failed" && !Motion.reduced)
-            shake.restart()
-        _previous = state_
+    /// An entry added while the Logbook is open enters from the top (NM-61): its key and
+    /// stagger order; while `entranceActive` is false the key is only remembered.
+    property string entranceKey: ""
+    property int entranceOrder: 0
+    property bool entranceActive: true
+    property real _enter: 1
+    property string _enteredKey: ""
+    Component.onCompleted: _enterOnce()
+    onEntranceKeyChanged: _enterOnce()
+    function _enterOnce() {
+        if (entranceKey === _enteredKey)
+            return
+        _enteredKey = entranceKey
+        if (entranceKey.length === 0 || !MeridianMotionMemory.markSeen(entranceKey) || !entranceActive || Motion.reduced)
+            return
+        entrance.stop()
+        _enter = 0
+        entranceWait.duration = Motion.staggerDelay(entranceOrder)
+        entrance.restart()
     }
     SequentialAnimation {
-        id: shake
-        NumberAnimation { target: row; property: "shakeX"; to: 4; duration: Motion.shakeField / 6 }
-        NumberAnimation { target: row; property: "shakeX"; to: -4; duration: Motion.shakeField / 3 }
-        NumberAnimation { target: row; property: "shakeX"; to: 2; duration: Motion.shakeField / 4 }
-        NumberAnimation { target: row; property: "shakeX"; to: 0; duration: Motion.shakeField / 4 }
+        id: entrance
+        PauseAnimation { id: entranceWait }
+        NumberAnimation {
+            target: row
+            property: "_enter"
+            to: 1
+            duration: Motion.select
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Motion.standard
+        }
+    }
+    opacity: _enter
+    transform: Translate { y: -Motion.riseContent * (1 - row._enter) }
+
+    // A failure shakes the row once (NM-63).
+    property string _previous: state_
+    property int _failures: 0
+    readonly property real shakeX: shaker.offset
+    onState_Changed: {
+        if (_previous !== "failed" && state_ === "failed" && !Motion.reduced)
+            failurePop.restart()
+        if (shakeOnFailure && _previous !== "failed" && state_ === "failed")
+            _failures += 1
+        _previous = state_
+    }
+    MeridianShake {
+        id: shaker
+        visible: false
+        trigger: row._failures
+        strength: MeridianShake.Field
     }
 
     // The selected and hovered fills sit under the rail.
@@ -78,19 +116,41 @@ Item {
             color: Theme.colors.raised
             border.width: GitLamaLayout.logbookRailWidth
             border.color: row.state_ === "cancelled" ? Theme.colors.lineStrong : row.tone
-            MeridianSpinner {
-                visible: row.iconName.length === 0
+            // The spinner crossfades into the outcome's mark (NM-62); a failure pops in (NM-63).
+            MeridianSwap {
+                id: markSwap
                 anchors.centerIn: parent
-                size: GitLamaLayout.logbookMarkIconSize
-                color: row.tone
-                immediate: true
+                swapKey: row.state_
+                style: MeridianSwap.Fade
+                Item {
+                    implicitWidth: GitLamaLayout.logbookMarkIconSize
+                    implicitHeight: GitLamaLayout.logbookMarkIconSize
+                    MeridianSpinner {
+                        visible: row.iconName.length === 0
+                        anchors.centerIn: parent
+                        size: GitLamaLayout.logbookMarkIconSize
+                        color: row.tone
+                        immediate: true
+                    }
+                    MeridianIcon {
+                        id: markIcon
+                        visible: row.iconName.length > 0
+                        anchors.centerIn: parent
+                        name: row.iconName
+                        extent: GitLamaLayout.logbookMarkIconSize
+                        color: row.tone
+                    }
+                }
             }
-            MeridianIcon {
-                visible: row.iconName.length > 0
-                anchors.centerIn: parent
-                name: row.iconName
-                extent: GitLamaLayout.logbookMarkIconSize
-                color: row.tone
+            NumberAnimation {
+                id: failurePop
+                target: markIcon
+                property: "scale"
+                from: 0.8
+                to: 1
+                duration: Motion.pop.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Motion.pop.curve
             }
         }
         Column {

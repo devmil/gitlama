@@ -96,3 +96,7 @@ internal TabStripPill TabStripPill.qml
 internal TabStripChip TabStripChip.qml
 internal TabStripNameField TabStripNameField.qml
 MeridianEntrance 1.0 MeridianEntrance.qml
+MeridianAttention 1.0 MeridianAttention.qml
+MeridianShake 1.0 MeridianShake.qml
+MeridianRollingNumber 1.0 MeridianRollingNumber.qml
+MeridianResize 1.0 MeridianResize.qml

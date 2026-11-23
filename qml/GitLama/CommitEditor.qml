@@ -138,10 +138,13 @@ Rectangle {
             width: scroller.width - 2 * Theme.space.s5
             spacing: Theme.space.s4
 
-            // A failed commit and its output.
-            Column {
-                visible: editor.failure !== null || editor.commitState.outcomeUnknown === true
+            // A failed commit and its output reveal (NM-56); the Composer does not shake.
+            MeridianReveal {
+                id: failureReveal
                 width: parent.width
+                shown: editor.failure !== null || editor.commitState.outcomeUnknown === true
+            Column {
+                width: failureReveal.width
                 spacing: Theme.space.s3
                 MeridianBanner {
                     objectName: "commit-failure-panel"
@@ -197,6 +200,7 @@ Rectangle {
                     }
                 }
             }
+            }
 
             MeridianTextField {
                 id: subjectField
@@ -234,6 +238,18 @@ Rectangle {
                     }
                 ]
             }
+            // The description grows with its text between the line limits (NM-57).
+            Item {
+                id: descriptionSlot
+                width: parent.width
+                height: descriptionField.implicitHeight
+                clip: height < descriptionField.implicitHeight
+                property bool _ready: false
+                Component.onCompleted: Qt.callLater(() => descriptionSlot._ready = true)
+                Behavior on height {
+                    enabled: descriptionSlot._ready && !Motion.reduced
+                    NumberAnimation { duration: Motion.quick; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
+                }
             MeridianTextArea {
                 id: descriptionField
                 objectName: "commit-description-field"
@@ -245,6 +261,7 @@ Rectangle {
                 enabled: !editor.busy
                 onTextChanged: editor.draftEdited()
                 keyFilter: event => descriptionReferences.handleKey(event)
+            }
             }
 
             // Amend, the staged count and the options.

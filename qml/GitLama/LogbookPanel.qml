@@ -97,18 +97,6 @@ MeridianPanel {
             model: panel.entries
             MeridianWheelScroll { flickable: list }
             C.ScrollBar.vertical: MeridianScrollBar {}
-            add: Transition {
-                ParallelAnimation {
-                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.select }
-                    NumberAnimation { property: "scale"; from: 0.98; to: 1; duration: Motion.layout; easing.type: Easing.OutCubic }
-                }
-            }
-            remove: Transition {
-                NumberAnimation { property: "opacity"; to: 0; duration: Motion.exit }
-            }
-            displaced: Transition {
-                NumberAnimation { property: "y"; duration: Motion.layout; easing.type: Easing.OutCubic }
-            }
             delegate: TimelineRow {
                 id: entryRow
                 required property var modelData
@@ -117,6 +105,9 @@ MeridianPanel {
                 state_: ({ running: "running", succeeded: "succeeded", warning: "warning", attention: "warning",
                            failed: "failed", canceled: "cancelled" })[modelData.state] ?? "running"
                 shakeOnFailure: true
+                entranceKey: "logbook-entry|" + modelData.key
+                entranceOrder: index
+                entranceActive: panel.visible
                 verb: modelData.count > 1 ? L10n.tn("logbookRepeatedFetch", { count: modelData.count }) : panel.actionLabel(modelData.action)
                 target: modelData.count > 1 ? "" : (modelData.repository ?? L10n.t("operationRepositoryApplication"))
                 metadata: [modelData.repository ?? L10n.t("operationRepositoryApplication"),

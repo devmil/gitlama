@@ -59,13 +59,14 @@ Item {
         color: Theme.colors.paneAlt
         title: root.blocks.length === 0 ? L10n.t("conflictComparisonTitle")
             : L10n.tn("conflictRegionNumber", { number: root.focusedRegion + 1 })
-        MeridianText {
+        // The resolved regions roll as they change (NM-75).
+        MeridianRollingNumber {
             visible: root.blocks.length > 0
             anchors.verticalCenter: parent ? parent.verticalCenter : undefined
             role: MeridianText.Label
-            tabular: true
             color: root.markers === 0 ? Theme.colors.accent : Theme.colors.danger
-            text: Math.max(0, root.blocks.length - root.markers) + "/" + root.blocks.length
+            value: Math.max(0, root.blocks.length - root.markers)
+            format: count => count + "/" + root.blocks.length
         }
         MeridianIconButton {
             iconName: "chevron-up"

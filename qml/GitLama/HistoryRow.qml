@@ -40,6 +40,40 @@ Item {
     property bool copied: false
     /// The graph's motion (HistoryMotion), or null.
     property var motion: null
+    /// Each increase tints the row once: a commit made here (after `commitTintDelay`, once per
+    /// commit) and a search match reached with next or previous (NM-33).
+    property int flashTrigger: 0
+    property int attentionTrigger: 0
+    /// The row a transfer brought enters (NH-2): its key and stagger order, or "".
+    property string entranceKey: ""
+    property int entranceOrder: 0
+    property real _enter: 1
+    property string _enteredKey: ""
+    Component.onCompleted: _enterOnce()
+    onEntranceKeyChanged: _enterOnce()
+    function _enterOnce() {
+        if (entranceKey === _enteredKey)
+            return
+        _enteredKey = entranceKey
+        if (entranceKey.length === 0 || !MeridianMotionMemory.markSeen(entranceKey) || Motion.reduced)
+            return
+        entrance.stop()
+        _enter = 0
+        entranceWait.duration = Motion.staggerDelay(entranceOrder)
+        entrance.restart()
+    }
+    SequentialAnimation {
+        id: entrance
+        PauseAnimation { id: entranceWait }
+        NumberAnimation {
+            target: entry
+            property: "_enter"
+            to: 1
+            duration: Motion.select
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Motion.standard
+        }
+    }
 
     readonly property real graphClipRight: Math.max(0, metadataLeft - Theme.space.s5)
     readonly property real contentStart: Math.min(
@@ -74,10 +108,15 @@ Item {
     signal copyRequested(string value)
 
     // Rows outside a search fade (NM-32).
-    opacity: queryActive && !searchMatch && !loading ? GitLamaLayout.opacityUnlit : 1
-    Behavior on opacity { NumberAnimation { duration: entry.opacity < 1 ? GitLamaLayout.laneDim : Motion.hoverOut } }
-    // A row inserted above slides this one from its old place (NH-1, NM-36).
-    transform: Translate { y: entry.motion ? -entry.motion.insertionShift(entry.index) * entry.height : 0 }
+    property real searchOpacity: queryActive && !searchMatch && !loading ? GitLamaLayout.opacityUnlit : 1
+    Behavior on searchOpacity { NumberAnimation { duration: entry.searchOpacity < 1 ? GitLamaLayout.laneDim : Motion.hoverOut } }
+    opacity: searchOpacity * _enter
+    // A row inserted above slides this one from its old place (NH-1, NM-36); a row a
+    // transfer brought rises into place.
+    transform: [
+        Translate { y: entry.motion ? -entry.motion.insertionShift(entry.index) * entry.height : 0 },
+        Translate { y: Motion.riseContent * (1 - entry._enter) }
+    ]
 
     Rectangle {
         id: fill
@@ -88,6 +127,16 @@ Item {
             : hover.hovered && !entry.loading ? Theme.colors.paneHover
             : Theme.clear(Theme.colors.paneHover)
         Behavior on color { ColorAnimation { duration: entry.shownSelected ? Motion.select : Motion.hoverFor(hover.hovered) } }
+    }
+    MeridianAttention {
+        anchors.fill: parent
+        trigger: entry.flashTrigger
+        memoryKey: "history-commit|" + entry.objectId
+        delay: GitLamaLayout.commitTintDelay
+    }
+    MeridianAttention {
+        anchors.fill: parent
+        trigger: entry.attentionTrigger
     }
 
     // Rows still loading breathe as skeletons (NM-38).

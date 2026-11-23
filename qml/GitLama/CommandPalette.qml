@@ -19,7 +19,10 @@ T.Popup {
     }
     signal run(string id)
 
+    /// Increments with each opening: the rows enter once per opening (NH-6).
+    property int openings: 0
     function show() {
+        openings += 1
         query = ""
         field.text = ""
         selectedIndex = 0
@@ -147,6 +150,29 @@ T.Popup {
                 id: row
                 required property var modelData
                 required property int index
+                // The first rows fade in after the surface, 18 ms apart (NH-6).
+                readonly property string entranceKey: "command-palette|" + commandPalette.openings + "|" + modelData.id
+                property string _enteredKey: ""
+                property real _enter: 1
+                opacity: _enter
+                Component.onCompleted: _enterOnce()
+                onEntranceKeyChanged: _enterOnce()
+                function _enterOnce() {
+                    if (entranceKey === _enteredKey)
+                        return
+                    _enteredKey = entranceKey
+                    if (!MeridianMotionMemory.markSeen(entranceKey) || Motion.reduced || index > 5)
+                        return
+                    rowEntrance.stop()
+                    _enter = 0
+                    rowWait.duration = GitLamaLayout.paletteRowsDelay + Motion.staggerDelay(index)
+                    rowEntrance.restart()
+                }
+                SequentialAnimation {
+                    id: rowEntrance
+                    PauseAnimation { id: rowWait }
+                    NumberAnimation { target: row; property: "_enter"; to: 1; duration: Motion.quick; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
+                }
                 readonly property string reason: commandPalette.reasonOf(modelData.id)
                 width: list.width - list.leftMargin - list.rightMargin
                 text: Commands.label(modelData.id)

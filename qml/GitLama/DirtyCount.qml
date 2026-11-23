@@ -9,19 +9,11 @@ Row {
     property int dirty: 0
     /// Changes just appeared on a Compass that was already on screen.
     property bool popIn: false
-    property int _previous: dirty
-
     Component.onCompleted: {
-        number.text = String(dirty)
         if (popIn && !Motion.reduced) {
             dot.scale = 0
             pop.restart()
         }
-    }
-    onDirtyChanged: {
-        number.direction = dirty >= _previous ? 1 : -1
-        number.text = String(dirty)
-        _previous = dirty
     }
 
     MeridianText {
@@ -35,12 +27,9 @@ Row {
         color: Theme.colors.warning
         text: " "
     }
-    MeridianSwapText {
-        id: number
-        width: contentWidth
-        style: MeridianSwapText.Roll
+    MeridianRollingNumber {
+        value: root.dirty
         role: MeridianText.Caption
-        tabular: true
         color: Theme.colors.warning
     }
     NumberAnimation {

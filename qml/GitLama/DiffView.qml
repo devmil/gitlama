@@ -55,6 +55,18 @@ Item {
     property real textOffset: 0
     property real widestText: 0
     readonly property bool split: layout === "sideBySide"
+    // Unified and split crossfade (NM-46); the scroll position stays on the same line.
+    onSplitChanged: if (!Motion.reduced) layoutFade.restart()
+    NumberAnimation {
+        id: layoutFade
+        target: list
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Motion.select
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Motion.standard
+    }
     readonly property real gutters: (split ? GitLamaLayout.diffGutterWidth : 2 * GitLamaLayout.diffGutterWidth) + GitLamaLayout.diffSignWidth
     readonly property real textWidth: split ? (list.width - Metrics.hairline) / 2 - gutters - Theme.space.s6 : list.width - gutters - Theme.space.s6
     readonly property real maximumOffset: wrap ? 0 : Math.max(0, widestText - textWidth)

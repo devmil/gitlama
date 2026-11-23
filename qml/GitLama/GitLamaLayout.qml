@@ -215,6 +215,7 @@ QtObject {
     readonly property int openStagger: 40
     readonly property int pullLanesDelay: 60
     readonly property int paletteMorph: 300
+    readonly property int paletteRowsDelay: 60
     // Debounces and holds of timers
     readonly property int commitDraftDebounce: 300
     readonly property int reviewDraftDebounce: 250
