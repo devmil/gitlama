@@ -156,7 +156,7 @@ pub fn project(inspector: &InspectorService, tree: bool, collapsed: &std::collec
                 if lines.last() == Some(&"") {
                     lines.pop();
                 }
-                json!({"lines": lines.iter().map(|line| line.trim_end_matches('\r').replace('\t', "    ")).collect::<Vec<_>>()})
+                json!({"size": bytes.len(), "lines": lines.iter().map(|line| line.trim_end_matches('\r').replace('\t', "    ")).collect::<Vec<_>>()})
             }
             _ => {
                 // Shown as text on request, NUL bytes as visible symbols.
@@ -165,7 +165,7 @@ pub fn project(inspector: &InspectorService, tree: bool, collapsed: &std::collec
                 if lines.last() == Some(&"") {
                     lines.pop();
                 }
-                json!({"binary": true, "lines": lines.iter().map(|line| line.replace('\t', "    ")).collect::<Vec<_>>()})
+                json!({"binary": true, "size": bytes.len(), "lines": lines.iter().map(|line| line.replace('\t', "    ")).collect::<Vec<_>>()})
             }
         }
     });
@@ -255,6 +255,13 @@ pub fn project(inspector: &InspectorService, tree: bool, collapsed: &std::collec
             })
         }),
         "diffRows": state.diff.as_ref().map_or(0, |diff| diff.total()),
+        // +/− of the whole change once all its rows have loaded.
+        "diffCounts": state
+            .diff
+            .as_ref()
+            .filter(|_| state.location.as_ref().is_some_and(|location| location.path.is_none()))
+            .and_then(|diff| diff.complete_counts())
+            .map(|(added, deleted)| json!({"added": added, "deleted": deleted})),
         "lensAvailability": state.lens_availability.iter().map(|(lens, reason)| json!({"lens": lens.name(), "reason": reason.map(|reason| reason.name())})).collect::<Vec<_>>(),
         "canBack": state.can_back,
         "canForward": state.can_forward,

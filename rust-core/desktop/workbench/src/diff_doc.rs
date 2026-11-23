@@ -107,6 +107,22 @@ impl DiffDocument {
     }
 
     /// Every loaded row with its index.
+    /// The added and deleted lines once every row has loaded (the Dart
+    /// inspector sidebar's +/− counts); None while rows are missing.
+    pub fn complete_counts(&self) -> Option<(u64, u64)> {
+        use gitlama_contract::diff::NativeDiffRowKind;
+        let (mut loaded, mut added, mut deleted) = (0u64, 0u64, 0u64);
+        self.for_each_loaded(|_, row| {
+            loaded += 1;
+            match row.kind {
+                NativeDiffRowKind::Addition => added += 1,
+                NativeDiffRowKind::Deletion => deleted += 1,
+                _ => {}
+            }
+        });
+        (loaded == self.total).then_some((added, deleted))
+    }
+
     pub fn for_each_loaded(&self, mut visit: impl FnMut(u64, &NativeDiffRow)) {
         for page in self.pages.borrow().values() {
             for (local, row) in page.rows.iter().enumerate() {

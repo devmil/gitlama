@@ -113,6 +113,10 @@ Rectangle {
     Component.onCompleted: Store.inspectorView = inspector
     /// Development screenshots: finds `query` in the shown diff.
     function find(query) {
+        if (location !== null && location.lens === "contents") {
+            contentsLens.findText(query)
+            return
+        }
         commitFind.text = query
         commitFind.activate(false)
     }
@@ -303,6 +307,28 @@ Rectangle {
                             readonly property bool all: inspector.location !== null && inspector.location.scope === "all"
                             readonly property bool comparison: inspector.location !== null && inspector.location.kind === "comparison"
                             title: all ? L10n.t("inspectorScopeAll") : L10n.tn("historyFilesCount", { count: inspector.files.length })
+                            // +/− of the whole change once all its rows have loaded.
+                            readonly property var counts: inspector.paneState.diffCounts ?? null
+                            middle: Component {
+                                Row {
+                                    visible: filesHeader.counts !== null
+                                    spacing: Theme.space.s2
+                                    MeridianText {
+                                        objectName: "inspector-added-count"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: MeridianText.CodeSm
+                                        color: Theme.colors.success
+                                        text: filesHeader.counts ? "+" + filesHeader.counts.added : ""
+                                    }
+                                    MeridianText {
+                                        objectName: "inspector-deleted-count"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: MeridianText.CodeSm
+                                        color: GitColors.deleted
+                                        text: filesHeader.counts ? "\u2212" + filesHeader.counts.deleted : ""
+                                    }
+                                }
+                            }
                             // Changed or All files: segmented, an icon button when narrow.
                             MeridianSegmented {
                                 visible: filesHeader.width >= 240
@@ -621,12 +647,14 @@ Rectangle {
                             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
                         }
                         InspectorContents {
+                            id: contentsLens
                             visible: inspector.location !== null && inspector.location.lens === "contents"
                             anchors.top: showFiles.visible ? showFiles.bottom : parent.top
                             anchors.bottom: parent.bottom
                             width: parent.width
                             contents: inspector.paneState.contents ?? null
                             failure: inspector.paneState.contentFailure ?? ""
+                            path: inspector.location && inspector.location.path ? inspector.location.path : ""
                         }
                         InspectorBlame {
                             visible: inspector.location !== null && inspector.location.lens === "blame" && inspector.paneState.hasBlame === true

@@ -125,6 +125,8 @@ Updated as slices land. "Donor" is the Flutter source at 7b78369e
   reflog view; History notices (pending search, failure, empty filter, target outside the
   ref scope, filtered-out selection, accepted filter, collapsed count) and the new upstream
   commits banner.
+- Inspector: the contents lens header (path, size) with find (case, stepping, marked lines),
+  and the +/− counts of the whole change in the files header.
 
 ## Next
 Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless noted):
@@ -136,8 +138,7 @@ Dialogs and panels not ported yet (Dart files in `lib/app/workspace` unless note
   CLI forwarding, drag and drop, macOS window configuration.
 - Remote workspaces (remote_workspace, remote_hosts_settings, remote_directory_picker,
   remote_host_dialog, remote_operations) and inspection windows (inspection_window_app).
-- Inspector: search in contents/blame, +/− counts in the files header; changed-word marks on
-  wrapped lines.
+- Inspector: changed-word marks on wrapped lines.
 - Logbook: user failures recorded from workflow failures (with their support report); clone
   retry from the logbook; row entrance/exit stagger.
 - Conflict resolver: wrapped comparison lines, syntax colours, external merge tools, tree mode
