@@ -2,10 +2,13 @@
 //! its outcome; slots to keep the draft and to commit.
 
 use crate::plumbing::Commands;
+use gitlama_contract::advanced_rebase::NativeFixupSuggestionState;
 use gitlama_contract::dto::{
     NativeCommitExecutionResult, NativeCommitFailureKind, NativeCommitRequest, NativeCommitSigning,
+    NativeStagingSide,
 };
 use gitlama_contract::storage::NativeCommitDraft;
+use gitlama_workbench::changes::{change_key, entries_on, unique_command_paths};
 use gitlama_workbench::commit::{Outcome, Retry};
 use gitlama_workbench::rt;
 use qtbridge::qobject;
@@ -51,6 +54,9 @@ mod commit_state {
         /// The commit finished; `push` asks the window to push next.
         #[qsignal]
         pub fn committed(&mut self, push: bool);
+        /// The answer of `suggest_fixup`.
+        #[qsignal]
+        pub fn fixup_suggested(&mut self, suggestion: Value);
 
         /// Keeps the editor's text as the active worktree's draft.
         #[qslot]
@@ -93,7 +99,11 @@ mod commit_state {
                     author: request["author"].as_str().filter(|author| !author.trim().is_empty()).map(|author| author.trim().to_owned()),
                     amend: request["amend"].as_bool().unwrap_or(false),
                     skip_hooks: request["skipHooks"].as_bool().unwrap_or(false),
-                    signing: NativeCommitSigning::UseGitConfiguration,
+                    signing: match request["signing"].as_str() {
+                        Some("require") => NativeCommitSigning::Require,
+                        Some("disable") => NativeCommitSigning::Disable,
+                        _ => NativeCommitSigning::UseGitConfiguration,
+                    },
                     sign_off: request["signOff"].as_bool().unwrap_or(false),
                 };
                 let draft = NativeCommitDraft { subject: native.subject.clone(), description: native.description.clone() };
@@ -139,17 +149,25 @@ mod commit_state {
             });
         }
 
-        /// Loads the recent messages and template of the active session.
+        /// Loads the recent messages and template of the active session at
+        /// its HEAD; `toolsFailed` tells when they could not be read.
         #[qslot]
         fn load_tools(&self) {
             self.post(|driver| {
                 let Some(services) = driver.app.services() else { return };
-                let Some(session) = services.workspace.current().map(|session| session.identity) else { return };
+                let Some(current) = services.workspace.current() else { return };
+                let session = current.identity;
+                let head = current.snapshot.status.as_ref().and_then(|status| status.head_object_id.clone());
                 let commit = Rc::clone(&services.commit);
                 let state = Rc::clone(&driver.commit);
                 rt::spawn_detached(async move {
-                    let Some(tools) = commit.tools(session).await else { return };
+                    let tools = commit.tools(session, head).await;
                     let mut shown = state.borrow_mut();
+                    shown.state["toolsFailed"] = json!(tools.is_none());
+                    let Some(tools) = tools else {
+                        shown.state_changed();
+                        return;
+                    };
                     shown.state["template"] = json!(tools.template);
                     shown.state["recent"] = Value::Array(
                         tools
@@ -159,6 +177,54 @@ mod commit_state {
                             .collect(),
                     );
                     shown.state_changed();
+                });
+            });
+        }
+
+        /// Suggests the commit the staged changes fix (the selected staged
+        /// files, else every staged one), answered by `fixup_suggested`:
+        /// {state, fixup, squash, evidence: [{commit, subject, path}]}, or
+        /// {failed: true}.
+        #[qslot]
+        fn suggest_fixup(&self) {
+            self.post(|driver| {
+                let Some(services) = driver.app.services() else { return };
+                let Some(tab) = services.workspace.active_tab_id() else { return };
+                let Some(current) = services.workspace.current() else { return };
+                let Some(status) = current.snapshot.status.clone() else { return };
+                let staged = entries_on(&status, NativeStagingSide::Staged);
+                let selection = services.changes.selection_of(tab);
+                let chosen = selection.of(NativeStagingSide::Staged);
+                let entries: Vec<_> = staged
+                    .into_iter()
+                    .filter(|entry| chosen.is_empty() || chosen.contains(&change_key(entry)))
+                    .collect();
+                let paths = unique_command_paths(&entries);
+                let commit = Rc::clone(&services.commit);
+                let state = Rc::clone(&driver.commit);
+                let session = current.identity;
+                rt::spawn_detached(async move {
+                    let result = commit.fixup_suggestion(session, paths).await;
+                    let text = |bytes: &Option<Vec<u8>>| bytes.as_ref().map(|bytes| String::from_utf8_lossy(bytes).into_owned());
+                    let value = match result {
+                        Some(result) if result.failure.is_none() => json!({
+                            "state": match result.state {
+                                NativeFixupSuggestionState::Suggested => "suggested",
+                                NativeFixupSuggestionState::Ambiguous => "ambiguous",
+                                NativeFixupSuggestionState::NoBase => "noBase",
+                                NativeFixupSuggestionState::Incomplete => "incomplete",
+                            },
+                            "fixup": text(&result.fixup_message),
+                            "squash": text(&result.squash_message),
+                            "evidence": result.evidence.iter().map(|evidence| json!({
+                                "commit": evidence.commit,
+                                "subject": String::from_utf8_lossy(&evidence.subject),
+                                "path": evidence.path.as_ref().map(|path| String::from_utf8_lossy(path).into_owned()),
+                            })).collect::<Vec<_>>(),
+                        }),
+                        _ => json!({"failed": true}),
+                    };
+                    state.borrow_mut().fixup_suggested(value);
                 });
             });
         }

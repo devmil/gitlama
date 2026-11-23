@@ -17,6 +17,11 @@ Rectangle {
     property bool amend: false
     property bool skipHooks: false
     property bool signOff: false
+    /// Co-authors separated by ";" (the Dart editor's field).
+    property string coauthors: ""
+    property string author: ""
+    /// "useGitConfiguration", "require" or "disable".
+    property string signing: "useGitConfiguration"
     property bool attempted: false
     readonly property string subjectText: subjectField.text
     readonly property bool empty: subjectText.trim().length === 0
@@ -48,6 +53,8 @@ Rectangle {
         function onCommitted(push) {
             subjectField.text = ""
             descriptionField.text = ""
+            editor.coauthors = ""
+            editor.author = ""
             editor.amend = false
             editor.attempted = false
             if (push)
@@ -91,10 +98,11 @@ Rectangle {
         Store.commit.commit({
             subject: subjectField.text,
             description: descriptionField.text,
-            coauthors: [],
-            author: "",
+            coauthors: coauthors.split(";").map(value => value.trim()).filter(value => value.length > 0),
+            author: author.trim(),
             amend: amend,
             skipHooks: skipHooks || retry === "skipHooks",
+            signing: retry === "unsigned" ? "disable" : signing,
             signOff: signOff,
         }, push, retry ?? "")
     }
@@ -236,8 +244,8 @@ Rectangle {
                     onToggled: {
                         editor.amend = checked
                         if (checked && subjectField.text.length === 0 && descriptionField.text.length === 0) {
-                            Store.commit.loadTools()
                             editor._fillAmend = true
+                            Store.commit.loadTools()
                         }
                     }
                 }
@@ -256,30 +264,7 @@ Rectangle {
                     text: L10n.t("commitOptions")
                     iconName: "more"
                     enabled: !editor.busy
-                    onClicked: {
-                        Store.commit.loadTools()
-                        optionsMenu.items = [
-                            { title: L10n.t("commitTemplate"), value: "template", enabled: !!editor.commitState.template },
-                            { title: L10n.t("commitSkipHooks"), value: "skipHooks", checked: editor.skipHooks },
-                            { title: L10n.t("commitSignOff"), value: "signOff", checked: editor.signOff },
-                        ]
-                        optionsMenu.show(optionsButton, 0, optionsButton.height)
-                    }
-                }
-                CommandMenu {
-                    id: optionsMenu
-                    onSelected: value => {
-                        if (value === "template" && editor.commitState.template) {
-                            const template = editor.commitState.template
-                            const lines = template.split("\n")
-                            subjectField.text = lines[0] ?? ""
-                            descriptionField.text = lines.slice(1).join("\n").trim()
-                        } else if (value === "skipHooks") {
-                            editor.skipHooks = !editor.skipHooks
-                        } else if (value === "signOff") {
-                            editor.signOff = !editor.signOff
-                        }
-                    }
+                    onClicked: optionsDialog.open()
                 }
             }
 
@@ -315,17 +300,82 @@ Rectangle {
         }
     }
 
-    // Amend fills the editor with the commit being amended.
+    // Amend fills the editor with the commit being amended; when the
+    // messages cannot be read, it says so.
     property bool _fillAmend: false
     onCommitStateChanged: {
-        if (!_fillAmend || !commitState.recent || !active)
+        if (!_fillAmend || !active)
             return
-        const message = commitState.recent.find(entry => entry.objectId === active.headObjectId)
+        if (commitState.toolsFailed === true) {
+            _fillAmend = false
+            Notifications.show(L10n.t("commitAmendMessageFailed"), true)
+            return
+        }
+        const message = (commitState.recent ?? []).find(entry => entry.objectId === active.headObjectId)
         if (!message)
             return
         _fillAmend = false
-        subjectField.text = message.subject
-        descriptionField.text = message.description
+        applyMessage(message.subject, message.description)
+    }
+
+    function applyMessage(subject, description) {
+        subjectField.text = subject
+        descriptionField.text = description
+    }
+    function applyTemplate() {
+        const template = (commitState.template ?? "").replace(/\r\n/g, "\n").replace(/\s+$/, "")
+        if (template.length === 0)
+            return
+        const split = template.indexOf("\n")
+        applyMessage(split < 0 ? template : template.slice(0, split), split < 0 ? "" : template.slice(split + 1).replace(/^\s+/, ""))
+    }
+
+    // Fixup / squash: a message for the commit the staged change fixes.
+    property bool _fixupSquash: false
+    property bool fixupBusy: false
+    function suggestFixup(squash) {
+        if (busy || fixupBusy)
+            return
+        _fixupSquash = squash
+        fixupBusy = true
+        Store.commit.suggestFixup()
+    }
+    Connections {
+        target: Store.commit
+        function onFixupSuggested(suggestion) {
+            editor.fixupBusy = false
+            if (suggestion.failed === true) {
+                Notifications.show(L10n.t("fixupSuggestionFailed"), true)
+                return
+            }
+            const message = editor._fixupSquash ? suggestion.squash : suggestion.fixup
+            if (message) {
+                editor.applyMessage(message, descriptionField.text)
+            } else if ((suggestion.evidence ?? []).length > 0) {
+                fixupBaseDialog.ask(suggestion)
+            } else {
+                Notifications.show(L10n.t("fixupSuggestionUnavailable"), false)
+            }
+        }
+    }
+    FixupBaseDialog {
+        id: fixupBaseDialog
+        onChosen: evidence => editor.applyMessage((editor._fixupSquash ? "squash! " : "fixup! ") + evidence.subject, descriptionField.text)
+    }
+    // Development screenshots: `commitOptions` opens the options,
+    // `fixup:<fixup|squash>` asks for a fixup message.
+    Connections {
+        target: Store
+        function onScreenshotStepRequested(name, argument) {
+            if (name === "commitOptions")
+                optionsDialog.open()
+            else if (name === "fixup")
+                editor.suggestFixup(argument === "squash")
+        }
+    }
+    CommitOptionsDialog {
+        id: optionsDialog
+        commitEditor: editor
     }
 
     // Ctrl/Cmd+Enter commits from either field.

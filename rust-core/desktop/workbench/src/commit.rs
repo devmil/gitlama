@@ -10,6 +10,7 @@ use crate::prompts::Prompts;
 use crate::session::{FailureCode, SessionError, SessionIdentity};
 use crate::settings::SettingsService;
 use crate::workspace::WorkspaceService;
+use gitlama_contract::advanced_rebase::NativeFixupSuggestionResult;
 use gitlama_contract::domain::path_identity::NativePathIdentity;
 use gitlama_contract::dto::{
     NativeCommitExecutionResult, NativeCommitExecutionState, NativeCommitRequest,
@@ -66,7 +67,8 @@ pub struct CommitService {
     notifier: Notifier,
     flashes: RefCell<VecDeque<(NativePathIdentity, Committed)>>,
     sequence: Cell<u64>,
-    tools: RefCell<HashMap<(u64, u64), Rc<NativeCommitTools>>>,
+    /// Per session and HEAD: a new HEAD brings new recent messages.
+    tools: RefCell<HashMap<(u64, u64, Option<String>), Rc<NativeCommitTools>>>,
 }
 
 fn with_draft(
@@ -168,8 +170,12 @@ impl CommitService {
     }
 
     /// Recent messages and the template of `session` (loaded once).
-    pub async fn tools(&self, session: SessionIdentity) -> Option<Rc<NativeCommitTools>> {
-        let key = (session.native_id, session.generation);
+    pub async fn tools(
+        &self,
+        session: SessionIdentity,
+        head: Option<String>,
+    ) -> Option<Rc<NativeCommitTools>> {
+        let key = (session.native_id, session.generation, head);
         if let Some(tools) = self.tools.borrow().get(&key) {
             return Some(Rc::clone(tools));
         }
@@ -179,8 +185,24 @@ impl CommitService {
             .await
             .ok()?;
         let tools = Rc::new(result.tools.filter(|_| result.failure.is_none())?);
-        self.tools.borrow_mut().insert(key, Rc::clone(&tools));
+        let mut cache = self.tools.borrow_mut();
+        // Only the session's current HEAD stays.
+        cache.retain(|(id, generation, _), _| (*id, *generation) != (key.0, key.1));
+        cache.insert(key, Rc::clone(&tools));
         Some(tools)
+    }
+
+    /// The commit the staged change most likely fixes (the Dart
+    /// suggestFixupBase), from the history of `paths`.
+    pub async fn fixup_suggestion(
+        &self,
+        session: SessionIdentity,
+        paths: Vec<Vec<u8>>,
+    ) -> Option<NativeFixupSuggestionResult> {
+        self.calls
+            .repository_session_fixup_suggestion(session.native_id, session.generation, None, paths)
+            .await
+            .ok()
     }
 
     /// Commits `request` in the active tab; `draft` is the editor's text.
