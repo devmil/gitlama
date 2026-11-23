@@ -153,6 +153,17 @@ QtObject {
     readonly property real refPairDividerHeight: 12
     readonly property real historyAuthorWidth: 132
     readonly property real historyMetaSkeletonWidth: 72
+    // A loading row's text bars: the subject bar's start, longest width and
+    // the room it leaves before the metadata, and every bar's thickness.
+    readonly property real historySkeletonTextStart: 40
+    readonly property real historySkeletonTextMaxWidth: 320
+    readonly property real historySkeletonTextGap: 92
+    readonly property real historySkeletonBarHeight: 8
+    // A window without a saved frame opens at this size.
+    readonly property real windowDefaultWidth: 1280
+    readonly property real windowDefaultHeight: 800
+    readonly property real windowMinimumWidth: 900
+    readonly property real windowMinimumHeight: 600
     readonly property real conflictChoiceRail: 2
     readonly property real conflictComparisonRowHeight: 25
     readonly property real conflictAncestorHeight: 100

@@ -84,11 +84,11 @@ Item {
             opacity: skeleton.value
         }
         Rectangle {
-            x: 40
+            x: GitLamaLayout.historySkeletonTextStart
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(0, Math.min(320, entry.metadataLeft - 92))
-            height: 8
-            radius: 4
+            width: Math.max(0, Math.min(GitLamaLayout.historySkeletonTextMaxWidth, entry.metadataLeft - GitLamaLayout.historySkeletonTextGap))
+            height: GitLamaLayout.historySkeletonBarHeight
+            radius: height / 2
             color: Theme.colors.lineStrong
             opacity: skeleton.value
         }
@@ -96,8 +96,8 @@ Item {
             x: entry.metadataLeft + Theme.space.s5
             anchors.verticalCenter: parent.verticalCenter
             width: GitLamaLayout.historyMetaSkeletonWidth
-            height: 8
-            radius: 4
+            height: GitLamaLayout.historySkeletonBarHeight
+            radius: height / 2
             color: Theme.colors.lineStrong
             opacity: skeleton.value
         }

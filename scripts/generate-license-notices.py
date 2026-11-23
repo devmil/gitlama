@@ -11,15 +11,14 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parent.parent
 LICENSES = ROOT / "assets" / "licenses"
 RUST_OUTPUT = LICENSES / "RUST-DEPENDENCIES.md"
-FLUTTER_OUTPUT = LICENSES / "FLUTTER-DEPENDENCIES.md"
-PACKAGE_CONFIG = ROOT / ".dart_tool/package_config.json"
 NOTICE_PREFIXES = ("LICENSE", "LICENCE", "COPYING", "NOTICE")
+# The crates whose programs ship; their production graphs are noticed.
+SHIPPED = ("gitlama", "gitlama-remote-helper")
 RUST_TARGETS = (
     "x86_64-unknown-linux-gnu",
     "aarch64-apple-darwin",
@@ -30,29 +29,6 @@ RUST_TARGETS = (
 def executable(name: str) -> str:
     """Resolve command shims before passing them to subprocess."""
     return shutil.which(name) or name
-
-
-def file_uri_path_text(uri: str, *, windows: bool) -> str:
-    """Convert a package-config file URI to host-native path text."""
-    parsed = urlparse(uri)
-    if parsed.scheme not in ("", "file"):
-        raise ValueError(f"unsupported package root URI scheme: {parsed.scheme}")
-    path = unquote(parsed.path)
-    if parsed.netloc:
-        path = f"//{parsed.netloc}{path}"
-    if windows:
-        if re.match(r"^/[A-Za-z]:/", path):
-            path = path[1:]
-        path = path.replace("/", "\\")
-    return path
-
-
-def package_root(uri: str) -> Path:
-    parsed = urlparse(uri)
-    path = Path(file_uri_path_text(uri, windows=os.name == "nt"))
-    if parsed.scheme == "" and not path.is_absolute():
-        return (PACKAGE_CONFIG.parent / path).resolve()
-    return path
 
 
 def is_notice(path: Path) -> bool:
@@ -70,22 +46,6 @@ def notice_files(directory: Path) -> list[Path]:
         (path for path in directory.iterdir() if path.is_file() and is_notice(path)),
         key=lambda path: path.name.casefold(),
     )
-
-
-def flutter_notice_files(
-    package: dict, directory: Path, *, sdk_license: Path
-) -> list[Path]:
-    # Cached engine artifacts are platform-specific. In particular,
-    # bin/cache/pkg/sky_engine/LICENSE is generated while the SDK is prepared
-    # and is not part of the pinned Flutter source revision. Flutter bundles
-    # those target-specific notices in its runtime license registry, so the
-    # checked-in cross-platform source inventory must use the canonical SDK
-    # license for every SDK package instead of whichever host cache ran this
-    # generator.
-    if package["source"] == "sdk":
-        return [sdk_license] if sdk_license.is_file() else []
-    notices = notice_files(directory)
-    return notices
 
 
 def rust_packages() -> list[dict]:
@@ -129,13 +89,16 @@ def rust_packages() -> list[dict]:
         data = json.loads(result.stdout)
         workspace.update(data["workspace_members"])
         packages = {package["id"]: package for package in data["packages"]}
-        root_id = next(
+        # The shipped programs: the desktop application and the remote helper.
+        root_ids = [
             package_id
             for package_id, package in packages.items()
-            if package["name"] == "gitlama_core"
-        )
+            if package["name"] in SHIPPED and package_id in data["workspace_members"]
+        ]
+        if len(root_ids) != len(SHIPPED):
+            raise SystemExit("license notices: a shipped crate is missing from the workspace")
         nodes = {node["id"]: node for node in data["resolve"]["nodes"]}
-        pending = [root_id]
+        pending = list(root_ids)
         reachable: set[str] = set()
         while pending:
             package_id = pending.pop()
@@ -155,40 +118,6 @@ def rust_packages() -> list[dict]:
         )
     return sorted(
         selected.values(), key=lambda package: (package["name"].casefold(), package["version"])
-    )
-
-
-def flutter_packages() -> tuple[list[tuple[dict, Path]], Path]:
-    result = subprocess.run(
-        [executable("dart"), "pub", "deps", "--json"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    dependency_data = json.loads(result.stdout)
-    packages = {package["name"]: package for package in dependency_data["packages"]}
-    root = packages["gitlama"]
-    pending = list(root["directDependencies"])
-    reachable: set[str] = set()
-    while pending:
-        name = pending.pop()
-        if name in reachable:
-            continue
-        reachable.add(name)
-        pending.extend(packages[name]["dependencies"])
-    config = json.loads(PACKAGE_CONFIG.read_text(encoding="utf-8"))
-    roots = {
-        package["name"]: package_root(package["rootUri"])
-        for package in config["packages"]
-    }
-    flutter_root = roots["flutter"].parent.parent
-    return (
-        sorted(
-            ((packages[name], roots[name]) for name in reachable),
-            key=lambda value: (value[0]["name"].casefold(), value[0]["version"]),
-        ),
-        flutter_root / "LICENSE",
     )
 
 
@@ -229,46 +158,12 @@ def render_rust() -> str:
     return "\n".join(lines)
 
 
-def render_flutter() -> str:
-    lines = [
-        "# Flutter production dependency notices",
-        "",
-        "Generated from the resolved non-development Dart/Flutter graph and hosted package license files.",
-        "Flutter SDK packages use the canonical framework license here; Flutter's bundled runtime license registry owns target-specific engine notices.",
-        "Do not edit this file by hand; run `scripts/generate-license-notices.py`.",
-        "",
-    ]
-    packages, sdk_license = flutter_packages()
-    for package, directory in packages:
-        lines.extend([f"## {package['name']} {package['version']}", ""])
-        notices = flutter_notice_files(
-            package, directory, sdk_license=sdk_license
-        )
-        if not notices:
-            lines.extend(
-                ["No top-level license file was present in the resolved source.", ""]
-            )
-        for notice in notices:
-            lines.extend(
-                [
-                    f"### {notice.name}",
-                    "",
-                    "```text",
-                    notice.read_text(encoding="utf-8", errors="replace").rstrip(),
-                    "```",
-                    "",
-                ]
-            )
-    return "\n".join(lines)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     rendered = {
         RUST_OUTPUT: render_rust(),
-        FLUTTER_OUTPUT: render_flutter(),
     }
     if args.check:
         stale = [

@@ -46,10 +46,10 @@ Window {
 
     readonly property var appearance: app.appearance ?? ({})
 
-    width: 1280
-    height: 800
-    minimumWidth: 900
-    minimumHeight: 600
+    width: GitLamaLayout.windowDefaultWidth
+    height: GitLamaLayout.windowDefaultHeight
+    minimumWidth: GitLamaLayout.windowMinimumWidth
+    minimumHeight: GitLamaLayout.windowMinimumHeight
     visible: true
     title: L10n.t("appTitle")
     color: Theme.colors.ground
