@@ -1,5 +1,4 @@
-//! Named snapshots of the active repository's working state (the Dart
-//! NamedSnapshotCommands and NamedSnapshotsPanel workflows): capture,
+//! Named snapshots of the active repository's working state: capture,
 //! list, restore after a preview, branch from, delete.
 
 use crate::backend::SessionCalls;

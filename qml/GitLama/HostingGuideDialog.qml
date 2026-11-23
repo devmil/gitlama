@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// How to connect a provider (the Dart setup guide): numbered steps, the
+// How to connect a provider: numbered steps, the
 // exact values to paste as code, and what needs no secret as a caption;
 // the provider's application settings open from here.
 MeridianDialog {

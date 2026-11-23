@@ -1,5 +1,4 @@
-//! Update checks and the release channel (the Dart AppUpdateService and
-//! UpdatesSettings). Linux and Windows compare the installed build with the
+//! Update checks and the release channel. Linux and Windows compare the installed build with the
 //! public release index when the user asks and point to the downloads
 //! page; nothing from the index is opened or downloaded. macOS hands the
 //! work to Sparkle (`sparkle` below). A failure never blocks startup.
@@ -78,8 +77,7 @@ impl Failure {
     }
 }
 
-/// Reads the releases of a GitLama release index, newest build first (the
-/// Dart parseReleaseIndex).
+/// Reads the releases of a GitLama release index, newest build first.
 pub fn parse_index(bytes: &[u8]) -> Result<Vec<Release>, Failure> {
     if bytes.is_empty() || bytes.len() > INDEX_MAXIMUM_BYTES {
         return Err(Failure::InvalidIndex);

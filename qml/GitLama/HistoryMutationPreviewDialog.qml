@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// What a merge, cherry-pick or revert will do (the Dart
-// HistoryMutationPreviewDialog): the branches, local changes, predicted
+// What a merge, cherry-pick or revert will do: the branches, local changes, predicted
 // conflicts, set-aside changes and the Git commands.
 MeridianDialog {
     id: dialog

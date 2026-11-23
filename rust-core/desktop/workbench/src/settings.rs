@@ -1,7 +1,6 @@
-//! Observable settings with bounded persistence scheduling (the Dart
-//! `SettingsService`). The document is the native settings document; the
-//! native store validates and writes it atomically at the same path the
-//! Flutter application used, so an update keeps every setting.
+//! Observable settings with bounded persistence scheduling. The document is the native settings document; the
+//! native store validates and writes it atomically at the same path earlier
+//! releases used, so an update keeps every setting.
 
 use crate::notify::{Notifier, Topics};
 use crate::rt::{self, TimerHandle};

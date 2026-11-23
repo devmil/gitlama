@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Asks for the `.gitignore` entry that hides a changed path (the Dart
-// IgnoreDialog), prefilled with the entry that matches exactly that path.
+// Asks for the `.gitignore` entry that hides a changed path, prefilled with the entry that matches exactly that path.
 // A failed write asks again with the entry kept and the failure shown.
 MeridianDialog {
     id: dialog

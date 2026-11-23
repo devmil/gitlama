@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Adds or edits a host profile (the Dart RemoteProfileEditor): a name and an SSH destination,
+// Adds or edits a host profile: a name and an SSH destination,
 // and the icon and colour its tabs show. A new host starts with the server icon and a colour
 // no other host uses. Saving through Store.remote answers with `profileSaved`.
 MeridianDialog {

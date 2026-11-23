@@ -1,5 +1,4 @@
-//! Power tools of the active repository (the Dart PowerToolsCommands and
-//! PowerToolsPanel workflows): a search through every commit's changes and
+//! Power tools of the active repository: a search through every commit's changes and
 //! the repository's statistics, both polled jobs, and bisect, whose every
 //! step is confirmed with its Git command first.
 
@@ -91,7 +90,7 @@ pub fn bisect_action(name: &str) -> Option<NativeBisectAction> {
 
 /// The references a bisect field offers, each with the commit it names:
 /// HEAD, local branches, remote-tracking branches, then tags.
-/// Every reference a reference field offers (the Dart gitReferenceChoices):
+/// Every reference a reference field offers:
 /// HEAD, branches, remote branches, tags and the loaded commits, each as
 /// {value, description, icon}.
 pub fn reference_choice_values(

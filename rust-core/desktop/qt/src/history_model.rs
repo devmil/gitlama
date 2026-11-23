@@ -1,5 +1,5 @@
 //! The History graph's rows: every row of the history, built on demand
-//! from the loaded pages (the Dart `rowAt`). A row that is not loaded yet
+//! from the loaded pages. A row that is not loaded yet
 //! is a placeholder and asks History to load its page.
 
 use gitlama_workbench::history::HistoryService;
@@ -47,11 +47,11 @@ pub struct HistorySource {
     /// The bound repository's pull requests, for the branch chips.
     pub hosting: Option<Rc<gitlama_workbench::hosting::RepositoryHosting>>,
     /// The bound remote's main branch as (ref, target), whose chip shows
-    /// its CI result (the Dart defaultBranchChecksForRefs).
+    /// its CI result.
     pub default_branch: Option<(String, String)>,
 }
 
-/// `chips` with each branch's pull request (the Dart _withPullRequest): a
+/// `chips` with each branch's pull request: a
 /// pull request stands at its head commit; when no chip of the branch is
 /// there it stands on the remote-tracking chip, marked outdated, and the
 /// branch is looked up again. Branches not looked up yet are asked for.

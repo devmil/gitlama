@@ -1,4 +1,4 @@
-//! Committing (the Dart CommitComposer and CommitWorkflow): the commit
+//! Committing: the commit
 //! draft each worktree keeps in the settings, the commit tools (recent
 //! messages, template), and preview → confirm → execute with retries
 //! without hooks or unsigned. A committed draft is cleared durably.
@@ -192,8 +192,7 @@ impl CommitService {
         Some(tools)
     }
 
-    /// The commit the staged change most likely fixes (the Dart
-    /// suggestFixupBase), from the history of `paths`.
+    /// The commit the staged change most likely fixes, from the history of `paths`.
     pub async fn fixup_suggestion(
         &self,
         session: SessionIdentity,

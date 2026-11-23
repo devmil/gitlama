@@ -3,8 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// A pull request review over the whole window (the Dart
-// HostingReviewWorkspace): the changed files, the selected file's provider
+// A pull request review over the whole window: the changed files, the selected file's provider
 // patch with its commentable lines, and a rail (a drawer when narrow) with
 // the review threads, the checks, the review action and text and the line
 // comments. The text is kept as a draft; Preview review shows the exact
@@ -422,7 +421,7 @@ MeridianDialogSurface {
         }
     }
 
-    // One line's comment (the Dart _InlineDraftDialog).
+    // One line's comment.
     MeridianDialog {
         id: inlineDialog
         property var anchor: null

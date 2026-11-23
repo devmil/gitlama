@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The commit editor's options (the Dart commit options dialog): co-authors,
+// The commit editor's options: co-authors,
 // an author override, signing, sign-off, skipping hooks and spellcheck,
 // then the message tools: the template, a fixup or squash message for the
 // commit the staged change fixes, and recent messages. Options apply as
@@ -82,8 +82,7 @@ MeridianDialog {
                 checked: dialog.commitEditor.skipHooks
                 onToggled: dialog.commitEditor.skipHooks = checked
             }
-            // Qt Quick has no platform spellcheck service, as Flutter's
-            // desktop embedders: the option stays off.
+            // Qt Quick has no platform spellcheck service: the option stays off.
             MeridianCheckbox {
                 text: L10n.t("commitSpellcheck")
                 enabled: false

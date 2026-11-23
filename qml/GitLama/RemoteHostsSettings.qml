@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Settings › Remote hosts (the Dart RemoteHostsSettings): the helper version this build
+// Settings › Remote hosts: the helper version this build
 // needs, then every host with its state, access, automatic helper installation and Install
 // helper, Manage connection, Edit and Delete; Add host below.
 Column {

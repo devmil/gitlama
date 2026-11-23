@@ -51,7 +51,7 @@ MeridianDialog {
                  explanation: L10n.t("repositoryLockExplanation"), actions: actions, showsLocks: true }
     }
 
-    // The repository's lock files (the Dart RepositoryLockControls).
+    // The repository's lock files.
     readonly property bool showsLocks: guide.showsLocks === true
     property var inspection: null
     property bool checking: false

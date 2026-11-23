@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The blame lens (the Dart BlameCodeView): each line with the commit that
+// The blame lens: each line with the commit that
 // last changed it in a band at the left (author and age where a commit's
 // run starts), its number and its text. Clicking a band blames the file
 // before that change; the context menu shows the commit, the line's
@@ -17,7 +17,7 @@ Item {
     readonly property real lineHeight: GitLamaLayout.diffLineHeight
     property real widest: 0
 
-    // How long ago the line changed, compactly (the Dart _blameAge).
+    // How long ago the line changed, compactly.
     function age(seconds) {
         if (seconds <= 0)
             return ""

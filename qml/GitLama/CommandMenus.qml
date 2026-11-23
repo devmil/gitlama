@@ -1,7 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// The command menus (command_menus.dart): every registered command in a
+// The command menus: every registered command in a
 // stable place, as CommandMenu items.
 QtObject {
     id: root

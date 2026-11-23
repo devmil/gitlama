@@ -50,7 +50,7 @@ MeridianDialog {
         Column {
             width: parent.width
             spacing: Theme.space.s2
-            // Without a token choice the one field takes either (the Dart clone credential).
+            // Without a token choice the one field takes either.
             MeridianText { role: MeridianText.Label; text: dialog.secretLabel }
             MeridianTextField {
                 id: secret

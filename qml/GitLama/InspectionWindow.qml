@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Window
 import Meridian
 
-// An inspection window (the Dart inspection_window_app): one location of a
+// An inspection window: one location of a
 // repository in an inspector of its own, beside the main window. Its title
 // names the repository's folder and what it shows.
 Window {

@@ -3,8 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import Meridian
 
-// The Custom commands settings page (the Dart IntegrationsPanel embedded in
-// Settings): tools found on this computer, the configured tools, and a form
+// The Custom commands settings page: tools found on this computer, the configured tools, and a form
 // whose tool the core validates before it is stored. Every run previews its
 // command first. The state is Store.settings.tools.
 Column {

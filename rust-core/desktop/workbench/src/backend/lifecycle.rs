@@ -1,5 +1,4 @@
-//! Opening, observing and closing repository sessions (the Dart
-//! `SessionLifecycleRepository`). The workspace owns this capability; every
+//! Opening, observing and closing repository sessions. The workspace owns this capability; every
 //! command family works on the sessions it opens.
 
 use super::SessionCalls;

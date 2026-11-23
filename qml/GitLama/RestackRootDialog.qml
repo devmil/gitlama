@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The branch whose stack to restack (the Dart RestackRootDialog): a
+// The branch whose stack to restack: a
 // search field over the branches; choosing one answers.
 MeridianDialog {
     id: dialog

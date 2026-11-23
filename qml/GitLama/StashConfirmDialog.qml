@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// What a stash change will do (the Dart StashPreviewDialog): the files it
+// What a stash change will do: the files it
 // touches, untracked and staged handling, its target branch and the Git
 // commands.
 MeridianDialog {

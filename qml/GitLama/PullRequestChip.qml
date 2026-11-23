@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// A branch's pull request beside its chip in History (the Dart
-// GitLamaPullRequestChip): its number, merged or open, and its checks and
+// A branch's pull request beside its chip in History: its number, merged or open, and its checks and
 // conflicts; muted when draft, merged or outdated. Tapping opens its page.
 Rectangle {
     id: chip

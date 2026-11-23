@@ -1,5 +1,4 @@
-//! The operation center (the Dart OperationCenterService and
-//! OperationCenterActions): the application's running and recent Git
+//! The operation center: the application's running and recent Git
 //! operations, polled while the window runs, with Cancel, Retry and Dismiss
 //! routed to whatever runs each entry.
 

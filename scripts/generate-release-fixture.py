@@ -2,7 +2,7 @@
 """Refresh the release index and appcast fixtures shared with the application.
 
 The production manifest and appcast rules write these files, signed with a
-key that exists only for tests. The Dart update service parses the index and
+key that exists only for tests. The update service parses the index and
 the package tests verify every signature, so a change to the metadata contract
 fails on both sides. Run without arguments to refresh, with --check to compare.
 """

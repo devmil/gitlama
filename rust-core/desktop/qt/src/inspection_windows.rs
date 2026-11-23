@@ -1,5 +1,4 @@
-//! Inspection windows (the Dart inspection_window_app and
-//! InspectionWindowService): a location of the active repository opens in a
+//! Inspection windows: a location of the active repository opens in a
 //! window of its own, with its own inspector, diff and blame, beside the
 //! main window. A window stays on its repository while the main window
 //! switches tabs; Show in main window brings that repository's tab forward

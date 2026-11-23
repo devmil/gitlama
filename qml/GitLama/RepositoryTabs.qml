@@ -136,7 +136,7 @@ Column {
     }
 
     /// How a remote tab shows its host: {name, disconnected, color, icon}; null for a local
-    /// tab (the Dart remoteTabHost).
+    /// tab.
     function _host(tab) {
         if (!tab.remoteProfile || tab.phase === "choosing")
             return null

@@ -1,5 +1,4 @@
-//! Repository extensions (the Dart ExtensionCommands and
-//! RepositoryExtensionsPanel): worktrees, submodules, Git LFS and the
+//! Repository extensions: worktrees, submodules, Git LFS and the
 //! `.gitignore` entry that hides a changed path.
 
 use crate::backend::SessionCalls;
@@ -57,7 +56,7 @@ pub fn reported_failure(
         })
 }
 
-/// What a failed extension change says (the Dart extensionFailureLabel).
+/// What a failed extension change says.
 pub fn failure_key(kind: NativeExtensionFailureKind) -> &'static str {
     match kind {
         NativeExtensionFailureKind::InvalidRequest => "extensionFailureInvalid",
@@ -125,7 +124,7 @@ impl Extensions {
 
     /// Runs `request` for the active repository. Deleting a worktree first
     /// closes its other tabs and reopens them when the deletion does not
-    /// happen (the Dart ExtensionCommands.execute).
+    /// happen.
     async fn execute(
         &self,
         identity: SessionIdentity,
@@ -185,7 +184,7 @@ impl Extensions {
         });
     }
 
-    /// The worktree row's open menu (the Dart _showWorktreeMenu): the
+    /// The worktree row's open menu: the
     /// repository's worktrees that are neither open nor prunable, as
     /// [{label, icon}]; `None` when they could not be listed.
     pub async fn worktree_menu(&self) -> Option<Value> {
@@ -470,7 +469,7 @@ impl Extensions {
     }
 
     /// Deletes linked worktree `index` of the sidebar's inventory after a
-    /// confirmation (the Dart sidebar _delete).
+    /// confirmation.
     pub async fn delete_worktree(&self, index: usize) {
         let Some(inventory) = self.sidebar.worktrees() else {
             return;

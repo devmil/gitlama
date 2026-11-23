@@ -1,8 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// UI feedback shared by the whole window (the Flutter
-// StatusNotificationScope): the status bar message, which expires after
+// UI feedback shared by the whole window: the status bar message, which expires after
 // 8 seconds, and a failure dialog for each failed action the user started.
 QtObject {
     id: root

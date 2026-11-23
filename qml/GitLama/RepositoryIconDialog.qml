@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import Meridian
 
-// The repository mark editor (the Dart RepositoryIconDialog): an icon and a
+// The repository mark editor: an icon and a
 // colour, or an image file, that marks a repository's tab, with a preview.
 // The draft lives in Store.workspace.appearanceEdit (the image is read in
 // Rust); Save stores it.

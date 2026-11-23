@@ -54,8 +54,8 @@ void drawDashedCircle(QPainter *painter, QPointF center, qreal radius, const QCo
     const qreal dash = graphDash + graphDash * (1 - gapFactor);
     const QRectF bounds(center.x() - radius, center.y() - radius, radius * 2, radius * 2);
     for (qreal position = 0; position < circumference; position += graphDash * 2) {
-        // QPainter angles are in 1/16 degrees, counter-clockwise; Flutter's
-        // run clockwise from the x axis.
+        // QPainter angles are in 1/16 degrees, counter-clockwise; the dash
+        // pattern runs clockwise from the x axis.
         const qreal start = -(position / radius) * 180 / M_PI;
         const qreal span = -(dash / radius) * 180 / M_PI;
         painter->drawArc(bounds, int(std::round(start * 16)), int(std::round(span * 16)));
@@ -284,7 +284,7 @@ void GraphRow::paintNode(QPainter *painter)
             painter->setPen(QPen(nodeColor, graphBoundaryStroke));
             const QRectF bounds(center.x() - graphHeadOuterRadius, center.y() - graphHeadOuterRadius,
                                 graphHeadOuterRadius * 2, graphHeadOuterRadius * 2);
-            // Flutter: from -45° clockwise over 90°.
+            // From -45° clockwise over 90°.
             painter->drawArc(bounds, 45 * 16, -90 * 16);
         }
         break;

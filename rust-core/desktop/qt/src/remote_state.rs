@@ -1,6 +1,6 @@
 //! Remote workspaces for QML: host profiles with their connection and reconnection states,
 //! the record of remote writes, and the commands of the hosts dialog, the folder picker, the
-//! status bar host menu and the tab banners (the Dart `RemoteWorkspaceController`).
+//! status bar host menu and the tab banners.
 
 use crate::plumbing::Commands;
 use gitlama_workbench::app::Services;
@@ -169,7 +169,7 @@ fn profile_error_key(error: &ProfileError) -> &'static str {
     }
 }
 
-/// A stable code the user can report (the Dart remoteProfileSaveFailureCode).
+/// A stable code the user can report.
 fn profile_error_code(error: &ProfileError) -> String {
     use gitlama_contract::storage::NativeSettingsFailureKind as Kind;
     match error {

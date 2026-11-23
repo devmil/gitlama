@@ -3,7 +3,6 @@
 //! behaviour lives in `gitlama_application`; the bridge types in `gitlama_contract`.
 pub mod api;
 pub mod avatar;
-pub mod child_process;
 pub mod cli_forwarding;
 pub mod hosting;
 pub mod hosting_reference;
@@ -11,7 +10,6 @@ pub mod hosting_review;
 pub mod hosting_runtime;
 #[cfg(test)]
 mod loopback_fixture;
-pub mod sink;
 
 /// Restarts the process with the login shell's PATH when it differs, so Git
 /// finds helpers such as `git-lfs` after a launch from the desktop. The macOS

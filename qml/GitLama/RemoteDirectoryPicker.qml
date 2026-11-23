@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// Chooses a folder on a connected host (the Dart RemoteDirectoryPicker): the listed folder
+// Chooses a folder on a connected host: the listed folder
 // with Up and Home, a path field that follows what is typed (listing its folder filtered by
 // the typed name and telling whether the path is a folder), paged entries, and Open (or
 // Create here, where a typed path may not exist yet). Answers the `remoteChooseFolder`

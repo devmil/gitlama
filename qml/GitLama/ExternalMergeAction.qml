@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Merges the shown conflicted file in an external tool (the Dart resolver's
-// external merge action): unavailable without a configured merge tool, a
+// Merges the shown conflicted file in an external tool: unavailable without a configured merge tool, a
 // button for one, a native menu of several. `iconOnly` shows the icon
 // button of the compact toolbar.
 Item {

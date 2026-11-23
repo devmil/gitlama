@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The transfer dialog (the Dart TransferInputDialog): the remote, the
+// The transfer dialog: the remote, the
 // branch or tag, and the options of a fetch, pull or push.
 MeridianDialog {
     id: dialog

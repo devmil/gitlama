@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// A hunk's header (the Dart _HunkCell): its range, then the code it is in,
+// A hunk's header: its range, then the code it is in,
 // Show more lines, and on a working diff the hunk's Discard and Stage (or
 // Unstage) buttons. The diff's row and the header pinned above a scrolled
 // diff both draw it.

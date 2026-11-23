@@ -1,4 +1,4 @@
-//! Remote workspace values (the Dart `models/remote_workspace.dart`): failure codes,
+//! Remote workspace values: failure codes,
 //! connection phases, helper targets and the validation of profiles and paths.
 
 use gitlama_application::wire::contract::{self, RemoteCapability};
@@ -51,7 +51,7 @@ pub enum Failure {
 }
 
 impl Failure {
-    /// The Dart enum value name, which the localized messages are keyed by.
+    /// The protocol name, which the localized messages are keyed by.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {

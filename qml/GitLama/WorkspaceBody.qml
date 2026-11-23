@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The active repository's body (the Dart WorkspaceBody): the sidebar (a
+// The active repository's body: the sidebar (a
 // rail when the window is narrow) beside the workspace islands.
 Item {
     id: body
@@ -16,8 +16,8 @@ Item {
     property real draggedSidebarWidth: -1
     /// The detail island's height while its splitter is dragged.
     property real draggedDetailHeight: -1
-    /// The detail island's chosen height for this window (not saved, as in
-    /// the Flutter shell); -1 splits evenly.
+    /// The detail island's chosen height for this window (not saved); -1
+    /// splits evenly.
     property real detailHeight: -1
     readonly property real shownSidebarWidth: draggedSidebarWidth >= 0 ? draggedSidebarWidth : sidebarWidth
 

@@ -13,7 +13,7 @@ Item {
     readonly property bool hasRepository: active !== null && active !== undefined && active.hasSession === true
     readonly property bool compact: width <= GitLamaLayout.compactBreakpoint
     property var availability: ({})
-    // Refresh spins only when it takes a moment (the Dart NM-11 delay).
+    // Refresh spins only when it takes a moment.
     property bool refreshing: false
     property bool refreshRunning: false
     Timer {
@@ -149,8 +149,7 @@ Item {
             width: Math.max(0, Math.min(implicitWidth, centre.available - 2 * centre.slot))
             opacity: toolbar.detailsOpen ? 0 : 1
             Behavior on opacity { NumberAnimation { duration: Motion.exit } }
-            // The name the person gave the repository, after its group's
-            // (the Dart repositoryTitle).
+            // The name the person gave the repository, after its group's.
             repository: {
                 if (!toolbar.active)
                     return L10n.t("appTitle")

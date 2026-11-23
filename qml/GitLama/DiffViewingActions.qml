@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The viewing controls of every diff (the Dart DiffViewingActions): wrap,
+// The viewing controls of every diff: wrap,
 // whitespace, context lines, minimap, text encoding, layout and the +/−
 // markers. The stored diff preferences are their source; `setOptions`
 // applies the load options to the host's diff.

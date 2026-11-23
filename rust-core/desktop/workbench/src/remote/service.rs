@@ -1,5 +1,4 @@
-//! Host profiles, remote connections and the record of remote writes (the Dart
-//! `RemoteWorkspaceService` and `RemoteSessionDirectory`).
+//! Host profiles, remote connections and the record of remote writes.
 //!
 //! Nothing connects at startup except the hosts of restored tabs. A helper reporting another
 //! store or account than its profile verified is never attached silently; the user rebinds,

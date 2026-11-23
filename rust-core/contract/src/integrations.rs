@@ -51,7 +51,7 @@ pub struct NativeIntegrationDefinition {
     pub timeout_seconds: u32,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct NativeIntegrationVariables {
     pub url: Option<String>,
     pub file: Option<NativePathIdentity>,
@@ -63,28 +63,6 @@ pub struct NativeIntegrationVariables {
     pub merge_current: Option<NativePathIdentity>,
     pub merge_incoming: Option<NativePathIdentity>,
     pub merge_result: Option<NativePathIdentity>,
-}
-
-// A derived impl would carry no `flutter_rust_bridge:ignore` marker.
-#[allow(clippy::derivable_impls)]
-impl Default for NativeIntegrationVariables {
-    // flutter_rust_bridge reads this crate as a third-party input and would expose a Dart
-    // `default_()` for every `Default` impl; the bridge types carry no functions.
-    /// flutter_rust_bridge:ignore
-    fn default() -> Self {
-        Self {
-            url: Default::default(),
-            file: Default::default(),
-            current_branch: Default::default(),
-            selected_commit: Default::default(),
-            diff_left: Default::default(),
-            diff_right: Default::default(),
-            merge_base: Default::default(),
-            merge_current: Default::default(),
-            merge_incoming: Default::default(),
-            merge_result: Default::default(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

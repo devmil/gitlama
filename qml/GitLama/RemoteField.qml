@@ -1,8 +1,7 @@
 import QtQuick
 import Meridian
 
-// A labelled text field of the remote workspace dialogs (the Dart MeridianTextField with
-// label, error and message): the label above, the field, then an error in danger ink or a
+// A labelled text field of the remote workspace dialogs: the label above, the field, then an error in danger ink or a
 // help message below it.
 Column {
     id: field

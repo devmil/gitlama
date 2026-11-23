@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Remote workspace verification lanes (docs/remote-workspaces/IMPLEMENTATION.md).
 
-  --protocol          generated codec freshness, Rust wire runtime and Dart transport tests
+  --protocol          generated codec freshness, the Rust wire runtime and the client transport tests
   --helper            the helper's unit and real-Git integration tests
   --ssh-loopback      real OpenSSH to a loopback sshd fixture running the installed helper
   --disconnect-matrix helper and transport kills at protocol stages over the fixture
@@ -37,7 +37,6 @@ ROOT = Path(__file__).resolve().parent.parent
 CORE = ROOT / "rust-core"
 HELPER = CORE / "target" / "debug" / "gitlama-remote-helper"
 MARKER = ".gitlama-remote-fixture"
-FLUTTER = ["flutter"]
 
 
 class NotRun(Exception):
@@ -49,23 +48,18 @@ def run(*arguments: str, cwd: Path = ROOT, env: dict[str, str] | None = None) ->
     subprocess.run([command, *arguments[1:]], cwd=cwd, env=env, check=True)
 
 
-def use_pinned_flutter() -> None:
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import verify  # noqa: PLC0415 - shares the verifier's SDK resolution
-
-    verify.use_fvm_flutter()
-
-
 def lane_protocol() -> None:
     run(sys.executable, "tooling/remote_wire/generate.py", "--check")
     run("cargo", "test", "--manifest-path", str(CORE / "Cargo.toml"), "--locked", "-p", "gitlama_application", "--lib", "wire::")
     run("cargo", "test", "--manifest-path", str(CORE / "Cargo.toml"), "--locked", "-p", "gitlama-remote-helper", "--bins")
-    run("flutter", "test", "test/remote", "--exclude-tags", "remote,ssh")
+    run(sys.executable, "tooling/remote_wire/generate_calls.py", "--check")
+    run("cargo", "test", "--manifest-path", str(CORE / "Cargo.toml"), "--locked", "-p", "gitlama-workbench", "--lib", "remote::")
 
 
 def lane_helper() -> None:
     run("cargo", "test", "--manifest-path", str(CORE / "Cargo.toml"), "--locked", "-p", "gitlama-remote-helper")
-    run("flutter", "test", "--tags", "remote")
+    # The client against the real helper binary, without SSH.
+    run("cargo", "test", "--manifest-path", str(CORE / "Cargo.toml"), "--locked", "-p", "gitlama-workbench", "--test", "remote_client")
 
 
 # ------------------------------------------------------------------------------------------
@@ -511,26 +505,20 @@ def lane_ssh_loopback() -> None:
             "shell output before the helper is not mistaken for a hello",
         )
 
-        print("Dart client over the installed OpenSSH")
-        # The client installs the helper itself before its first connection. On macOS and
-        # Linux the core owns the SSH processes, so the test loads the core library.
+        print("the client over the installed OpenSSH")
+        # The client installs the helper itself before its first connection.
         shutil.rmtree(fixture.home / ".local" / "lib" / "gitlama")
-        run("cargo", "build", "--manifest-path", str(CORE / "Cargo.toml"), "--locked",
-            "-p", "gitlama_core")
-        library = CORE / "target" / "debug" / (
-            "libgitlama_core.dylib" if sys.platform == "darwin" else "libgitlama_core.so"
-        )
         environment = {
             **os.environ,
-            "GITLAMA_NATIVE_LIBRARY": str(library),
             "GITLAMA_SSH_FIXTURE_HELPER": str(HELPER),
             "GITLAMA_SSH_FIXTURE_CONFIG": str(fixture.ssh_config),
             "GITLAMA_SSH_FIXTURE_BUILD_ID": fixture.build_id,
             "GITLAMA_SSH_FIXTURE_REPOSITORY": str(fixture.repository),
             "GITLAMA_SSH_FIXTURE_UNTRUSTED_HOSTS": str(fixture.untrusted_hosts),
         }
-        run("flutter", "test", "--tags", "ssh", "test/remote/ssh_loopback_test.dart",
-            "test/remote/native_remote_process_test.dart", env=environment)
+        run("cargo", "test", "--manifest-path", str(CORE / "Cargo.toml"), "--locked",
+            "-p", "gitlama-workbench", "--test", "ssh_loopback", "--", "--ignored",
+            "--test-threads=1", env=environment)
 
 
 def helper_processes(fixture: Fixture) -> list[int]:
@@ -884,7 +872,6 @@ def main() -> int:
     if not selected:
         parser.error("choose at least one lane")
     os.chdir(ROOT)
-    use_pinned_flutter()
     if any(name != "protocol" for name in selected):
         run("cargo", "build", "--manifest-path", str(CORE / "Cargo.toml"), "--locked", "-p", "gitlama-remote-helper")
     for name in selected:

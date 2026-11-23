@@ -1,5 +1,4 @@
-//! Which repository tabs are busy with a workflow (the Dart
-//! RepositoryBusyService). Blocking operations hold the tab's other
+//! Which repository tabs are busy with a workflow. Blocking operations hold the tab's other
 //! commands; non-blocking ones (staging) only mark it busy.
 
 use crate::notify::{Notifier, Topics};

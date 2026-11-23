@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Hosting settings (the Dart HostingIntegrationsSection in Settings):
+// Hosting settings:
 // `section` "accounts" lists the hosting accounts with their switches and
 // actions, the add-account form and a running sign-in; "binding" links the
 // active repository to an account, remote and provider repository. The
@@ -43,7 +43,7 @@ Column {
     function authenticationLabel(name) {
         return L10n.t(name === "gitHubCli" ? "hostingGitHubCli" : name === "gitLabCli" ? "hostingGitLabCli" : "hostingOAuthApplication")
     }
-    /// A failure code in words (the Dart _failureReason).
+    /// A failure code in words.
     function failureText(code) {
         if (!code)
             return ""
@@ -77,7 +77,7 @@ Column {
         apiField.text = ""
         loadDefaults()
     }
-    /// Checks the form and signs the new account in (the Dart _draftConnection).
+    /// Checks the form and signs the new account in.
     function submit() {
         const id = idField.text.trim()
         if (id.length === 0) {

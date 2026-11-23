@@ -19,8 +19,7 @@ MeridianDialog {
             checkoutBranch: "checkoutBranch", checkoutCommit: "checkoutCommit", setUpstream: "editBranch",
             unsetUpstream: "editBranch", createTag: "createTag", deleteTag: "deleteTag", addRemote: "addRemote",
             editRemote: "editRemote", renameRemote: "renameRemote", removeRemote: "removeRemote", reset: "resetBranch" })[kind]
-        // The confirmation titles name the mutation (the Dart
-        // refMutationConfirmationTitle), not always the registry command.
+        // The confirmation titles name the mutation, not always the registry command.
         return Commands.dialogTitle(command === "editBranch" ? L10n.t("commandEditBranch")
             : command === "renameBranch" ? L10n.t("commandRenameBranch") : Commands.label(command))
     }

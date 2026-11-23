@@ -43,8 +43,8 @@ const MAX_REMOTE_ACCOUNT_NAME_BYTES: usize = 128;
 const MAX_REMOTE_PATH_BYTES: usize = crate::domain::limits::PATH_BYTES;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
-// Stored appearance and workspace names. Dart writes the same lists, and
-// `test/fixtures/settings_storage_names.json` holds both sides to them.
+// Stored appearance and workspace names: the values earlier releases wrote, so existing
+// settings keep reading the same.
 const THEMES: [&str; 3] = ["system", "light", "dark"];
 const DENSITIES: [&str; 3] = ["compact", "regular", "comfortable"];
 const REDUCE_MOTION: [&str; 3] = ["followSystem", "reduce", "full"];

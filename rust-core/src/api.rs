@@ -82,48 +82,6 @@ pub fn remote_pending_save(
     gitlama_application::remote_pending::save(&directory, operations)
 }
 
-pub use gitlama_contract::child_process::{
-    NativeCapturedProcess, NativeChildEvent, NativeChildEventKind, NativeEnvironmentVariable,
-};
-
-/// Starts a child process the application owns outside Git, such as the SSH transport of a
-/// remote workspace, and reports its output and exit on `sink`. See [`crate::child_process`].
-pub fn child_process_start(
-    executable: String,
-    arguments: Vec<String>,
-    environment: Vec<NativeEnvironmentVariable>,
-    sink: crate::sink::StreamSink<NativeChildEvent>,
-) {
-    crate::child_process::start(executable, arguments, environment, sink);
-}
-
-/// Queues bytes for a child's standard input; false once it closed.
-#[must_use]
-pub fn child_process_write(child_id: u64, bytes: Vec<u8>) -> bool {
-    crate::child_process::write(child_id, bytes)
-}
-
-pub fn child_process_close_stdin(child_id: u64) {
-    crate::child_process::close_stdin(child_id);
-}
-
-/// Sends SIGTERM, or SIGKILL when `kill`, to a running child.
-#[must_use]
-pub fn child_process_signal(child_id: u64, kill: bool) -> bool {
-    crate::child_process::signal(child_id, kill)
-}
-
-/// Runs a short probe such as `ssh -V` and keeps its bounded standard error.
-#[must_use]
-pub fn child_process_run_capture(
-    executable: String,
-    arguments: Vec<String>,
-    timeout_ms: u32,
-    maximum_bytes: u32,
-) -> NativeCapturedProcess {
-    crate::child_process::run_capture(executable, arguments, timeout_ms, maximum_bytes)
-}
-
 /// The remote helper ID this library was built with: the helper's compatibility version as 40
 /// decimal digits. A remote helper must report the same ID before the client sends it any
 /// repository request.
@@ -481,37 +439,6 @@ pub fn application_view_cache_remove(
     identity: NativePathIdentity,
 ) -> NativeViewCacheCommandResult {
     gitlama_application::view_cache::view_cache_remove(directory, identity)
-}
-
-#[must_use]
-pub fn application_recovery_begin(directory: String) -> NativeRecoveryStartResult {
-    gitlama_application::recovery::recovery_begin(directory)
-}
-
-#[must_use]
-pub fn application_recovery_default_directory() -> NativeRecoveryPathResult {
-    gitlama_application::recovery::recovery_default_directory()
-}
-
-#[must_use]
-pub fn application_recovery_checkpoint(
-    directory: String,
-    document: NativeSettingsDocument,
-) -> NativeRecoveryCommandResult {
-    gitlama_application::recovery::recovery_checkpoint(directory, document)
-}
-
-#[must_use]
-pub fn application_recovery_finish_clean(
-    directory: String,
-    document: NativeSettingsDocument,
-) -> NativeRecoveryCommandResult {
-    gitlama_application::recovery::recovery_finish_clean(directory, document)
-}
-
-#[must_use]
-pub fn application_recovery_inspect_repository(path: String) -> NativeSequencerInspectionResult {
-    gitlama_application::recovery::recovery_inspect_repository(path)
 }
 
 #[must_use]
@@ -2492,17 +2419,6 @@ pub fn repository_session_close(session_id: u64, generation: u64) -> NativeRepos
     gitlama_application::application::session::repository_session_close(session_id, generation)
 }
 
-/// Drops the native StreamSink before Dart cancels its stream subscription.
-pub fn detach_native_diagnostics() {
-    devmil_logging::set_detailed(false);
-    devmil_logging::install_hook(None);
-}
-/// Installs the Dart diagnostic availability hook. At most one notification is
-/// outstanding until the bounded native history is drained.
-pub fn watch_native_diagnostics(sink: crate::sink::StreamSink<()>) {
-    devmil_logging::install_hook(Some(std::sync::Arc::new(move || sink.add(()).is_ok())));
-    devmil_logging::record("native.hook_ready", "INFO", &[], false);
-}
 pub fn drain_native_diagnostics() -> Vec<String> {
     devmil_logging::drain()
 }

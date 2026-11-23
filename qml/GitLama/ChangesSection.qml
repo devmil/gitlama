@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// One list of the Changes pane (the Dart ChangesSection): its header with
+// One list of the Changes pane: its header with
 // the count, Discard (unstaged only), Stage or Unstage selected and Stage
 // or Unstage all; then the files. Click selects, Ctrl/Cmd adds, Shift
 // extends, double-click moves the file to the other list, Space moves the
@@ -52,7 +52,7 @@ Item {
         return rows
     }
 
-    // Dragging files to the other list (the Dart _ChangesDrag): the drag
+    // Dragging files to the other list: the drag
     // label follows the pointer over the window; dropping on the other
     // list stages or unstages them.
     function startDrag(keys, item, position) {
@@ -158,7 +158,7 @@ Item {
         list.currentIndex = index
     }
 
-    /// The file actions this list performs (the Dart _ChangesActionHost).
+    /// The file actions this list performs.
     readonly property var fileActionHost: ({
         capabilities: ["stage", "unstage", "inspectChanges", "createPatch", "openExternally", "revealInFileBrowser", "copyPath", "discard", "clean",
             "addToGitignore", "blame", "fileHistory", "folderHistory"],
@@ -477,8 +477,7 @@ Item {
                 id: rowActions
                 Row {
                     spacing: Theme.space.s1
-                    // Stage (or unstage) and discard on hover (the Dart
-                    // GitLamaFileRow actions).
+                    // Stage (or unstage) and discard on hover.
                     MeridianIconButton {
                         visible: rowHover.hovered || fileRow.activeFocus
                         anchors.verticalCenter: parent.verticalCenter

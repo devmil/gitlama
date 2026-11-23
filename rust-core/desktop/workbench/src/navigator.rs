@@ -1,4 +1,4 @@
-//! The workspace's navigation sequences (the Dart `WorkspaceNavigator`):
+//! The workspace's navigation sequences:
 //! which pane a tab shows, which commit History selects and how a commit is
 //! brought on screen. Every surface that navigates goes through these.
 

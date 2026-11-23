@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// A labelled choice among stored setting values (the Dart SettingsChoice):
+// A labelled choice among stored setting values:
 // segmented for two or three peers, a select otherwise.
 MeridianSettingsRow {
     id: choice

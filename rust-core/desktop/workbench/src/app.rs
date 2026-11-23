@@ -1,5 +1,4 @@
-//! The production composition of the workbench services and its bootstrap
-//! (the Dart `AppComponents`, `bootstrapApp` and `AppLauncher` lifecycle).
+//! The production composition of the workbench services and its bootstrap.
 //!
 //! A failed start disposes what it built; Retry starts a fresh composition.
 
@@ -14,7 +13,7 @@ use crate::notify::{Notifier, Topics};
 use crate::prompts::Prompts;
 use crate::rt;
 use crate::settings::{NativeSettingsStore, SettingsService};
-use crate::view_cache::{NoViewCache, SessionViewCache};
+use crate::view_cache::{SessionViewCache, StoredViewCache};
 use crate::workspace::{NoRemotes, WorkspaceHooks, WorkspaceService};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -27,7 +26,7 @@ pub enum StartupPhase {
     Ready,
 }
 
-/// The initialized services of one successful start (the Dart `AppRuntime`).
+/// The initialized services of one successful start.
 pub struct Services {
     pub settings: Rc<SettingsService>,
     pub remote: Rc<crate::remote::service::RemoteService>,
@@ -69,6 +68,7 @@ pub struct Services {
     pub hosting_review: Rc<crate::hosting_review::HostingReview>,
     pub conflicts: Rc<crate::conflicts::ConflictService>,
     pub operations: Rc<crate::operations::OperationCenter>,
+    pub view_cache: Rc<StoredViewCache>,
     pub refs: Rc<crate::refs::RefService>,
     pub rewrite: Rc<crate::rewrite::RewriteService>,
 }
@@ -94,7 +94,9 @@ impl Services {
         let calls: Rc<dyn SessionCalls> = Rc::new(crate::backend::RoutedCalls {
             router: Rc::clone(&router),
         });
-        let view_cache: Rc<dyn SessionViewCache> = Rc::new(NoViewCache);
+        let stored_view_cache = StoredViewCache::new();
+        let view_cache: Rc<dyn SessionViewCache> =
+            Rc::clone(&stored_view_cache) as Rc<dyn SessionViewCache>;
         let history = HistoryService::new(Rc::clone(&calls), notifier.clone());
         let workspace = WorkspaceService::new(
             Rc::new(LocalLifecycle {
@@ -395,6 +397,7 @@ impl Services {
         *cli.remote.borrow_mut() = Some(Rc::clone(&remote_workflows));
         operations.start();
         Ok(Self {
+            view_cache: stored_view_cache,
             remote,
             remote_workflows,
             integrations,
@@ -448,6 +451,7 @@ impl Services {
         self.operations.dispose();
         self.workspace.retire();
         self.workspace.close().await;
+        self.view_cache.dispose().await;
         self.remote.dispose().await;
         self.history.dispose();
         self.settings.dispose().await;

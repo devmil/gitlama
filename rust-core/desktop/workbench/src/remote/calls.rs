@@ -1,5 +1,4 @@
-//! The repository session calls of one remote helper connection (the Dart
-//! `RemoteSessionCalls`). Reads go through the generated wire encoding
+//! The repository session calls of one remote helper connection. Reads go through the generated wire encoding
 //! ([`crate::backend::calls::wire_reads`]); session lifecycle, events and the write families are
 //! implemented here: events arrive as publications and are drained locally, writes are
 //! recorded in the ledger before Execute is sent and resolve from the helper's receipt.

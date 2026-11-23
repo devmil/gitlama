@@ -1,5 +1,4 @@
-//! Repository and tab group appearance values (the Dart
-//! `repository_appearance.dart`).
+//! Repository and tab group appearance values.
 
 /// The icons a repository tab can show (Meridian's Lucide names).
 pub const REPOSITORY_ICONS: [&str; 24] = [

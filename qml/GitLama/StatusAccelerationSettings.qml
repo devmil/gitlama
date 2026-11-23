@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Git's status accelerators of the active repository (the Dart
-// StatusAccelerationSettings): whether the untracked cache and the file
+// Git's status accelerators of the active repository: whether the untracked cache and the file
 // system monitor are on, and a way to turn on what is missing — the same
 // settings the slow-status offer enables.
 MeridianSettingsGroup {

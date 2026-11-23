@@ -1,7 +1,6 @@
 //! GitLama's desktop services.
 //!
-//! The services are the Rust successors of the Flutter application's Dart
-//! services: single-threaded state owners whose async workflows run on the
+//! The services are single-threaded state owners whose async workflows run on the
 //! [`rt`] runtime of the GUI thread. They call the native core through
 //! [`gitlama_core::api`] on the blocking pool and publish what changed
 //! through [`notify::Notifier`]; the Qt layer projects their state.
@@ -30,12 +29,14 @@ pub mod diagnostics;
 pub mod diff_doc;
 pub mod diff_renderer;
 pub mod entry;
+pub mod entry_store;
 pub mod extensions;
 pub mod file_actions;
 pub mod history;
 pub mod history_mutations;
 pub mod history_rows;
 pub mod hosting;
+pub mod hosting_links;
 pub mod hosting_review;
 pub mod images;
 pub mod inspector;

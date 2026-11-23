@@ -1,4 +1,4 @@
-//! "Select changed lines" (the Dart WorkingDiffSelectionDialog): a file's
+//! "Select changed lines": a file's
 //! working diff loaded page by page, its hunks and lines picked with
 //! checkboxes, then staged, discarded or made into a patch.
 

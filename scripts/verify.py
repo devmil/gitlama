@@ -139,6 +139,7 @@ def main():
     run(sys.executable, 'tooling/l10n/generate.py', '--check')
     run(sys.executable, 'scripts/check_l10n.py')
     qml_checks()
+    run(sys.executable, 'tooling/remote_wire/generate.py', '--check')
     run(sys.executable, 'tooling/remote_wire/generate_calls.py', '--check')
     run(sys.executable, 'scripts/check_helper_compatibility.py')
     run('cargo', 'fmt', '--manifest-path', 'rust-core/Cargo.toml', '--all', '--check')

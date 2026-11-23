@@ -1,8 +1,7 @@
 import QtQuick
 import Meridian
 
-// A host's automatic reconnection for a banner or a tab (the Dart RemoteReconnectListener and
-// remoteReconnectActions): the status texts, counting down each second while an attempt is
+// A host's automatic reconnection for a banner or a tab: the status texts, counting down each second while an attempt is
 // due, and the actions Install helper, Reconnect (now / try again) and Stop.
 QtObject {
     id: reconnect

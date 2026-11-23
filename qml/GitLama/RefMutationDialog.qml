@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The branch, tag and remote dialog (the Dart RefMutationInputDialog):
+// The branch, tag and remote dialog:
 // the fields the change of `kind` needs.
 MeridianDialog {
     id: dialog
@@ -55,8 +55,7 @@ MeridianDialog {
     property bool currentUrlHidden: false
     /// The references and loaded commits the target offers.
     property var choices: []
-    /// Branch names without their remote, for new names (the Dart
-    /// gitBranchNameSuggestions).
+    /// Branch names without their remote, for new names.
     readonly property var branchNameSuggestions: (references.branches ?? []).map(branch => branch.name)
         .concat([].concat(...(references.remotes ?? []).map(remote => remote.branches)))
     function ask(id, value) {

@@ -3,8 +3,7 @@ import QtQuick.Controls.Basic as C
 import Meridian
 
 // The exact commands a workflow runs, one per line, behind a collapsed
-// "Git command details" disclosure (or `title`) (the Dart
-// GitCommandDetails). The commands are selectable and scroll within a
+// "Git command details" disclosure (or `title`). The commands are selectable and scroll within a
 // bounded height.
 MeridianDisclosure {
     id: root

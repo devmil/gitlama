@@ -4,7 +4,7 @@ import QtQuick.Templates as T
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The command palette (the Dart CommandPaletteDialog): every command,
+// The command palette: every command,
 // filtered as the query is typed, with why one cannot run and its
 // shortcut. Up and Down move, Enter runs, Escape closes.
 T.Popup {

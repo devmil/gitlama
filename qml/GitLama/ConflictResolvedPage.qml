@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Once no file is conflicted (the Dart resolver's resolved page): the merge
+// Once no file is conflicted: the merge
 // message of a paused merge and every resolved file, each of which can be
 // put back. The page scrolls as one.
 Flickable {

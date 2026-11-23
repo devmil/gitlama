@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The stash dialog (the Dart StashInputDialog): a message and what to stash
+// The stash dialog: a message and what to stash
 // for a new stash, a new name for a rename, the target branch of a
 // stash-and-switch, a warning before dropping.
 MeridianDialog {
@@ -117,7 +117,7 @@ MeridianDialog {
                 onClicked: dialog.selecting = true
             }
         }
-        // The files to stash (the Dart stash file picker): the count and
+        // The files to stash: the count and
         // Select all or none over rows of status and path.
         ListWell {
             visible: dialog.push && dialog.selecting

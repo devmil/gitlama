@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Why a file is unmerged (the Dart ConflictFileDetails): which sides have
+// Why a file is unmerged: which sides have
 // it, how they differ, mode differences, and each index entry's facts.
 Flickable {
     id: root

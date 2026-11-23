@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Asks for a merge, cherry-pick or revert (the Dart
-// HistoryMutationInputDialog): the branch and merge mode of a merge, the
+// Asks for a merge, cherry-pick or revert: the branch and merge mode of a merge, the
 // published-history acknowledgement of a cherry-pick, and a revert's
 // "apply only" alternative.
 MeridianDialog {

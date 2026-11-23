@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// Asks before copying this version's helper to a host (the Dart RemoteHelperInstallDialog):
+// Asks before copying this version's helper to a host:
 // where it goes, its size and digest, and whether later versions may install theirs without
 // asking. Answers the `remoteInstallHelper` prompt with {automatic} or null.
 MeridianDialog {

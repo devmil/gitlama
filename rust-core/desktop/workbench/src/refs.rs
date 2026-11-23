@@ -1,4 +1,4 @@
-//! Branches, tags and remotes (the Dart RefWorkflowService): the reference
+//! Branches, tags and remotes: the reference
 //! dialog, preview → confirm → execute, deleting a tag on remotes first and
 //! a branch's upstream after it, recovering a missing target by refreshing,
 //! editing a branch (rename and upstream), checking out remote-tracking

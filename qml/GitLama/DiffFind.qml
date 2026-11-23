@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Find in a diff (the Dart diff panes' search): Enter searches the whole
+// Find in a diff: Enter searches the whole
 // diff in Rust and shows the first match (Shift+Enter the last); Enter again
 // and the buttons step through the matches, wrapping around. A changed
 // query or case setting searches again. `searcher` is the bridge that owns

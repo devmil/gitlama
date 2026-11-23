@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// The worktree row's open menu (the Dart _showWorktreeMenu): the
+// The worktree row's open menu: the
 // repository's worktrees that are not open, then Add worktree. It opens
 // once the worktrees are listed; a failed listing says so instead.
 CommandMenu {

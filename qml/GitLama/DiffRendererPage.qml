@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import Meridian
 
-// The Diff renderer settings page (the Dart DiffRendererSettingsCard): what
+// The Diff renderer settings page: what
 // a renderer may do, then its identifier, name, program and arguments; the
 // core checks the program before it is stored. The state is
 // Store.settings.renderer.

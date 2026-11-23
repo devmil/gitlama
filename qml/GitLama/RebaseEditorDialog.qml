@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The interactive rebase plan (the Dart RebaseEditorDialog): every commit,
+// The interactive rebase plan: every commit,
 // oldest first, with its action. Rows reorder by their grip, by the arrow
 // buttons or Ctrl+↑/↓; P R E S F D pick an action; dragging a row's merge
 // handle onto another squashes it there. A squash or fixup indents under a

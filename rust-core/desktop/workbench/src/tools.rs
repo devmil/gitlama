@@ -1,5 +1,4 @@
-//! The Custom commands settings page (the Dart IntegrationsPanel embedded
-//! in Settings): the tools found on this computer and the configured ones,
+//! The Custom commands settings page: the tools found on this computer and the configured ones,
 //! each run after a preview of its command, and a form that validates a
 //! new tool with the core before it is stored.
 
@@ -20,7 +19,7 @@ use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// What a failed tool says (the Dart _integrationFailureLabel).
+/// What a failed tool says.
 pub fn failure_key(kind: NativeIntegrationFailureKind) -> &'static str {
     use NativeIntegrationFailureKind::*;
     match kind {
@@ -176,7 +175,7 @@ impl ToolsPage {
     }
 
     /// The variables a tool sees from this page: the repository for every
-    /// path (the Dart panel's _variables).
+    /// path.
     fn variables(&self) -> NativeIntegrationVariables {
         let root = self.workspace.active_canonical();
         let status = self

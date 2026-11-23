@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// Where to place the helper by hand (the Dart _manualLocation): the exact location with this
+// Where to place the helper by hand: the exact location with this
 // build's helper ID, selectable, and how to place it.
 Column {
     id: location

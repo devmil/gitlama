@@ -1,8 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// The registry's keyboard shortcuts as window shortcuts (the Flutter
-// shell's CallbackShortcuts). A command runs through the same policy as its
+// The registry's keyboard shortcuts as window shortcuts. A command runs through the same policy as its
 // menu item. Pane-scoped commands listen while their pane is shown; the
 // sidebar and the commit editor bind their own keys. Text fields keep the
 // printable keys they type.

@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The commit editor (the Dart CommitEditor in a GitLamaComposer): subject
+// The commit editor: subject
 // with its length counter, description, Amend, the staged count and the
 // options menu, then Commit & Push and Commit. A failed commit shows why,
 // with retries without hooks or unsigned. The draft is kept per worktree.
@@ -17,7 +17,7 @@ Rectangle {
     property bool amend: false
     property bool skipHooks: false
     property bool signOff: false
-    /// Co-authors separated by ";" (the Dart editor's field).
+    /// Co-authors separated by ";".
     property string coauthors: ""
     property string author: ""
     /// "useGitConfiguration", "require" or "disable".

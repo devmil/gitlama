@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Templates as T
 import Meridian
 
-// The active repository's details (the Dart RepositoryDetailsPanel): the
+// The active repository's details: the
 // Compass grows into a panel with a health header (tile, name, verdict,
 // location, kind and group), the path, branch, upstream and changes, paused
 // Git operations, what runs now, the Git version and Open in the file

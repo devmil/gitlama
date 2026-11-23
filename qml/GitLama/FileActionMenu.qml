@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// The menu of a file or folder (the Dart buildFileActionItems): the shared
+// The menu of a file or folder: the shared
 // catalogue (file_actions.rs) says which actions it lists, in which groups
 // and with which titles; the host performs them through `run`.
 CommandMenu {

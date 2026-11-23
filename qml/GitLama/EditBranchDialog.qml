@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Renames a branch and chooses its upstream (the Dart EditBranchDialog).
+// Renames a branch and chooses its upstream.
 MeridianDialog {
     id: dialog
 

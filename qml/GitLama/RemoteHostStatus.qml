@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// The status bar's host of the active remote tab (the Dart RemoteHostStatus): its name, what
+// The status bar's host of the active remote tab: its name, what
 // GitLama may do there, and a native menu that switches between Read only and Allow changes,
 // reconnects or disconnects, installs the helper and opens the host's settings.
 MeridianButton {

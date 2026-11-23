@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// Picks the branches the history graph shows (the Dart BranchFilterEditor),
+// Picks the branches the history graph shows,
 // as a tree of local branches and each remote's. Clicking a branch adds or
 // removes it and applies at once; double-click, Enter or the row's focus
 // action shows only that branch and closes. A local branch brings the

@@ -1,5 +1,4 @@
-//! Commands forwarded from the command line to the running window (the Dart
-//! CliForwardingService): this process owns the instance, polls the
+//! Commands forwarded from the command line to the running window: this process owns the instance, polls the
 //! forwarded commands every tenth of a second and answers each one. Opening
 //! a repository, refreshing, fetching and pulling raise the window first.
 

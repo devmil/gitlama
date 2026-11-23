@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The History pane (the Dart HistoryPane): the query toolbar, notices and
+// The History pane: the query toolbar, notices and
 // the commit graph. Rows come from Rust (HistoryModel) for every commit of
 // the history; rows not loaded yet show as skeletons until their page
 // arrives. Only the visible rows are built.
@@ -16,7 +16,7 @@ Item {
     readonly property string dateFormat: Store.appearance.dateFormat ?? "iso"
     signal command(string id, var options)
 
-    // History's metadata columns (the Dart _measureHistoryMetadata).
+    // History's metadata columns.
     readonly property real authorWidth: Math.max(80, Math.min(132, list.width - 650))
     readonly property real hashWidth: Math.ceil(hashMetrics.advanceWidth)
     readonly property real dateWidth: _dateWidth(dateFormat, L10n.language)
@@ -63,7 +63,7 @@ Item {
         onSelected: value => { if (typeof value === "function") value() }
     }
 
-    /// The commit menu (the Dart _commitContextMenu): the selection's
+    /// The commit menu: the selection's
     /// commands when several are selected, the commit's commands, copying,
     /// then a submenu per reference at the commit.
     function showCommitMenu(objectId, subject, item, x, y) {
@@ -402,8 +402,7 @@ Item {
         }
     }
 
-    // The upstream banner and History's one notice (the Dart
-    // _HistoryNotice), above the graph.
+    // The upstream banner and History's one notice, above the graph.
     Column {
         id: notices
         anchors.top: powerTools.bottom
@@ -517,7 +516,7 @@ Item {
             }
         }
         // A repository without commits (no page), or a page that shows no
-        // rows (the Dart history pane).
+        // rows.
         MeridianEmptyState {
             anchors.fill: parent
             visible: pane.paneState.phase !== "failed" && pane.paneState.phase !== "loading" && pane.paneState.empty === true

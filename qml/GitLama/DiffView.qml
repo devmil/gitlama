@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// A diff (the Dart DiffView): file headers, hunk headers and lines with
+// A diff: file headers, hunk headers and lines with
 // their numbers and signs, unified or side by side. Lines keep their colours
 // from Rust (syntax checked against each surface) and mark changed words.
 // Only the visible rows are built; rows of pages not loaded yet are blank
@@ -94,7 +94,7 @@ Item {
     }
 
     /// Actions shown over the first selected line while lines are selected
-    /// and that line is on screen (the Dart selectionActions).
+    /// and that line is on screen.
     property Component selectionActions: null
 
     /// The bridge that builds a selection's patch (copyPatch, patchReady).
@@ -542,7 +542,7 @@ Item {
         }
     }
 
-    // The minimap (the Dart DiffMinimap): where lines were added and
+    // The minimap: where lines were added and
     // removed over the whole diff, and the part on screen; a click scrolls
     // there.
     Item {
@@ -613,7 +613,7 @@ Item {
     }
 
     // The header of the hunk the top line belongs to stays pinned while its
-    // own row is scrolled away (unwrapped diffs, as Flutter).
+    // own row is scrolled away (unwrapped diffs).
     Rectangle {
         id: pinnedHunk
         property var header: null

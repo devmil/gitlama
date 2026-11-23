@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Which commit the staged change fixes, when the suggestion is not certain
-// (the Dart fixup base dialog): the commits that last touched its files.
+// Which commit the staged change fixes, when the suggestion is not certain: the commits that last touched its files.
 MeridianDialog {
     id: dialog
 

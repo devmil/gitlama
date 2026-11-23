@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The bound repository's provider resources (the Dart IntegrationsPanel):
+// The bound repository's provider resources:
 // refresh and Create pull request, a filter, then its pull requests and
 // issues in groups that remember whether they are open, each with its
 // actions, and more pages on request. The state is Store.hosting.repository.

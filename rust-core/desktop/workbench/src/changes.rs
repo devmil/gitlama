@@ -1,5 +1,4 @@
-//! The Changes pane's workflows and state for every tab (the Dart
-//! ChangesService): the selection and focused list, staging of files or
+//! The Changes pane's workflows and state for every tab: the selection and focused list, staging of files or
 //! lines (queued, merged and run one at a time), Discard or Clean with a
 //! review, and which selection follows a move. The pane renders it.
 
@@ -134,7 +133,7 @@ pub fn discard_kind_of(entries: &[NativeStatusEntry]) -> Option<NativeDiscardKin
     }
 }
 
-/// The status letter of `entry` on `side` (the Dart changeStatusCode).
+/// The status letter of `entry` on `side`.
 pub fn status_code(entry: &NativeStatusEntry, side: NativeStagingSide) -> &'static str {
     if entry.kind == NativeStatusEntryKind::Unmerged {
         return "U";
@@ -453,7 +452,7 @@ impl ChangesService {
     }
 
     /// Drops selected files the status no longer lists and pending work of
-    /// closed tabs (the Dart `_sync`).
+    /// closed tabs.
     pub fn sync(&self) {
         let open: HashSet<u64> = self
             .workspace

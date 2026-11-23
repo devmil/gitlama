@@ -1,4 +1,4 @@
-//! The repository tabs of one window (the Dart `WorkspaceService`): their
+//! The repository tabs of one window: their
 //! order and groups, each tab's navigation, the active tab and its session,
 //! and the sessions' events. It is the one owner of the session lifecycle.
 
@@ -1954,7 +1954,7 @@ impl WorkspaceService {
     }
 
     /// Closes every tab of the worktree `root` except the one of `source`,
-    /// and returns the worktrees it closed (the Dart closeWorktreeTabs).
+    /// and returns the worktrees it closed.
     pub async fn close_worktree_tabs(
         self: &Rc<Self>,
         root: &NativePathIdentity,

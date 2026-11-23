@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Every reference a field offers, searchable and grouped (the Dart
-// _ReferencePickerDialog): branches, remotes, tags and commits under their
+// Every reference a field offers, searchable and grouped: branches, remotes, tags and commits under their
 // titles. Up, Down and Enter pick one.
 MeridianDialog {
     id: dialog

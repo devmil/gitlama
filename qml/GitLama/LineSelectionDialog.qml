@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// "Select changed lines" (the Dart WorkingDiffSelectionDialog): the file's
+// "Select changed lines": the file's
 // working diff with a checkbox on every hunk and change line; the picked
 // lines are staged (or unstaged), discarded or made into a patch. Its state
 // is `Store.lineSelection`, its rows `Store.lineRows`.

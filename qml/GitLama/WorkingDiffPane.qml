@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The Changes pane's diff (the Dart WorkingTreeDetailPane): the selected
+// The Changes pane's diff: the selected
 // file's working diff on the focused side. Lines select with a click
 // (Shift extends, Ctrl/Cmd adds) and stage, unstage or discard from the
 // toolbar or their context menu.
@@ -15,7 +15,7 @@ Rectangle {
     readonly property var selectedRows: detail.selectedRows ?? []
     readonly property bool canDiscardLines: !staged && detail.untracked !== true
     // Staging is refused only for a repository on another computer that
-    // does not allow it (the Dart remote stage reason).
+    // does not allow it.
     readonly property string stageDisabledReason: {
         const reason = Commands.reason("stageSelection")
         return reason.startsWith("remote") ? Commands.reasonText(reason) : ""
@@ -245,7 +245,7 @@ Rectangle {
             selectedRows: pane.selectedRows
             onRowsSelected: rows => Store.changes.setSelectedRows(rows)
             onLineMenuRequested: (x, y) => {
-                // The destructive entry goes last (the Dart withDestructiveLast).
+                // The destructive entry goes last.
                 lineMenu.items = [
                     { title: pane.staged ? L10n.t("diffSelectionUnstage") : L10n.t("diffSelectionStage"),
                       icon: pane.staged ? "minus" : "plus", enabled: !pane.busy, value: "stage" },
@@ -255,7 +255,7 @@ Rectangle {
             }
             patchSource: Store.changes
             // Stage or unstage, and discard, the selected lines: floating
-            // over the first of them (the Dart _selectionActions).
+            // over the first of them.
             selectionActions: Component {
                 Row {
                     spacing: Theme.space.s2

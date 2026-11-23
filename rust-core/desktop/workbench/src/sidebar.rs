@@ -1,4 +1,4 @@
-//! The workspace sidebar (the Dart `sidebar.dart` model): the active
+//! The workspace sidebar: the active
 //! repository's branches, remotes, stashes, tags, worktrees, integrations and
 //! pull requests as sections of nested entries, filtered by name and
 //! flattened into the rows the sidebar list shows.
@@ -70,7 +70,7 @@ pub struct Entry {
     pub hosting_check_branch: Option<String>,
 }
 
-/// What a pull request row carries (the Dart _pullRequestEntries).
+/// What a pull request row carries.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PullRequestRow {
     pub web_url: String,
@@ -753,8 +753,7 @@ impl SidebarService {
 
     /// The pull request rows (linked pull requests of the active repository).
     /// Hosting's CI decorations: the state of each local branch with pull
-    /// requests and the bound integration's row (the Dart branch
-    /// decorations and _integrationEntries).
+    /// requests and the bound integration's row.
     pub fn set_hosting(
         self: &Rc<Self>,
         decorations: HashMap<String, &'static str>,

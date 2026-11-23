@@ -1,4 +1,4 @@
-//! GitLama's commands (the Dart `AppCommandRegistry`) and keyboard shortcuts
+//! GitLama's commands and keyboard shortcuts
 //! (`AppShortcutCatalog`). The registry in `data/commands.json` is the one
 //! source the toolbar, menus, palette, shortcuts and settings read.
 
@@ -358,8 +358,8 @@ pub fn replace(
     Ok(next)
 }
 
-/// Drops overrides of retired commands (as loading did in the Flutter
-/// application).
+/// Drops overrides of retired commands (as earlier releases did when
+/// loading).
 pub fn without_retired(overrides: &[NativeShortcutOverride]) -> Vec<NativeShortcutOverride> {
     overrides
         .iter()

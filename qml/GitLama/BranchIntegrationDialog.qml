@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// How to bring another branch into the current one (the Dart
-// BranchIntegrationDialog): merge (the default) or rebase, each explained
+// How to bring another branch into the current one: merge (the default) or rebase, each explained
 // in a sentence.
 MeridianDialog {
     id: dialog

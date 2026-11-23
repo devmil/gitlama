@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// A compact author identity (the Dart AuthorAvatar): the monogram in the
+// A compact author identity: the monogram in the
 // author's colour, with the Gravatar image once the person enabled author
 // images; until then pressing it explains Gravatar and offers to enable it.
 MeridianAvatar {

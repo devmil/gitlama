@@ -1,5 +1,5 @@
 //! Background fetches at the interval the settings choose, while an open
-//! repository wants them (the Dart AutoFetchScheduler). Remote repositories
+//! repository wants them. Remote repositories
 //! never fetch in the background: they would use the host's credentials
 //! unasked.
 

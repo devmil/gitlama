@@ -1,6 +1,6 @@
 #pragma once
 
-// One row of the history graph (the Flutter _HistoryGraphPainter): the
+// One row of the history graph: the
 // lanes passing through it, the edges joining them and the commit's node.
 // Rust lays the graph out; this item only paints one row's geometry.
 

@@ -1,6 +1,4 @@
-//! Resolving the conflicts of a paused merge, rebase, cherry-pick or revert
-//! (the Dart ConflictResolutionService and ConflictSession, with the shown
-//! file's editing state the Dart resolver widget kept). One session per
+//! Resolving the conflicts of a paused merge, rebase, cherry-pick or revert. One session per
 //! repository session, so unsaved choices survive switching tabs and files.
 
 use crate::backend::SessionCalls;
@@ -60,7 +58,7 @@ pub fn side_resolution(file: &NativeConflictFile, side: NativeConflictSideChoice
     }
 }
 
-/// Which sides have the file (the Dart ConflictPresence).
+/// Which sides have the file.
 pub fn presence(file: &NativeConflictFile) -> &'static str {
     match (
         file.ancestor.present,
@@ -82,7 +80,7 @@ fn has_bom(bytes: &[u8]) -> bool {
     bytes.starts_with(&[0xef, 0xbb, 0xbf])
 }
 
-/// How the two sides differ (the Dart ConflictContentDifference).
+/// How the two sides differ.
 pub fn content_difference(file: &NativeConflictFile) -> &'static str {
     if !file.current.present || !file.incoming.present {
         return "missingSide";
@@ -194,7 +192,7 @@ fn entry(side: &NativeConflictSide, size_known: bool) -> Value {
     facts
 }
 
-/// The details of `file` (the Dart ConflictFileDetails' facts).
+/// The details of `file`.
 pub fn details(file: &NativeConflictFile) -> Value {
     let modes: std::collections::HashSet<u32> = [&file.ancestor, &file.current, &file.incoming]
         .iter()
@@ -844,8 +842,7 @@ impl ConflictService {
     }
 
     /// Puts the conflict of `path` back.
-    /// Merges the shown file in the external `tool` (the Dart
-    /// mergeExternally): its exact command is previewed and confirmed, then
+    /// Merges the shown file in the external `tool`: its exact command is previewed and confirmed, then
     /// it runs; the conflict is read again and the file counts as resolved
     /// externally once Git no longer lists it.
     pub async fn merge_externally(

@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import Meridian
 
-// The patch dialog (the Dart _PatchDialog): Create writes a patch to a
+// The patch dialog: Create writes a patch to a
 // chosen folder after a preview of its scope, format, name and size; Apply
 // checks a patch file against the repository and applies it. A finished
 // step says what happened, shows the written file and offers to start

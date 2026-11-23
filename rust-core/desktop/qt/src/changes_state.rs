@@ -41,7 +41,7 @@ pub const FILE_ROLES: &[&str] = &[
 ];
 
 /// A Changes file's label: its path, or "old → new" for a rename; as base
-/// names in a tree (the Dart _changesFileLabel).
+/// names in a tree.
 fn file_label(entry: &NativeStatusEntry, basename: bool) -> String {
     let shown = |path: &gitlama_contract::dto::NativePathIdentity| {
         let value = gitlama_workbench::session::display_path(path).replace('\\', "/");

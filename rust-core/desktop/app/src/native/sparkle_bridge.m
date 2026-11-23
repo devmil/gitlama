@@ -1,4 +1,4 @@
-// Runs Sparkle for the update service (the Flutter runner's AppUpdateBridge).
+// Runs Sparkle for the update service.
 //
 // Sparkle is loaded at run time from the bundle's Frameworks folder, so a
 // build without it (a development run) has no updater. The updater starts

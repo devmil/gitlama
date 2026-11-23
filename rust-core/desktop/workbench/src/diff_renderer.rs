@@ -1,5 +1,4 @@
-//! The configured diff renderer (the Dart DiffRendererWorkflow,
-//! DiffRendererSettingsCard and the commit diff pane's renderer): a program
+//! The configured diff renderer: a program
 //! that turns the inspected diff into plain text. Each run previews its
 //! exact commands and asks first, then polls until the text is ready; a
 //! failure keeps the built-in diff. The settings card validates a program
@@ -24,7 +23,7 @@ use std::time::Duration;
 
 const POLL: Duration = Duration::from_millis(40);
 
-/// What a failed renderer says (the Dart rendererFailureLabel).
+/// What a failed renderer says.
 pub fn failure_key(kind: Option<NativeDiffRendererFailureKind>) -> &'static str {
     use NativeDiffRendererFailureKind::*;
     match kind {

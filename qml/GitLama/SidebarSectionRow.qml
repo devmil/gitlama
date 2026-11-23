@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Templates as T
 import Meridian
 
-// A sidebar section's header (the Dart _SidebarSection): chevron, overline
+// A sidebar section's header: chevron, overline
 // label and the section's count, which a plus button replaces on hover or
 // keyboard focus. Insert and the plus run the section's command.
 T.Control {

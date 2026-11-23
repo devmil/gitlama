@@ -1,5 +1,4 @@
-//! Questions workflows ask the window (the Dart `WorkflowInteraction`
-//! callbacks): a workflow awaits [`Prompts::ask`]; the window shows the
+//! Questions workflows ask the window: a workflow awaits [`Prompts::ask`]; the window shows the
 //! dialog the prompt's kind names and answers with [`Prompts::answer`].
 
 use crate::notify::{Notifier, Topics};

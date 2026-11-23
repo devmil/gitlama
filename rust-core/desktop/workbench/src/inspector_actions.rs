@@ -1,5 +1,4 @@
-//! What the inspector's file menus do beyond navigation (the Dart
-//! InspectorFileActions and PaneInspectorHost): whether a file of a commit
+//! What the inspector's file menus do beyond navigation: whether a file of a commit
 //! exists in the working tree, restoring a file to a commit's version and
 //! opening a change in the configured diff tool.
 
@@ -14,7 +13,7 @@ use gitlama_contract::integrations::{NativeIntegrationDefinition, NativeIntegrat
 use serde_json::{Value, json};
 use std::rc::Rc;
 
-/// The largest file a restore previews (as in Flutter).
+/// The largest file a restore previews.
 const RESTORE_BYTE_LIMIT: u32 = 8 * 1024 * 1024;
 
 /// The status line of a finished restore: (key, error).

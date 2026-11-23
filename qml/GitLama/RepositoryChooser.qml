@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// A new tab that has no repository yet (the Dart RepositoryChooser): the
+// A new tab that has no repository yet: the
 // mark, Open a repository, why the last open failed, and the recent
 // repositories, each opening in this tab.
 Item {

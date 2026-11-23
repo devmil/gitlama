@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// A list inside a dialog (the Dart GitLamaListWell): rows on `pane-alt`
+// A list inside a dialog: rows on `pane-alt`
 // in a `radius-lg` well that scrolls past `maxHeight`.
 Rectangle {
     id: well

@@ -1,4 +1,4 @@
-//! The Changes pane's diff (the Dart WorkingTreeDetailPane's loading): the
+//! The Changes pane's diff: the
 //! working diff of the file Changes shows, on the focused side. Another
 //! file loads afresh; a new status of the same file reloads in place, so an
 //! unaffected diff keeps its rows and selected lines. While Git has not

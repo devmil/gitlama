@@ -3,8 +3,7 @@ import QtQuick
 import Meridian
 
 // A pull request's CI result and, when it has conflicts, a conflict mark,
-// each only where the provider reported it (the Dart
-// HostingPullRequestStatus). `checks` is a state name or "".
+// each only where the provider reported it. `checks` is a state name or "".
 Row {
     id: status
 

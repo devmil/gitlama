@@ -801,7 +801,7 @@ impl Driver {
         }
     }
 
-    /// The sidebar's pull request rows (the Dart _pullRequestEntries): the
+    /// The sidebar's pull request rows: the
     /// account's own first, then the open and the merged ones of branches
     /// this repository still has.
     /// Hosting's CI states on the sidebar: local branches with pull

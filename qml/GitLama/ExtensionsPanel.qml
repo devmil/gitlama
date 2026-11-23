@@ -4,8 +4,7 @@ import QtQuick.Controls.Basic as C
 import QtQuick.Dialogs
 import Meridian
 
-// Worktrees, submodules and Git LFS of the active repository (the Dart
-// RepositoryExtensionsPanel): each a disclosure with its rows and actions,
+// Worktrees, submodules and Git LFS of the active repository: each a disclosure with its rows and actions,
 // the add-worktree dialog and LFS patterns. The inventory and its changes
 // live in Rust (Store.workflows.extensions).
 MeridianPanel {

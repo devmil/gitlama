@@ -1,5 +1,5 @@
 //! The application's private, bounded diagnostic history (the devmil-logging
-//! contract the Flutter application followed): reviewed codes with public or
+//! contract): reviewed codes with public or
 //! numeric fields, kept in memory only. Detailed capture is off by default and
 //! expires after at most fifteen minutes. Native events recorded through
 //! `devmil_logging` are drained into the same history.

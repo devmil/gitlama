@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// What a restack will do (the Dart RestackPreviewDialog): each branch and
+// What a restack will do: each branch and
 // its new base, an incomplete-plan warning, and the published-history
 // acknowledgement. Answers whether published history was acknowledged.
 MeridianDialog {

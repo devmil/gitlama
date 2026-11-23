@@ -1,4 +1,4 @@
-//! Author images from Gravatar (the Dart AvatarService): only while the
+//! Author images from Gravatar: only while the
 //! person enabled them, by the 64-character hash History rows carry; each
 //! image loads once and is kept as a data URL. Turning them off clears the
 //! cache.

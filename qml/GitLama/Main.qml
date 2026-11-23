@@ -202,8 +202,7 @@ Window {
         HomeScreen {}
     }
 
-    // Folders dropped on the window open as repositories (the Dart
-    // home screen's drop overlay); the prompt covers the window meanwhile.
+    // Folders dropped on the window open as repositories; the prompt covers the window meanwhile.
     DropArea {
         id: repositoryDrop
         anchors.fill: parent

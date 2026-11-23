@@ -5,7 +5,7 @@ import QtQuick.Controls.Basic as C
 import Meridian
 import GitLamaNative
 
-// The merge result (the Dart resolver's result pane): the editable text
+// The merge result: the editable text
 // with each region's band (open, or taken from a side), the common
 // ancestor on demand, and Resolve. Lines are as tall as comparison rows so
 // unchanged text stays level across the panes.

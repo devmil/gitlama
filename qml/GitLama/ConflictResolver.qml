@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The conflict resolver (the Dart ConflictResolver): replaces Changes while
+// The conflict resolver: replaces Changes while
 // an operation is paused at conflicts. A header with Continue, Skip, Abort
 // and Exit; the steps of the way through; the conflicted files beside the
 // shown file's comparison and result; and once none is left, the resolved
@@ -18,7 +18,7 @@ FocusScope {
     readonly property var file: conflictState.file ?? null
     readonly property int selected: conflictState.selected ?? 0
     readonly property bool standalone: conflictState.operation === "standalone"
-    /// The file list as a tree of folders (the Dart GitFileList modes).
+    /// The file list as a tree of folders.
     property bool treeMode: false
     property var collapsedFolders: []
     readonly property var fileRows: treeMode
@@ -28,7 +28,7 @@ FocusScope {
         const index = collapsedFolders.indexOf(identity)
         collapsedFolders = index < 0 ? collapsedFolders.concat([identity]) : collapsedFolders.filter(name => name !== identity)
     }
-    /// The file actions of a conflicted file (the Dart _ConflictActionHost).
+    /// The file actions of a conflicted file.
     function showFileMenu(file, item, x, y) {
         conflictFileMenu.path = file.path
         conflictFileMenu.showFor({ source: "conflictFile", path: file.path, exists: true }, null, {
@@ -97,7 +97,7 @@ FocusScope {
         selectFile(selected + delta, delta < 0)
     }
     /// Commands from menus and shortcuts reach the shown resolver.
-    /// Open in merge tool (the Dart conflictOpenExternal): false without a tool.
+    /// Open in merge tool: false without a tool.
     function openExternal() {
         const tools = conflictState.mergeTools ?? []
         if (tools.length === 0)

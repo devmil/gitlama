@@ -3,8 +3,7 @@ import QtQuick
 
 // The command registry (owned by the core) as the UI reads it: definitions,
 // localized names, shortcuts in effect and the availability policy every
-// toolbar, menu, palette and shortcut applies (the Flutter
-// CommandMenuState).
+// toolbar, menu, palette and shortcut applies.
 QtObject {
     id: root
 

@@ -1,4 +1,4 @@
-//! One inspector (the Dart InspectorService): its location, Back/Forward
+//! One inspector: its location, Back/Forward
 //! stack and the reads behind it. A native session keeps a single committed
 //! diff, so one session serves one inspector and every navigation reloads
 //! it.
@@ -328,7 +328,7 @@ pub fn tree_key(directory: Option<&[u8]>) -> String {
         .unwrap_or_default()
 }
 
-/// Entries per page of a folder (as in Flutter).
+/// Entries per page of a folder.
 const TREE_PAGE_ROWS: u32 = 250;
 
 /// The blame lens's rows: the request, how many lines, and those loaded.
@@ -366,7 +366,7 @@ const SYMLINK_MODE: u32 = 0xA000;
 const GITLINK_MODE: u32 = 0xE000;
 const MODE_TYPE: u32 = 0xF000;
 
-/// Which lenses can show `change` (the Dart lensAvailability).
+/// Which lenses can show `change`.
 pub fn lens_availability(
     directory: bool,
     change: Option<&NativeCommitFile>,
@@ -629,8 +629,8 @@ impl InspectorService {
         Some(next)
     }
 
-    /// Navigates to `location` for the graph: recorded now, as the Dart
-    /// link's navigation starts synchronously, and shown unless another
+    /// Navigates to `location` for the graph: recorded now, as a link's
+    /// navigation starts synchronously, and shown unless another
     /// navigation replaced it meanwhile.
     fn navigate_for_graph(self: &Rc<Self>, location: Location, parent_hint: Option<Vec<String>>) {
         let Some(next) = self.record(location, true) else {
@@ -1776,7 +1776,7 @@ impl InspectorService {
         });
     }
 
-    /// Inspects History's selection (the Dart HistoryInspectorLink).
+    /// Inspects History's selection.
     pub fn follow(self: &Rc<Self>, history: &Rc<HistoryService>) {
         let inspector = Rc::downgrade(self);
         let history_for_selection = Rc::downgrade(history);

@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// One row of a diff in which lines are picked (the Dart
-// DiffLineSelectionRow): styled like the diff view (code type, line-number
+// One row of a diff in which lines are picked: styled like the diff view (code type, line-number
 // gutters, added and removed fills) with a leading checkbox on change lines
 // and hunk headers. A tap anywhere on a pickable row toggles it.
 Item {

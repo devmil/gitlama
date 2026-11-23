@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// One sidebar reference row (the Dart _SidebarRefRow): a branch, group,
+// One sidebar reference row: a branch, group,
 // remote, tag, stash, worktree or integration. Clicking selects it and
 // shows its commit in History; a group opens or closes. Double-click and
 // Enter run its primary command, F2 renames, Delete deletes, the context
@@ -259,7 +259,7 @@ FocusScope {
                     }
                 }
                 // A branch's CI state, or the bound integration's main
-                // branch's (the Dart sidebar hosting decorations).
+                // branch's.
                 HostingStatus {
                     id: branchChecks
                     readonly property string checkState: trailingRow.item.hostingCheck ?? ""

@@ -1,4 +1,4 @@
-//! The file action catalogue (the Dart file_actions.dart): one ruleset
+//! The file action catalogue: one ruleset
 //! builds every file and folder menu of the product, so a file offers the
 //! same actions wherever it is listed (docs/design-system/specs/
 //! inspector.md §7). Hosts perform the actions; the catalogue only says

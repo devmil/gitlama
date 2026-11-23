@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The record of remote changes (the Dart RemoteOperationsDialog): every remote write, newest
+// The record of remote changes: every remote write, newest
 // first, with its host, family and state. An unresolved one can be checked again on its
 // connected host; a resolved one can be dismissed. GitLama never repeats a write.
 MeridianDialog {

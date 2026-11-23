@@ -1,5 +1,4 @@
-//! The name, icon, colour or image that identifies each repository's tab
-//! (the Dart `RepositoryAppearanceService`), and the bounded images read for
+//! The name, icon, colour or image that identifies each repository's tab, and the bounded images read for
 //! them.
 
 use crate::appearance::normalize_tab_name;

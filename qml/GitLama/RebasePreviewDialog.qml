@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The rebase as Git will run it (the Dart RebasePreviewDialog): every
+// The rebase as Git will run it: every
 // step with its action, what squashes join and rewords say, and the todo.
 MeridianDialog {
     id: dialog

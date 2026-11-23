@@ -1,5 +1,4 @@
-//! Opening, cloning and creating repositories (the Dart
-//! `EntryWorkflowService`), and the one owner of what the window says failed.
+//! Opening, cloning and creating repositories, and the one owner of what the window says failed.
 
 use crate::notify::{Notifier, Topics};
 use crate::prompts::Prompts;
@@ -124,8 +123,7 @@ impl EntryWorkflows {
             .await;
     }
 
-    /// Opens the folders dropped on the window (the Dart
-    /// RepositoryDropService): each folder in turn; anything else is
+    /// Opens the folders dropped on the window: each folder in turn; anything else is
     /// rejected. Says how many opened, were rejected and failed.
     pub async fn open_dropped(
         self: &Rc<Self>,

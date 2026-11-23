@@ -1,5 +1,4 @@
-//! A pull request review (the Dart HostingReviewWorkspace and
-//! HostingReviewService): the changed files with their provider patches,
+//! A pull request review: the changed files with their provider patches,
 //! review threads and checks, a review text with line comments kept as a
 //! draft, and a review or check re-run submitted only after the person
 //! authorizes the exact request.
@@ -17,7 +16,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-/// The draft key of a review (the Dart HostingReviewService.draftKey).
+/// The draft key of a review.
 pub fn draft_key(connection_id: &str, repository: &str, pull_request: u64) -> String {
     format!(
         "{}:{connection_id}{}:{repository}:{pull_request}",
@@ -26,7 +25,7 @@ pub fn draft_key(connection_id: &str, repository: &str, pull_request: u64) -> St
     )
 }
 
-/// The status letter of a provider patch (the Dart reviewDiffStatus).
+/// The status letter of a provider patch.
 pub fn diff_status(patch: &str) -> &'static str {
     let header = |marker: &str| patch.starts_with(marker) || patch.contains(&format!("\n{marker}"));
     if header("new file mode") {
@@ -619,7 +618,7 @@ impl HostingReview {
                 "path": diff.path,
                 "status": diff_status(&diff.patch),
             })).collect()),
-            // The same files as a tree of folders (the Dart GitFileList tree).
+            // The same files as a tree of folders.
             "fileTree": page.map_or_else(Vec::new, |page| {
                 crate::path_tree::flatten(page.diffs.iter(), |diff| diff.path.clone(), &review.collapsed, true, None)
                     .into_iter()

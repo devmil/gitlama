@@ -394,7 +394,7 @@ mod conflicts_state {
             });
         }
 
-        /// The conflicted files as a tree (the Dart GitFileList tree mode):
+        /// The conflicted files as a tree:
         /// `paths` in queue order, `collapsed` the folded folder identities;
         /// rows are {directory, identity, label, depth, index} with the
         /// file's queue index, or -1 for a folder.

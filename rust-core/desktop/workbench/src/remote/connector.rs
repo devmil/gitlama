@@ -1,5 +1,4 @@
-//! Reaching a helper (the Dart `SshRemoteConnectionRepository`,
-//! `LocalHelperConnectionRepository` and `remote_helper_install.dart`): the installed OpenSSH
+//! Reaching a helper: the installed OpenSSH
 //! client with the fixed launch, the bundled helpers and their installation.
 
 use super::channel::{Cancel, Channel};
@@ -60,6 +59,20 @@ impl Connector {
         Self {
             build_id,
             transport,
+        }
+    }
+
+    /// A connector for the SSH qualification lane (`scripts/verify_remote_workspaces.py
+    /// --ssh-loopback`): OpenSSH with the fixture's configuration file in place of the user's,
+    /// expecting a helper of `build_id`. Production never constructs it.
+    #[must_use]
+    pub fn qualification(config_file: PathBuf, build_id: String) -> Self {
+        Self {
+            build_id: is_valid_build_id(&build_id).then_some(build_id),
+            transport: Transport::Ssh {
+                verified: RefCell::new(None),
+                config: Some(config_file),
+            },
         }
     }
 

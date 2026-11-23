@@ -1,4 +1,4 @@
-//! The History graph of the active tab (the Dart `HistoryService`):
+//! The History graph of the active tab:
 //! preview, complete topology and prioritized bounded metadata, coordinated
 //! independently; selection, search, collapse and the branch filter.
 

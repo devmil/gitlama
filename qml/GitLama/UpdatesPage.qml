@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The Updates settings page (the Dart UpdatesSettings): the installed
+// The Updates settings page: the installed
 // version, the release channel and the update check. macOS hands checks to
 // Sparkle; Linux and Windows compare with the public release index and
 // point to the downloads page. The state is Store.settings.updates.

@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The body of a remote tab that could not open (the Dart _RemoteTabFailure): a dropped
+// The body of a remote tab that could not open: a dropped
 // connection offers Reconnect; a changed host identity explains and opens the host for a
 // decision; a repository that no longer matches the one the tab opened, on a host that still
 // does, can be trusted and opened again.

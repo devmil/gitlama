@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// A step's number in a plan list (the Dart GitLamaStepNumber): `code-sm`,
+// A step's number in a plan list: `code-sm`,
 // `ink-muted`, right-aligned in at least a glyph's width.
 MeridianText {
     property int number

@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// What is unusual about the active repository (the Dart
-// RepositoryConditions): watch and read failures, a detached HEAD, the
+// What is unusual about the active repository: watch and read failures, a detached HEAD, the
 // conflict count, a moment of "all resolved", and each paused operation,
 // whose banner continues, skips or aborts it.
 Column {

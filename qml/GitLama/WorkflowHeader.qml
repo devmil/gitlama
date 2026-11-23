@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The header of a full-pane workflow (the Dart GitLamaWorkflowHeader): its
+// The header of a full-pane workflow: its
 // title and status on `ground`, then its actions, its primary action and
 // Exit.
 Rectangle {

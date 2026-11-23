@@ -1,5 +1,4 @@
-//! Automatic reconnection of hosts whose open tabs lost their connection (the Dart
-//! `RemoteReconnector`): growing pauses for a bounded time. Each attempt is a fresh connection;
+//! Automatic reconnection of hosts whose open tabs lost their connection: growing pauses for a bounded time. Each attempt is a fresh connection;
 //! no write is ever resent.
 
 use super::model::{ConnectionState, Failure, Phase};

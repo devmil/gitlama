@@ -1,5 +1,4 @@
-//! Interactive rebases, restacks and branch integration (the Dart
-//! HistoryRewriteWorkflowService's rebase, restack and integrateBranch).
+//! Interactive rebases, restacks and branch integration.
 
 use crate::backend::SessionCalls;
 use crate::busy::{BusyActivity, BusyService};
@@ -596,7 +595,7 @@ mod tests {
     }
 
     #[test]
-    fn outcomes_read_as_the_flutter_status_lines() {
+    fn outcomes_read_as_their_status_lines() {
         let result = NativeRestackExecutionResult {
             state: NativeRestackExecutionState::Conflict,
             completed_steps: 1,

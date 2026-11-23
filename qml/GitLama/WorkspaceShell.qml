@@ -118,7 +118,7 @@ Rectangle {
                 && Store.workspace.active.phase === "choosing"
             readonly property var activeTab: Store.workspace ? Store.workspace.active : null
             // A remote tab that could not open: reconnect, review the host or trust the
-            // repository (the Dart remoteTabFailure).
+            // repository.
             readonly property bool remoteFailed: activeTab !== null && activeTab.phase === "failed" && !!activeTab.remoteProfile
                 && (activeTab.failure === "remoteDisconnected" || activeTab.failure === "remoteIdentityChanged")
             // An open remote tab whose connection is gone shows its last state under a banner.
@@ -147,7 +147,7 @@ Rectangle {
                 enabled: busyLoader.active === false
                 onCommand: (id, options) => shell.command(id, options)
             }
-            // A new tab chooses its repository (the Dart RepositoryChooser).
+            // A new tab chooses its repository.
             Loader {
                 anchors.fill: parent
                 active: body.choosing

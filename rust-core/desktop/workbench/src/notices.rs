@@ -1,5 +1,4 @@
-//! Messages for the status bar and failure dialogs (the Dart
-//! `StatusNotificationScope.show`), and other one-shot window events.
+//! Messages for the status bar and failure dialogs, and other one-shot window events.
 
 use crate::notify::{Notifier, Topics};
 use serde_json::Value;

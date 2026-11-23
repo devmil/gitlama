@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The detail inspector (the Dart InspectorView): a location bar with Back,
+// The detail inspector: a location bar with Back,
 // Forward, breadcrumbs and the lens choice; the commit's summary; its
 // changed files beside the diff. Narrow, the files sit above the diff.
 Rectangle {
@@ -27,7 +27,7 @@ Rectangle {
     readonly property var summary: paneState.summary ?? null
     readonly property var files: paneState.files ?? []
     property bool filesHidden: false
-    /// The width of the files column (the Dart commitFileListWidth).
+    /// The width of the files column.
     property real filesWidth: 280
 
     color: Theme.colors.pane
@@ -56,7 +56,7 @@ Rectangle {
     }
 
     /// Opens the menu of changed file `file` ({path, oldPath, kind, mode})
-    /// at `x`, `y` of `item` (the Dart InspectorFileActions).
+    /// at `x`, `y` of `item`.
     function showFileMenu(file, item, x, y) {
         if (!location)
             return
@@ -125,8 +125,7 @@ Rectangle {
     }
     Component.onCompleted: if (!inWindow) Store.inspectorView = inspector
     readonly property bool diffFocused: commitDiff.activeFocus || commitFind.searchField.activeFocus
-    // Screen readers hear where the inspector went (the Dart
-    // inspectorShowing announcement), once per location.
+    // Screen readers hear where the inspector went, once per location.
     property string _announced: ""
     function locationLabel(location) {
         const commit = location.kind === "comparison"
@@ -150,7 +149,7 @@ Rectangle {
         inspector.Accessible.announce(L10n.tn("inspectorShowing", { label: locationLabel(location) }))
     }
 
-    /// The commit diff's commands (the Dart CommitDiffPane.runCommand):
+    /// The commit diff's commands:
     /// false when no commit diff is shown.
     function runDiffCommand(id) {
         if (!commitDiff.visible)
@@ -190,7 +189,7 @@ Rectangle {
     /// Shows or hides the changed files beside the diff.
     function toggleFiles() { filesHidden = !filesHidden }
     readonly property bool canBrowseAllFiles: location !== null && location.kind !== "comparison" && location.scope !== "all"
-    /// The location bar's More actions (the Dart _OverflowAction menu).
+    /// The location bar's More actions.
     function showMoreMenu(item) {
         const items = []
         if (canBrowseAllFiles)
@@ -829,7 +828,7 @@ Rectangle {
                                             + " · " + Labels.shortObjectId(historyHeader.entry.commit) : ""
                                     }
                                 }
-                                // The commit, or the path there (the Dart history detail's open).
+                                // The commit, or the path there.
                                 Flow {
                                     width: parent.width
                                     spacing: Theme.space.s2
@@ -979,7 +978,7 @@ Rectangle {
                             layout: inspector.paneState.options ? inspector.paneState.options.layout : "unified"
                             canShowAsText: inspector.paneState.forceText !== true
                             onShowAsText: inspector.bridge.showAsText()
-                            // Lines select for copying (the Dart CommitDiffPane selection).
+                            // Lines select for copying.
                             lineSelection: true
                             patchSource: inspector.bridge
                             onRowsSelected: rows => selectedRows = rows

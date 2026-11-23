@@ -1,6 +1,4 @@
-//! Git's status accelerators (the Dart WorkingCopyCommands status
-//! acceleration, the slow-status offer in RepositoryConditions and
-//! StatusAccelerationSettings): the untracked cache and the file system
+//! Git's status accelerators: the untracked cache and the file system
 //! monitor, offered once per session after a slow first scan and shown in
 //! the Git settings.
 

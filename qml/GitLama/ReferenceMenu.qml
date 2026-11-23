@@ -1,8 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// The context menu of one branch, tag, stash or remote wherever it is shown
-// (the Dart referenceMenuItems): graph-filter actions first, then the
+// The context menu of one branch, tag, stash or remote wherever it is shown: graph-filter actions first, then the
 // entry's own actions and its commands, then copying its name. Destructive
 // items come last, behind a separator. Values are functions to call.
 QtObject {

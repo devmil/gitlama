@@ -1,5 +1,4 @@
-//! Fetch, pull and push (the Dart TransferWorkflowService and
-//! TransferCommands): the transfer dialog, preview, execution with host-key
+//! Fetch, pull and push: the transfer dialog, preview, execution with host-key
 //! trust and credentials, failure remedies (retry, without prune, repair
 //! tracking refs, fetch), the missing-object refetch offer and the result.
 //! A pull follows HEAD so History reveals where it moved.

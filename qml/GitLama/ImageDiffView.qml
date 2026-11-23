@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// One image change shown inline in a diff pane (the Dart ImageDiffView and
-// ImageDiffComparison): side by side, swipe or onion skin over a
+// One image change shown inline in a diff pane: side by side, swipe or onion skin over a
 // checkerboard, each side with its pixel size and file size. `source` is
 // the bridge that decodes the change (loadImageDiff, imageDiffLoaded);
 // `row` the image row ({key, oldPath, newPath}).

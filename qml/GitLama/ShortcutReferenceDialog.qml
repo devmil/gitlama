@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// Every command with a shortcut in effect (the Dart ShortcutReferenceDialog):
+// Every command with a shortcut in effect:
 // searchable by name or keys, grouped, with the keys as caps; shortcuts that
 // several commands share are listed first.
 MeridianDialog {

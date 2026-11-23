@@ -1,5 +1,4 @@
-//! Creating and applying patches (the Dart PatchCommands,
-//! PatchRequestBuilder and the patch repository's router): what a patch
+//! Creating and applying patches: what a patch
 //! contains is decided from where the user asked for it; the window only
 //! chooses the destination. A repository on another computer builds the
 //! patch there and it is saved on this one.
@@ -71,7 +70,7 @@ fn empty(destination: String, overwrite: bool) -> NativePatchExportRequest {
     }
 }
 
-/// The request of a History patch (the Dart PatchRequestBuilder.history).
+/// The request of a History patch.
 pub fn history_request(
     page: Option<&NativeHistoryPage>,
     commit: Option<String>,

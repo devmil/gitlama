@@ -106,7 +106,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: childrenRect.height
                 spacing: Theme.space.s4
-                // Centre each line of the wrap like Flutter's WrapAlignment.center.
+                // Centre each line of the wrap so the wrap is centred.
                 leftPadding: Math.max(0, (width - implicitLineWidth) / 2)
                 readonly property real implicitLineWidth: {
                     let total = 0

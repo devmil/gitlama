@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The Changes pane (the Dart ChangesPane): beside the diff, an island with
+// The Changes pane: beside the diff, an island with
 // the staging banners, the file filter, the unstaged and staged lists
 // (split by a draggable ratio) and the commit editor.
 Item {
@@ -15,7 +15,7 @@ Item {
         Math.min(GitLamaLayout.changesSplitRatioMax, (appearance.changesSplitRatio ?? 500) / 1000))
     property real draggedRatio: -1
     readonly property real ratio: draggedRatio >= 0 ? draggedRatio : splitRatio
-    /// The width of the files island (appearance.diffWidth in Flutter).
+    /// The width of the files island (the stored appearance.diffWidth).
     property real draggedWidth: -1
     readonly property real maximumFilesWidth: Math.max(GitLamaLayout.codePaneMinWidth,
         width - GitLamaLayout.changesDiffMinWidth - Theme.space.s3)

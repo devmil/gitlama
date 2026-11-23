@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The host profiles (the Dart RemoteHostDialog): the hosts with their connection state, and
+// The host profiles: the hosts with their connection state, and
 // the selected host's status, failure and helper installation, identity change, access,
 // automatic helper installation and Connect/Disconnect/Edit/Delete. With `choosing` the
 // primary action continues with the selected, connected host: a prompt then receives its ID.

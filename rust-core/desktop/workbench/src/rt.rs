@@ -1,7 +1,6 @@
 //! The workbench's single-threaded async runtime.
 //!
-//! Services are `!Send` state machines that live on the GUI thread, like the
-//! Dart services they replace lived on the Dart event loop. Their async
+//! Services are `!Send` state machines that live on the GUI thread. Their async
 //! functions run as local tasks; blocking native work (Git, files, network)
 //! runs on the blocking pool and wakes its task when it finishes. The host
 //! polls ready tasks with [`Runtime::run_until_stalled`] whenever the wake
@@ -309,8 +308,8 @@ fn blocking_worker(pool: &BlockingPool) {
 /// Runs `work` on the blocking pool; the future resolves with its result.
 ///
 /// # Panics
-/// The future panics when `work` panicked, like an awaited Dart future that
-/// failed with an unexpected error.
+/// The future panics when `work` panicked, as an awaited call that failed
+/// with an unexpected error would.
 pub async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> T {
     let (sender, receiver) = oneshot::channel();
     submit_blocking(Box::new(move || {
@@ -462,8 +461,7 @@ pub async fn timeout<T>(duration: Duration, future: impl Future<Output = T>) -> 
 
 // Cancelable delayed work ---------------------------------------------------------
 
-/// A one-shot timer that runs a callback on the runtime unless canceled,
-/// like a Dart `Timer`.
+/// A one-shot timer that runs a callback on the runtime unless canceled.
 #[derive(Default)]
 pub struct TimerHandle {
     canceled: Option<Rc<std::cell::Cell<bool>>>,

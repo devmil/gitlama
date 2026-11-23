@@ -1,5 +1,5 @@
 //! Opens the repository, a file or a folder in an editor, terminal or file
-//! manager (the Dart IntegrationLauncher): the configured tool first,
+//! manager: the configured tool first,
 //! otherwise the first one installed, with the arguments each platform's
 //! tools need. A tool on this computer never receives a path on another
 //! computer.
@@ -124,8 +124,7 @@ pub fn folder_arguments(candidate: &str) -> Vec<String> {
     }
 }
 
-/// The file manager's name for "Open in …" (the Dart
-/// configuredFileBrowserName / platformFileBrowserName).
+/// The file manager's name for "Open in …".
 pub fn file_browser_name(
     configured: Option<&NativeIntegrationSettings>,
     platform: Platform,

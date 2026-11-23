@@ -1,4 +1,4 @@
-//! The settings dialog's writes (the Dart SettingsService's setters):
+//! The settings dialog's writes:
 //! automatic fetching, shortcuts and the per-repository reset. Appearance
 //! writes go through the generic appearance patch.
 

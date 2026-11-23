@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The power tools (the Dart PowerToolsPanel body): a search through every
+// The power tools: a search through every
 // commit's changes, the repository's statistics and bisect. Floating, the
 // three sections are stacked under their headers; docked in History, a
 // section switch shows one. The jobs and bisect run in Rust

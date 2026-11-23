@@ -4,7 +4,7 @@ import QtQml.Models
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The workspace sidebar (the Dart WorkspaceSidebar): the panes, then the
+// The workspace sidebar: the panes, then the
 // active repository's references in sections. The rows come from Rust,
 // already filtered and flattened; only the visible ones are built.
 //

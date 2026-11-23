@@ -182,8 +182,7 @@ fn find_rcc() -> Option<PathBuf> {
     None
 }
 
-/// The executable's icon and version information (the Flutter runner's
-/// Runner.rc), compiled with the MSVC resource compiler.
+/// The executable's icon and version information, compiled with the MSVC resource compiler.
 fn build_windows_resource(manifest: &Path, out: &Path) {
     let root = manifest.join("../../..");
     let version_file = root.join("VERSION");

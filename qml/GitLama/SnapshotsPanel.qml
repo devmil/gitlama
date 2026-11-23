@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// Named snapshots of the working state (the Dart NamedSnapshotsPanel): a
+// Named snapshots of the working state: a
 // form that captures one, then the saved snapshots with their counts and a
 // menu to inspect, restore, branch from or delete each. The workflow and
 // its state live in Rust (Store.workflows.snapshots).

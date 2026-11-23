@@ -1,5 +1,4 @@
-//! Git's lock files (the Dart IndexLockWorkflow and the transfer failure
-//! dialog's RepositoryLockControls): Inspect index lock removes a left
+//! Git's lock files: Inspect index lock removes a left
 //! behind `index.lock` after a confirmation, and a transfer that failed on a
 //! lock lists every lock file of its repository, with their ages, and
 //! removes them before a retry.
@@ -18,7 +17,7 @@ pub const RECENT_AGE_SECONDS: u64 = 60;
 /// Locks at least this old were probably left behind by a stopped process.
 pub const STALE_AGE_SECONDS: u64 = 5 * 60;
 
-/// The advice under an inspection's list (the Dart repositoryLockAdvice):
+/// The advice under an inspection's list:
 /// "none", "recent", "stale", or nothing to say.
 pub fn advice(inspection: &NativeRepositoryLockInspectionResult) -> Option<&'static str> {
     if inspection.locks.is_empty() {
@@ -41,8 +40,7 @@ pub fn advice(inspection: &NativeRepositoryLockInspectionResult) -> Option<&'sta
     None
 }
 
-/// The localized message of a refused removal (the Dart
-/// repositoryLockRemovalMessage).
+/// The localized message of a refused removal.
 pub fn removal_failure_key(kind: NativeIndexLockFailureKind) -> &'static str {
     match kind {
         NativeIndexLockFailureKind::Changed => "repositoryLockChanged",

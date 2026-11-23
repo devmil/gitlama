@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The history lens's commits (the Dart InspectorHistoryList): the path's
+// The history lens's commits: the path's
 // (or the selected lines') commits, newest first; selecting one shows its
 // change, a double click inspects that commit, and older pages load on
 // demand.

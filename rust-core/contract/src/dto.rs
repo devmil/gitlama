@@ -182,30 +182,13 @@ pub struct NativeRepositorySnapshot {
     pub refs: NativeRepositoryRefs,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct NativeRepositoryRefs {
     pub branches: Vec<NativeRepositoryReference>,
     pub remotes: Vec<NativeRepositoryRemote>,
     pub tags: Vec<NativeRepositoryReference>,
     pub stashes: Vec<NativeRepositoryStash>,
     pub truncated: bool,
-}
-
-// A derived impl would carry no `flutter_rust_bridge:ignore` marker.
-#[allow(clippy::derivable_impls)]
-impl Default for NativeRepositoryRefs {
-    // flutter_rust_bridge reads this crate as a third-party input and would expose a Dart
-    // `default_()` for every `Default` impl; the bridge types carry no functions.
-    /// flutter_rust_bridge:ignore
-    fn default() -> Self {
-        Self {
-            branches: Default::default(),
-            remotes: Default::default(),
-            tags: Default::default(),
-            stashes: Default::default(),
-            truncated: Default::default(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -305,30 +288,13 @@ pub struct NativeRepositoryStatus {
     pub operations: Vec<NativeOperationState>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct NativeRepositoryRefCounts {
     pub branches: u64,
     pub remotes: u64,
     pub tags: u64,
     pub stashes: u64,
     pub worktrees: u64,
-}
-
-// A derived impl would carry no `flutter_rust_bridge:ignore` marker.
-#[allow(clippy::derivable_impls)]
-impl Default for NativeRepositoryRefCounts {
-    // flutter_rust_bridge reads this crate as a third-party input and would expose a Dart
-    // `default_()` for every `Default` impl; the bridge types carry no functions.
-    /// flutter_rust_bridge:ignore
-    fn default() -> Self {
-        Self {
-            branches: Default::default(),
-            remotes: Default::default(),
-            tags: Default::default(),
-            stashes: Default::default(),
-            worktrees: Default::default(),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -727,22 +693,14 @@ pub struct NativeStagingRequest {
 }
 
 /// Progress of a session's current staging transaction. Idle also means no active write.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum NativeStagingPhase {
+    #[default]
     Idle,
     Waiting,
     Preparing,
     Updating,
     Refreshing,
-}
-
-// Keep the bridge contract free of generated Default methods.
-#[allow(clippy::derivable_impls)]
-impl Default for NativeStagingPhase {
-    /// flutter_rust_bridge:ignore
-    fn default() -> Self {
-        Self::Idle
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

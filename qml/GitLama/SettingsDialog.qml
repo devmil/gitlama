@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import Meridian
 
-// The settings (the Dart SettingsDialog): appearance, Git, custom commands, diff view,
+// The settings: appearance, Git, custom commands, diff view,
 // shortcuts, accessibility, diagnostics and licenses. Every change applies
 // at once; a refused write shows in the footer.
 MeridianSettingsDialog {

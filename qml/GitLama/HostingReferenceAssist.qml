@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Issue and pull request references in a text field (the Dart
-// HostingReferenceTextField): typing `#` and a query lists the bound
+// Issue and pull request references in a text field: typing `#` and a query lists the bound
 // repository's issues and pull requests under the caret; Up, Down, Page Up,
 // Page Down and Enter pick one, Escape closes the list and restores the
 // selection. Put one next to a field, set `target`, and let the field's

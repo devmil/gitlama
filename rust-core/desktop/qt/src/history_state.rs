@@ -254,8 +254,7 @@ mod history_state {
             });
         }
 
-        /// The branches the graph can be filtered to (the Dart
-        /// buildBranchFilterChoices): {reference, label, name, remote,
+        /// The branches the graph can be filtered to: {reference, label, name, remote,
         /// current, upstream}, the main branch first.
         #[qslot]
         fn branch_filter_choices(&self) -> Value {
@@ -264,7 +263,7 @@ mod history_state {
                 .map_or(Value::Array(Vec::new()), branch_filter_choices)
         }
 
-        /// What reference fields offer (the Dart gitReferenceChoices):
+        /// What reference fields offer:
         /// [{value, description, icon}] of HEAD, branches, remote branches,
         /// tags and the loaded commits.
         #[qslot]

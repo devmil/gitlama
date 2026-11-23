@@ -1,5 +1,4 @@
-//! One handshaken connection to a remote helper over an owned process (the Dart
-//! `RemoteChannelImpl`): the bootstrap probe, the hello, calls with deadlines, cancels,
+//! One handshaken connection to a remote helper over an owned process: the bootstrap probe, the hello, calls with deadlines, cancels,
 //! pings, liveness, publications and a bounded shutdown.
 
 use super::model::{Failure, HelperInfo, RemoteError};

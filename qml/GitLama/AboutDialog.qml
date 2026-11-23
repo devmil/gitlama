@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// GitLama's About (the Dart showBrandAbout): the mark, the name, the maker
+// GitLama's About: the mark, the name, the maker
 // and the version, centred like a title page, the source code and licenses,
 // then the Lama family with GitLama picked out.
 MeridianDialog {

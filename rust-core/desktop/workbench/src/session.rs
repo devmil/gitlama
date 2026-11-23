@@ -1,5 +1,4 @@
-//! Repository session identities, states and failures (the Dart
-//! `repository_state.dart` model over the native snapshot).
+//! Repository session identities, states and failures.
 
 use crate::backend::CallError;
 use gitlama_contract::domain::path_identity::NativePathIdentity;
@@ -65,8 +64,7 @@ pub enum FailureCode {
 }
 
 impl FailureCode {
-    /// The stable name the UI localizes and diagnostics record (the Dart enum
-    /// names).
+    /// The stable name the UI localizes and diagnostics record.
     pub fn name(self) -> &'static str {
         match self {
             Self::Canceled => "canceled",
@@ -140,7 +138,7 @@ impl From<&NativeRepositoryFailure> for FailureCode {
     }
 }
 
-/// The error of a session call (the Dart `RepositorySessionException`).
+/// The error of a session call.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SessionError(pub FailureCode);
 

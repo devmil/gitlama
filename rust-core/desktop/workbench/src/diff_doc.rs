@@ -132,8 +132,7 @@ impl DiffDocument {
     }
 
     /// Every loaded row with its index.
-    /// The added and deleted lines once every row has loaded (the Dart
-    /// inspector sidebar's +/− counts); None while rows are missing.
+    /// The added and deleted lines once every row has loaded; None while rows are missing.
     pub fn complete_counts(&self) -> Option<(u64, u64)> {
         use gitlama_contract::diff::NativeDiffRowKind;
         let (mut loaded, mut added, mut deleted) = (0u64, 0u64, 0u64);
@@ -156,7 +155,7 @@ impl DiffDocument {
         }
     }
 
-    /// The rows that contain `query` (at most 1000, as in Flutter), or None
+    /// The rows that contain `query` (at most 1000), or None
     /// when the search failed or the diff moved on.
     pub async fn search(&self, query: &str, case_sensitive: bool) -> Option<Vec<u32>> {
         let result = self

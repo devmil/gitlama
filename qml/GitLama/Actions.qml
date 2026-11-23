@@ -241,8 +241,7 @@ Item {
         window.requestActivate()
     }
     Component { id: inspectionWindowComponent; InspectionWindow {} }
-    /// A working-tree path at the checked-out commit (the Dart
-    /// _inspectWorkingFile): in a window where windows open, else in the
+    /// A working-tree path at the checked-out commit: in a window where windows open, else in the
     /// History inspector.
     function inspectWorkingFile(path, lens, directory) {
         const active = Store.workspace ? Store.workspace.active : null
@@ -254,7 +253,7 @@ Item {
         Store.inspector.inspectWorkingFile(path, lens, directory)
     }
     /// Blame or History of the inspected file, or of the commit's first
-    /// changed file (the Dart _openHistoryInspection): in a window when the
+    /// changed file: in a window when the
     /// inspector is not on screen or the setting (or Ctrl/Cmd) says so.
     function openHistoryInspection(lens) {
         const view = Store.inspectorView
@@ -282,7 +281,7 @@ Item {
     }
     /// A Refresh began (the toolbar spins if it lasts).
     signal refreshStarted()
-    /// Find (the Dart _findInRepository): the focused diff's find field,
+    /// Find: the focused diff's find field,
     /// else the Changes diff's, else the history search.
     function findInRepository() {
         const working = Store.workingDiffPane
@@ -297,7 +296,7 @@ Item {
         Qt.callLater(() => { if (Store.historyPane) Store.historyPane.focusSearch() })
     }
     ShortcutReferenceDialog { id: shortcutReference }
-    // Where a zip snapshot goes, then its progress (the Dart saveCommitArchive).
+    // Where a zip snapshot goes, then its progress.
     FileDialog {
         id: archiveDestination
         property string commit
@@ -403,7 +402,7 @@ Item {
     TextEdit { id: clipboard; visible: false }
 
     /// Runs command `id` when the shared policy allows it now, and
-    /// otherwise says why (the Flutter shell's _executeCommand).
+    /// otherwise says why.
     function runCommand(id, options) {
         const reason = Commands.reason(id, actionsRoot.availability)
         if (reason.length > 0) {
@@ -529,7 +528,7 @@ Item {
             })
             return
         case "diffToggleLayout": case "diffToggleWrap": case "diffNextHunk": case "diffPreviousHunk":
-            // Commands act on the commit diff (the Dart _runDiffCommand).
+            // Commands act on the commit diff.
             if (!Store.inspectorView || !Store.inspectorView.runDiffCommand(id))
                 Notifications.show(Commands.reasonText("contextRequired"), false)
             return
@@ -583,7 +582,7 @@ Item {
         }
     }
 
-    /// The state the command policy reads (the Flutter CommandMenuState):
+    /// The state the command policy reads:
     /// busy, selections, the inspector and the diffs on screen.
     readonly property var availability: {
         const changes = Store.changes ? (Store.changes.state ?? ({})) : ({})
@@ -612,7 +611,7 @@ Item {
         }
     }
     /// What the active remote tab may do on its host ({connected, capabilities, writeBlock});
-    /// null for a local tab (the Dart RemoteTabAccess).
+    /// null for a local tab.
     function remoteAccess(tab) {
         if (!tab || !tab.remoteProfile)
             return null
@@ -887,7 +886,7 @@ Item {
         id: refConfirm
         onAnswered: (id, confirmed) => actionsRoot.answer(id, confirmed)
     }
-    // Restoring a file to a commit's version (the Dart confirmRestore).
+    // Restoring a file to a commit's version.
     MeridianConfirm {
         id: restoreConfirm
         property int promptId: -1
@@ -919,8 +918,7 @@ Item {
             ]
         }
     }
-    // Asks before a linked worktree and its files are removed (the Dart
-    // confirmWorktreeDeletion).
+    // Asks before a linked worktree and its files are removed.
     MeridianConfirm {
         id: worktreeDeleteConfirm
         property int promptId: -1
@@ -933,8 +931,7 @@ Item {
         onConfirmed: { actionsRoot.answer(promptId, true); promptId = -1 }
         onCancelled: { actionsRoot.answer(promptId, false); promptId = -1 }
     }
-    // Replacing the current changes with a snapshot's (the Dart
-    // NamedSnapshotRestoreDialog).
+    // Replacing the current changes with a snapshot's.
     MeridianDialog {
         id: snapshotRestore
         property int promptId: -1
@@ -1069,8 +1066,7 @@ Item {
         id: ignoreDialog
         onAnswered: (id, entry) => actionsRoot.answer(id, entry)
     }
-    // Asks to run a configured tool that needs confirmation (the Dart
-    // confirmIntegration).
+    // Asks to run a configured tool that needs confirmation.
     MeridianConfirm {
         id: integrationConfirm
         property int promptId: -1
@@ -1123,7 +1119,7 @@ Item {
                 ] : [])
         }
     }
-    // Author images from Gravatar: what enabling sends (the Dart GravatarOfferDialog).
+    // Author images from Gravatar: what enabling sends.
     function offerGravatar() { gravatarOffer.open() }
     MeridianConfirm {
         id: gravatarOffer
@@ -1197,7 +1193,7 @@ Item {
         }
     }
 
-    // Removing Git's index lock (the Dart confirmIndexLockRemoval).
+    // Removing Git's index lock.
     MeridianConfirm {
         id: indexLockConfirm
         property int promptId: -1

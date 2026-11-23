@@ -2,7 +2,7 @@
 //! the QML window, and every lifetime until exit.
 
 // A window application on Windows: no console opens with it. Run from a
-// terminal it writes there (AttachConsole below), as the Flutter runner did.
+// terminal it writes there (AttachConsole below), as earlier releases did.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod hooks;
@@ -62,7 +62,7 @@ unsafe extern "C" {
 }
 
 /// Hands `gitlama <path>` and `--command` invocations to the running
-/// window (the Dart prepareProcessInvocation): exits 0 once forwarded and 2
+/// window: exits 0 once forwarded and 2
 /// with a message when refused; otherwise this process owns the instance.
 fn forward_or_continue() {
     use gitlama_core::api::NativeCliStartupState;

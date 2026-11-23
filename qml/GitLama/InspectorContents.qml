@@ -3,8 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// One file at the inspected commit (the Dart _ContentsLens and
-// CommitFileContentView): its path and size with a find bar, then line
+// One file at the inspected commit: its path and size with a find bar, then line
 // numbers and read-only text; a file that is not UTF-8 text shows as text
 // on request. Matching lines are marked, the current one stronger.
 Item {

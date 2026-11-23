@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// One-line diff chrome (the Dart DiffToolbar): the path (folder muted, then
+// One-line diff chrome: the path (folder muted, then
 // the name) when the pane is wide enough, the actions, and pinned actions
 // that stay at the end. When the pane narrows the path goes first, then the
 // action strip scrolls.

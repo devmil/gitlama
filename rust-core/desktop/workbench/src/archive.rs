@@ -1,5 +1,4 @@
-//! Zip snapshots of commits (the Dart CommitArchiveCommands and
-//! saveCommitArchive): the core builds the archive while its progress is
+//! Zip snapshots of commits: the core builds the archive while its progress is
 //! polled, then it is written page by page to the chosen file on this
 //! computer. Cancel stops between steps; the outcome is a status message.
 

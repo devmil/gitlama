@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use std::rc::Rc;
 
 /// What the repository details overlay shows about the active tab: where
-/// it lives, what it is and what happens in it (the Dart RepositoryDetails).
+/// it lives, what it is and what happens in it.
 pub fn details(services: &gitlama_workbench::app::Services) -> Value {
     use gitlama_contract::dto::{NativeHeadKind, NativeOperationKind, NativeRepositoryKind};
     use gitlama_contract::dto::{NativeOperationCenterOrigin, NativeOperationCenterState};

@@ -1,7 +1,7 @@
 import QtQuick
 import Meridian
 
-// A labelled text field of the hosting settings (the Dart _HostingTextField).
+// A labelled text field of the hosting settings.
 Column {
     id: field
 

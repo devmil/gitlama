@@ -1,5 +1,4 @@
-//! Hosting accounts and the active repository's hosting state (the Dart
-//! HostingConnectionService and HostingRepositorySession): accounts live in
+//! Hosting accounts and the active repository's hosting state: accounts live in
 //! the settings with their credentials in the system store; a repository is
 //! bound to one account and provider repository, automatically from its
 //! remotes or by an override; its pull requests, issues and references load
@@ -275,7 +274,7 @@ pub struct Authorization {
     pub new_connection: bool,
 }
 
-/// Accounts and their sign-ins (the Dart HostingConnectionService).
+/// Accounts and their sign-ins.
 pub struct Hosting {
     settings: Rc<SettingsService>,
     notifier: Notifier,
@@ -286,6 +285,8 @@ pub struct Hosting {
     cli: Cell<(bool, bool)>,
     /// Each account's credential state, read after the accounts change.
     credentials: RefCell<Vec<(String, NativeHostingCredentialState)>>,
+    /// The pull-request links each repository's branches were last found to have.
+    pub links: Rc<crate::hosting_links::LinkCache>,
 }
 
 impl Hosting {
@@ -293,6 +294,7 @@ impl Hosting {
     /// removed (their credential items are left alone).
     pub async fn new(settings: Rc<SettingsService>, notifier: Notifier) -> Rc<Self> {
         let this = Rc::new(Self {
+            links: crate::hosting_links::LinkCache::new(),
             settings,
             notifier,
             authorization: RefCell::new(None),
@@ -739,6 +741,7 @@ impl Hosting {
     }
 
     pub async fn dispose(&self) {
+        self.links.flush().await;
         self.end_authorization().await;
         if self.runtime_used.get() {
             rt::blocking(gitlama_core::api::hosting_runtime_shutdown).await;
@@ -829,7 +832,7 @@ impl Default for SessionState {
     }
 }
 
-/// The active repository's hosting state (the Dart HostingRepositorySession).
+/// The active repository's hosting state.
 pub struct RepositoryHosting {
     hosting: Rc<Hosting>,
     notifier: Notifier,
@@ -896,7 +899,7 @@ impl RepositoryHosting {
     }
 
     /// The provider branch a history reference stands for, under the bound
-    /// remote (the Dart HostingBranchNames.branchFor): a local branch's
+    /// remote: a local branch's
     /// upstream on that remote, or a remote-tracking branch of it.
     pub fn branch_for(&self, reference: &str, tracking: Option<&str>) -> Option<String> {
         let remote = {
@@ -943,7 +946,7 @@ impl RepositoryHosting {
     }
 
     /// The issue and pull request references `text` asks for at its
-    /// selection (the Dart HostingReferenceTextField): typing `#` and a
+    /// selection: typing `#` and a
     /// query offers the bound repository's resources. Positions are UTF-16
     /// offsets, as text fields count them.
     pub fn project_reference(
@@ -1001,7 +1004,7 @@ impl RepositoryHosting {
     }
 
     /// The CI state of each local branch that has pull requests from the
-    /// bound repository, the worst first (the Dart hostingBranchDecorations).
+    /// bound repository, the worst first.
     pub fn branch_decorations(&self) -> std::collections::HashMap<String, NativeHostingCheckState> {
         let state = self.state.borrow();
         let mut decorations = std::collections::HashMap::new();
@@ -1024,8 +1027,7 @@ impl RepositoryHosting {
         decorations
     }
 
-    /// The bound remote's main branch as {branch, ref, target} (the Dart
-    /// HostingLinks._defaultBranch).
+    /// The bound remote's main branch as {branch, ref, target}.
     pub fn default_branch(&self, refs: &NativeRepositoryRefs) -> Option<(String, String, String)> {
         let state = self.state.borrow();
         let binding = state
@@ -1053,8 +1055,7 @@ impl RepositoryHosting {
         Some((branch, reference, main.target.clone()))
     }
 
-    /// The main branch's CI result, looked up on demand (the Dart
-    /// defaultBranchChecks): (branch, state), state unknown until answered.
+    /// The main branch's CI result, looked up on demand: (branch, state), state unknown until answered.
     pub fn default_branch_checks(
         self: &Rc<Self>,
         refs: &NativeRepositoryRefs,
@@ -1181,6 +1182,10 @@ impl RepositoryHosting {
         let bound = resolution.state == NativeHostingBindingState::Bound;
         self.state.borrow_mut().binding = Some(resolution);
         self.changed();
+        if bound {
+            let this = Rc::clone(self);
+            rt::spawn_detached(async move { this.load_cached_links(generation).await });
+        }
         self.schedule_lookups();
         if refresh && bound {
             self.refresh(false, 1).await;
@@ -1757,11 +1762,71 @@ impl RepositoryHosting {
             }
             !state.queued.is_empty() || state.head_queued
         };
+        self.remember_links();
         self.changed();
         if again {
             self.schedule_lookups();
         }
         self.schedule_pending_recheck();
+    }
+
+    async fn load_cached_links(self: Rc<Self>, generation: u64) {
+        let Some((connection_id, provider_repository)) = self.bound() else {
+            return;
+        };
+        let Some(repository) = self.state.borrow().repository.clone() else {
+            return;
+        };
+        let Some(entry) = self
+            .hosting
+            .links
+            .cached(&repository, &connection_id, &provider_repository)
+            .await
+        else {
+            return;
+        };
+        if !self.current(generation) {
+            return;
+        }
+        let mut changed = false;
+        {
+            let mut state = self.state.borrow_mut();
+            for (branch, pulls) in &entry.branches {
+                // Lookups that finished first are newer than the cache.
+                if state.branch_pulls.iter().any(|(name, _)| name == branch) {
+                    continue;
+                }
+                state
+                    .branch_pulls
+                    .insert(0, (branch.clone(), pulls.clone()));
+                changed = true;
+            }
+            if state.authored.is_none() && entry.authored.is_some() {
+                state.authored.clone_from(&entry.authored);
+                changed = true;
+            }
+        }
+        if changed {
+            self.changed();
+        }
+    }
+
+    fn remember_links(&self) {
+        let Some((connection_id, provider_repository)) = self.bound() else {
+            return;
+        };
+        let state = self.state.borrow();
+        let Some(repository) = state.repository.clone() else {
+            return;
+        };
+        let entry = crate::hosting_links::LinkEntry {
+            connection_id,
+            provider_repository,
+            branches: state.branch_pulls.clone(),
+            authored: state.authored.clone(),
+        };
+        drop(state);
+        self.hosting.links.remember(&repository, entry);
     }
 
     // Checks still running and mergeability being computed settle on their
@@ -1884,7 +1949,7 @@ pub fn check_state_name(state: NativeHostingCheckState) -> &'static str {
     }
 }
 
-/// The worse of two CI states (the Dart _worseCheckState).
+/// The worse of two CI states.
 pub fn worse_check_state(
     left: NativeHostingCheckState,
     right: NativeHostingCheckState,

@@ -1,8 +1,7 @@
 import QtQuick
 import Meridian
 
-// The persistent notice of an open remote tab whose connection is gone (the Dart
-// RemoteTabBanner): its content stays visible as the last received state. It never takes focus.
+// The persistent notice of an open remote tab whose connection is gone: its content stays visible as the last received state. It never takes focus.
 MeridianBanner {
     id: banner
 

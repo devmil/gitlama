@@ -1,5 +1,4 @@
-//! Workflows that rewrite the working tree or history (the Dart
-//! HistoryRewriteWorkflowService): stashes and checking out a commit (with
+//! Workflows that rewrite the working tree or history: stashes and checking out a commit (with
 //! stashing when the tree is dirty). Merges, cherry-picks, reverts,
 //! integration and rebases follow.
 

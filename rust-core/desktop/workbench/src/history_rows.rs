@@ -1,5 +1,4 @@
-//! What one History graph row shows (the Dart history_pane `rowAt` and the
-//! graph view's reference chips): the lanes through it, its node, its
+//! What one History graph row shows: the lanes through it, its node, its
 //! references as chips and its commit metadata.
 
 use crate::history::{HistoryService, WORKTREE_OBJECT_ID, is_worktree};
@@ -15,8 +14,7 @@ use std::rc::Rc;
 /// The most reference chips a row shows before a `+n` count.
 pub const MAX_REF_CHIPS: usize = 2;
 
-/// Reference values derived from one reference snapshot (the Dart
-/// ReferenceProjection).
+/// Reference values derived from one reference snapshot.
 #[derive(Default)]
 pub struct ReferenceContext {
     /// Local branches whose remote upstream has the same target: full name

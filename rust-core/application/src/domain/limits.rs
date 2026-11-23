@@ -40,7 +40,7 @@ pub const COMMIT_DESCRIPTION_BYTES: usize = 1048576;
 pub const TEXT_BYTES: usize = 4096;
 /// Remote writes kept in the local record; unresolved ones are never evicted.
 pub const PENDING_OPERATIONS: usize = 1024;
-/// Unicode scalar values (Dart runes, Rust chars) of a pending operation's summary.
+/// Unicode scalar values (Rust chars) of a pending operation's summary.
 pub const SUMMARY_CHARACTERS: usize = 256;
 /// Rows of one history, diff, blame or list page.
 pub const PAGE_ROWS: usize = 512;

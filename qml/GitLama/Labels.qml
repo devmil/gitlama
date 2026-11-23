@@ -26,14 +26,13 @@ QtObject {
         return detail.length > 0 ? detail : L10n.t("repositoryOpenFailed")
     }
 
-    /// A tool kind's name (the Dart integrationKindLabel).
+    /// A tool kind's name.
     function integrationKind(kind) {
         return L10n.t("integration" + kind.charAt(0).toUpperCase() + kind.slice(1))
     }
 
     /// `bytes` for people: "512 bytes", "47 KB", "1.5 MB" (binary units,
-    /// one decimal below 10, the locale's number format; the Dart
-    /// formatByteSize).
+    /// one decimal below 10, the locale's number format).
     function byteSize(bytes) {
         if (bytes < 1024)
             return L10n.tn("byteCount", { count: bytes })
@@ -111,8 +110,7 @@ QtObject {
         }
     }
 
-    /// A running operation's phase and completion (the Dart
-    /// operationProgressLabel); "" while Git reported neither. Git names
+    /// A running operation's phase and completion; "" while Git reported neither. Git names
     /// its phases in English whatever the locale.
     function operationProgress(progress) {
         if (!progress)
@@ -125,7 +123,7 @@ QtObject {
             : L10n.tn("operationPhaseProgress", { phase: L10n.t(phase), percent: progress.percent })
     }
 
-    /// The first eight characters of an object ID (the Dart shortObjectId).
+    /// The first eight characters of an object ID.
     function shortObjectId(value) {
         return value.length <= 8 ? value : value.substring(0, 8)
     }
@@ -162,7 +160,7 @@ QtObject {
 
     // Remote workspaces ---------------------------------------------------------
 
-    /// A connection phase's name (the Dart remotePhaseLabel).
+    /// A connection phase's name.
     function remotePhase(phase) {
         switch (phase) {
         case "installing": return L10n.t("remotePhaseInstalling")

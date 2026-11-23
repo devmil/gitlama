@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 
 // The history graph's branch filter as sorted, distinct full reference
-// names (the Dart HistoryBranchFilter), and the filter actions a
+// names, and the filter actions a
 // reference's context menu offers.
 QtObject {
     /// The most references a filter holds (ContractLimits).

@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// A menu built from data, shown with the platform's own menu UI (the
-// Flutter NativeMenuButton / native menu presenter). `items` are
+// A menu built from data, shown with the platform's own menu UI. `items` are
 // {title, value, icon, shortcut, enabled, checked, danger, reason} entries,
 // {separator: true}, {header: title} or {title, children: [...]}.
 // Selecting an available item emits `selected(value)`.

@@ -3,8 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// Current and incoming next to each other (the Dart resolver's
-// comparison): a header with the focused conflict, the resolved count and
+// Current and incoming next to each other: a header with the focused conflict, the resolved count and
 // navigation, each side's whole-file choice, then the rows, each conflict
 // under its toolbar. Clicking a side's lines takes them (or takes them
 // back); the result follows.

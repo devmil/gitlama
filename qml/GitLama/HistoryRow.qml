@@ -3,7 +3,7 @@ import QtQuick
 import Meridian
 import GitLamaNative
 
-// One History graph row (the Dart _HistoryRow): its lanes and node, the
+// One History graph row: its lanes and node, the
 // references as chips, the subject, then author, hash and date at the end.
 // Clicking selects (Ctrl/Cmd adds), double-clicking checks the commit out.
 Item {
@@ -46,8 +46,7 @@ Item {
     readonly property real contentAvailable: Math.max(0, Math.min(width, metadataLeft - contentStart - 12))
     readonly property bool wip: graph && (graph.shape === 5 || graph.shape === 6)
 
-    // What a screen reader says (the Dart historyRowSemantics with the
-    // HEAD label of the current commit).
+    // What a screen reader says.
     Accessible.role: Accessible.ListItem
     Accessible.selected: selected
     Accessible.name: loading ? "" : [

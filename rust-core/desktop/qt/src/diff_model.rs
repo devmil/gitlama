@@ -1,4 +1,4 @@
-//! A diff's rows for QML (the Dart DiffView's rows): built on demand from a
+//! A diff's rows for QML: built on demand from a
 //! `DiffDocument`, with each line's text, its syntax colours as styled text
 //! and its changed-word marks. Rows not loaded yet are placeholders that
 //! ask the document for their page.
@@ -130,8 +130,7 @@ fn contrast(a: Rgb, b: Rgb) -> f64 {
     (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
 }
 
-/// Syntax colours checked against the surfaces of each row kind (the Dart
-/// MeridianSyntaxPalette): a colour that does not read on one keeps `ink`.
+/// Syntax colours checked against the surfaces of each row kind: a colour that does not read on one keeps `ink`.
 #[derive(Default, Clone, PartialEq)]
 pub struct SyntaxPalette {
     ink: String,
@@ -505,7 +504,7 @@ mod diff_model {
         }
 
         /// The image change among the loaded rows: {key, oldPath, newPath},
-        /// or null (the Dart imageDiffRow).
+        /// or null.
         #[qslot]
         fn image_row(&self) -> Value {
             let Some(document) = &self.document else {

@@ -1,4 +1,4 @@
-//! Clone attempts (the Dart CloneService): creating, running, retrying with
+//! Clone attempts: creating, running, retrying with
 //! credentials or a trusted host key, progress polling, cancellation and
 //! dismissal. A finished attempt hands its opened session to the workspace.
 

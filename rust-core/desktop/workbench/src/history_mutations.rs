@@ -1,5 +1,4 @@
-//! Merges, cherry-picks and reverts (the Dart HistoryRewriteWorkflowService's
-//! mutateHistory and integrateBranch): ask, preview, predict a merge's
+//! Merges, cherry-picks and reverts: ask, preview, predict a merge's
 //! conflicts, confirm and run while the tab is busy.
 
 use crate::backend::SessionCalls;
@@ -538,7 +537,7 @@ mod tests {
     }
 
     #[test]
-    fn results_read_as_the_flutter_status_lines() {
+    fn results_read_as_their_status_lines() {
         let completed = result(NativeHistoryMutationExecutionState::Completed, None);
         assert_eq!(
             result_message(&preview(false), &completed).0,

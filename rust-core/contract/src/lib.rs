@@ -1,12 +1,10 @@
-//! GitLama's bridge contract: the plain data types the FRB facade and the remote wire adapter
-//! carry between Dart, the desktop library and the remote helper. It holds types only, with
-//! no public functions or methods, so flutter_rust_bridge (which reads this crate as a
-//! third-party input) generates Dart classes and no Dart functions from it.
+//! GitLama's contract: the plain data types the core facade and the remote wire adapter carry
+//! between the desktop application, the core and the remote helper. It holds types only, with
+//! no public functions or methods.
 pub mod activity;
 pub mod advanced_rebase;
 pub mod archive;
 pub mod avatar;
-pub mod child_process;
 pub mod cli_forwarding;
 pub mod clone;
 pub mod conflict;

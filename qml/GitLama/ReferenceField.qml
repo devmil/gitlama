@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// A field for a branch, tag or commit name (the Dart GitReferenceField):
+// A field for a branch, tag or commit name:
 // typing filters `names` and `choices` into a list below it; Up, Down and
 // Enter pick one, and Enter without a pick submits the dialog. `normalize`
 // turns characters Git refuses in a ref name into "-" as QSpline does;
@@ -41,7 +41,7 @@ Column {
     function normalized(value) {
         return value.replace(/[\x00-\x20\x7f~^:?*\[\\]/g, "-").replace(/@\{/g, "@-").replace(/\.\./g, ".-")
     }
-    // A full branch reference suggests its branch path (the Dart _branchPath).
+    // A full branch reference suggests its branch path.
     function branchPath(name) {
         if (name.startsWith("refs/heads/"))
             return name.substring(11)

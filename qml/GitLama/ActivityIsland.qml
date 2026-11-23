@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The active repository's recent Git commands (the Dart ActivitySlot): a
+// The active repository's recent Git commands: a
 // timeline under the workspace; the selected command shows its output.
 MeridianIsland {
     id: island

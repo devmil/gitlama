@@ -1,4 +1,4 @@
-//! The patch dialog's state (the Dart _PatchDialogState): Create writes a
+//! The patch dialog's state: Create writes a
 //! patch to a chosen folder after a preview, Apply checks a patch file and
 //! applies it; each finishes with a message and a way to start again.
 

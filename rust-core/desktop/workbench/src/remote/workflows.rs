@@ -1,5 +1,4 @@
-//! The window's remote workspace workflows (the Dart `RemoteWorkspaceWorkflows` and its
-//! window interaction): connecting for use, installing the helper, reconnecting, changing a
+//! The window's remote workspace workflows: connecting for use, installing the helper, reconnecting, changing a
 //! host's access, opening and creating repositories on hosts. Decisions only the user can
 //! make go through window prompts; messages go to the status bar.
 

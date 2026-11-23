@@ -1,5 +1,5 @@
-# Flutter's native asset hooks launch Cargo from PowerShell, outside the
-# Visual Studio environment that CMake sets up for its own C++ build.
+# Cargo builds the Qt application's C++ glue (cxx-qt) from PowerShell, outside a Visual
+# Studio developer prompt; this loads that environment into the current session.
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not (Test-Path $vswhere)) {
     throw "Visual Studio Installer (vswhere.exe) is required for Windows builds"

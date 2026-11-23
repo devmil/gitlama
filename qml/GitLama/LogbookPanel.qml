@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls.Basic as C
 import Meridian
 
-// The logbook (the Dart OperationCenterPanel): every operation of the
+// The logbook: every operation of the
 // application, newest work first, filtered by who started it; the selected
 // entry's command and output with Retry, Cancel, Dismiss, Copy and Details.
 MeridianPanel {

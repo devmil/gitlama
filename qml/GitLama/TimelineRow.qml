@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// One row of a timeline (the Dart GitLamaTimelineRow): a state mark on a
+// One row of a timeline: a state mark on a
 // rail that runs through the rows, the verb and its target, the time and
 // a metadata line; selected, its details reveal below on a state tint. A
 // row that fails shakes once.

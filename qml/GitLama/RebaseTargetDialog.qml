@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// The branch to rebase onto (the Dart RebaseTargetDialog).
+// The branch to rebase onto.
 MeridianDialog {
     id: dialog
 

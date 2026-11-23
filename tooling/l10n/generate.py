@@ -2,8 +2,7 @@
 """Generates qml/GitLama/L10n.qml from the ARB catalogs in l10n/.
 
 The English catalog is the template; every other catalog must have the same
-keys and placeholders. Messages are ICU MessageFormat subsets as Flutter's
-gen-l10n accepted them: `{name}` arguments, `{count, plural, =1{..} other{..}}`
+keys and placeholders. Messages are ICU MessageFormat subsets: `{name}` arguments, `{count, plural, =1{..} other{..}}`
 and `{kind, select, a{..} other{..}}`, with nesting. Each message compiles to a
 small tree the QML runtime renders.
 

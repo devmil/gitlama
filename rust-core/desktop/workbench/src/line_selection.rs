@@ -1,5 +1,4 @@
-//! The hunks and lines picked in a working diff, by stable row ID (the Dart
-//! DiffLineSelection).
+//! The hunks and lines picked in a working diff, by stable row ID.
 //!
 //! A picked hunk is sent as its hunk ID, which takes every change line of
 //! the hunk, also lines not loaded yet. Unpicking one line of a picked hunk

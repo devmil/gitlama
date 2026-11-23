@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// What a diff renderer does before it runs or is saved (the Dart
-// DiffRendererPreviewContent in a confirmation): one sentence, the program
+// What a diff renderer does before it runs or is saved: one sentence, the program
 // and its limits, and both exact command lines behind "Command details".
 MeridianConfirm {
     id: confirm

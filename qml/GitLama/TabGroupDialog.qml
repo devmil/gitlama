@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Meridian
 
-// Sets a tab group's name, colour and icon at once (the Dart
-// TabGroupDialog), with the group as the tab bar will show it.
+// Sets a tab group's name, colour and icon at once, with the group as the tab bar will show it.
 MeridianDialog {
     id: dialog
 

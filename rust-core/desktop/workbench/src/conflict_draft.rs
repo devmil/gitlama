@@ -1,7 +1,7 @@
-//! A reviewable merge result (the Dart ConflictMergeDraft): the conflict
+//! A reviewable merge result: the conflict
 //! regions of a file's result, the choice made in each, and the comparison
-//! rows that show both sides next to each other. Text is UTF-16, as Dart and
-//! QML count it, so region offsets are the offsets the result editor uses.
+//! rows that show both sides next to each other. Text is UTF-16, as
+//! QML counts it, so region offsets are the offsets the result editor uses.
 
 use gitlama_contract::conflict::{NativeConflictFile, NativeConflictRegionChoice};
 

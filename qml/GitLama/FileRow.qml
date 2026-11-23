@@ -39,7 +39,7 @@ Item {
 
     Accessible.role: Accessible.ListItem
     Accessible.name: status.length > 0 ? status + ", " + path : path
-    // A tree's folder says whether it is open (the Dart git file list).
+    // A tree's folder says whether it is open.
     Accessible.description: folder ? (expanded ? L10n.t("gitFolderExpanded") : L10n.t("gitFolderCollapsed")) : ""
     Accessible.selected: selected
 
