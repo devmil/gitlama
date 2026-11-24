@@ -201,6 +201,9 @@ def build_macos(version: Version) -> Path:
         raise RuntimeError("the macOS executable lacks the Frameworks rpath")
     run("ditto", sparkle_framework(), app / "Contents/Frameworks/Sparkle.framework")
     copy_legal_inventory(app / "Contents/Resources/licenses")
+    # macdeployqt sealed the bundle before the SQL drivers left and Sparkle and
+    # the licenses arrived; a stale seal makes macOS call a downloaded copy damaged.
+    seal_macos_adhoc(app)
     return app
 
 
@@ -388,6 +391,11 @@ def thin_macos_arm64(app: Path) -> None:
     # Local candidates are deliberately ad-hoc signed. Hardened runtime belongs
     # to the later Developer ID signing transaction; enabling it on only the
     # outer ad-hoc signature makes macOS reject the nested Qt frameworks.
+    seal_macos_adhoc(app)
+
+
+def seal_macos_adhoc(app: Path) -> None:
+    """Signs the finished bundle ad hoc and proves the seal covers what it holds."""
     run("codesign", "--force", "--deep", "--sign", "-", app)
     run("codesign", "--verify", "--deep", "--strict", app)
 
