@@ -221,6 +221,7 @@ impl DiffDocument {
             ),
         };
         rt::spawn_detached(async move {
+            let started = std::time::Instant::now();
             let result = request.await;
             this.loading.borrow_mut().remove(&offset);
             if this.retired.get() {
@@ -231,6 +232,16 @@ impl DiffDocument {
                 && result.failure.is_none()
                 && page.request_id == this.request_id
             {
+                crate::diagnostics::debug(
+                    "Diff",
+                    "diff_page_loaded",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("offset", offset.into()),
+                        ("rows", page.rows.len().into()),
+                        ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                    ],
+                );
                 this.pages.borrow_mut().insert(page.offset, Rc::new(page));
                 this.changed();
             }
@@ -317,6 +328,7 @@ impl DiffDocument {
         );
         let this = Rc::clone(self);
         rt::spawn_detached(async move {
+            let started = std::time::Instant::now();
             let result = call.await;
             if this.retired.get() {
                 return;
@@ -324,6 +336,16 @@ impl DiffDocument {
             match result {
                 Ok(result) if result.failure.is_none() => {
                     let Some(page) = result.page else { return };
+                    crate::diagnostics::debug(
+                        "Diff",
+                        "diff_syntax_loaded",
+                        &[
+                            ("session_id", identity.native_id.into()),
+                            ("offset", offset.into()),
+                            ("rows", page.rows.len().into()),
+                            ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                        ],
+                    );
                     {
                         let mut syntax = this.syntax.borrow_mut();
                         for row in page.rows {

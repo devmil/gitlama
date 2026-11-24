@@ -31,6 +31,13 @@ buffer is capped at 256 events and 64 KiB. Detailed mode and Clear are forwarded
 platform frameworks outside app-owned logging may still write their own output; audit those
 separately.
 
+Workspace, History, Inspector, Diff and Sidebar diagnostics record repository open starts,
+completions and failures (including native discovery, creation and load stage failures),
+snapshot and watch failures, and History/diff failures at `INFO`/`WARNING`. When detailed
+capture is enabled, `FINE` events additionally record elapsed timings and item counts for
+repository open/close stages, snapshot updates, History preview and completion, commit
+inspection, commit and working diff loads, diff/syntax pages and sidebar inventory reloads.
+
 Settings → Diagnostics shows the controls. Preview renders the export (application, version
 and platform, then the events); Save writes it to the file chosen in the platform dialog, and
 on macOS and Windows Share offers the text to the platform's share sheet without writing a

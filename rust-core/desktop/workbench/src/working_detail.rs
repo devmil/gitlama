@@ -332,6 +332,7 @@ impl WorkingDetail {
             maximum_rows: DIFF_PAGE_ROWS as u32,
             force_text,
         };
+        let started = std::time::Instant::now();
         let result = loop {
             let result = self
                 .calls
@@ -343,6 +344,15 @@ impl WorkingDetail {
                 .await;
             let timed_out = matches!(&result, Ok(result) if result.failure.as_ref().map(FailureCode::from) == Some(FailureCode::TimedOut));
             if timed_out && self.state.borrow().generation == generation {
+                crate::diagnostics::debug(
+                    "WorkingDiff",
+                    "working_diff_waiting",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("side", crate::changes::side_name(side).into()),
+                        ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                    ],
+                );
                 // Each retry resumes the read already running.
                 self.state.borrow_mut().waiting = true;
                 self.changed();
@@ -362,8 +372,30 @@ impl WorkingDetail {
             Err(error) => Err(SessionError::from(error).code()),
         };
         let page = match page {
-            Ok(page) => page,
+            Ok(page) => {
+                crate::diagnostics::debug(
+                    "WorkingDiff",
+                    "working_diff_loaded",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("side", crate::changes::side_name(side).into()),
+                        ("total_rows", page.total_rows.into()),
+                        ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                    ],
+                );
+                page
+            }
             Err(code) => {
+                crate::diagnostics::warning(
+                    "WorkingDiff",
+                    "working_diff_failed",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("side", crate::changes::side_name(side).into()),
+                        ("failure", code.name().into()),
+                        ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                    ],
+                );
                 let mut state = self.state.borrow_mut();
                 state.failure = Some(code);
                 state.loading = false;

@@ -55,6 +55,11 @@ Item {
     }
     function _updateChips() {
         const current = loading ? [] : (chips ?? [])
+        if (current.length === 0 && displayChips.length === 0) {
+            _chipsSeen = ""
+            _chipsRow = objectId
+            return
+        }
         const seen = objectId + "\n" + JSON.stringify(current)
         if (seen === _chipsSeen)
             return
@@ -181,56 +186,65 @@ Item {
             : Theme.clear(Theme.colors.paneHover)
         Behavior on color { ColorAnimation { duration: entry.shownSelected ? Motion.select : Motion.hoverFor(hover.hovered) } }
     }
-    MeridianAttention {
+    Loader {
         anchors.fill: parent
-        trigger: entry.flashTrigger
-        memoryKey: "history-commit|" + entry.objectId
-        delay: GitLamaLayout.commitTintDelay
+        active: entry.flashTrigger > 0
+        sourceComponent: MeridianAttention {
+            trigger: entry.flashTrigger
+            memoryKey: "history-commit|" + entry.objectId
+            delay: GitLamaLayout.commitTintDelay
+        }
     }
-    MeridianAttention {
+    Loader {
         anchors.fill: parent
-        trigger: entry.attentionTrigger
+        active: entry.attentionTrigger > 0
+        sourceComponent: MeridianAttention {
+            trigger: entry.attentionTrigger
+        }
     }
 
     // Rows still loading breathe as skeletons (NM-38).
-    Item {
-        visible: entry.loading
+    Loader {
+        active: entry.loading
+        visible: active
         anchors.fill: parent
-        Rectangle {
-            x: GitLamaLayout.graphLaneOrigin - GitLamaLayout.graphCommitRadius
-            anchors.verticalCenter: parent.verticalCenter
-            width: GitLamaLayout.graphCommitRadius * 2
-            height: width
-            radius: width / 2
-            color: Theme.colors.lineStrong
-            opacity: skeleton.value
-        }
-        Rectangle {
-            x: GitLamaLayout.historySkeletonTextStart
-            anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(0, Math.min(GitLamaLayout.historySkeletonTextMaxWidth, entry.metadataLeft - GitLamaLayout.historySkeletonTextGap))
-            height: GitLamaLayout.historySkeletonBarHeight
-            radius: height / 2
-            color: Theme.colors.lineStrong
-            opacity: skeleton.value
-        }
-        Rectangle {
-            x: entry.metadataLeft + Theme.space.s5
-            anchors.verticalCenter: parent.verticalCenter
-            width: GitLamaLayout.historyMetaSkeletonWidth
-            height: GitLamaLayout.historySkeletonBarHeight
-            radius: height / 2
-            color: Theme.colors.lineStrong
-            opacity: skeleton.value
-        }
-        QtObject {
-            id: skeleton
-            property real value: 0.6
-            readonly property SequentialAnimation pulse: SequentialAnimation {
-                running: entry.loading && !Theme.reducedMotion
-                loops: Animation.Infinite
-                NumberAnimation { target: skeleton; property: "value"; from: 0.6; to: 0.3; duration: Motion.skeletonPulse / 2; easing.type: Easing.InOutSine }
-                NumberAnimation { target: skeleton; property: "value"; from: 0.3; to: 0.6; duration: Motion.skeletonPulse / 2; easing.type: Easing.InOutSine }
+        sourceComponent: Item {
+            Rectangle {
+                x: GitLamaLayout.graphLaneOrigin - GitLamaLayout.graphCommitRadius
+                anchors.verticalCenter: parent.verticalCenter
+                width: GitLamaLayout.graphCommitRadius * 2
+                height: width
+                radius: width / 2
+                color: Theme.colors.lineStrong
+                opacity: skeleton.value
+            }
+            Rectangle {
+                x: GitLamaLayout.historySkeletonTextStart
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(0, Math.min(GitLamaLayout.historySkeletonTextMaxWidth, entry.metadataLeft - GitLamaLayout.historySkeletonTextGap))
+                height: GitLamaLayout.historySkeletonBarHeight
+                radius: height / 2
+                color: Theme.colors.lineStrong
+                opacity: skeleton.value
+            }
+            Rectangle {
+                x: entry.metadataLeft + Theme.space.s5
+                anchors.verticalCenter: parent.verticalCenter
+                width: GitLamaLayout.historyMetaSkeletonWidth
+                height: GitLamaLayout.historySkeletonBarHeight
+                radius: height / 2
+                color: Theme.colors.lineStrong
+                opacity: skeleton.value
+            }
+            QtObject {
+                id: skeleton
+                property real value: 0.6
+                readonly property SequentialAnimation pulse: SequentialAnimation {
+                    running: entry.loading && !Theme.reducedMotion
+                    loops: Animation.Infinite
+                    NumberAnimation { target: skeleton; property: "value"; from: 0.6; to: 0.3; duration: Motion.skeletonPulse / 2; easing.type: Easing.InOutSine }
+                    NumberAnimation { target: skeleton; property: "value"; from: 0.3; to: 0.6; duration: Motion.skeletonPulse / 2; easing.type: Easing.InOutSine }
+                }
             }
         }
     }
@@ -298,12 +312,15 @@ Item {
         clip: true
         opacity: entry.textOpacity
 
-        RefChip {
-            visible: entry.detached
+        Loader {
+            active: entry.detached
+            visible: active
             anchors.verticalCenter: parent.verticalCenter
-            name: entry.objectId.substring(0, 10)
-            kind: "head"
-            detached: true
+            sourceComponent: RefChip {
+                name: entry.objectId.substring(0, 10)
+                kind: "head"
+                detached: true
+            }
         }
         // A chip that appears while the row shows pops in from `opacity-badge-leave-scale` on
         // `spring-pop`; one that goes fades and shrinks away (NM-35). A row shown fresh (scrolled
@@ -380,14 +397,17 @@ Item {
                 }
             }
         }
-        MeridianCount {
-            visible: entry.overflow !== null && entry.overflow !== undefined
+        Loader {
+            active: entry.overflow !== null && entry.overflow !== undefined
+            visible: active
             anchors.verticalCenter: parent.verticalCenter
-            label: visible ? "+" + entry.overflow.count : ""
-            HoverHandler { id: overflowHover }
-            MeridianTooltip {
-                shown: overflowHover.hovered
-                text: entry.overflow ? entry.overflow.names : ""
+            sourceComponent: MeridianCount {
+                label: entry.overflow ? "+" + entry.overflow.count : ""
+                HoverHandler { id: overflowHover }
+                MeridianTooltip {
+                    shown: overflowHover.hovered
+                    text: entry.overflow ? entry.overflow.names : ""
+                }
             }
         }
         MeridianText {
@@ -438,40 +458,32 @@ Item {
             width: entry.hashWidth
             height: parent.height
             clip: true
-            MeridianSwap {
+            MeridianText {
+                visible: !entry.copied
                 anchors.verticalCenter: parent.verticalCenter
-                swapKey: entry.copied
-                rise: Motion.riseOverlay
-                Item {
-                    implicitWidth: entry.copied ? copiedRow.implicitWidth : hashText.implicitWidth
-                    implicitHeight: Math.max(copiedRow.implicitHeight, hashText.implicitHeight)
-                    MeridianText {
-                        id: hashText
-                        visible: !entry.copied
+                role: MeridianText.CodeSm
+                text: entry.objectId.substring(0, 10)
+                color: Theme.colors.inkMuted
+            }
+            Loader {
+                active: entry.copied
+                visible: active
+                anchors.verticalCenter: parent.verticalCenter
+                sourceComponent: Row {
+                    spacing: Theme.space.s1
+                    MeridianStrokeIcon {
                         anchors.verticalCenter: parent.verticalCenter
-                        role: MeridianText.CodeSm
-                        text: entry.objectId.substring(0, 10)
+                        name: "check"
+                        iconSize: MeridianIcon.Small
                         color: Theme.colors.inkMuted
+                        drawn: entry.copied
+                        duration: Metrics.successCheckDraw
                     }
-                    Row {
-                        id: copiedRow
-                        visible: entry.copied
+                    MeridianText {
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: Theme.space.s1
-                        MeridianStrokeIcon {
-                            anchors.verticalCenter: parent.verticalCenter
-                            name: "check"
-                            iconSize: MeridianIcon.Small
-                            color: Theme.colors.inkMuted
-                            drawn: entry.copied
-                            duration: Metrics.successCheckDraw
-                        }
-                        MeridianText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            role: MeridianText.Caption
-                            text: L10n.t("historyHashCopied")
-                            color: Theme.colors.inkMuted
-                        }
+                        role: MeridianText.Caption
+                        text: L10n.t("historyHashCopied")
+                        color: Theme.colors.inkMuted
                     }
                 }
             }
@@ -503,7 +515,7 @@ Item {
             }
             MeridianTooltip {
                 shown: dateHover.hovered && entry.authorTime > 0
-                text: entry.authorTime > 0 ? new Date(entry.authorTime * 1000).toISOString() : ""
+                text: dateHover.hovered && entry.authorTime > 0 ? new Date(entry.authorTime * 1000).toISOString() : ""
             }
         }
     }

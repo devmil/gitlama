@@ -3,6 +3,6 @@
 # "Remote helper compatibility" in AGENTS.md. Record with
 # scripts/check_helper_compatibility.py --record.
 version 25
-contract f8b2b2324127452e0d95dd5e7c8eeeb68795bd9f4470e4f3a390fd68b5a3538b
+contract 6435b4bfbfef9e4abc6faf40f69e1749268f38db0aaba6cc58d0a03bbc38f0a3
 recorded-for 25
 shared-git 834d2b15678b7c3a6a85bc05762691d44f746b7c

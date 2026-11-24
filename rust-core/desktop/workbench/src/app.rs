@@ -108,6 +108,7 @@ impl Services {
             Rc::new(NoRemotes),
             notifier.clone(),
         );
+        gitlama_core::api::set_repository_session_wakeup(Some(workspace.enable_local_wakeup()));
         let remote =
             crate::remote::service::RemoteService::new(Rc::clone(&settings), notifier.clone())
                 .await;
@@ -450,6 +451,7 @@ impl Services {
     }
 
     async fn dispose(&self) {
+        gitlama_core::api::set_repository_session_wakeup(None);
         self.prompts.cancel_all();
         self.cli.dispose().await;
         self.hosting.dispose().await;
@@ -510,6 +512,7 @@ impl App {
         }
         self.set_phase(StartupPhase::Loading);
         let app = Rc::clone(self);
+        let started = std::time::Instant::now();
         rt::spawn_detached(async move {
             match Services::start(
                 &app.notifier,
@@ -523,6 +526,11 @@ impl App {
                         services.dispose().await;
                         return;
                     }
+                    diagnostics::info(
+                        "Bootstrap",
+                        "application_ready",
+                        &[("elapsed_ms", (started.elapsed().as_millis() as u64).into())],
+                    );
                     *app.services.borrow_mut() = Some(Rc::new(services));
                     app.set_phase(StartupPhase::Ready);
                     app.notifier.notify(Topics::ALL);

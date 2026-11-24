@@ -702,7 +702,10 @@ impl Driver {
                     .history_context
                     .borrow()
                     .as_ref()
-                    .filter(|(snapshot, _)| Rc::ptr_eq(snapshot, &session.snapshot))
+                    .filter(|(snapshot, _)| {
+                        Rc::ptr_eq(snapshot, &session.snapshot)
+                            || snapshot.refs == session.snapshot.refs
+                    })
                     .map(|(_, context)| Rc::clone(context));
                 cached.unwrap_or_else(|| {
                     let context = Rc::new(ReferenceContext::new(&session.snapshot.refs));

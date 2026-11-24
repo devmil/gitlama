@@ -47,9 +47,18 @@ pub use gitlama_contract::hosting_runtime::{
     NativeHostingResourceStartResult,
 };
 
+fn install_native_diagnostics() {
+    gitlama_application::application::session::set_diagnostic_sink(Some(std::sync::Arc::new(
+        |code, level, fields, detailed| {
+            devmil_logging::record(code, level, fields, detailed);
+        },
+    )));
+}
+
 /// Runs through FRB's worker pool and proves the shared Git crate is linked.
 #[must_use]
 pub fn core_info() -> CoreInfo {
+    install_native_diagnostics();
     devmil_logging::record("gitlama.native_ready", "INFO", &[], false);
     let minimum = GitVersion::new(2, 39, 0);
     CoreInfo {
@@ -2423,10 +2432,16 @@ pub fn drain_native_diagnostics() -> Vec<String> {
     devmil_logging::drain()
 }
 pub fn configure_native_diagnostics(detailed: bool, clear: bool) {
+    install_native_diagnostics();
     devmil_logging::set_detailed(detailed);
     if clear {
         devmil_logging::clear();
     }
+}
+
+/// Installs a wakeup callback invoked from repository workers when events are queued.
+pub fn set_repository_session_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
+    gitlama_application::application::session::set_session_wakeup(wakeup);
 }
 
 #[cfg(test)]

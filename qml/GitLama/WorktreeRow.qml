@@ -67,7 +67,7 @@ Item {
         onActivated: (id) => Store.workspace.activateTab(id)
         onCloseRequested: (id) => Store.workspace.closeTab(id)
         onMoveRequested: (id, index) => Store.workspace.moveWorktreeTab(id, index)
-        onContextMenuRequested: (id, x, y) => row.tabs.showTabMenu(id, strip, x, y)
+        onContextMenuRequested: (id, x, y) => row.tabs.showTabMenu(id, row, strip.x + x, strip.y + y)
         onRenamed: (id, name) => Store.workspace.renameTab(id, name)
     }
 

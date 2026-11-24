@@ -131,9 +131,12 @@ mod sidebar_state {
                 else {
                     return;
                 };
-                let path = gitlama_workbench::session::display_path(&worktree.worktree_root);
-                let entry = Rc::clone(&services.entry);
-                rt::spawn_detached(async move { entry.open_path(path).await });
+                let root = worktree.worktree_root.clone();
+                let workspace = Rc::clone(&services.workspace);
+                rt::spawn_detached(async move {
+                    // A failed tab stays visible with its error.
+                    let _ = workspace.open_recent(root).await;
+                });
             });
         }
 

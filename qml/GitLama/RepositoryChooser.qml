@@ -20,7 +20,7 @@ Item {
         if (busy)
             return
         busy = true
-        Store.workspace.openFromChooser(tab.id, recentIndex)
+        Store.workspace.openFromChooser(tab.tabId ?? tab.id, recentIndex)
     }
 
     Flickable {
@@ -72,7 +72,7 @@ Item {
                 text: L10n.t("openRemoteRepository")
                 iconName: "server"
                 enabled: !chooser.busy
-                onClicked: Store.actions.openRemoteRepository(chooser.tab.id)
+                onClicked: Store.actions.openRemoteRepository(chooser.tab.tabId ?? chooser.tab.id)
             }
             Item { width: 1; height: (chooser.tab.failure ?? null) !== null ? Theme.space.s6 : 0 }
             MeridianBanner {
@@ -99,7 +99,7 @@ Item {
                 busy: chooser.busy
                 onOpen: recent => {
                     if (recent.remote)
-                        Store.actions.openRecent(recent, chooser.tab.id)
+                        Store.actions.openRecent(recent, chooser.tab.tabId ?? chooser.tab.id)
                     else
                         chooser.open(recent.index)
                 }

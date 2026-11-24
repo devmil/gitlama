@@ -56,6 +56,9 @@
 - History no longer sometimes says a repository is unavailable right after you open it. Hosts receive a new GitLama helper.
 - Repositories whose branches point at commits that are missing locally open normally again; before, they showed no history and no branches. Hosts receive a new GitLama helper.
 - Very large repositories open faster and stay smoother: history loads once, switching back to History is instant, and selecting commits redraws less.
+- Local repositories no longer poll while idle, and History rows load faster and redraw only what changed when selecting commits.
+- Diagnostics now record repository open attempts, failures and snapshot issues—and, when detailed capture is enabled in Settings, step-by-step timings for opening, History, diffs and sidebar loading—to make troubleshooting large or failing repositories much easier.
+- Fixed opening a repository replacing the "Open repository" tab, opening worktrees from the sidebar (including the second-row worktree tab strip), tab context menu positioning, and opening the group editor dialog when adding a tab to a new group.
 
 ## [0.1.0-beta.68] - 2026-11-21
 

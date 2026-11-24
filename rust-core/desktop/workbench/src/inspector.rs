@@ -890,6 +890,14 @@ impl InspectorService {
             if !self.accepts(identity, token) {
                 return;
             }
+            crate::diagnostics::warning(
+                "Inspector",
+                "inspector_failed",
+                &[
+                    ("session_id", identity.native_id.into()),
+                    ("failure", error.code().name().into()),
+                ],
+            );
             self.update(|state| {
                 if state.inspection.is_none() {
                     state.phase = Phase::Failed;
@@ -1110,6 +1118,7 @@ impl InspectorService {
         if let Some(cached) = self.cached(&key) {
             return Ok(cached);
         }
+        let started = std::time::Instant::now();
         let read = |parent: Option<String>| {
             self.calls.repository_session_commit_inspection(
                 identity.native_id,
@@ -1122,6 +1131,16 @@ impl InspectorService {
             let result = read(parent).await?;
             check(&result.failure)?;
             let inspection = Rc::new(required(result.inspection)?);
+            crate::diagnostics::debug(
+                "Inspector",
+                "inspector_commit_inspected",
+                &[
+                    ("session_id", identity.native_id.into()),
+                    ("files", inspection.files.len().into()),
+                    ("discovered_parent", false.into()),
+                    ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                ],
+            );
             self.remember(key, &inspection);
             return Ok(inspection);
         }
@@ -1139,6 +1158,16 @@ impl InspectorService {
         let result = read(Some(discovered)).await?;
         check(&result.failure)?;
         let inspection = Rc::new(required(result.inspection)?);
+        crate::diagnostics::debug(
+            "Inspector",
+            "inspector_commit_inspected",
+            &[
+                ("session_id", identity.native_id.into()),
+                ("files", inspection.files.len().into()),
+                ("discovered_parent", true.into()),
+                ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+            ],
+        );
         self.remember(discovered_key, &inspection);
         self.remember(key, &inspection);
         Ok(inspection)
@@ -1630,6 +1659,8 @@ impl InspectorService {
     ) -> SessionResult<()> {
         let commit = location.target.commit().to_owned();
         let first_parent = self.inner.borrow().first_parent.clone();
+        let started = std::time::Instant::now();
+        let mut too_large_fallback = false;
         let load = |change: Option<&NativeCommitFile>| {
             self.calls.repository_session_commit_diff_load(
                 identity.native_id,
@@ -1641,6 +1672,7 @@ impl InspectorService {
         if change.is_none()
             && result.failure.as_ref().map(FailureCode::from) == Some(FailureCode::TooLarge)
         {
+            too_large_fallback = true;
             // Two distant commits can differ by more than one patch may hold;
             // their file list still loads, and so does each file's diff.
             let Some(file) = inspection.files.first() else {
@@ -1665,6 +1697,17 @@ impl InspectorService {
         }
         check(&result.failure)?;
         let page = required(result.page)?;
+        crate::diagnostics::debug(
+            "Inspector",
+            "inspector_diff_loaded",
+            &[
+                ("session_id", identity.native_id.into()),
+                ("rows", page.rows.len().into()),
+                ("total_rows", page.total_rows.into()),
+                ("too_large_fallback", too_large_fallback.into()),
+                ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+            ],
+        );
         if !self.accepts(identity, token) {
             return Ok(());
         }

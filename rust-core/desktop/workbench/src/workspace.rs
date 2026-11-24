@@ -434,9 +434,84 @@ pub struct WorkspaceService {
     notifier: Notifier,
     inner: RefCell<Inner>,
     drain: RefCell<PeriodicHandle>,
+    local_wakeup: RefCell<Option<std::sync::Arc<WakeSignal>>>,
     drain_interval: Duration,
     revision: Cell<u64>,
     this: RefCell<Weak<WorkspaceService>>,
+}
+
+struct WakeSignal {
+    pending: std::sync::atomic::AtomicBool,
+    closed: std::sync::atomic::AtomicBool,
+    waker: std::sync::Mutex<Option<std::task::Waker>>,
+}
+
+impl WakeSignal {
+    fn new() -> Self {
+        Self {
+            pending: std::sync::atomic::AtomicBool::new(false),
+            closed: std::sync::atomic::AtomicBool::new(false),
+            waker: std::sync::Mutex::new(None),
+        }
+    }
+
+    fn notify(&self) {
+        self.pending
+            .store(true, std::sync::atomic::Ordering::Release);
+        if let Ok(mut slot) = self.waker.lock()
+            && let Some(waker) = slot.take()
+        {
+            waker.wake();
+        }
+    }
+
+    fn close(&self) {
+        self.closed
+            .store(true, std::sync::atomic::Ordering::Release);
+        if let Ok(mut slot) = self.waker.lock()
+            && let Some(waker) = slot.take()
+        {
+            waker.wake();
+        }
+    }
+
+    async fn next(&self) -> bool {
+        futures::future::poll_fn(|cx| {
+            if self
+                .pending
+                .swap(false, std::sync::atomic::Ordering::AcqRel)
+            {
+                return std::task::Poll::Ready(true);
+            }
+            if self.closed.load(std::sync::atomic::Ordering::Acquire) {
+                return std::task::Poll::Ready(false);
+            }
+            if let Ok(mut slot) = self.waker.lock() {
+                *slot = Some(cx.waker().clone());
+            }
+            if self
+                .pending
+                .swap(false, std::sync::atomic::Ordering::AcqRel)
+            {
+                return std::task::Poll::Ready(true);
+            }
+            if self.closed.load(std::sync::atomic::Ordering::Acquire) {
+                return std::task::Poll::Ready(false);
+            }
+            std::task::Poll::Pending
+        })
+        .await
+    }
+}
+
+fn phase_name(phase: NativeRepositoryPhase) -> &'static str {
+    match phase {
+        NativeRepositoryPhase::Unloaded => "unloaded",
+        NativeRepositoryPhase::Loading => "loading",
+        NativeRepositoryPhase::Ready => "ready",
+        NativeRepositoryPhase::Failed => "failed",
+        NativeRepositoryPhase::Closed => "closed",
+    }
 }
 
 const DRAIN_HIDDEN_EVERY: u64 = 10;
@@ -479,6 +554,7 @@ impl WorkspaceService {
                 history_basis: None,
             }),
             drain: RefCell::new(PeriodicHandle::default()),
+            local_wakeup: RefCell::new(None),
             drain_interval: Duration::from_millis(20),
             revision: Cell::new(0),
             this: RefCell::new(Weak::new()),
@@ -1196,6 +1272,18 @@ impl WorkspaceService {
         start: impl FnOnce(u64) -> LocalBoxFuture<'static, SessionResult<OpenedSession>>,
     ) -> SessionResult<SessionState> {
         self.ensure_active()?;
+        let replace_tab_id = replace_tab_id.or_else(|| {
+            if !activate {
+                return None;
+            }
+            let inner = self.inner.borrow();
+            let active_id = inner.active_tab_id?;
+            inner
+                .tabs
+                .iter()
+                .find(|tab| tab.id == active_id && tab.phase == TabPhase::Choosing)
+                .map(|tab| tab.id)
+        });
         if let Some(requested) = &requested_identity {
             let existing = self
                 .inner
@@ -1247,9 +1335,51 @@ impl WorkspaceService {
             (generation, tab_id)
         };
         self.publish_workspace();
+        let remote = requested_identity
+            .as_ref()
+            .is_some_and(|identity| identity.remote.is_some());
+        let open_started = std::time::Instant::now();
+        crate::diagnostics::info(
+            "Workspace",
+            "repository_open_started",
+            &[
+                ("tab_id", tab_id.into()),
+                ("generation", generation.into()),
+                ("remote", remote.into()),
+            ],
+        );
         let opened = match start(generation).await {
-            Ok(opened) => opened,
+            Ok(opened) => {
+                crate::diagnostics::info(
+                    "Workspace",
+                    "repository_open_succeeded",
+                    &[
+                        ("tab_id", tab_id.into()),
+                        ("session_id", opened.identity.native_id.into()),
+                        ("remote", remote.into()),
+                        ("phase", phase_name(opened.snapshot.phase).into()),
+                        (
+                            "elapsed_ms",
+                            (open_started.elapsed().as_millis() as u64).into(),
+                        ),
+                    ],
+                );
+                opened
+            }
             Err(error) => {
+                crate::diagnostics::warning(
+                    "Workspace",
+                    "repository_open_failed",
+                    &[
+                        ("tab_id", tab_id.into()),
+                        ("remote", remote.into()),
+                        ("failure", error.code().name().into()),
+                        (
+                            "elapsed_ms",
+                            (open_started.elapsed().as_millis() as u64).into(),
+                        ),
+                    ],
+                );
                 {
                     let mut inner = self.inner.borrow_mut();
                     if let Some(index) = Self::index(&inner, tab_id) {
@@ -2248,8 +2378,62 @@ impl WorkspaceService {
 
     // Events ----------------------------------------------------------------------------
 
+    /// Switches local sessions from periodic polling to wakeup-driven draining:
+    /// returns the callback to install as the repository worker wakeup hook.
+    pub fn enable_local_wakeup(self: &Rc<Self>) -> std::sync::Arc<dyn Fn() + Send + Sync> {
+        let signal = std::sync::Arc::new(WakeSignal::new());
+        *self.local_wakeup.borrow_mut() = Some(std::sync::Arc::clone(&signal));
+        let listener = std::sync::Arc::clone(&signal);
+        let weak = Rc::downgrade(self);
+        rt::spawn_detached(async move {
+            while listener.next().await {
+                let Some(service) = weak.upgrade() else {
+                    break;
+                };
+                if service.disposed() {
+                    break;
+                }
+                service.drain_local_sessions();
+            }
+        });
+        std::sync::Arc::new(move || signal.notify())
+    }
+
+    fn drain_local_sessions(self: &Rc<Self>) {
+        let sessions: Vec<SessionIdentity> = self
+            .inner
+            .borrow()
+            .tabs
+            .iter()
+            .filter_map(|tab| {
+                let session = tab.session.as_ref()?;
+                (session.identity.backend == crate::session::BackendKind::Local)
+                    .then_some(session.identity)
+            })
+            .collect();
+        for session in sessions {
+            let service = Rc::clone(self);
+            rt::spawn_detached(async move { service.drain_now(session).await });
+        }
+    }
+
     fn start_drain(self: &Rc<Self>) {
-        if self.inner.borrow().disposed || self.drain.borrow().is_active() {
+        if self.inner.borrow().disposed {
+            return;
+        }
+        let wake_driven = self.local_wakeup.borrow().is_some();
+        if wake_driven {
+            self.drain_local_sessions();
+            let has_remote = self.inner.borrow().tabs.iter().any(|tab| {
+                tab.session
+                    .as_ref()
+                    .is_some_and(|s| s.identity.backend == crate::session::BackendKind::Remote)
+            });
+            if !has_remote {
+                return;
+            }
+        }
+        if self.drain.borrow().is_active() {
             return;
         }
         let weak = Rc::downgrade(self);
@@ -2257,21 +2441,34 @@ impl WorkspaceService {
             let Some(service) = weak.upgrade() else {
                 return;
             };
-            let sessions: Vec<(SessionIdentity, bool)> = {
+            let wake_driven = service.local_wakeup.borrow().is_some();
+            let (sessions, any_remote): (Vec<(SessionIdentity, bool)>, bool) = {
                 let mut inner = service.inner.borrow_mut();
                 inner.drain_tick += 1;
                 let include_hidden = inner.drain_tick % DRAIN_HIDDEN_EVERY == 0;
                 let active = inner.active_tab_id;
-                inner
+                let mut any_remote = false;
+                let sessions = inner
                     .tabs
                     .iter()
                     .filter_map(|tab| {
                         let session = tab.session.as_ref()?;
+                        let is_remote =
+                            session.identity.backend == crate::session::BackendKind::Remote;
+                        any_remote |= is_remote;
+                        if wake_driven && !is_remote {
+                            return None;
+                        }
                         let is_active = Some(tab.id) == active;
                         (include_hidden || is_active).then_some((session.identity, is_active))
                     })
-                    .collect()
+                    .collect();
+                (sessions, any_remote)
             };
+            if wake_driven && !any_remote {
+                service.drain.borrow_mut().cancel();
+                return;
+            }
             for (session, _) in sessions {
                 let service = Rc::clone(&service);
                 rt::spawn_detached(async move { service.drain_now(session).await });
@@ -2298,6 +2495,14 @@ impl WorkspaceService {
         let events = match self.sessions.events(identity, 64).await {
             Ok(events) => events,
             Err(error) => {
+                crate::diagnostics::warning(
+                    "Workspace",
+                    "repository_drain_failed",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("failure", error.code().name().into()),
+                    ],
+                );
                 let changed = {
                     let mut inner = self.inner.borrow_mut();
                     match Self::index_for_session(&inner, identity) {
@@ -2333,6 +2538,14 @@ impl WorkspaceService {
             if event.kind == NativeRepositoryEventKind::WatchOverflow
                 && let Some(revision) = event.watch_overflow_revision
             {
+                crate::diagnostics::debug(
+                    "Workspace",
+                    "repository_watch_overflow",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("revision", revision.into()),
+                    ],
+                );
                 let changed = {
                     let mut inner = self.inner.borrow_mut();
                     let tab = &mut inner.tabs[index];
@@ -2353,6 +2566,81 @@ impl WorkspaceService {
             let Some(snapshot) = event.snapshot else {
                 continue;
             };
+            if snapshot.phase == NativeRepositoryPhase::Failed
+                || snapshot.failure.is_some()
+                || snapshot.refs_failure.is_some()
+                || snapshot.status_failure.is_some()
+                || snapshot.watch_failure.is_some()
+            {
+                crate::diagnostics::warning(
+                    "Workspace",
+                    "repository_snapshot_issue",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("revision", snapshot.revision.into()),
+                        ("phase", phase_name(snapshot.phase).into()),
+                        (
+                            "failure",
+                            snapshot
+                                .failure
+                                .as_ref()
+                                .map_or("none", |f| FailureCode::from(f).name())
+                                .into(),
+                        ),
+                        (
+                            "refs_failure",
+                            snapshot
+                                .refs_failure
+                                .as_ref()
+                                .map_or("none", |f| FailureCode::from(f).name())
+                                .into(),
+                        ),
+                        (
+                            "status_failure",
+                            snapshot
+                                .status_failure
+                                .as_ref()
+                                .map_or("none", |f| FailureCode::from(f).name())
+                                .into(),
+                        ),
+                        (
+                            "watch_failure",
+                            snapshot
+                                .watch_failure
+                                .as_ref()
+                                .map_or("none", |f| FailureCode::from(f).name())
+                                .into(),
+                        ),
+                    ],
+                );
+            } else if crate::diagnostics::is_detailed() {
+                let remote_branches: usize = snapshot
+                    .refs
+                    .remotes
+                    .iter()
+                    .map(|remote| remote.branches.len())
+                    .sum();
+                crate::diagnostics::debug(
+                    "Workspace",
+                    "repository_snapshot_received",
+                    &[
+                        ("session_id", identity.native_id.into()),
+                        ("revision", snapshot.revision.into()),
+                        ("phase", phase_name(snapshot.phase).into()),
+                        (
+                            "status_entries",
+                            snapshot
+                                .status
+                                .as_ref()
+                                .map_or(0usize, |status| status.entries.len())
+                                .into(),
+                        ),
+                        ("branches", snapshot.refs.branches.len().into()),
+                        ("remote_branches", remote_branches.into()),
+                        ("tags", snapshot.refs.tags.len().into()),
+                    ],
+                );
+            }
             let current = self.inner.borrow().tabs[index].session.clone();
             let Some(current) = current else { continue };
             if event.kind != NativeRepositoryEventKind::Resynchronize
@@ -2653,6 +2941,9 @@ impl WorkspaceService {
         inner.disposed = true;
         drop(inner);
         self.drain.borrow_mut().cancel();
+        if let Some(signal) = self.local_wakeup.borrow_mut().take() {
+            signal.close();
+        }
     }
 
     fn index(inner: &Inner, tab_id: u64) -> Option<usize> {

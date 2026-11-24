@@ -8,7 +8,7 @@ use qtbridge::qtbridge_type_lib::{QByteArray, QHash, QModelIndex, QVariant};
 use qtbridge::{QAbstractItemModel, QAbstractItemModelBase};
 use serde_json::Value;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::row_model::to_qvariant;
@@ -130,6 +130,7 @@ mod history_model {
         source: HistorySource,
         total: i32,
         rows: RefCell<HashMap<i32, Rc<RowView>>>,
+        placeholders: RefCell<HashSet<i32>>,
     }
 
     impl HistoryModel {
@@ -254,6 +255,7 @@ mod history_model {
                 return Rc::clone(view);
             }
             let Some(history) = &self.source.history else {
+                self.placeholders.borrow_mut().insert(row);
                 return Rc::new(row_view_placeholder(row));
             };
             let view = Rc::new(row_view(
@@ -263,16 +265,26 @@ mod history_model {
                 self.source.head.as_deref(),
             ));
             // Placeholders are asked again once their page arrives.
-            if !view.loading {
+            if view.loading {
+                self.placeholders.borrow_mut().insert(row);
+            } else {
                 self.rows.borrow_mut().insert(row, Rc::clone(&view));
             }
             view
         }
 
-        /// Shows `total` rows from `source`; every shown row is read again.
+        /// Shows `total` rows from `source`; only rows QML has read are rebuilt
+        /// and only their changed roles are reported.
         pub fn publish(&mut self, source: HistorySource, total: i32) {
+            let hosting_changed = match (&self.source.hosting, &source.hosting) {
+                (Some(a), Some(b)) => !Rc::ptr_eq(a, b),
+                (None, None) => false,
+                _ => true,
+            } || self.source.default_branch != source.default_branch
+                || source.hosting.is_some();
             self.source = source;
-            self.rows.borrow_mut().clear();
+            let shown = std::mem::take(&mut *self.rows.borrow_mut());
+            let placeholders = std::mem::take(&mut *self.placeholders.borrow_mut());
             let previous = self.total;
             if total > previous {
                 self.begin_insert_rows(&QModelIndex::default(), previous, total - 1);
@@ -284,15 +296,140 @@ mod history_model {
                 self.end_remove_rows();
             }
             if self.total > 0 {
-                let top = self.create_index(0, 0, 0);
-                let bottom = self.create_index(self.total - 1, 0, 0);
-                self.data_changed(&top, &bottom);
+                let mut changes: Vec<(i32, Vec<usize>)> = Vec::new();
+                for (&row, before) in &shown {
+                    if row >= self.total {
+                        continue;
+                    }
+                    let after = self.view(row);
+                    let prev_lit_before = if row == 0 {
+                        before.lit
+                    } else {
+                        shown.get(&(row - 1)).map_or(before.lit, |prev| prev.lit)
+                    };
+                    let prev_lit_after = if row == 0 {
+                        after.lit
+                    } else {
+                        self.view(row - 1).lit
+                    };
+                    let mut roles =
+                        changed_roles(before, &after, prev_lit_before != prev_lit_after);
+                    // Pull request / CI check decorations on chips come from hosting state
+                    // read in `data()`, so rows with chips re-read that role when hosting updates.
+                    if hosting_changed
+                        && !after.chips.as_array().is_none_or(Vec::is_empty)
+                        && !roles.contains(&12)
+                    {
+                        roles.push(12);
+                    }
+                    if !roles.is_empty() {
+                        roles.sort_unstable();
+                        changes.push((row, roles));
+                    }
+                }
+                let every: Vec<usize> = (0..ROLES.len()).collect();
+                for row in placeholders {
+                    if row < self.total && !shown.contains_key(&row) {
+                        changes.push((row, every.clone()));
+                    }
+                }
+                changes.sort_by_key(|(row, _)| *row);
+                let mut index = 0;
+                while index < changes.len() {
+                    let (first, roles) = &changes[index];
+                    let mut last = *first;
+                    let mut next = index + 1;
+                    while next < changes.len()
+                        && changes[next].0 == last + 1
+                        && changes[next].1 == *roles
+                    {
+                        last = changes[next].0;
+                        next += 1;
+                    }
+                    let top = self.create_index(*first, 0, 0);
+                    let bottom = self.create_index(last, 0, 0);
+                    let roles: Vec<i32> = roles
+                        .iter()
+                        .map(|offset| FIRST_ROLE + *offset as i32)
+                        .collect();
+                    self.data_changed_roles(&top, &bottom, &roles);
+                    index = next;
+                }
             }
             if total != previous {
                 self.count_changed();
             }
         }
     }
+}
+
+/// Role offsets in [`ROLES`] whose values differ between `before` and `after`.
+fn changed_roles(before: &RowView, after: &RowView, incoming_lit_changed: bool) -> Vec<usize> {
+    let mut roles = Vec::new();
+    if before.object_id != after.object_id {
+        roles.push(0);
+    }
+    if before.loading != after.loading {
+        roles.push(1);
+    }
+    if before.lit != after.lit {
+        roles.push(2);
+    }
+    if incoming_lit_changed {
+        roles.push(3);
+    }
+    if before.graph != after.graph {
+        roles.push(4);
+    }
+    if before.occupied_lane != after.occupied_lane {
+        roles.push(5);
+    }
+    if before.subject != after.subject {
+        roles.push(6);
+    }
+    if before.worktree != after.worktree {
+        roles.push(7);
+    }
+    if before.author != after.author {
+        roles.push(8);
+    }
+    if before.avatar_hash != after.avatar_hash {
+        roles.push(9);
+    }
+    if before.author_time != after.author_time {
+        roles.push(10);
+    }
+    if before.metadata_failure != after.metadata_failure {
+        roles.push(11);
+    }
+    if before.chips != after.chips {
+        roles.push(12);
+    }
+    if before.overflow != after.overflow {
+        roles.push(13);
+    }
+    if before.detached != after.detached {
+        roles.push(14);
+    }
+    if before.current != after.current {
+        roles.push(15);
+    }
+    if before.selected != after.selected {
+        roles.push(16);
+    }
+    if before.compared != after.compared {
+        roles.push(17);
+    }
+    if before.search_match != after.search_match {
+        roles.push(18);
+    }
+    if before.refs_text != after.refs_text {
+        roles.push(19);
+    }
+    if before.hidden_refs != after.hidden_refs {
+        roles.push(20);
+    }
+    roles
 }
 
 fn row_view_placeholder(row: i32) -> RowView {

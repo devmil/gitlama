@@ -289,7 +289,7 @@ Column {
             onContextMenuRequested: (id, x, y) => {
                 const entry = root.entries[id]
                 if (entry)
-                    tabMenu.showFor(entry.length > 1 ? root._representative(entry).id : id, strip, x, y)
+                    tabMenu.showFor(entry.length > 1 ? root._representative(entry).id : id, stripRow, strip.x + x, strip.y + y)
             }
             onRenamed: (id, name) => root.workspace.renameTab(id, name)
             onGroupToggled: (group) => {
@@ -297,7 +297,7 @@ Column {
                 if (found)
                     root.workspace.setTabGroupCollapsed(group, !found.collapsed)
             }
-            onGroupContextMenuRequested: (group, x, y) => groupMenu.showFor(group, strip, x, y)
+            onGroupContextMenuRequested: (group, x, y) => groupMenu.showFor(group, stripRow, strip.x + x, strip.y + y)
             onGroupRenamed: (group, name) => root.workspace.renameTabGroup(group, name)
         }
 
@@ -324,8 +324,12 @@ Column {
 
     Connections {
         target: root.workspace
-        function onGroupCreated(group) {
-            strip.renameGroup(group)
+        function onGroupCreated(groupId) {
+            const group = root.groups.find(candidate => candidate.id === groupId) ?? null
+            if (group) {
+                const labels = root.tabs.filter(tab => tab.groupId === group.id).map(tab => root.label(tab))
+                Store.actions.showTabGroupDialog(group, labels)
+            }
         }
     }
 

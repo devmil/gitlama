@@ -866,8 +866,21 @@ impl SidebarService {
             .calls
             .repository_session_extensions(session, generation);
         rt::spawn_detached(async move {
+            let started = std::time::Instant::now();
             let result = request.await;
             let inventory = result.ok().and_then(|result| result.inventory).map(Rc::new);
+            if let Some(inventory) = &inventory {
+                crate::diagnostics::debug(
+                    "Sidebar",
+                    "sidebar_inventory_loaded",
+                    &[
+                        ("session_id", session.into()),
+                        ("worktrees", inventory.worktrees.len().into()),
+                        ("submodules", inventory.submodules.len().into()),
+                        ("elapsed_ms", (started.elapsed().as_millis() as u64).into()),
+                    ],
+                );
+            }
             let mut inner = this.inner.borrow_mut();
             // Answers the load started for these inputs, even when snapshots with the same
             // inputs arrived meanwhile.

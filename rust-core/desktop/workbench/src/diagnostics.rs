@@ -192,6 +192,11 @@ fn detailed_active() -> bool {
         .is_some_and(|until| Instant::now() < until)
 }
 
+/// Whether detailed diagnostic capture is currently active.
+pub fn is_detailed() -> bool {
+    detailed_active()
+}
+
 /// Records `code` from `component`. FINE events are kept only while detailed
 /// capture is on.
 pub fn record(level: Level, component: &str, code: &str, fields: &[(&str, Field)]) {
@@ -301,6 +306,8 @@ mod tests {
     #[test]
     fn fine_events_need_detailed_capture() {
         clear();
+        set_detailed(false);
+        assert!(!is_detailed());
         debug("Test", "fine_event", &[]);
         assert!(!snapshot().iter().any(|line| line.contains("fine_event")));
         info("Test", "info_event", &[("count", 3_u64.into())]);
@@ -309,5 +316,18 @@ mod tests {
                 .iter()
                 .any(|line| line.ends_with("Test: info_event count=3"))
         );
+        set_detailed(true);
+        assert!(is_detailed());
+        debug(
+            "Test",
+            "fine_event_enabled",
+            &[("elapsed_ms", 12_u64.into())],
+        );
+        assert!(
+            snapshot()
+                .iter()
+                .any(|line| line.ends_with("Test: fine_event_enabled elapsed_ms=12"))
+        );
+        set_detailed(false);
     }
 }

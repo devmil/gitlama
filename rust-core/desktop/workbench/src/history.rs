@@ -827,6 +827,7 @@ impl HistoryService {
             self.publish(HistoryState::new(LoadPhase::Loading));
         }
         for attempt in 0..2 {
+            let attempt_started = std::time::Instant::now();
             match self
                 .load_attempt(
                     identity,
@@ -844,6 +845,19 @@ impl HistoryService {
                     if !self.accepts(identity, operation) {
                         return;
                     }
+                    crate::diagnostics::warning(
+                        "History",
+                        "history_load_failed",
+                        &[
+                            ("session_id", identity.native_id.into()),
+                            ("attempt", (attempt as u64).into()),
+                            ("failure", error.code().name().into()),
+                            (
+                                "elapsed_ms",
+                                (attempt_started.elapsed().as_millis() as u64).into(),
+                            ),
+                        ],
+                    );
                     if attempt == 0 && error.code() == FailureCode::StaleGeneration {
                         if !self.reloading() {
                             self.inner.borrow_mut().pages.clear();
@@ -875,6 +889,17 @@ impl HistoryService {
         known: Option<Rc<NativeHistoryPage>>,
         priority: &[String],
     ) -> SessionResult<()> {
+        let preview_started = std::time::Instant::now();
+        crate::diagnostics::debug(
+            "History",
+            "history_load_started",
+            &[
+                ("session_id", identity.native_id.into()),
+                ("reloading", reloading.into()),
+                ("branch_filter_count", filter.len().into()),
+                ("other_refs", other_refs.into()),
+            ],
+        );
         // Native keeps the filter across loads, so every page arrives filtered.
         self.request_branch_filter(identity, filter.clone()).await;
         if !self.accepts(identity, operation) {
@@ -892,6 +917,20 @@ impl HistoryService {
             .await
             .map_err(SessionError::from)?;
         let mut preview = page_of(result)?;
+        crate::diagnostics::debug(
+            "History",
+            "history_preview_loaded",
+            &[
+                ("session_id", identity.native_id.into()),
+                ("rows", preview.rows.len().into()),
+                ("total_rows", preview.total_rows.into()),
+                ("complete", preview.topology_complete.into()),
+                (
+                    "elapsed_ms",
+                    (preview_started.elapsed().as_millis() as u64).into(),
+                ),
+            ],
+        );
         if !self.accepts(identity, operation) {
             return Ok(());
         }
@@ -925,6 +964,7 @@ impl HistoryService {
                 Rc::clone(&preview),
             ));
         }
+        let complete_started = std::time::Instant::now();
         let result = self
             .calls
             .repository_session_history_complete(
@@ -936,6 +976,19 @@ impl HistoryService {
             .await
             .map_err(SessionError::from)?;
         let complete = page_of(result)?;
+        crate::diagnostics::debug(
+            "History",
+            "history_complete_loaded",
+            &[
+                ("session_id", identity.native_id.into()),
+                ("rows", complete.rows.len().into()),
+                ("total_rows", complete.total_rows.into()),
+                (
+                    "elapsed_ms",
+                    (complete_started.elapsed().as_millis() as u64).into(),
+                ),
+            ],
+        );
         if !self.accepts(identity, operation) {
             return Ok(());
         }
