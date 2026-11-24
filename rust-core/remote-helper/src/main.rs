@@ -176,7 +176,13 @@ fn spawn_watchdog(
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
         loop {
-            std::thread::sleep(Duration::from_millis(200));
+            // A tight check only while the handshake is pending; afterwards the frame deadline
+            // (seconds long) needs no sub-second precision, so an idle helper wakes once a second.
+            std::thread::sleep(if acknowledged.load(Ordering::Acquire) {
+                Duration::from_secs(1)
+            } else {
+                Duration::from_millis(200)
+            });
             let unacknowledged = !acknowledged.load(Ordering::Acquire)
                 && started.elapsed() > Duration::from_secs(10);
             if unacknowledged || clock.expired() {

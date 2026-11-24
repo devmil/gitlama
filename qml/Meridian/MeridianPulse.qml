@@ -39,7 +39,8 @@ Item {
         loop.stop()
         progress = 0
         loop.loops = once ? 1 : Animation.Infinite
-        loop.start()
+        if (once || Motion.loopsActive)
+            loop.start()
     }
 
     onActiveChanged: {
@@ -51,6 +52,20 @@ Item {
         }
     }
     Component.onCompleted: if (active) start()
+
+    // A looping halo holds while the application is inactive and starts again on return.
+    Connections {
+        target: Motion
+        enabled: root.active && !root.once
+        function onLoopsActiveChanged() {
+            if (Motion.loopsActive)
+                root.start()
+            else {
+                loop.stop()
+                root.progress = 0
+            }
+        }
+    }
 
     NumberAnimation {
         id: loop

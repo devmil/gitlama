@@ -16,6 +16,11 @@ QtObject {
     id: motion
 
     readonly property bool reduced: Theme.reducedMotion
+    /// Whether live loops (spinner, indeterminate progress, live halo, skeleton
+    /// pulse) run. They hold still while the application is not active, so an
+    /// unfocused, hidden or minimized window renders no frames at rest, and
+    /// continue when it is active again.
+    property bool loopsActive: Application.state === Qt.ApplicationActive
 
     // Durations in ms; zero under reduce motion.
     readonly property int hover: _d("hover")

@@ -53,11 +53,12 @@ Item {
             }
         }
         RotationAnimator on rotation {
+            objectName: "spinnerLoop"
             from: 0
             to: 360
             duration: Motion.spinner
             loops: Animation.Infinite
-            running: root.shown && root.visible
+            running: root.shown && root.visible && Motion.loopsActive
         }
     }
 }

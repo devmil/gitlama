@@ -103,6 +103,8 @@ T.AbstractButton {
         spinLoop.to = spinLoop.from + 1
         _spin = spinLoop.from
         spinLoop.restart()
+        if (!Motion.loopsActive)
+            spinLoop.pause()
     }
     function _finishSpin() {
         if (!spinLoop.running)
@@ -112,6 +114,17 @@ T.AbstractButton {
         spinTo.to = Math.ceil(_spin)
         spinTo.duration = Math.max(0, Motion.spinner * left)
         spinTo.restart()
+    }
+    // The spin holds while the application is inactive and continues on return.
+    Connections {
+        target: Motion
+        enabled: spinLoop.running
+        function onLoopsActiveChanged() {
+            if (Motion.loopsActive)
+                spinLoop.resume()
+            else
+                spinLoop.pause()
+        }
     }
     NumberAnimation on _spin { id: spinLoop; running: false; loops: Animation.Infinite; duration: Motion.spinner; easing.type: Easing.Linear }
     NumberAnimation on _spin { id: spinTo; running: false; easing.type: Easing.Linear }

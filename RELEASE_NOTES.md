@@ -57,6 +57,7 @@
 - Repositories whose branches point at commits that are missing locally open normally again; before, they showed no history and no branches. Hosts receive a new GitLama helper.
 - Very large repositories open faster and stay smoother: history loads once, switching back to History is instant, and selecting commits redraws less.
 - Local repositories no longer poll while idle, and History rows load faster and redraw only what changed when selecting commits.
+- GitLama uses almost no CPU while it is in the background: spinners and other ongoing animations pause while another window has focus and continue when you return. Hosts receive a new GitLama helper that also stays quieter while idle.
 - Diagnostics now record repository open attempts, failures and snapshot issues—and, when detailed capture is enabled in Settings, step-by-step timings for opening, History, diffs and sidebar loading—to make troubleshooting large or failing repositories much easier.
 - Fixed opening a repository replacing the "Open repository" tab, opening worktrees from the sidebar (including the second-row worktree tab strip), tab context menu positioning, and opening the group editor dialog when adding a tab to a new group.
 

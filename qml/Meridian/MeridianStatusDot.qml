@@ -59,12 +59,12 @@ Item {
             opacity: Motion.reduced ? Metrics.opacityStaticHalo : 0
             scale: 1
             SequentialAnimation on scale {
-                running: root.live && !Motion.reduced && root.visible
+                running: root.live && !Motion.reduced && root.visible && Motion.loopsActive
                 loops: Animation.Infinite
                 NumberAnimation { from: 1; to: Motion.pulseScale; duration: Motion.pulse; easing.type: Easing.OutCubic }
             }
             SequentialAnimation on opacity {
-                running: root.live && !Motion.reduced && root.visible
+                running: root.live && !Motion.reduced && root.visible && Motion.loopsActive
                 loops: Animation.Infinite
                 NumberAnimation { from: Metrics.opacityPulseStart; to: 0; duration: Motion.pulse; easing.type: Easing.OutCubic }
             }

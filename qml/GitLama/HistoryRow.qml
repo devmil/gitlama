@@ -240,7 +240,7 @@ Item {
                 id: skeleton
                 property real value: 0.6
                 readonly property SequentialAnimation pulse: SequentialAnimation {
-                    running: entry.loading && !Theme.reducedMotion
+                    running: entry.loading && !Theme.reducedMotion && Motion.loopsActive
                     loops: Animation.Infinite
                     NumberAnimation { target: skeleton; property: "value"; from: 0.6; to: 0.3; duration: Motion.skeletonPulse / 2; easing.type: Easing.InOutSine }
                     NumberAnimation { target: skeleton; property: "value"; from: 0.3; to: 0.6; duration: Motion.skeletonPulse / 2; easing.type: Easing.InOutSine }

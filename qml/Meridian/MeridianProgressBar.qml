@@ -70,7 +70,7 @@ Item {
             duration: Motion.progress
             easing.type: Easing.InOutQuad
             loops: Animation.Infinite
-            running: root.indeterminate && !Motion.reduced && root.visible
+            running: root.indeterminate && !Motion.reduced && root.visible && Motion.loopsActive
         }
     }
 }
