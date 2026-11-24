@@ -25,11 +25,25 @@ T.Popup {
 
     /// 0 is the Compass, 1 the open panel.
     property real progress: 0
-    readonly property rect source: {
-        if (!anchorItem || !parent)
-            return Qt.rect((parent ? parent.width : 0) / 2 - 100, (Theme.size.toolbar - GitLamaLayout.compassHeight) / 2, 200, GitLamaLayout.compassHeight)
+    // Measured, not bound: `mapToItem` does not notice the Compass moving
+    // when the toolbar lays out again (a restored window size, a wider
+    // leading group), so a binding kept the position of the first layout.
+    property rect source: Qt.rect(0, 0, 0, 0)
+    function measure() {
+        if (!anchorItem || !parent) {
+            source = Qt.rect((parent ? parent.width : 0) / 2 - 100, (Theme.size.toolbar - GitLamaLayout.compassHeight) / 2, 200, GitLamaLayout.compassHeight)
+            return
+        }
         const at = anchorItem.mapToItem(parent, 0, 0)
-        return Qt.rect(at.x, at.y, anchorItem.width, anchorItem.height)
+        source = Qt.rect(at.x, at.y, anchorItem.width, anchorItem.height)
+    }
+    onAboutToShow: measure()
+    onAboutToHide: measure()
+    readonly property Connections followLayout: Connections {
+        target: popup.parent
+        enabled: popup.visible
+        function onWidthChanged() { Qt.callLater(popup.measure) }
+        function onHeightChanged() { Qt.callLater(popup.measure) }
     }
 
     parent: T.Overlay.overlay

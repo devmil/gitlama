@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- The repository details open from the repository name again instead of to its left after the window was resized.
 - macOS test builds no longer fail to start because macOS considers them damaged.
 - GitLama is now a native Qt application instead of a Flutter one. It looks and works as before and keeps your settings, recent repositories and other data, so it updates in place.
 - GitLama is available for Arch Linux and Omarchy as a pacman package. Install it with `sudo pacman -U` from the downloads page.
