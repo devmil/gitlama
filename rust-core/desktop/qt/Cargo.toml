@@ -6,6 +6,7 @@ rust-version = "1.97.1"
 license = "MIT"
 publish = false
 description = "Qt Bridges adapters: the event pump, the window's QObjects and the item models"
+build = "build.rs"
 
 [dependencies]
 gitlama-workbench = { workspace = true }

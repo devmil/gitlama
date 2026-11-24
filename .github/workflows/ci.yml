@@ -119,7 +119,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends clang pkg-config patchelf git-lfs \
             libgl1-mesa-dev libegl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
             libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
-            libxcb-xinerama0 libfontconfig1 libdbus-1-3
+            libxcb-xinerama0 libfontconfig1 libdbus-1-3 libdbus-1-dev
       - name: Install Qt
         if: ${{ matrix.platform != 'windows' }}
         uses: jurplel/install-qt-action@v4
