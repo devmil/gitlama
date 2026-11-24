@@ -707,6 +707,7 @@ Item {
                 selectedHere: objectId === pane.selectedObjectId
                 glided: pane.glideIndex >= 0
                 motion: graphMotion
+                rows: Store.historyRows
                 flashTrigger: objectId === pane.flashObjectId ? pane.flashSequence : 0
                 attentionTrigger: objectId === pane.attentionObjectId ? pane.attentionSequence : 0
                 entranceOrder: pane.syncEntranceIds.indexOf(objectId)

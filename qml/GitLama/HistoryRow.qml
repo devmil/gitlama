@@ -45,29 +45,46 @@ Item {
 
     /// The chips shown: {key, chip, arrived, leaving}; leaving chips keep their old place.
     property var displayChips: []
+    /// The History model, whose generation tells another tab's rows from this one's.
+    property var rows: null
     property string _chipsRow: ""
     property string _chipsSeen: ""
-    onChipsChanged: _updateChips()
-    onObjectIdChanged: _updateChips()
-    onLoadingChanged: _updateChips()
+    // A model update sets the roles one by one: waiting until all are set
+    // keeps a new commit's chips from animating as changes of the old one.
+    property bool _chipsPending: false
+    onChipsChanged: _scheduleChips()
+    onObjectIdChanged: _scheduleChips()
+    onLoadingChanged: _scheduleChips()
+    function _scheduleChips() {
+        if (_chipsPending)
+            return
+        _chipsPending = true
+        Qt.callLater(entry._flushChips)
+    }
+    function _flushChips() {
+        _chipsPending = false
+        _updateChips()
+    }
     function _chipKey(chip) {
         return chip.kind + "|" + chip.label
     }
     function _updateChips() {
         const current = loading ? [] : (chips ?? [])
+        // The same commit in another tab (a second worktree) is another row.
+        const rowKey = (rows ? rows.generation() : 0) + "|" + objectId
         if (current.length === 0 && displayChips.length === 0) {
             _chipsSeen = ""
-            _chipsRow = objectId
+            _chipsRow = rowKey
             return
         }
-        const seen = objectId + "\n" + JSON.stringify(current)
+        const seen = rowKey + "\n" + JSON.stringify(current)
         if (seen === _chipsSeen)
             return
         _chipsSeen = seen
         const landing = motion !== null && motion.landingId === objectId
-        const sameRow = (_chipsRow === objectId || landing) && !Motion.reduced
-        const before = _chipsRow === objectId ? displayChips : []
-        _chipsRow = objectId
+        const sameRow = (_chipsRow === rowKey || landing) && !Motion.reduced
+        const before = _chipsRow === rowKey ? displayChips : []
+        _chipsRow = rowKey
         const shown = before.filter(item => !item.leaving).map(item => item.key)
         const next = current.map(chip => {
             const key = _chipKey(chip)

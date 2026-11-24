@@ -49,6 +49,9 @@ pub struct HistorySource {
     /// The bound remote's main branch as (ref, target), whose chip shows
     /// its CI result.
     pub default_branch: Option<(String, String)>,
+    /// The tab the rows belong to: rows reused for another tab's commits
+    /// must not animate the change.
+    pub tab: Option<u64>,
 }
 
 /// `chips` with each branch's pull request: a
@@ -131,6 +134,7 @@ mod history_model {
         total: i32,
         rows: RefCell<HashMap<i32, Rc<RowView>>>,
         placeholders: RefCell<HashSet<i32>>,
+        generation: i32,
     }
 
     impl HistoryModel {
@@ -140,6 +144,14 @@ mod history_model {
         #[qslot]
         fn count(&self) -> i32 {
             self.total
+        }
+
+        /// Changes when the rows start showing another tab's history, before the
+        /// rows report their new values: a row compares it to tell a change of its
+        /// commit from a different repository reusing it.
+        #[qslot]
+        fn generation(&self) -> i32 {
+            self.generation
         }
 
         /// The index of the loaded row of `object_id`, or -1.
@@ -282,6 +294,9 @@ mod history_model {
                 _ => true,
             } || self.source.default_branch != source.default_branch
                 || source.hosting.is_some();
+            if self.source.tab != source.tab {
+                self.generation = self.generation.wrapping_add(1);
+            }
             self.source = source;
             let shown = std::mem::take(&mut *self.rows.borrow_mut());
             let placeholders = std::mem::take(&mut *self.placeholders.borrow_mut());

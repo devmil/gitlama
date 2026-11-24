@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- Switching between repositories no longer briefly shows the previous repository's branch labels in History.
 - The repository details open from the repository name again instead of to its left after the window was resized.
 - macOS test builds no longer fail to start because macOS considers them damaged.
 - GitLama is now a native Qt application instead of a Flutter one. It looks and works as before and keeps your settings, recent repositories and other data, so it updates in place.

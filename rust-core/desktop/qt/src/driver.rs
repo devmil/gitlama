@@ -768,6 +768,7 @@ impl Driver {
                         .default_branch(&session.snapshot.refs)
                         .map(|(_, reference, target)| (reference, target))
                 }),
+                tab: services.workspace.active_tab_id(),
             },
             total,
         );
