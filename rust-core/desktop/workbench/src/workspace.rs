@@ -405,6 +405,9 @@ struct Inner {
     tab_epochs: HashMap<u64, u64>,
     /// Tabs being reopened; a second request for one of them waits for none.
     reopening: HashSet<u64>,
+    /// True while `restore_workspace` is opening saved tabs so partial states
+    /// neither prune restored groups nor overwrite saved settings.
+    restoring: bool,
     draining: HashSet<u64>,
     drain_tick: u64,
     heads: FollowedHeads,
@@ -548,6 +551,7 @@ impl WorkspaceService {
                 connection_epochs: HashMap::new(),
                 tab_epochs: HashMap::new(),
                 reopening: HashSet::new(),
+                restoring: false,
                 draining: HashSet::new(),
                 drain_tick: 0,
                 heads: FollowedHeads::default(),
@@ -764,7 +768,10 @@ impl WorkspaceService {
         } else {
             open.last().cloned()
         };
-        // Groups return with the first of their tabs.
+        // Groups return with the first of their tabs. Hold settling and
+        // persistence until every saved tab has started/finished opening so an
+        // early tab never prunes later tabs' groups or overwrites settings.
+        self.inner.borrow_mut().restoring = true;
         let mut restored_groups: HashMap<usize, u64> = HashMap::new();
         let mut opening = Vec::new();
         for identity in &open {
@@ -803,6 +810,7 @@ impl WorkspaceService {
         for handle in opening {
             handle.await;
         }
+        self.inner.borrow_mut().restoring = false;
         if self.disposed() {
             return Ok(());
         }
@@ -818,6 +826,7 @@ impl WorkspaceService {
                 self.activate_tab(tab_id);
             }
         }
+        self.publish_workspace();
         Ok(())
     }
 
@@ -2960,15 +2969,20 @@ impl WorkspaceService {
     }
 
     fn publish_workspace(&self) {
-        {
+        let restoring = {
             let mut inner = self.inner.borrow_mut();
             Self::keep_worktrees_together(&mut inner, None);
-            Self::settle_groups(&mut inner);
-        }
+            if !inner.restoring {
+                Self::settle_groups(&mut inner);
+            }
+            inner.restoring
+        };
         self.revision.set(self.revision.get() + 1);
         self.notifier.notify(Topics::WORKSPACE);
         if !self.disposed() {
-            self.persist();
+            if !restoring {
+                self.persist();
+            }
             if let Some(hook) = &self.hooks.borrow().on_published {
                 hook();
             }
