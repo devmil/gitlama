@@ -119,7 +119,7 @@ Item {
 
     MeridianMenu {
         id: pushMenu
-        nativeMenu: true
+        nativeMenu: Qt.platform.os !== "linux"
         MeridianMenuItem {
             text: L10n.t("commandPush")
             onTriggered: toolbar.command("push", { force: false })

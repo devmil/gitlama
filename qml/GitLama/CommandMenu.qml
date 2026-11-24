@@ -12,7 +12,11 @@ MeridianMenu {
     property var items: []
     signal selected(var value)
 
-    nativeMenu: true
+    // On Linux/Wayland Qt's Popup.Native falls back to an xdg_popup window that
+    // drops the (x, y) offset and snaps to parentItem's (0, 0); Popup.Item renders
+    // the same Meridian menu at the exact pointer coordinates. macOS/Windows keep
+    // native menus.
+    nativeMenu: Qt.platform.os !== "linux"
 
     /// Rebuilds the menu from `items` and opens it at `x`, `y` of `parentItem`.
     function show(parentItem, x, y) {
@@ -66,5 +70,5 @@ MeridianMenu {
     Component { id: itemComponent; MeridianMenuItem {} }
     Component { id: separatorComponent; MeridianMenuSeparator {} }
     Component { id: headerComponent; MeridianMenuHeader {} }
-    Component { id: submenuComponent; MeridianMenu { nativeMenu: true } }
+    Component { id: submenuComponent; MeridianMenu { nativeMenu: Qt.platform.os !== "linux" } }
 }
