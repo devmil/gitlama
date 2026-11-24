@@ -92,6 +92,7 @@ pub struct RemoteSessions {
     inner: RefCell<Inner>,
     writes_in_flight: Cell<u32>,
     last_write_at_ms: Cell<u64>,
+    on_events: RefCell<Option<Rc<dyn Fn()>>>,
     this: Weak<RemoteSessions>,
 }
 
@@ -146,6 +147,7 @@ impl RemoteSessions {
             inner: RefCell::new(Inner::default()),
             writes_in_flight: Cell::new(0),
             last_write_at_ms: Cell::new(0),
+            on_events: RefCell::new(None),
             this: this.clone(),
         });
         let weak = Rc::downgrade(&sessions);
@@ -221,6 +223,11 @@ impl RemoteSessions {
             || now_ms().saturating_sub(self.last_write_at_ms.get()) < within_ms
     }
 
+    /// Installs a callback invoked whenever a remote publication queues session events.
+    pub fn set_on_events(&self, callback: Rc<dyn Fn()>) {
+        *self.on_events.borrow_mut() = Some(callback);
+    }
+
     fn publish(&self, publication: &Publication) {
         let Ok(result) = g::dec_native_repository_events_result(&publication.events) else {
             return;
@@ -246,8 +253,15 @@ impl RemoteSessions {
             backlog.push(result);
             return;
         };
-        if let Some(session) = inner.sessions.get_mut(&local) {
+        let queued = if let Some(session) = inner.sessions.get_mut(&local) {
             queue(session, result);
+            true
+        } else {
+            false
+        };
+        drop(inner);
+        if queued && let Some(callback) = self.on_events.borrow().clone() {
+            callback();
         }
     }
 

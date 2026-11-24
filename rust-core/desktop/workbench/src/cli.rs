@@ -14,12 +14,9 @@ use gitlama_contract::dto::{NativePathIdentity, NativePathPlatform};
 use gitlama_contract::transfer::{NativePullStrategy, NativeTransferKind};
 use std::cell::Cell;
 use std::rc::{Rc, Weak};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, OnceLock};
 
-/// A forwarded command comes from a terminal: a tenth of a second is
-/// imperceptible there.
-const POLL: Duration = Duration::from_millis(100);
-/// The most commands one poll handles.
+/// The most commands one drain handles before yielding.
 const BATCH: usize = 8;
 /// The most paths the operating system may queue before the window takes them.
 const OPEN_QUEUE: usize = 64;
@@ -29,8 +26,16 @@ const OPEN_PATH_LIMIT: usize = 32 * 1024;
 /// Folders the operating system asked GitLama to open (macOS Launch Services delivers
 /// `open -a GitLama <folder>` and Finder drops as open-document events, possibly before the
 /// window is ready). They wait here until the forwarding loop opens them.
-static OPEN_REQUESTS: std::sync::Mutex<std::collections::VecDeque<Vec<u8>>> =
-    std::sync::Mutex::new(std::collections::VecDeque::new());
+static OPEN_REQUESTS: Mutex<std::collections::VecDeque<Vec<u8>>> =
+    Mutex::new(std::collections::VecDeque::new());
+static OPEN_WAKEUP: OnceLock<Mutex<Option<Arc<rt::WakeSignal>>>> = OnceLock::new();
+
+fn set_open_wakeup(signal: Option<Arc<rt::WakeSignal>>) {
+    let lock = OPEN_WAKEUP.get_or_init(|| Mutex::new(None));
+    if let Ok(mut slot) = lock.lock() {
+        *slot = signal;
+    }
+}
 
 /// Queues a folder the operating system asked to open. False when the path is empty, too
 /// long, contains NUL or the queue is full.
@@ -45,6 +50,13 @@ pub fn queue_open_request(path: &[u8]) -> bool {
         return false;
     }
     queue.push_back(path.to_vec());
+    drop(queue);
+    if let Some(lock) = OPEN_WAKEUP.get()
+        && let Ok(slot) = lock.lock()
+        && let Some(signal) = slot.as_ref()
+    {
+        signal.notify();
+    }
     true
 }
 
@@ -66,6 +78,7 @@ pub struct CliForwarding {
     activations: Cell<u64>,
     polling: Cell<bool>,
     disposed: Cell<bool>,
+    wakeup: Arc<rt::WakeSignal>,
     /// The window's remote workspace workflows, once composed.
     pub remote: std::cell::RefCell<Option<Rc<crate::remote::workflows::RemoteWorkflows>>>,
 }
@@ -109,6 +122,12 @@ impl CliForwarding {
         if startup.state != NativeCliStartupState::Owner {
             return Err(());
         }
+        let wakeup = Arc::new(rt::WakeSignal::new());
+        set_open_wakeup(Some(Arc::clone(&wakeup)));
+        {
+            let signal = Arc::clone(&wakeup);
+            gitlama_core::api::cli_forwarding_set_wakeup(Some(Arc::new(move || signal.notify())));
+        }
         let this = Rc::new(Self {
             workspace,
             transfers,
@@ -116,10 +135,11 @@ impl CliForwarding {
             activations: Cell::new(0),
             polling: Cell::new(false),
             disposed: Cell::new(false),
+            wakeup: Arc::clone(&wakeup),
             remote: std::cell::RefCell::new(None),
         });
         let weak = Rc::downgrade(&this);
-        rt::spawn_detached(async move { Self::serve(weak).await });
+        rt::spawn_detached(async move { Self::serve(weak, wakeup).await });
         Ok(this)
     }
 
@@ -132,7 +152,9 @@ impl CliForwarding {
         self.notifier.notify(Topics::STARTUP);
     }
 
-    async fn serve(this: Weak<Self>) {
+    async fn serve(this: Weak<Self>, wakeup: Arc<rt::WakeSignal>) {
+        // Drain any initial invocation command or early open-document request once, then sleep
+        // until a forwarded CLI command or OS open request arrives.
         loop {
             let Some(service) = this.upgrade() else {
                 return;
@@ -143,7 +165,9 @@ impl CliForwarding {
             service.drain().await;
             service.open_requested().await;
             drop(service);
-            rt::sleep(POLL).await;
+            if !wakeup.next().await {
+                return;
+            }
         }
     }
 
@@ -268,6 +292,9 @@ impl CliForwarding {
         if self.disposed.replace(true) {
             return;
         }
+        set_open_wakeup(None);
+        gitlama_core::api::cli_forwarding_set_wakeup(None);
+        self.wakeup.close();
         rt::blocking(gitlama_core::api::cli_forwarding_shutdown).await;
     }
 }

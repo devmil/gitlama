@@ -32,6 +32,7 @@ pub struct OperationCenter {
     snapshot: RefCell<NativeOperationCenterSnapshot>,
     timer: RefCell<TimerHandle>,
     refreshing: Cell<bool>,
+    pending_poke: Cell<bool>,
     disposed: Cell<bool>,
 }
 
@@ -56,6 +57,7 @@ impl OperationCenter {
             snapshot: RefCell::new(empty()),
             timer: RefCell::new(TimerHandle::default()),
             refreshing: Cell::new(false),
+            pending_poke: Cell::new(false),
             disposed: Cell::new(false),
         })
     }
@@ -69,13 +71,26 @@ impl OperationCenter {
         self.snapshot.borrow().clone()
     }
 
-    /// Polls now and then every [`POLL`].
+    /// Reads the current operations once, and polls every [`POLL`] only while an
+    /// operation is running.
     pub fn start(&self) {
+        self.poke();
+    }
+
+    /// Requests a refresh after workspace/session/transfer activity; when idle, no
+    /// periodic timer runs.
+    pub fn poke(&self) {
+        if self.disposed.get() {
+            return;
+        }
+        if self.refreshing.get() {
+            self.pending_poke.set(true);
+            return;
+        }
         let weak = self.this.clone();
         rt::spawn_detached(async move {
             if let Some(center) = weak.upgrade() {
                 center.refresh().await;
-                center.schedule();
             }
         });
     }
@@ -84,12 +99,18 @@ impl OperationCenter {
         if self.disposed.get() {
             return;
         }
+        if self.snapshot.borrow().running_count == 0 {
+            self.timer.borrow_mut().cancel();
+            return;
+        }
+        if self.timer.borrow().is_active() {
+            return;
+        }
         let weak = self.this.clone();
         *self.timer.borrow_mut() = TimerHandle::start(POLL, move || {
             let Some(center) = weak.upgrade() else { return };
             rt::spawn_detached(async move {
                 center.refresh().await;
-                center.schedule();
             });
         });
     }
@@ -97,34 +118,41 @@ impl OperationCenter {
     /// Reads the application's operations; publishes only a change.
     pub async fn refresh(&self) {
         if self.disposed.get() || self.refreshing.replace(true) {
+            self.pending_poke.set(true);
             return;
         }
-        let result =
-            rt::blocking(|| gitlama_core::api::application_operation_center(MAXIMUM_ENTRIES)).await;
-        self.refreshing.set(false);
-        // A session retiring meanwhile keeps the last coherent projection.
-        let Some(mut snapshot) = result.snapshot.filter(|_| result.failure.is_none()) else {
-            return;
-        };
-        let remote = self.remote.borrow().upgrade();
-        if let Some(remote) = remote {
-            for other in remote.remote_operations().await {
-                snapshot.running_count += other.running_count;
-                snapshot.failed_count += other.failed_count;
-                snapshot.warning_count += other.warning_count;
-                snapshot.attention_count += other.attention_count;
-                snapshot.truncated |= other.truncated;
-                snapshot.entries.extend(other.entries);
+        loop {
+            self.pending_poke.set(false);
+            let result =
+                rt::blocking(|| gitlama_core::api::application_operation_center(MAXIMUM_ENTRIES))
+                    .await;
+            // A session retiring meanwhile keeps the last coherent projection.
+            if let Some(mut snapshot) = result.snapshot.filter(|_| result.failure.is_none()) {
+                let remote = self.remote.borrow().upgrade();
+                if let Some(remote) = remote {
+                    for other in remote.remote_operations().await {
+                        snapshot.running_count += other.running_count;
+                        snapshot.failed_count += other.failed_count;
+                        snapshot.warning_count += other.warning_count;
+                        snapshot.attention_count += other.attention_count;
+                        snapshot.truncated |= other.truncated;
+                        snapshot.entries.extend(other.entries);
+                    }
+                    snapshot
+                        .entries
+                        .sort_by_key(|entry| entry.started_at_unix_ms);
+                }
+                if !self.disposed.get() && *self.snapshot.borrow() != snapshot {
+                    *self.snapshot.borrow_mut() = snapshot;
+                    self.notifier.notify(Topics::OPERATIONS);
+                }
             }
-            snapshot
-                .entries
-                .sort_by_key(|entry| entry.started_at_unix_ms);
+            if self.disposed.get() || !self.pending_poke.get() {
+                break;
+            }
         }
-        if self.disposed.get() || *self.snapshot.borrow() == snapshot {
-            return;
-        }
-        *self.snapshot.borrow_mut() = snapshot;
-        self.notifier.notify(Topics::OPERATIONS);
+        self.refreshing.set(false);
+        self.schedule();
     }
 
     fn entry(&self, key: u64) -> Option<NativeOperationCenterEntry> {

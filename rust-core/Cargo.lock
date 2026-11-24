@@ -353,7 +353,7 @@ dependencies = [
 [[package]]
 name = "devmil-git"
 version = "0.1.0"
-source = "git+https://github.com/devmil/devmil-rust-git?rev=834d2b15678b7c3a6a85bc05762691d44f746b7c#834d2b15678b7c3a6a85bc05762691d44f746b7c"
+source = "git+https://github.com/devmil/devmil-rust-git?rev=a8b30d995f2a1605b9c66fc41c29ab92e48be531#a8b30d995f2a1605b9c66fc41c29ab92e48be531"
 dependencies = [
  "cap-fs-ext",
  "cap-std",

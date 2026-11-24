@@ -5,7 +5,7 @@
 
 use futures::channel::mpsc;
 use std::io::{Read, Write};
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{ChildStdin, Command, Stdio};
 use std::sync::mpsc as std_mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -30,9 +30,11 @@ enum StdinCommand {
 
 /// A started child process.
 pub struct RemoteProcess {
-    child: Arc<Mutex<Child>>,
+    pid: u32,
+    reaped: Arc<Mutex<bool>>,
     stdin: Mutex<Option<std_mpsc::Sender<StdinCommand>>>,
     exit: Arc<Mutex<Option<Option<i32>>>>,
+    exited: Arc<crate::rt::WakeSignal>,
 }
 
 impl RemoteProcess {
@@ -63,6 +65,7 @@ impl RemoteProcess {
             command.creation_flags(0x0800_0000);
         }
         let mut child = command.spawn()?;
+        let pid = child.id();
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
         let stdin = child.stdin.take();
@@ -100,37 +103,33 @@ impl RemoteProcess {
             crate::rt::spawn_thread("remote-stdin", move || write_stdin(stdin, &received));
             commands
         });
-        let child = Arc::new(Mutex::new(child));
+        let reaped = Arc::new(Mutex::new(false));
         let exit = Arc::new(Mutex::new(None));
+        let exited = Arc::new(crate::rt::WakeSignal::new());
         {
-            let child = Arc::clone(&child);
+            let reaped = Arc::clone(&reaped);
             let exit = Arc::clone(&exit);
+            let exited = Arc::clone(&exited);
+            // Block in wait() so the thread causes zero idle wakeups while the host is connected.
             crate::rt::spawn_thread("remote-wait", move || {
-                loop {
-                    let status = child.lock().map(|mut child| child.try_wait());
-                    match status {
-                        Ok(Ok(Some(status))) => {
-                            let code = status.code();
-                            if let Ok(mut slot) = exit.lock() {
-                                *slot = Some(code);
-                            }
-                            let _ = sender.unbounded_send(ProcessEvent::Exited(code));
-                            return;
-                        }
-                        Ok(Ok(None)) => std::thread::sleep(Duration::from_millis(50)),
-                        _ => {
-                            let _ = sender.unbounded_send(ProcessEvent::Exited(None));
-                            return;
-                        }
-                    }
+                let code = child.wait().ok().and_then(|status| status.code());
+                if let Ok(mut done) = reaped.lock() {
+                    *done = true;
                 }
+                if let Ok(mut slot) = exit.lock() {
+                    *slot = Some(code);
+                }
+                exited.notify();
+                let _ = sender.unbounded_send(ProcessEvent::Exited(code));
             });
         }
         Ok((
             Arc::new(Self {
-                child,
+                pid,
+                reaped,
                 stdin: Mutex::new(stdin_sender),
                 exit,
+                exited,
             }),
             receiver,
         ))
@@ -167,22 +166,26 @@ impl RemoteProcess {
         if self.exited_within(TERMINATION_GRACE).await {
             return;
         }
-        #[cfg(windows)]
-        if let Ok(child) = self.child.lock() {
-            let pid = child.id();
-            if let Some(root) = std::env::var_os("SystemRoot") {
-                let mut taskkill = std::path::PathBuf::from(root);
-                taskkill.push("System32\\taskkill.exe");
-                let _ = Command::new(taskkill)
-                    .args(["/T", "/F", "/PID", &pid.to_string()])
-                    .stdin(Stdio::null())
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .spawn();
+        if let Ok(reaped) = self.reaped.lock()
+            && !*reaped
+        {
+            #[cfg(windows)]
+            {
+                if let Some(root) = std::env::var_os("SystemRoot") {
+                    let mut taskkill = std::path::PathBuf::from(root);
+                    taskkill.push("System32\\taskkill.exe");
+                    let _ = Command::new(taskkill)
+                        .args(["/T", "/F", "/PID", &self.pid.to_string()])
+                        .stdin(Stdio::null())
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .spawn();
+                }
             }
-        }
-        if let Ok(mut child) = self.child.lock() {
-            let _ = child.kill();
+            #[cfg(unix)]
+            {
+                gitlama_core::api::kill_process_id(self.pid);
+            }
         }
         if !self.exited_within(TERMINATION_GRACE).await {
             super::note(
@@ -194,13 +197,17 @@ impl RemoteProcess {
     }
 
     async fn exited_within(&self, grace: Duration) -> bool {
-        let steps = grace.as_millis() / 50;
-        for _ in 0..steps {
-            if self.exit_status().is_some() {
-                return true;
-            }
-            crate::rt::sleep(Duration::from_millis(50)).await;
+        if self.exit_status().is_some() {
+            return true;
         }
+        let _ = crate::rt::timeout(grace, async {
+            while self.exit_status().is_none() {
+                if !self.exited.next().await {
+                    break;
+                }
+            }
+        })
+        .await;
         self.exit_status().is_some()
     }
 }

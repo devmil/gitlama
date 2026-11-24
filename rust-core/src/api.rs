@@ -134,6 +134,26 @@ pub fn cli_forwarding_shutdown() {
     crate::cli_forwarding::shutdown();
 }
 
+pub fn cli_forwarding_set_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
+    crate::cli_forwarding::set_command_wakeup(wakeup);
+}
+
+/// Sends SIGKILL to a direct child process on Unix while the caller still owns its reap.
+pub fn kill_process_id(pid: u32) {
+    #[cfg(unix)]
+    {
+        if let Ok(raw) = i32::try_from(pid) {
+            if let Some(pid) = rustix::process::Pid::from_raw(raw) {
+                let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = pid;
+    }
+}
+
 #[must_use]
 pub fn hosting_connection_validate(
     connection: NativeHostingConnection,

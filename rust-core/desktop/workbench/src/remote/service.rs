@@ -734,6 +734,14 @@ impl RemoteService {
                 }
             }),
         );
+        let events_service = self.this.clone();
+        sessions.set_on_events(Rc::new(move || {
+            if let Some(service) = events_service.upgrade()
+                && let Some(workspace) = service.workspace.borrow().upgrade()
+            {
+                workspace.notify_remote_events();
+            }
+        }));
         let connection = Rc::new(Connection {
             calls: sessions.calls(),
             channel: Rc::clone(&channel),

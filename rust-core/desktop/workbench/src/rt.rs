@@ -553,6 +553,71 @@ impl Drop for PeriodicHandle {
     }
 }
 
+/// A thread-safe coalescing wakeup signal awaited on the workbench runtime.
+pub struct WakeSignal {
+    pending: std::sync::atomic::AtomicBool,
+    closed: std::sync::atomic::AtomicBool,
+    waker: Mutex<Option<Waker>>,
+}
+
+impl Default for WakeSignal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl WakeSignal {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            pending: std::sync::atomic::AtomicBool::new(false),
+            closed: std::sync::atomic::AtomicBool::new(false),
+            waker: Mutex::new(None),
+        }
+    }
+
+    pub fn notify(&self) {
+        self.pending.store(true, Ordering::Release);
+        if let Ok(mut slot) = self.waker.lock()
+            && let Some(waker) = slot.take()
+        {
+            waker.wake();
+        }
+    }
+
+    pub fn close(&self) {
+        self.closed.store(true, Ordering::Release);
+        if let Ok(mut slot) = self.waker.lock()
+            && let Some(waker) = slot.take()
+        {
+            waker.wake();
+        }
+    }
+
+    pub async fn next(&self) -> bool {
+        futures::future::poll_fn(|cx| {
+            if self.pending.swap(false, Ordering::AcqRel) {
+                return Poll::Ready(true);
+            }
+            if self.closed.load(Ordering::Acquire) {
+                return Poll::Ready(false);
+            }
+            if let Ok(mut slot) = self.waker.lock() {
+                *slot = Some(cx.waker().clone());
+            }
+            if self.pending.swap(false, Ordering::AcqRel) {
+                return Poll::Ready(true);
+            }
+            if self.closed.load(Ordering::Acquire) {
+                Poll::Ready(false)
+            } else {
+                Poll::Pending
+            }
+        })
+        .await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

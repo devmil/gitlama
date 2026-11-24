@@ -437,74 +437,10 @@ pub struct WorkspaceService {
     notifier: Notifier,
     inner: RefCell<Inner>,
     drain: RefCell<PeriodicHandle>,
-    local_wakeup: RefCell<Option<std::sync::Arc<WakeSignal>>>,
+    local_wakeup: RefCell<Option<std::sync::Arc<rt::WakeSignal>>>,
     drain_interval: Duration,
     revision: Cell<u64>,
     this: RefCell<Weak<WorkspaceService>>,
-}
-
-struct WakeSignal {
-    pending: std::sync::atomic::AtomicBool,
-    closed: std::sync::atomic::AtomicBool,
-    waker: std::sync::Mutex<Option<std::task::Waker>>,
-}
-
-impl WakeSignal {
-    fn new() -> Self {
-        Self {
-            pending: std::sync::atomic::AtomicBool::new(false),
-            closed: std::sync::atomic::AtomicBool::new(false),
-            waker: std::sync::Mutex::new(None),
-        }
-    }
-
-    fn notify(&self) {
-        self.pending
-            .store(true, std::sync::atomic::Ordering::Release);
-        if let Ok(mut slot) = self.waker.lock()
-            && let Some(waker) = slot.take()
-        {
-            waker.wake();
-        }
-    }
-
-    fn close(&self) {
-        self.closed
-            .store(true, std::sync::atomic::Ordering::Release);
-        if let Ok(mut slot) = self.waker.lock()
-            && let Some(waker) = slot.take()
-        {
-            waker.wake();
-        }
-    }
-
-    async fn next(&self) -> bool {
-        futures::future::poll_fn(|cx| {
-            if self
-                .pending
-                .swap(false, std::sync::atomic::Ordering::AcqRel)
-            {
-                return std::task::Poll::Ready(true);
-            }
-            if self.closed.load(std::sync::atomic::Ordering::Acquire) {
-                return std::task::Poll::Ready(false);
-            }
-            if let Ok(mut slot) = self.waker.lock() {
-                *slot = Some(cx.waker().clone());
-            }
-            if self
-                .pending
-                .swap(false, std::sync::atomic::Ordering::AcqRel)
-            {
-                return std::task::Poll::Ready(true);
-            }
-            if self.closed.load(std::sync::atomic::Ordering::Acquire) {
-                return std::task::Poll::Ready(false);
-            }
-            std::task::Poll::Pending
-        })
-        .await
-    }
 }
 
 fn phase_name(phase: NativeRepositoryPhase) -> &'static str {
@@ -2387,10 +2323,10 @@ impl WorkspaceService {
 
     // Events ----------------------------------------------------------------------------
 
-    /// Switches local sessions from periodic polling to wakeup-driven draining:
+    /// Switches sessions from periodic polling to wakeup-driven draining:
     /// returns the callback to install as the repository worker wakeup hook.
     pub fn enable_local_wakeup(self: &Rc<Self>) -> std::sync::Arc<dyn Fn() + Send + Sync> {
-        let signal = std::sync::Arc::new(WakeSignal::new());
+        let signal = std::sync::Arc::new(rt::WakeSignal::new());
         *self.local_wakeup.borrow_mut() = Some(std::sync::Arc::clone(&signal));
         let listener = std::sync::Arc::clone(&signal);
         let weak = Rc::downgrade(self);
@@ -2402,23 +2338,26 @@ impl WorkspaceService {
                 if service.disposed() {
                     break;
                 }
-                service.drain_local_sessions();
+                service.drain_all_sessions();
             }
         });
         std::sync::Arc::new(move || signal.notify())
     }
 
-    fn drain_local_sessions(self: &Rc<Self>) {
+    /// Wakes the session drain loop when a remote connection publishes new events.
+    pub fn notify_remote_events(&self) {
+        if let Some(signal) = self.local_wakeup.borrow().as_ref() {
+            signal.notify();
+        }
+    }
+
+    fn drain_all_sessions(self: &Rc<Self>) {
         let sessions: Vec<SessionIdentity> = self
             .inner
             .borrow()
             .tabs
             .iter()
-            .filter_map(|tab| {
-                let session = tab.session.as_ref()?;
-                (session.identity.backend == crate::session::BackendKind::Local)
-                    .then_some(session.identity)
-            })
+            .filter_map(|tab| tab.session.as_ref().map(|session| session.identity))
             .collect();
         for session in sessions {
             let service = Rc::clone(self);
@@ -2430,17 +2369,9 @@ impl WorkspaceService {
         if self.inner.borrow().disposed {
             return;
         }
-        let wake_driven = self.local_wakeup.borrow().is_some();
-        if wake_driven {
-            self.drain_local_sessions();
-            let has_remote = self.inner.borrow().tabs.iter().any(|tab| {
-                tab.session
-                    .as_ref()
-                    .is_some_and(|s| s.identity.backend == crate::session::BackendKind::Remote)
-            });
-            if !has_remote {
-                return;
-            }
+        if self.local_wakeup.borrow().is_some() {
+            self.drain_all_sessions();
+            return;
         }
         if self.drain.borrow().is_active() {
             return;

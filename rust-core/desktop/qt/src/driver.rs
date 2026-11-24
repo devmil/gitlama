@@ -105,6 +105,18 @@ impl Driver {
     }
 
     fn project(&self, changed: Topics) {
+        if changed.intersects(
+            Topics::WORKSPACE
+                | Topics::SESSION
+                | Topics::EVENTS
+                | Topics::REMOTE
+                | Topics::CHANGES
+                | Topics::HISTORY
+                | Topics::CONFLICTS,
+        ) && let Some(services) = self.app.services()
+        {
+            services.operations.poke();
+        }
         if changed.intersects(Topics::STARTUP) {
             if let Some(services) = self.app.services() {
                 let mut inspector = self.inspector.borrow_mut();

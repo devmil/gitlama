@@ -25,7 +25,6 @@ const WORKERS: usize = 4;
 const BULK_WORKERS: usize = 2;
 /// Accepted results wait for the writer while this many bytes are queued.
 const RESULT_BUFFER_BYTES: usize = 8 * 1024 * 1024;
-const PUMP_INTERVAL: Duration = Duration::from_millis(25);
 const PUMP_EVENTS: u32 = 64;
 /// Pending events per session before they collapse into one resynchronization.
 const PENDING_EVENTS: usize = 256;
@@ -366,6 +365,8 @@ pub struct Connection {
     outbound: Outbound,
     work: Mutex<WorkState>,
     work_ready: Condvar,
+    pump_pending: Mutex<bool>,
+    pump_ready: Condvar,
     listings: Mutex<crate::directory::Listings>,
     closing: AtomicBool,
 }
@@ -387,9 +388,17 @@ impl Connection {
             outbound: Outbound::new(),
             work: Mutex::new(WorkState::default()),
             work_ready: Condvar::new(),
+            pump_pending: Mutex::new(true),
+            pump_ready: Condvar::new(),
             listings: Mutex::new(crate::directory::Listings::default()),
             closing: AtomicBool::new(false),
         })
+    }
+
+    fn wake_pump(&self) {
+        let mut pending = lock(&self.pump_pending);
+        *pending = true;
+        self.pump_ready.notify_all();
     }
 
     pub fn listings(&self) -> &Mutex<crate::directory::Listings> {
@@ -490,6 +499,10 @@ impl Connection {
 
     fn pump(self: &Arc<Self>) {
         while !self.closing.load(Ordering::Acquire) {
+            {
+                let mut pending = lock(&self.pump_pending);
+                *pending = false;
+            }
             for (session_id, generation) in self.sessions.live() {
                 let result = gitlama_application::application::session::repository_session_events(
                     session_id,
@@ -502,7 +515,13 @@ impl Connection {
                     self.outbound.publish(session_id, result);
                 }
             }
-            std::thread::sleep(PUMP_INTERVAL);
+            let mut pending = lock(&self.pump_pending);
+            while !*pending && !self.closing.load(Ordering::Acquire) {
+                pending = self
+                    .pump_ready
+                    .wait(pending)
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+            }
         }
     }
 
@@ -544,6 +563,10 @@ pub fn serve(
         })
         .collect();
     let pump = {
+        let wake_connection = Arc::clone(connection);
+        gitlama_application::application::session::set_session_wakeup(Some(Arc::new(move || {
+            wake_connection.wake_pump();
+        })));
         let connection = Arc::clone(connection);
         std::thread::spawn(move || connection.pump())
     };
@@ -559,6 +582,8 @@ pub fn serve(
         });
     }
     connection.closing.store(true, Ordering::Release);
+    connection.wake_pump();
+    gitlama_application::application::session::set_session_wakeup(None);
     let queued: Vec<u64> = {
         let mut work = lock(&connection.work);
         work.closed = true;

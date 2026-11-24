@@ -54,8 +54,29 @@ struct RuntimeOwner {
 #[cfg(not(any(unix, windows)))]
 struct RuntimeOwner;
 
+pub type CommandWakeup = Arc<dyn Fn() + Send + Sync>;
+
 static OWNER: OnceLock<Mutex<Option<RuntimeOwner>>> = OnceLock::new();
+static COMMAND_WAKEUP: OnceLock<Mutex<Option<CommandWakeup>>> = OnceLock::new();
 static NEXT_REQUEST_ID: AtomicU64 = AtomicU64::new(1);
+
+pub fn set_command_wakeup(wakeup: Option<CommandWakeup>) {
+    let lock = COMMAND_WAKEUP.get_or_init(|| Mutex::new(None));
+    *lock
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = wakeup;
+}
+
+fn notify_command_wakeup() {
+    let callback = COMMAND_WAKEUP.get().and_then(|lock| {
+        lock.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    });
+    if let Some(callback) = callback {
+        callback();
+    }
+}
 
 fn owner() -> &'static Mutex<Option<RuntimeOwner>> {
     OWNER.get_or_init(|| Mutex::new(None))
@@ -217,16 +238,19 @@ fn start_owner(
             action,
             response: Some(response),
         }) {
-            Ok(()) => response_receiver
-                .recv_timeout(APPLICATION_RESPONSE_TIMEOUT)
-                .unwrap_or_else(|error| ForwardResponse::Rejected {
-                    code: if matches!(error, mpsc::RecvTimeoutError::Timeout) {
-                        ResponseCode::Busy
-                    } else {
-                        ResponseCode::Internal
-                    },
-                    detail: "application_response_unavailable".to_owned(),
-                }),
+            Ok(()) => {
+                notify_command_wakeup();
+                response_receiver
+                    .recv_timeout(APPLICATION_RESPONSE_TIMEOUT)
+                    .unwrap_or_else(|error| ForwardResponse::Rejected {
+                        code: if matches!(error, mpsc::RecvTimeoutError::Timeout) {
+                            ResponseCode::Busy
+                        } else {
+                            ResponseCode::Internal
+                        },
+                        detail: "application_response_unavailable".to_owned(),
+                    })
+            }
             Err(TrySendError::Full(_)) => ForwardResponse::Rejected {
                 code: ResponseCode::Busy,
                 detail: "command_queue_full".to_owned(),
@@ -291,16 +315,19 @@ fn start_windows_owner(
             action,
             response: Some(response),
         }) {
-            Ok(()) => response_receiver
-                .recv_timeout(APPLICATION_RESPONSE_TIMEOUT)
-                .unwrap_or_else(|error| ForwardResponse::Rejected {
-                    code: if matches!(error, mpsc::RecvTimeoutError::Timeout) {
-                        ResponseCode::Busy
-                    } else {
-                        ResponseCode::Internal
-                    },
-                    detail: "application_response_unavailable".to_owned(),
-                }),
+            Ok(()) => {
+                notify_command_wakeup();
+                response_receiver
+                    .recv_timeout(APPLICATION_RESPONSE_TIMEOUT)
+                    .unwrap_or_else(|error| ForwardResponse::Rejected {
+                        code: if matches!(error, mpsc::RecvTimeoutError::Timeout) {
+                            ResponseCode::Busy
+                        } else {
+                            ResponseCode::Internal
+                        },
+                        detail: "application_response_unavailable".to_owned(),
+                    })
+            }
             Err(TrySendError::Full(_)) => rejected(ResponseCode::Busy, "command_queue_full"),
             Err(TrySendError::Disconnected(_)) => {
                 rejected(ResponseCode::Internal, "command_queue_closed")
