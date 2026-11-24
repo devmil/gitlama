@@ -10,7 +10,7 @@ fn main() {
     }
     println!("cargo:rerun-if-env-changed=QMAKE");
     if let Some(libs) = qt_query("QT_INSTALL_LIBS") {
-        println!("cargo:rustc-link-arg-tests=-Wl,-rpath,{libs}");
+        println!("cargo:rustc-link-arg=-Wl,-rpath,{libs}");
     }
 }
 
