@@ -51,7 +51,6 @@ Item {
                 spread: shadowLayer.modelData.spread
                 radius: root.radius
                 color: shadowLayer.modelData.color
-                cached: true
             }
         }
     }

@@ -104,12 +104,13 @@ Item {
     property var _lastTap: null
     property var _tabsById: ({})
     property var _groupsById: ({})
-    readonly property bool _animate: _built && !Motion.reduced
+    property bool _layoutAnimated: true
+    readonly property bool _animate: _built && !Motion.reduced && _layoutAnimated
 
     onTabsChanged: _tabsUpdated()
     onGroupsChanged: _relayout()
     onActiveTabChanged: _relayout(true)
-    onWidthChanged: _relayout()
+    onWidthChanged: _relayout(false, false)
     Component.onCompleted: {
         _tabsUpdated()
         _built = true
@@ -329,13 +330,18 @@ Item {
     }
 
     property bool _activeMoved: false
-    function _relayout(activeChanged) {
+    property bool _pendingAnimate: false
+    function _relayout(activeChanged, animated) {
         if (activeChanged === true)
             _activeMoved = true
+        if (animated !== false)
+            _pendingAnimate = true
         Qt.callLater(_layout)
     }
 
     function _layout() {
+        _layoutAnimated = _pendingAnimate
+        _pendingAnimate = false
         const byId = {}
         for (const tab of tabs)
             byId[tab.id] = tab
@@ -445,6 +451,7 @@ Item {
             indicator.shown = false
         }
         _activeMoved = false
+        _layoutAnimated = true
     }
 
     function _apply(targets, spans) {

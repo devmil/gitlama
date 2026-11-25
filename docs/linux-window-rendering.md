@@ -3,8 +3,11 @@
 On Linux the main window is a frameless Qt Quick window (`Qt.FramelessWindowHint` in
 `qml/GitLama/Main.qml`) that draws its own caption in the top toolbar row, the way GTK
 applications with client-side decorations do. Qt renders the window through its default
-scene graph backend for the session (OpenGL or Vulkan on Wayland and X11); there is no
-offscreen content mask or toolkit wrapper around the surface.
+scene graph backend for the session (OpenGL on Wayland and X11); there is no
+offscreen content mask or toolkit wrapper around the surface. On Wayland sessions
+(`WAYLAND_DISPLAY` set and `QSG_RENDER_LOOP` unset), `main.rs` defaults
+`QSG_RENDER_LOOP=basic` so interactive resizes do not stall the GUI thread waiting on
+the render thread's `eglSwapBuffers` frame callback.
 
 - **Window buttons** follow the desktop's configuration: `PlatformHooks.captionLayout`
   reads GNOME's `button-layout` (`gtk-decoration-layout`), and `WindowControls` shows the

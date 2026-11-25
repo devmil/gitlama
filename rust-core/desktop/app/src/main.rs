@@ -160,6 +160,23 @@ fn prefer_portal_dialogs() {
     }
 }
 
+/// Wayland's `threaded` scene-graph loop stalls the GUI thread waiting for the
+/// render thread's `eglSwapBuffers` frame callback during interactive resizes;
+/// the `basic` loop commits new geometry without that cross-thread stall.
+#[cfg(target_os = "linux")]
+fn prefer_wayland_basic_render_loop() {
+    let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some_and(|value| !value.is_empty());
+    let non_wayland = std::env::var_os("QT_QPA_PLATFORM")
+        .is_some_and(|value| value == "xcb" || value == "offscreen" || value == "minimal");
+    if wayland
+        && !non_wayland
+        && std::env::var_os("QSG_RENDER_LOOP").is_none_or(|value| value.is_empty())
+    {
+        // SAFETY: runs first in main, before any thread exists.
+        unsafe { std::env::set_var("QSG_RENDER_LOOP", "basic") };
+    }
+}
+
 fn main() {
     // Command-line output reaches the terminal that started GitLama.
     #[cfg(windows)]
@@ -173,7 +190,10 @@ fn main() {
     gitlama_core::gitlama_prepare_desktop_environment();
 
     #[cfg(target_os = "linux")]
-    prefer_portal_dialogs();
+    {
+        prefer_portal_dialogs();
+        prefer_wayland_basic_render_loop();
+    }
     // A command for the running window is handed to it; this process ends.
     forward_or_continue();
     #[cfg(target_os = "macos")]

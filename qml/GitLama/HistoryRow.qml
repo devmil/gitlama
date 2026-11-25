@@ -269,11 +269,13 @@ Item {
     GraphRow {
         id: graphRow
         visible: !entry.loading
-        anchors.fill: parent
+        x: 0
+        y: 0
+        width: entry.contentStart
+        height: parent.height
         opacity: entry.motion ? entry.motion.insertionOpacity(entry.index) : 1
         rowKey: entry.objectId
         row: entry.graph
-        clipRight: entry.graphClipRight
         laneColors: entry.laneColors
         wipColor: Theme.colors.inkMuted
         conflictColor: Theme.colors.attention

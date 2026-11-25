@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- Resizing the GitLama window on Linux (Wayland) is noticeably more responsive, with less content lag behind the window edges.
 - Switching between repositories no longer briefly shows the previous repository's branch labels in History.
 - The repository details open from the repository name again instead of to its left after the window was resized.
 - macOS test builds no longer fail to start because macOS considers them damaged.
