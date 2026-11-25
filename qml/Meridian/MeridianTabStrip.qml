@@ -66,11 +66,15 @@ Item {
     /// The tab width of the last layout.
     property real tabWidth: Metrics.tabLabelMaxWidth
     property real _total: 0
+    /// Uncompressed width of the live entries (at `tabLabelMaxWidth`), independent
+    /// of the current `width` or drag positions so `width: Math.min(implicitWidth, max)`
+    /// cannot feed back and ratchet tabs narrower.
+    property real _natural: 0
     property var _renamingTab: null
     property var _renamingGroup: null
 
     implicitHeight: Metrics.tabStripHeight
-    implicitWidth: _total
+    implicitWidth: _natural
     Accessible.role: Accessible.PageTabList
 
     /// Edits `id`'s name in place.
@@ -331,17 +335,27 @@ Item {
 
     property bool _activeMoved: false
     property bool _pendingAnimate: false
+    property bool _relayoutScheduled: false
     function _relayout(activeChanged, animated) {
         if (activeChanged === true)
             _activeMoved = true
         if (animated !== false)
             _pendingAnimate = true
-        Qt.callLater(_layout)
+        _relayoutScheduled = true
+        Qt.callLater(_flushRelayout)
     }
 
-    function _layout() {
-        _layoutAnimated = _pendingAnimate
+    function _flushRelayout() {
+        if (!_relayoutScheduled)
+            return
+        _relayoutScheduled = false
+        const animated = _pendingAnimate
         _pendingAnimate = false
+        _layout(animated)
+    }
+
+    function _layout(animated) {
+        _layoutAnimated = animated !== false
         const byId = {}
         for (const tab of tabs)
             byId[tab.id] = tab
@@ -365,7 +379,9 @@ Item {
             }
         }
         const gaps = Math.max(0, shownTabs + chips - 1) * gap
-        const available = width > 0 ? width : shownTabs * Metrics.tabLabelMaxWidth + chipsWidth + gaps
+        const natural = shownTabs * Metrics.tabLabelMaxWidth + chipsWidth + gaps
+        _natural = natural
+        const available = width > 0 ? width : natural
         tabWidth = shownTabs === 0 ? Metrics.tabLabelMaxWidth
             : Math.max(Metrics.tabPillMinWidth, Math.min(Metrics.tabLabelMaxWidth, (available - chipsWidth - gaps) / shownTabs))
 
