@@ -568,6 +568,7 @@ Rectangle {
                             rightMargin: Theme.space.s2
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
+                            reuseItems: true
                             model: inspector.paneState.fileRows ?? []
                             MeridianWheelScroll { flickable: fileList }
                             C.ScrollBar.vertical: MeridianScrollBar {}
@@ -583,6 +584,8 @@ Rectangle {
                             }
                             delegate: FileRow {
                                 required property var modelData
+                                ListView.onPooled: visible = false
+                                ListView.onReused: visible = true
                                 width: fileList.width - fileList.leftMargin - fileList.rightMargin
                                 path: modelData.label
                                 depth: modelData.depth
@@ -614,12 +617,15 @@ Rectangle {
                             rightMargin: Theme.space.s2
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
+                            reuseItems: true
                             model: visible ? (inspector.paneState.allRows ?? []) : []
                             MeridianWheelScroll { flickable: allList }
                             C.ScrollBar.vertical: MeridianScrollBar {}
                             delegate: Loader {
                                 id: allRow
                                 required property var modelData
+                                ListView.onPooled: visible = false
+                                ListView.onReused: visible = true
                                 width: allList.width - allList.leftMargin - allList.rightMargin
                                 sourceComponent: modelData.rowKind === "retry" || modelData.rowKind === "more" ? extraRow : treeRow
                                 Component {

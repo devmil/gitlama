@@ -93,17 +93,23 @@ Item {
     property bool lineSelection: false
     /// The selected rows' stable ids.
     property var selectedRows: []
+    readonly property var selectedRowSet: {
+        const set = {}
+        for (const id of selectedRows)
+            set[id] = true
+        return set
+    }
     property int selectionAnchor: -1
     signal rowsSelected(var rows)
     signal lineMenuRequested(real x, real y)
 
-    function rowSelected(id) { return selectedRows.indexOf(id) >= 0 }
+    function rowSelected(id) { return selectedRowSet[id] === true }
     /// Whether the line at row `index` is selected (rows that are not lines are not).
     function lineChosenAt(index) {
         if (!model || index < 0 || selectedRows.length === 0)
             return false
         const ids = model.lineIds(index, index)
-        return ids.length > 0 && selectedRows.indexOf(ids[0]) >= 0
+        return ids.length > 0 && selectedRowSet[ids[0]] === true
     }
     function selectLine(index, stableId, modifiers) {
         if (!lineSelection)
@@ -149,6 +155,12 @@ Item {
     property var textSelection: null
     readonly property bool hasTextSelection: textSelection !== null
         && (textSelection.anchor.row !== textSelection.focus.row || textSelection.anchor.offset !== textSelection.focus.offset)
+    readonly property bool _selForward: textSelection === null || _before(textSelection.anchor, textSelection.focus)
+    readonly property int _selStartRow: hasTextSelection ? (_selForward ? textSelection.anchor.row : textSelection.focus.row) : -1
+    readonly property int _selStartOffset: hasTextSelection ? (_selForward ? textSelection.anchor.offset : textSelection.focus.offset) : 0
+    readonly property int _selEndRow: hasTextSelection ? (_selForward ? textSelection.focus.row : textSelection.anchor.row) : -1
+    readonly property int _selEndOffset: hasTextSelection ? (_selForward ? textSelection.focus.offset : textSelection.anchor.offset) : 0
+    readonly property string _selSide: hasTextSelection ? textSelection.side : ""
     property string _granularity: "character"
     property var _wordAnchor: null
     property int _clicks: 0
@@ -223,6 +235,14 @@ Item {
         return { start: start, end: end }
     }
     function _select(anchor, focus, side) {
+        const current = textSelection
+        if (current !== null
+                && current.anchor.row === anchor.row
+                && current.anchor.offset === anchor.offset
+                && current.focus.row === focus.row
+                && current.focus.offset === focus.offset
+                && current.side === side)
+            return
         textSelection = { anchor: { row: anchor.row, offset: anchor.offset }, focus: { row: focus.row, offset: focus.offset }, side: side }
     }
     /// The lines the text selection touches become the selected lines.
@@ -526,7 +546,7 @@ Item {
             required property string hunkText
 
             readonly property bool lineRow: kind === "context" || kind === "addition" || kind === "deletion"
-            readonly property bool chosen: view.lineSelection && lineRow && view.selectedRows.indexOf(stableId) >= 0
+            readonly property bool chosen: view.lineSelection && lineRow && view.selectedRowSet[stableId] === true
             readonly property bool chosenAbove: chosen && view.lineChosenAt(index - 1)
             readonly property bool chosenBelow: chosen && view.lineChosenAt(index + 1)
             readonly property bool added: kind === "addition"
@@ -710,16 +730,15 @@ Item {
                 height: line.height
                 clip: true
 
-                // This cell's part of the text selection.
+                // This cell's part of the text selection, as scalar bounds so dragging never
+                // allocates arrays or notifies rows whose selection did not change.
                 readonly property string side: unified ? "" : oldSide ? "old" : "new"
-                readonly property var selectedRange: blank || !active ? null : view.rangeIn(line.index, side, line.text.length)
-                onSelectedRangeChanged: Qt.callLater(applySelection)
-                function applySelection() {
-                    if (selectedRange)
-                        lineText.select(selectedRange[0], selectedRange[1])
-                    else
-                        lineText.deselect()
-                }
+                readonly property bool selActive: !blank && active && view._selStartRow >= 0
+                    && (view._selSide === "" || side === "" || side === view._selSide)
+                    && line.index >= view._selStartRow && line.index <= view._selEndRow
+                readonly property int selStart: !selActive ? 0 : (line.index === view._selStartRow ? Math.min(view._selStartOffset, line.text.length) : 0)
+                readonly property int selEnd: !selActive ? 0 : (line.index === view._selEndRow ? Math.min(view._selEndOffset, line.text.length) : line.text.length)
+                readonly property bool hasSelection: selEnd > selStart
                 /// The text point at `x`, `y` of the cell: {offset, side, gutter}.
                 function textPoint(x, y) {
                     const inCell = textCell.mapFromItem(cell, x, y)
@@ -806,6 +825,45 @@ Item {
                                     color: line.deleted ? GitColors.deletedStrong : GitColors.addedStrong
                                 }
                             }
+                            // Text selection highlight (unwrapped: one rectangle; avoids TextEdit.select()
+                            // relayouts and accessibility storms across visible rows while dragging).
+                            Rectangle {
+                                visible: !view.wrap && cell.hasSelection
+                                x: !visible || cell.selStart === 0 ? 0 : code.advanceWidth(line.text.substring(0, cell.selStart))
+                                width: !visible ? 0
+                                    : cell.selStart === 0 && cell.selEnd >= line.text.length ? lineText.implicitWidth
+                                    : code.advanceWidth(line.text.substring(cell.selStart, cell.selEnd))
+                                y: 1
+                                height: GitLamaLayout.diffLineHeight - 2
+                                color: Qt.alpha(Theme.colors.accent, GitLamaLayout.opacityDiffSelectedText)
+                            }
+                            // Text selection highlight on wrapped lines.
+                            Repeater {
+                                model: {
+                                    if (!view.wrap || !cell.hasSelection)
+                                        return []
+                                    void lineText.contentHeight
+                                    void lineText.width
+                                    const from = lineText.positionToRectangle(cell.selStart)
+                                    const to = lineText.positionToRectangle(cell.selEnd)
+                                    if (Math.abs(from.y - to.y) < 1)
+                                        return [{ x: from.x, y: from.y, width: Math.max(0, to.x - from.x), height: from.height }]
+                                    const parts = [{ x: from.x, y: from.y, width: Math.max(0, lineText.width - from.x), height: from.height }]
+                                    for (let y = from.y + from.height; y < to.y - 1; y += from.height)
+                                        parts.push({ x: 0, y: y, width: lineText.width, height: from.height })
+                                    if (to.x > 0.5)
+                                        parts.push({ x: 0, y: to.y, width: to.x, height: to.height })
+                                    return parts
+                                }
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    x: modelData.x
+                                    y: lineText.y + modelData.y + 1
+                                    width: modelData.width
+                                    height: modelData.height - 2
+                                    color: Qt.alpha(Theme.colors.accent, GitLamaLayout.opacityDiffSelectedText)
+                                }
+                            }
                             DiffLineText {
                                 id: lineText
                                 y: view.wrap ? Theme.space.s1 : (parent.height - height) / 2
@@ -813,12 +871,9 @@ Item {
                                 wrapMode: view.wrap ? TextEdit.WrapAnywhere : TextEdit.NoWrap
                                 font: Theme.type.code
                                 color: Theme.colors.ink
-                                selectionColor: Qt.alpha(Theme.colors.accent, GitLamaLayout.opacityDiffSelectedText)
-                                selectedTextColor: Theme.colors.ink
                                 textFormat: TextEdit.PlainText
                                 text: !cell.active || cell.blank ? "" : line.text
                                 onImplicitWidthChanged: if (!view.wrap && implicitWidth > view.widestText) view.widestText = implicitWidth
-                                onTextChanged: Qt.callLater(cell.applySelection)
                                 LineColours {
                                     document: lineText.textDocument
                                     runs: cell.active && !cell.blank ? cell.runs : []
@@ -1051,6 +1106,10 @@ Item {
         property int rowIndex: -1
         property real rowY: 0
         function refresh() {
+            if (view.selectionActions === null) {
+                rowIndex = -1
+                return
+            }
             rowIndex = view.model && view.selectedRows.length > 0 ? view.model.firstIndexOf(view.selectedRows) : -1
             const item = rowIndex < 0 ? null : view._rowItem(rowIndex)
             rowY = item ? item.y - list.contentY : -1
