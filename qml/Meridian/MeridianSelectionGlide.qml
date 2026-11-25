@@ -26,8 +26,9 @@ Item {
     property real _fade: 1
     property int _previous: -1
 
+    parent: view ? view.contentItem : null
     x: 0
-    y: originY + _index * itemExtent
+    y: (view ? view.originY : 0) + originY + _index * itemExtent
     z: -1
     width: view ? view.width - (view.leftMargin ?? 0) - (view.rightMargin ?? 0) : 0
     height: itemExtent
@@ -68,7 +69,7 @@ Item {
     function _shown(index) {
         if (!view || view.height <= 0)
             return true
-        const top = originY + index * itemExtent - view.contentY
+        const top = view.originY + originY + index * itemExtent - view.contentY
         return top + itemExtent > 0 && top < view.height
     }
 

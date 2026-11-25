@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- The selected commit highlight in History now stays aligned with its row when you scroll the graph.
 - Selecting text in diff views is now responsive and no longer slows down the rest of the interface, especially on macOS and in large commits.
 - Resizing the GitLama window on Linux (Wayland) is noticeably more responsive, with less content lag behind the window edges.
 - Switching between repositories no longer briefly shows the previous repository's branch labels in History.
