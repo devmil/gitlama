@@ -1,4 +1,7 @@
 #include <QtGui/QGuiApplication>
+#include <QtGui/QMouseEvent>
+#include <QtGui/QWheelEvent>
+#include <QtGui/QWindow>
 #include "graph_row.h"
 #include "syntax_highlighter.h"
 #include "text_formatter.h"
@@ -452,4 +455,39 @@ extern "C" void gitlama_register_native_types()
 // menu or the palette reads Ctrl/Cmd to invert where inspection opens.
 extern "C" int gitlama_keyboard_modifiers() {
     return static_cast<int>(QGuiApplication::queryKeyboardModifiers());
+}
+
+// Development screenshots: delivers a wheel event at window point (x, y)
+// through Qt's own event delivery, as a mouse wheel (phase 0) or a touchpad
+// gesture (phase 1 begin, 2 update, 3 end; pixel deltas). A negative phase
+// moves the pointer there instead.
+extern "C" bool gitlama_dev_wheel(double x, double y, int dx, int dy, int phase, int modifiers) {
+    QWindow *window = QGuiApplication::focusWindow();
+    if (!window) {
+        const auto windows = QGuiApplication::topLevelWindows();
+        for (QWindow *candidate : windows) {
+            if (candidate->isVisible()) {
+                window = candidate;
+                break;
+            }
+        }
+    }
+    if (!window)
+        return false;
+    const QPointF local(x, y);
+    if (phase < 0) {
+        // A pointer move to (x, y) first, as a real pointer hovers before it scrolls.
+        QMouseEvent move(QEvent::MouseMove, local, window->mapToGlobal(local), Qt::NoButton,
+                         Qt::NoButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(window, &move);
+        return move.isAccepted();
+    }
+    const bool gesture = phase != 0;
+    QWheelEvent event(local, window->mapToGlobal(local),
+                      gesture ? QPoint(dx, dy) : QPoint(), QPoint(dx, dy),
+                      Qt::NoButton, Qt::KeyboardModifiers(modifiers),
+                      phase == 1 ? Qt::ScrollBegin : phase == 3 ? Qt::ScrollEnd
+                          : gesture ? Qt::ScrollUpdate : Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(window, &event);
+    return event.isAccepted();
 }

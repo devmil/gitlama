@@ -519,7 +519,9 @@ Item {
         onContentYChanged: syntaxTimer.restart()
         onHeightChanged: syntaxTimer.restart()
 
-        MeridianWheelScroll { flickable: list }
+        // Shift+wheel and the sideways part of a diagonal swipe move the text (the list
+        // itself never scrolls sideways).
+        MeridianWheelScroll { flickable: list; onScrollSideways: change => view.scrollText(change) }
         C.ScrollBar.vertical: MeridianScrollBar { viewHovered: viewHover.hovered }
 
         delegate: Item {
@@ -1132,12 +1134,18 @@ Item {
     }
 
     HoverHandler { id: viewHover }
-    // Sideways scrolling moves only the text, under the fixed gutters.
+    /// Moves the text sideways by `change` px (positive towards the start, as wheel deltas are).
+    function scrollText(change) {
+        textOffset = Math.max(0, Math.min(maximumOffset, textOffset - change))
+    }
+    // Sideways scrolling moves only the text, under the fixed gutters. Events with vertical
+    // motion belong to the list's scroller, which passes their sideways part on.
     WheelHandler {
         orientation: Qt.Horizontal
         onWheel: event => {
-            const delta = event.pixelDelta.x !== 0 ? event.pixelDelta.x : event.angleDelta.x / 2
-            view.textOffset = Math.max(0, Math.min(view.maximumOffset, view.textOffset - delta))
+            if (event.angleDelta.y !== 0 || event.pixelDelta.y !== 0)
+                return
+            view.scrollText(event.pixelDelta.x !== 0 ? event.pixelDelta.x : event.angleDelta.x / 2)
         }
     }
     MeridianScrollBar {

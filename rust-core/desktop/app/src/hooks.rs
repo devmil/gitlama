@@ -4,6 +4,7 @@ use qtbridge::qobject;
 
 unsafe extern "C" {
     fn gitlama_keyboard_modifiers() -> i32;
+    fn gitlama_dev_wheel(x: f64, y: f64, dx: i32, dy: i32, phase: i32, modifiers: i32) -> bool;
 }
 
 #[cfg(target_os = "macos")]
@@ -99,7 +100,18 @@ mod platform_hooks {
             }
         }
 
-        /// The platform's reduce-motion accessibility setting.
+        /// Development screenshots: sends a wheel event at window point
+        /// (`x`, `y`) with `modifiers` (Qt.KeyboardModifiers); `phase` 0 is a
+        /// mouse wheel, 1-3 a touchpad gesture, a negative one a pointer move.
+        #[qslot]
+        fn dev_wheel(&self, x: f64, y: f64, dx: i32, dy: i32, phase: i32, modifiers: i32) -> bool {
+            if std::env::var_os("GITLAMA_SCREENSHOT").is_none() {
+                return false;
+            }
+            // SAFETY: sends a synthetic event on the GUI thread.
+            unsafe { super::gitlama_dev_wheel(x, y, dx, dy, phase, modifiers) }
+        }
+
         /// The modifier keys held now (Qt.KeyboardModifiers).
         #[qslot]
         fn keyboard_modifiers(&self) -> i32 {
@@ -107,6 +119,7 @@ mod platform_hooks {
             unsafe { super::gitlama_keyboard_modifiers() }
         }
 
+        /// The platform's reduce-motion accessibility setting.
         #[qslot]
         fn reduce_motion(&self) -> bool {
             #[cfg(target_os = "linux")]

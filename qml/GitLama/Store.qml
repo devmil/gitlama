@@ -177,6 +177,13 @@ QtObject {
             diff._extend(v[2], v[3])
             diff._release({ x: v[2], y: v[3], modifiers: 0 })
             console.log("diff selection:", JSON.stringify(diff.selectedText()))
+        } else if (name === "wheel" && hooks) {
+            // wheel:<x>,<y>,<dy>[,<phase>[,<dx>[,shift]]]: a wheel notch (phase 0), a touchpad
+            // gesture (1 begin, 2 update, 3 end) or, with a negative phase, a pointer move at a
+            // window point.
+            const v = argument.split(",")
+            const n = v.map(Number)
+            hooks.devWheel(n[0], n[1], n[4] || 0, n[2], n[3] || 0, v[5] === "shift" ? Qt.ShiftModifier : 0)
         } else if (name === "stageSelected" && changes) {
             changes.stageSelection(argument)
         } else if (name === "remoteAdd" && remote) {

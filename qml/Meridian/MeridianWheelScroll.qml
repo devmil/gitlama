@@ -25,6 +25,13 @@ import QtQuick
 //   with their last speed and decelerates (`syntheticMomentum`).
 // - Shift, or a view that only scrolls sideways, turns vertical motion
 //   horizontal. Dragging or flicking the view stops it.
+// - Sideways motion the flickable cannot take itself (Shift+wheel, or the
+//   horizontal part of a diagonal gesture) goes to `scrollSideways`, for
+//   views that move content sideways their own way (a diff whose text
+//   scrolls under fixed gutters). Like any vertical WheelHandler it only
+//   sees events with vertical motion; a purely sideways event (a tilt
+//   wheel, a level swipe) needs the view's own
+//   `WheelHandler { orientation: Qt.Horizontal }`.
 // - Reduced motion: no animation and no synthetic momentum.
 WheelHandler {
     id: scroller
@@ -48,6 +55,11 @@ WheelHandler {
     property int smoothDuration: 200
     /// Continue a lifted touchpad gesture. Only Qt Wayland lacks inertia.
     property bool syntheticMomentum: Qt.platform.pluginName === "wayland" && !Motion.reduced
+
+    /// Sideways motion the flickable cannot scroll itself, in px (positive
+    /// towards the start, as wheel deltas are). Handle it to move content
+    /// sideways another way; returning nothing counts it as moved.
+    signal scrollSideways(real change)
 
     /// True while a wheel animation or synthetic momentum moves the view.
     readonly property bool animating: xAnim.running || yAnim.running
@@ -213,8 +225,12 @@ WheelHandler {
         }
         const animate = smoothScroll && !gesture
         let moved = false
-        if (dx !== 0 && _canScrollX())
+        if (dx !== 0 && _canScrollX()) {
             moved = _move(xAnim, "contentX", f.contentX, dx, _clampX, horizontalStepSize, animate) || moved
+        } else if (dx !== 0) {
+            scrollSideways(dx)
+            moved = true
+        }
         if (dy !== 0 && _canScrollY())
             moved = _move(yAnim, "contentY", f.contentY, dy, _clampY, verticalStepSize, animate) || moved
         return moved
