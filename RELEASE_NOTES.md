@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- Staging, unstaging and discarding large sets of changed files (more than 256 files or deep directory trees like `.dart_tool`, locally and on remote repositories) now succeeds instead of failing with a request validation error.
 - Selecting, scrolling, right-clicking, staging, unstaging and discarding many changed files (including collapsed folders) in Changes is now fast and responsive instead of freezing or silently doing nothing.
 - Repository tabs keep their full width when dragged and expand back properly when you widen the window.
 - The selected commit highlight in History now stays aligned with its row when you scroll the graph.

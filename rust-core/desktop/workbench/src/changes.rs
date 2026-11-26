@@ -24,8 +24,31 @@ use std::collections::{HashMap, HashSet};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
-/// Paths one staging request carries (ContractLimits.stagePaths).
-pub const STAGE_PATHS: usize = 4096;
+/// Paths one staging or discard request carries (ContractLimits.stagePaths).
+pub const STAGE_PATHS: usize = 256;
+/// Native path bytes one staging or discard request carries (ContractLimits.stagePathBytes).
+pub const STAGE_PATH_BYTES: usize = 32_768;
+
+/// Splits `paths` into batches that fit both `STAGE_PATHS` and `STAGE_PATH_BYTES`.
+pub fn batch_paths(paths: &[Vec<u8>]) -> Vec<Vec<Vec<u8>>> {
+    let mut batches = Vec::new();
+    let mut current = Vec::new();
+    let mut bytes = 0usize;
+    for path in paths {
+        if !current.is_empty()
+            && (current.len() >= STAGE_PATHS || bytes + path.len() > STAGE_PATH_BYTES)
+        {
+            batches.push(std::mem::take(&mut current));
+            bytes = 0;
+        }
+        bytes += path.len();
+        current.push(path.clone());
+    }
+    if !current.is_empty() {
+        batches.push(current);
+    }
+    batches
+}
 
 pub fn side_name(side: NativeStagingSide) -> &'static str {
     match side {
@@ -767,6 +790,9 @@ impl ChangesService {
                 && tail.side == side
                 && tail.identity == identity
                 && tail.paths.len() + paths.len() <= STAGE_PATHS
+                && tail.paths.iter().map(Vec::len).sum::<usize>()
+                    + paths.iter().map(Vec::len).sum::<usize>()
+                    <= STAGE_PATH_BYTES
             {
                 tail.entries.extend(selected.iter().cloned());
                 tail.paths.extend(paths.iter().cloned());
@@ -880,15 +906,10 @@ impl ChangesService {
                 }
             });
         }
-        let paths = if scope == NativeStagingScope::Files {
-            intent.paths.clone()
+        let path_batches = if scope == NativeStagingScope::Files {
+            batch_paths(&intent.paths)
         } else {
-            Vec::new()
-        };
-        let batches = if paths.is_empty() {
-            1
-        } else {
-            paths.len().div_ceil(STAGE_PATHS)
+            vec![Vec::new()]
         };
         let mut outcome: Result<
             (
@@ -897,12 +918,7 @@ impl ChangesService {
             ),
             FailureCode,
         > = Ok((NativeStagingExecutionState::Failed, None));
-        for batch in 0..batches {
-            let slice = if paths.is_empty() {
-                Vec::new()
-            } else {
-                paths[batch * STAGE_PATHS..((batch + 1) * STAGE_PATHS).min(paths.len())].to_vec()
-            };
+        for slice in path_batches {
             let request = NativeStagingRequest {
                 request_id: intent.accepted_request.unwrap_or(0),
                 side,
@@ -1159,63 +1175,78 @@ impl ChangesService {
                                 })
                                 .cloned()
                                 .collect();
-                            unique_command_paths(&chosen)
-                                .chunks(STAGE_PATHS)
+                            batch_paths(&unique_command_paths(&chosen))
+                                .into_iter()
                                 .map(|chunk| NativeDiscardRequest {
                                     kind: part,
                                     scope: NativeDiscardScope::Files,
                                     working_diff_request_id: None,
-                                    paths: chunk.to_vec(),
+                                    paths: chunk,
                                     row_ids: Vec::new(),
                                 })
                                 .collect::<Vec<_>>()
                         })
                         .collect(),
                 };
-                let mut previews = Vec::new();
-                for request in requests {
-                    if !current() {
-                        return;
-                    }
-                    match this
-                        .calls
-                        .repository_session_discard_preview(
-                            identity.native_id,
-                            identity.generation,
-                            request,
-                        )
-                        .await
-                    {
-                        Ok(result) => match (result.preview, result.failure) {
-                            (Some(preview), None) => previews.push(preview),
-                            (_, Some(failure)) => {
-                                return this
-                                    .report_failure(FailureCode::from(&failure), "discardFailed");
-                            }
-                            _ => {
-                                return this
-                                    .report_failure(FailureCode::InvalidOutput, "discardFailed");
-                            }
-                        },
-                        Err(error) => {
-                            return this.report_failure(
-                                crate::session::SessionError::from(error).code(),
-                                "discardFailed",
-                            );
-                        }
-                    }
+                if requests.is_empty() {
+                    return;
                 }
-                let total: u64 = previews.iter().map(|preview| preview.file_count).sum();
-                let tracked: u64 = previews
-                    .iter()
-                    .filter(|preview| preview.kind == NativeDiscardKind::Discard)
-                    .map(|preview| preview.file_count)
-                    .sum();
-                let untracked: u64 = previews
-                    .iter()
-                    .filter(|preview| preview.kind == NativeDiscardKind::Clean)
-                    .map(|preview| preview.file_count)
-                    .sum();
+                let tracked: u64 = if accepted_request.is_some() {
+                    1
+                } else {
+                    requests
+                        .iter()
+                        .filter(|request| request.kind == NativeDiscardKind::Discard)
+                        .map(|request| request.paths.len() as u64)
+                        .sum()
+                };
+                let untracked: u64 = if accepted_request.is_some() {
+                    0
+                } else {
+                    requests
+                        .iter()
+                        .filter(|request| request.kind == NativeDiscardKind::Clean)
+                        .map(|request| request.paths.len() as u64)
+                        .sum()
+                };
+                let total = tracked + untracked;
+                // Preview only the first batch up front so large multi-batch
+                // discards never exceed the session preview capacity (4) and
+                // later batches capture fresh worktree fingerprints.
+                let mut iter = requests.into_iter();
+                let Some(first_request) = iter.next() else {
+                    return;
+                };
+                if !current() {
+                    return;
+                }
+                let first_preview = match this
+                    .calls
+                    .repository_session_discard_preview(
+                        identity.native_id,
+                        identity.generation,
+                        first_request,
+                    )
+                    .await
+                {
+                    Ok(result) => match (result.preview, result.failure) {
+                        (Some(preview), None) => preview,
+                        (_, Some(failure)) => {
+                            return this
+                                .report_failure(FailureCode::from(&failure), "discardFailed");
+                        }
+                        _ => {
+                            return this
+                                .report_failure(FailureCode::InvalidOutput, "discardFailed");
+                        }
+                    },
+                    Err(error) => {
+                        return this.report_failure(
+                            crate::session::SessionError::from(error).code(),
+                            "discardFailed",
+                        );
+                    }
+                };
                 let answer = this
                     .prompts
                     .ask(
@@ -1238,10 +1269,59 @@ impl ChangesService {
                 let mut moved = false;
                 let mut completed = 0u64;
                 let mut warning = false;
-                for preview in previews {
+                let mut pending_preview = Some(first_preview);
+                let mut remaining = iter;
+                loop {
                     if !current() {
                         break;
                     }
+                    let preview = if let Some(preview) = pending_preview.take() {
+                        preview
+                    } else {
+                        let Some(request) = remaining.next() else {
+                            break;
+                        };
+                        match this
+                            .calls
+                            .repository_session_discard_preview(
+                                identity.native_id,
+                                identity.generation,
+                                request,
+                            )
+                            .await
+                        {
+                            Ok(result) => match (result.preview, result.failure) {
+                                (Some(preview), None) => preview,
+                                (_, Some(failure)) => {
+                                    this.report_discard_stop(completed, total, || {
+                                        this.report_failure(
+                                            FailureCode::from(&failure),
+                                            "discardFailed",
+                                        )
+                                    });
+                                    break;
+                                }
+                                _ => {
+                                    this.report_discard_stop(completed, total, || {
+                                        this.report_failure(
+                                            FailureCode::InvalidOutput,
+                                            "discardFailed",
+                                        )
+                                    });
+                                    break;
+                                }
+                            },
+                            Err(error) => {
+                                this.report_discard_stop(completed, total, || {
+                                    this.report_failure(
+                                        crate::session::SessionError::from(error).code(),
+                                        "discardFailed",
+                                    )
+                                });
+                                break;
+                            }
+                        }
+                    };
                     let result = this
                         .calls
                         .repository_session_discard_execute(
@@ -1426,5 +1506,29 @@ mod tests {
         );
         assert_eq!(discard_kind_of([&untracked, &unmerged]), None);
         assert_eq!(discard_kind_of(std::iter::empty()), None);
+    }
+
+    #[test]
+    fn batch_paths_respects_count_and_byte_limits() {
+        let many: Vec<Vec<u8>> = (0..600)
+            .map(|i| format!("file_{i}.txt").into_bytes())
+            .collect();
+        let batches = batch_paths(&many);
+        assert_eq!(batches.len(), 3);
+        assert_eq!(batches[0].len(), STAGE_PATHS);
+        assert_eq!(batches[1].len(), STAGE_PATHS);
+        assert_eq!(batches[2].len(), 600 - 2 * STAGE_PATHS);
+
+        let long_paths: Vec<Vec<u8>> = (0..250)
+            .map(|i| format!(".dart_tool/{}/{i}", "a".repeat(180)).into_bytes())
+            .collect();
+        let byte_batches = batch_paths(&long_paths);
+        assert!(byte_batches.len() > 1);
+        for batch in &byte_batches {
+            assert!(batch.len() <= STAGE_PATHS);
+            assert!(batch.iter().map(Vec::len).sum::<usize>() <= STAGE_PATH_BYTES);
+        }
+        let flattened: usize = byte_batches.iter().map(Vec::len).sum();
+        assert_eq!(flattened, long_paths.len());
     }
 }
