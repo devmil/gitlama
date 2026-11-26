@@ -40,6 +40,13 @@ Item {
             reveal.shown = false
     }
 
+    /// Restores the row to its initial unremoved state (for reused ListView delegates).
+    function reset() {
+        wait.stop()
+        _started = false
+        reveal.resetShown()
+    }
+
     Timer {
         id: wait
         interval: root.delay

@@ -58,6 +58,14 @@ Item {
         show.stop()
         hide.restart()
     }
+    /// Restores the shown state immediately with no animation (e.g. when a ListView reuses a pooled delegate).
+    function resetShown() {
+        hide.stop()
+        shown = true
+        show.stop()
+        _factor = 1
+        _fade = 1
+    }
 
     ParallelAnimation {
         id: show

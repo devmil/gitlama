@@ -188,6 +188,8 @@ Item {
         CompassRule {
             anchors.left: parent.left
             anchors.right: parent.right
+            anchors.leftMargin: pill.radius
+            anchors.rightMargin: pill.radius
             anchors.bottom: parent.bottom
             active: compass.operation.length > 0 || compass.activeProgress
             progress: compass.progress

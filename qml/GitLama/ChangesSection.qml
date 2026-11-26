@@ -591,6 +591,7 @@ Item {
                 }
             }
             ListView.onReused: {
+                leaving.reset()
                 visible = true
                 arrival = 0
             }

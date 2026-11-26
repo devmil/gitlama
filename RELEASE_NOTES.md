@@ -51,6 +51,8 @@
 
 ## Unreleased Beta
 
+- Staging, unstaging or discarding files in the Changes tree view no longer hides remaining folders or files until you toggle between list and tree view.
+- The animated progress line along the bottom of the top repository pill now stops cleanly at the rounded corners instead of extending past them.
 - Staging, unstaging and discarding large sets of changed files (more than 256 files or deep directory trees like `.dart_tool`, locally and on remote repositories) now succeeds instead of failing with a request validation error.
 - Selecting, scrolling, right-clicking, staging, unstaging and discarding many changed files (including collapsed folders) in Changes is now fast and responsive instead of freezing or silently doing nothing.
 - Repository tabs keep their full width when dragged and expand back properly when you widen the window.
