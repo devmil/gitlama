@@ -216,6 +216,9 @@ QtObject {
     readonly property int remotePathFollowDelay: 250
     readonly property int syncGlintDelay: 300
     readonly property real glintWidth: 40
+    /// The Compass's indeterminate activity band, as a share of the pill.
+    readonly property real compassFillBandFraction: 0.45
+    readonly property int compassFillSweep: 1600
     readonly property int detailDebounce: 150
     readonly property int refreshSpinDelay: Motion.spinnerDelay
     readonly property int stageWash: Motion.emphasized

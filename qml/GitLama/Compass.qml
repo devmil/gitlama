@@ -4,7 +4,7 @@ import Meridian
 
 // The repository context in the window bar (GitLamaCompass): repository /
 // branch, then the state (conflicts, changed files, sync) or a running
-// operation; a progress rule along the bottom edge. It opens the
+// operation; an activity wash fills the pill behind them. It opens the
 // repository's details.
 Item {
     id: compass
@@ -97,6 +97,13 @@ Item {
             changed: compass.syncChanged
         }
 
+        CompassFill {
+            anchors.fill: parent
+            radius: pill.radius
+            active: compass.operation.length > 0 || compass.activeProgress
+            progress: compass.progress
+        }
+
         Row {
             id: row
             anchors.verticalCenter: parent.verticalCenter
@@ -183,16 +190,6 @@ Item {
                     }
                 }
             }
-        }
-
-        CompassRule {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: pill.radius
-            anchors.rightMargin: pill.radius
-            anchors.bottom: parent.bottom
-            active: compass.operation.length > 0 || compass.activeProgress
-            progress: compass.progress
         }
     }
 

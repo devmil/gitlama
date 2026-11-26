@@ -97,7 +97,7 @@ The single selection contract is in [`interaction-accessibility.md`](interaction
 | State | Rendering |
 |---|---|
 | Empty repository | Centred empty state in `display`: "No commits yet", with a Button "Open Changes" |
-| Initial loading | Three skeleton rows (`pane-alt` bars at `radius-sm`); the metadata placeholders occupy the pinned region; the Compass progress rule runs |
+| Initial loading | Three skeleton rows (`pane-alt` bars at `radius-sm`); the metadata placeholders occupy the pinned region; the Compass activity wash runs |
 | Background loading | Topology, refs and summaries populate automatically, visible rows first. There is no manual "Load older" barrier |
 | Incremental publication | Keeps selection and viewport anchor stable (fixture `incremental-loading`) |
 | Navigation or filter pending | The island header shows the requested target or filter and Cancel. Previous rows are never presented as the new result |

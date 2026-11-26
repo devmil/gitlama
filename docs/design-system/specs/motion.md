@@ -65,7 +65,7 @@ The Composer is mounted in Changes while the graph is mounted in History. A Comp
 
 | t (ms) | What happens |
 |---|---|
-| 0 | The Compass progress rule fills to 100% (`motion-emphasized`), holds 300 ms and fades (MM-63) |
+| 0 | The Compass activity wash fills to 100% (`motion-emphasized`), holds 300 ms and fades (MM-63) |
 | 300 | A glint sweeps once across the Compass pill: a 40 px wide soft gradient of `accent-soft` at 60% opacity, clipped to the pill, moving left to right over `glint` with `curve-standard`. Only when the sync changed something (new commits, or ahead or behind changed) |
 | 300 | The ahead and behind numbers in the Compass and in the sidebar's sync badges roll to their new values (`MeridianRollingNumber`, rolling down for decreases). A value that becomes 0 fades its arrow to `ink-faint` (`motion-select`) |
 | 300 | After a pull or a fetch that shows new commits in the visible part of the graph, those rows enter with `MeridianEntrance` (rise 6 px, fade), staggered 18 ms, at most 6 rows. Their lane strokes draw in top to bottom (`laneDrawStep`, `laneDrawRow`, at most `laneDrawMaxRows` rows) |
@@ -73,7 +73,7 @@ The Composer is mounted in Changes while the graph is mounted in History. A Comp
 
 **Never:** play the glint for background fetches, or when nothing changed. Background fetches only roll the numbers.
 
-**Reduce motion:** numbers change instantly, the progress rule hides, no glint, no stagger or drawing.
+**Reduce motion:** numbers change instantly, the activity wash jumps to its fill and the sweep holds still, no glint, no stagger or drawing.
 
 ### NH-3 Lane focus
 
@@ -151,7 +151,7 @@ Switching between already-open tabs uses MM-74 (island content swap), not this.
 | ID | Where | Moment | Motion | Reduce motion |
 |---|---|---|---|---|
 | **Compass** | | | | |
-| NM-01 | Compass | Operation starts / ends | The sync badge and counts swap with the operation text via `MeridianSwap(rise)`; the progress rule enters from the bottom edge (height 0 → 2 px, `motion-quick`) | Instant |
+| NM-01 | Compass | Operation starts / ends | The sync badge and counts swap with the operation text via `MeridianSwap(rise)`; the activity wash fades in behind the text (`motion-quick`): a soft band sweeps across while progress is unknown, then the pill fills to the reported fraction (`motion-emphasized`) | Instant |
 | NM-02 | Compass | Branch changes (checkout) | The branch name swaps with `MeridianSwap(rise)`; the pill's width follows over `motion-layout` | Crossfade |
 | NM-03 | Compass | Ahead, behind, conflict or dirty count changes | `MeridianRollingNumber`; increases of ahead and conflicts pop | Instant |
 | NM-04 | Compass | Dirty count goes 0 → n | The warning dot pops in (`spring-pop`). It does not pulse: dirty is a state, not live activity | Instant |

@@ -60,7 +60,7 @@ Sections with a creation flow (Branches, Remotes, Tags, Stashes, Worktrees) show
 ## Compass, Logbook and operations
 
 - The Compass is one focusable target. ↵, Space, click and ⌘K / Ctrl K all open the Palette. ⌘L / Ctrl L opens the Logbook.
-- Operations never open or close UI on their own. Starting work shows the Compass progress rule. Foreground work that lasts more than 300 ms may open the Logbook popover without moving focus. Background work never opens it.
+- Operations never open or close UI on their own. Starting work shows the Compass activity wash. Foreground work that lasts more than 300 ms may open the Logbook popover without moving focus. Background work never opens it.
 - The Logbook has three `Segmented` filters, All / Mine / Background (Mine is the default), and the choice persists. Each entry expands to show the exact command, timing, status, and redacted, bounded stdout and stderr in selectable text. Failures stay until dismissed.
 
 ## Menus and tooltips

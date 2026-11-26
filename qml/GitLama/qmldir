@@ -28,7 +28,7 @@ singleton GitLamaIcons 1.0 GitLamaIcons.qml
 singleton Commands 1.0 Commands.qml
 Compass 1.0 Compass.qml
 CompassGlint 1.0 CompassGlint.qml
-CompassRule 1.0 CompassRule.qml
+CompassFill 1.0 CompassFill.qml
 CompassState 1.0 CompassState.qml
 DirtyCount 1.0 DirtyCount.qml
 SyncBadge 1.0 SyncBadge.qml
