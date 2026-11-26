@@ -6,12 +6,13 @@ use crate::inspector_state::parse_whitespace;
 use crate::plumbing::Commands;
 use gitlama_contract::diff::NativeDiffLayout;
 use gitlama_contract::dto::{
-    NativeStagingPhase, NativeStagingScope, NativeStagingSide, NativeStatusEntry,
-    NativeStatusEntryKind,
+    NativeDiscardKind, NativeStagingPhase, NativeStagingScope, NativeStagingSide,
+    NativeStatusEntry, NativeStatusEntryKind,
 };
 use gitlama_workbench::app::Services;
 use gitlama_workbench::changes::{
-    change_key, display_identity, entries_on, is_staged, is_unstaged, side_name,
+    change_key, discard_kind_of, display_identity, entries_on, entry_in_folder, is_staged,
+    is_unstaged, side_name,
 };
 use gitlama_workbench::inspector::DiffOptions;
 use gitlama_workbench::rt;
@@ -29,7 +30,7 @@ pub const FILE_ROLES: &[&str] = &[
     "depth",
     "directory",
     "expanded",
-    "keys",
+    "descendantCount",
     "status",
     "partial",
     "conflicted",
@@ -117,11 +118,20 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
     };
     let selection = changes.selection_of(tab.id);
     let filtering = !filter.trim().is_empty();
-    let rows = |side: NativeStagingSide| -> (Vec<Value>, usize) {
+    let rows = |side: NativeStagingSide| -> (Vec<Value>, usize, usize, bool, bool, bool) {
         let all = entries_on(&status, side);
         let total = all.len();
         let pending = changes.pending_keys(tab.id, side);
         let selected = selection.of(side);
+        let selected_entries: Vec<&NativeStatusEntry> = all
+            .iter()
+            .filter(|entry| selected.contains(&change_key(entry)))
+            .collect();
+        let selected_discard = discard_kind_of(selected_entries.iter().copied());
+        let selected_discardable = selected_discard.is_some();
+        let selected_clean_only = selected_discard == Some(NativeDiscardKind::Clean);
+        let selected_all_pending =
+            !selected.is_empty() && selected.iter().all(|key| pending.contains(key));
         let tree = services.settings.with(|document| {
             let mode = if side == NativeStagingSide::Staged {
                 &document.appearance.changes_staged_mode
@@ -139,7 +149,7 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
                 "depth": depth,
                 "directory": false,
                 "expanded": false,
-                "keys": [],
+                "descendantCount": 0,
                 "status": status_code(entry, side),
                 "partial": is_staged(entry) && is_unstaged(entry),
                 "conflicted": entry.kind == NativeStatusEntryKind::Unmerged,
@@ -154,10 +164,15 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
             .iter()
             .filter(|entry| !filtering || filter_matches(entry, filter))
             .collect();
+        let visible_count = visible.len();
         if !tree {
             return (
                 visible.into_iter().map(|entry| file(entry, 0)).collect(),
                 total,
+                visible_count,
+                selected_discardable,
+                selected_clean_only,
+                selected_all_pending,
             );
         }
         let folded = &collapsed[usize::from(side == NativeStagingSide::Staged)];
@@ -172,17 +187,13 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
         .map(|row| match row.item {
             Some(entry) => file(entry, row.depth),
             None => {
-                let keys: Vec<String> = row
-                    .descendants
-                    .iter()
-                    .map(|entry| change_key(entry))
-                    .collect();
-                let entries: Vec<NativeStatusEntry> = row
-                    .descendants
-                    .iter()
-                    .map(|entry| (*entry).clone())
-                    .collect();
-                let discard = gitlama_workbench::changes::discard_kind_of(&entries);
+                let descendant_count = row.descendants.len();
+                let discard = discard_kind_of(row.descendants.iter().copied());
+                let all_selected = descendant_count > 0
+                    && row
+                        .descendants
+                        .iter()
+                        .all(|entry| selected.contains(&change_key(entry)));
                 json!({
                     "key": format!("dir:{}", row.identity),
                     "path": row.identity,
@@ -190,23 +201,38 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
                     "depth": row.depth,
                     "directory": true,
                     "expanded": !folded.contains(&row.identity),
-                    "keys": keys,
+                    "descendantCount": descendant_count,
                     "status": "",
                     "partial": false,
                     "conflicted": false,
-                    "untracked": discard == Some(gitlama_contract::dto::NativeDiscardKind::Clean),
+                    "untracked": discard == Some(NativeDiscardKind::Clean),
                     "discardable": discard.is_some(),
                     "source": null,
-                    "selected": !keys.is_empty() && keys.iter().all(|key| selected.contains(key)),
+                    "selected": all_selected,
                     "pending": false,
                 })
             }
         })
         .collect();
-        (shown, total)
+        (
+            shown,
+            total,
+            visible_count,
+            selected_discardable,
+            selected_clean_only,
+            selected_all_pending,
+        )
     };
-    let (unstaged, unstaged_total) = rows(NativeStagingSide::Unstaged);
-    let (staged, staged_total) = rows(NativeStagingSide::Staged);
+    let (
+        unstaged,
+        unstaged_total,
+        unstaged_shown,
+        selected_unstaged_discardable,
+        selected_unstaged_clean_only,
+        selected_unstaged_all_pending,
+    ) = rows(NativeStagingSide::Unstaged);
+    let (staged, staged_total, staged_shown, _, _, selected_staged_all_pending) =
+        rows(NativeStagingSide::Staged);
     let key = detail.key();
     let entry = detail.entry();
     let options = detail.options();
@@ -225,10 +251,14 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
         "filtering": filtering,
         "unstagedTotal": unstaged_total,
         "stagedTotal": staged_total,
-        "unstagedShown": unstaged.iter().filter(|row| row["directory"] != true).count(),
-        "stagedShown": staged.iter().filter(|row| row["directory"] != true).count(),
+        "unstagedShown": unstaged_shown,
+        "stagedShown": staged_shown,
         "selectedUnstaged": selection.unstaged.len(),
         "selectedStaged": selection.staged.len(),
+        "selectedUnstagedDiscardable": selected_unstaged_discardable,
+        "selectedUnstagedCleanOnly": selected_unstaged_clean_only,
+        "selectedUnstagedAllPending": selected_unstaged_all_pending,
+        "selectedStagedAllPending": selected_staged_all_pending,
         "disabled": changes.disabled_selection_commands(tab.id),
         "headObjectId": status.head_object_id,
         // The last commit made in this repository: the staged list empties as it leaves.
@@ -513,9 +543,198 @@ mod changes_state {
             });
         }
 
+        /// Toggles `key` in the selection of `side`, which takes the focus.
+        #[qslot]
+        fn toggle_select(&self, side: String, key: String) {
+            self.with_tab(move |services, tab| {
+                services.changes.toggle_select(tab, parse_side(&side), key);
+            });
+        }
+
+        /// Selects every file matching the current filter on `side`,
+        /// including files inside collapsed folders.
+        #[qslot]
+        fn select_all(&self, side: String) {
+            let filter = self.filter.borrow().clone();
+            self.with_tab(move |services, tab| {
+                let side = parse_side(&side);
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
+                    return;
+                };
+                let filtering = !filter.trim().is_empty();
+                let keys: HashSet<String> = entries_on(&status, side)
+                    .iter()
+                    .filter(|entry| !filtering || filter_matches(entry, &filter))
+                    .map(change_key)
+                    .collect();
+                services.changes.select(tab, side, keys);
+            });
+        }
+
+        /// Selects every file under `folder` matching the current filter on `side`.
+        #[qslot]
+        fn select_folder(&self, side: String, folder: String) {
+            let filter = self.filter.borrow().clone();
+            self.with_tab(move |services, tab| {
+                let side = parse_side(&side);
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
+                    return;
+                };
+                let filtering = !filter.trim().is_empty();
+                let keys: HashSet<String> = entries_on(&status, side)
+                    .iter()
+                    .filter(|entry| {
+                        (!filtering || filter_matches(entry, &filter))
+                            && entry_in_folder(entry, &folder)
+                    })
+                    .map(change_key)
+                    .collect();
+                services.changes.select(tab, side, keys);
+            });
+        }
+
+        /// Selects every file in display rows `from..=to` of `side`, expanding
+        /// any folder rows in the range (including collapsed folders).
+        #[qslot]
+        fn select_range(&self, side: String, from: i32, to: i32) {
+            let filter = self.filter.borrow().clone();
+            let Some(commands) = &self.commands else {
+                return;
+            };
+            commands.post(move |driver| {
+                let Some(services) = driver.app.services() else {
+                    return;
+                };
+                let Some(tab) = services.workspace.active_tab_id() else {
+                    return;
+                };
+                let parsed = parse_side(&side);
+                let model = if parsed == NativeStagingSide::Staged {
+                    &driver.staged_rows
+                } else {
+                    &driver.unstaged_rows
+                };
+                let rows = model.borrow();
+                let slice = rows.rows();
+                if slice.is_empty() {
+                    return;
+                }
+                let start = from.min(to).clamp(0, slice.len() as i32 - 1) as usize;
+                let end = from.max(to).clamp(0, slice.len() as i32 - 1) as usize;
+                let mut keys = HashSet::new();
+                let mut folders = Vec::new();
+                for row in &slice[start..=end] {
+                    if row.get("directory").and_then(Value::as_bool) == Some(true) {
+                        if let Some(path) = row.get("path").and_then(Value::as_str) {
+                            folders.push(path.to_owned());
+                        }
+                    } else if let Some(key) = row.get("key").and_then(Value::as_str) {
+                        keys.insert(key.to_owned());
+                    }
+                }
+                drop(rows);
+                if !folders.is_empty()
+                    && let Some(status) = services
+                        .workspace
+                        .tab(tab)
+                        .and_then(|tab| tab.session)
+                        .and_then(|session| session.snapshot.status.clone())
+                {
+                    let filtering = !filter.trim().is_empty();
+                    for entry in entries_on(&status, parsed) {
+                        if (!filtering || filter_matches(&entry, &filter))
+                            && folders.iter().any(|folder| entry_in_folder(&entry, folder))
+                        {
+                            keys.insert(change_key(&entry));
+                        }
+                    }
+                }
+                services.changes.select(tab, parsed, keys);
+            });
+        }
+
         #[qslot]
         fn focus(&self, side: String) {
             self.with_tab(move |services, tab| services.changes.focus(tab, parse_side(&side)));
+        }
+
+        /// Stages (or unstages, from the staged list) the currently selected
+        /// files of `side`, including files inside collapsed folders.
+        #[qslot]
+        fn stage_selected_files(&self, side: String) {
+            self.with_tab(move |services, tab| {
+                let side = parse_side(&side);
+                let entries = services.changes.selected_entries(tab, side);
+                if entries.is_empty() {
+                    return;
+                }
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(async move {
+                    changes
+                        .stage(
+                            tab,
+                            side,
+                            NativeStagingScope::Files,
+                            entries,
+                            None,
+                            Vec::new(),
+                            None,
+                        )
+                        .await
+                });
+            });
+        }
+
+        /// Stages (or unstages) every filtered file under `folder` on `side`.
+        #[qslot]
+        fn stage_folder(&self, side: String, folder: String) {
+            let filter = self.filter.borrow().clone();
+            self.with_tab(move |services, tab| {
+                let side = parse_side(&side);
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
+                    return;
+                };
+                let filtering = !filter.trim().is_empty();
+                let entries: Vec<NativeStatusEntry> = entries_on(&status, side)
+                    .into_iter()
+                    .filter(|entry| {
+                        (!filtering || filter_matches(entry, &filter))
+                            && entry_in_folder(entry, &folder)
+                    })
+                    .collect();
+                if entries.is_empty() {
+                    return;
+                }
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(async move {
+                    changes
+                        .stage(
+                            tab,
+                            side,
+                            NativeStagingScope::Files,
+                            entries,
+                            None,
+                            Vec::new(),
+                            None,
+                        )
+                        .await
+                });
+            });
         }
 
         /// Stages (or unstages, from the staged list) the files `keys`.
@@ -637,6 +856,86 @@ mod changes_state {
                         .into_iter()
                         .filter(|entry| keys.contains(&change_key(entry)))
                         .collect();
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(
+                    async move { changes.discard(tab, entries, None, Vec::new()).await },
+                );
+            });
+        }
+
+        /// Discards the currently selected unstaged files, including files
+        /// inside collapsed folders.
+        #[qslot]
+        fn discard_selected_files(&self) {
+            self.with_tab(move |services, tab| {
+                let entries = services
+                    .changes
+                    .selected_entries(tab, NativeStagingSide::Unstaged);
+                if entries.is_empty() {
+                    return;
+                }
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(
+                    async move { changes.discard(tab, entries, None, Vec::new()).await },
+                );
+            });
+        }
+
+        /// Discards every filtered unstaged file under `folder`.
+        #[qslot]
+        fn discard_folder(&self, folder: String) {
+            let filter = self.filter.borrow().clone();
+            self.with_tab(move |services, tab| {
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
+                    return;
+                };
+                let filtering = !filter.trim().is_empty();
+                let entries: Vec<NativeStatusEntry> =
+                    entries_on(&status, NativeStagingSide::Unstaged)
+                        .into_iter()
+                        .filter(|entry| {
+                            (!filtering || filter_matches(entry, &filter))
+                                && entry_in_folder(entry, &folder)
+                        })
+                        .collect();
+                if entries.is_empty() {
+                    return;
+                }
+                let changes = Rc::clone(&services.changes);
+                rt::spawn_detached(
+                    async move { changes.discard(tab, entries, None, Vec::new()).await },
+                );
+            });
+        }
+
+        /// Discards every filtered unstaged file, including files inside
+        /// collapsed folders.
+        #[qslot]
+        fn discard_all(&self) {
+            let filter = self.filter.borrow().clone();
+            self.with_tab(move |services, tab| {
+                let Some(status) = services
+                    .workspace
+                    .tab(tab)
+                    .and_then(|tab| tab.session)
+                    .and_then(|session| session.snapshot.status.clone())
+                else {
+                    return;
+                };
+                let filtering = !filter.trim().is_empty();
+                let entries: Vec<NativeStatusEntry> =
+                    entries_on(&status, NativeStagingSide::Unstaged)
+                        .into_iter()
+                        .filter(|entry| !filtering || filter_matches(entry, &filter))
+                        .collect();
+                if entries.is_empty() {
+                    return;
+                }
                 let changes = Rc::clone(&services.changes);
                 rt::spawn_detached(
                     async move { changes.discard(tab, entries, None, Vec::new()).await },

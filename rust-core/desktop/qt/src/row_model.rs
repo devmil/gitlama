@@ -223,6 +223,11 @@ mod row_model {
             model
         }
 
+        /// The current published rows in display order.
+        pub fn rows(&self) -> &[Map<String, Value>] {
+            &self.rows
+        }
+
         /// Publishes `rows` (JSON objects carrying the key field).
         pub fn publish(&mut self, rows: Vec<Value>) {
             let rows: Vec<Map<String, Value>> = rows

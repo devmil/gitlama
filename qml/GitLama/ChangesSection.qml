@@ -22,6 +22,11 @@ Item {
     readonly property int shown: unstaged ? (paneState.unstagedShown ?? 0) : (paneState.stagedShown ?? 0)
     readonly property int total: unstaged ? (paneState.unstagedTotal ?? 0) : (paneState.stagedTotal ?? 0)
     readonly property int selectedCount: unstaged ? (paneState.selectedUnstaged ?? 0) : (paneState.selectedStaged ?? 0)
+    readonly property bool selectedDiscardable: unstaged && paneState.selectedUnstagedDiscardable === true
+    readonly property bool selectedCleanOnly: unstaged && paneState.selectedUnstagedCleanOnly === true
+    readonly property bool selectedAllPending: unstaged
+        ? (paneState.selectedUnstagedAllPending === true)
+        : (paneState.selectedStagedAllPending === true)
     readonly property bool filtering: paneState.filtering === true
     readonly property bool busy: paneState.busy === true
     /// The row the Shift range starts from.
@@ -32,36 +37,21 @@ Item {
     function setTree(value) {
         Store.app.updateAppearance(unstaged ? { changesUnstagedMode: value ? "tree" : "list" } : { changesStagedMode: value ? "tree" : "list" })
     }
-    function keysOf(predicate) {
-        const keys = []
-        for (let i = 0; i < model.count(); ++i) {
-            const row = model.get(i)
-            if (!row.directory && predicate(row, i))
-                keys.push(row.key)
-        }
-        return keys
-    }
-    function selectedKeys() { return keysOf(row => row.selected) }
-    function rowsOf(keys) {
-        const rows = []
-        for (let i = 0; i < model.count(); ++i) {
-            const row = model.get(i)
-            if (!row.directory && keys.indexOf(row.key) >= 0)
-                rows.push(row)
-        }
-        return rows
-    }
 
     // Dragging files to the other list: the drag
     // label follows the pointer over the window; dropping on the other
     // list stages or unstages them.
-    /// The keys being dragged from this list; their rows stay behind faded.
-    property var draggingKeys: []
-    function startDrag(keys, item, position) {
+    /// Whether the current drag carries the whole selection or one key.
+    property bool draggingSelection: false
+    property string draggingKey: ""
+    function startDrag(selection, key, count, item, position) {
         const window = owner.Window.contentItem
         dragProxy.parent = window
-        dragProxy.keys = keys
-        draggingKeys = keys
+        dragProxy.selection = selection
+        dragProxy.key = key
+        dragProxy.count = count
+        draggingSelection = selection
+        draggingKey = key
         dragProxy.side = side
         moveDrag(item, position)
         dragProxy.visible = true
@@ -72,7 +62,10 @@ Item {
     function startLongDrag(row, position) {
         longDragRow = row
         list.interactive = false
-        startDrag(row.actionRows.map(entry => entry.key), row, position)
+        if (row.actsOnSelection)
+            startDrag(true, "", owner.selectedCount, row, position)
+        else
+            startDrag(false, row.key, 1, row, position)
     }
     function endLongDrag() {
         longDragRow = null
@@ -90,13 +83,16 @@ Item {
         dragProxy.Drag.drop()
         dragProxy.Drag.active = false
         dragProxy.visible = false
-        draggingKeys = []
+        draggingSelection = false
+        draggingKey = ""
     }
     // The label under the pointer, lifted (MeridianLift).
     Item {
         id: dragProxy
         objectName: "changes-drag-label"
-        property var keys: []
+        property bool selection: false
+        property string key: ""
+        property int count: 0
         property string side: ""
         visible: false
         z: 1000
@@ -119,8 +115,8 @@ Item {
                     anchors.centerIn: parent
                     role: MeridianText.Label
                     text: dragProxy.side === "unstaged"
-                        ? L10n.tn("changesDragStageCount", { count: dragProxy.keys.length })
-                        : L10n.tn("changesDragUnstageCount", { count: dragProxy.keys.length })
+                        ? L10n.tn("changesDragStageCount", { count: dragProxy.count })
+                        : L10n.tn("changesDragUnstageCount", { count: dragProxy.count })
                 }
             }
         }
@@ -140,14 +136,16 @@ Item {
             visible: parent.containsDrag
         }
     }
-    function dragKeys() { return dragProxy.keys }
+    function dragPayload() { return { selection: dragProxy.selection, key: dragProxy.key } }
     // The drag source is another ChangesSection, seen dynamically.
     function receiveDrop(source) {
-        if (!source || source === owner || source.dragKeys === undefined)
+        if (!source || source === owner || source.dragPayload === undefined)
             return false
-        const keys = source.dragKeys()
-        if (keys.length > 0)
-            Store.changes.stageFiles(source.side, keys)
+        const payload = source.dragPayload()
+        if (payload.selection)
+            Store.changes.stageSelectedFiles(source.side)
+        else if (payload.key.length > 0)
+            Store.changes.stageFiles(source.side, [payload.key])
         return true
     }
     function selectRow(index, modifiers) {
@@ -156,21 +154,15 @@ Item {
             return
         // Selecting a folder selects its files; only its chevron folds it.
         if (row.directory) {
-            Store.changes.select(side, row.keys ?? [])
+            Store.changes.selectFolder(side, row.path)
             anchor = index
+            list.currentIndex = index
             return
         }
         if (modifiers & Qt.ShiftModifier && anchor >= 0) {
-            const from = Math.min(anchor, index), to = Math.max(anchor, index)
-            Store.changes.select(side, keysOf((_, at) => at >= from && at <= to))
+            Store.changes.selectRange(side, anchor, index)
         } else if (modifiers & (Qt.ControlModifier | Qt.MetaModifier)) {
-            const keys = selectedKeys()
-            const at = keys.indexOf(row.key)
-            if (at >= 0)
-                keys.splice(at, 1)
-            else
-                keys.push(row.key)
-            Store.changes.select(side, keys)
+            Store.changes.toggleSelect(side, row.key)
             anchor = index
         } else {
             Store.changes.select(side, [row.key])
@@ -197,30 +189,19 @@ Item {
         const row = model.get(index)
         if (!row)
             return
+        fileMenu.target = row
         if (row.directory) {
-            fileMenu.targets = [row]
-            fileMenu.target = row
             fileMenu.showFor({
                 source: "changesFolder",
                 path: row.path,
-                exists: (row.keys ?? []).length > 0,
+                exists: (row.descendantCount ?? 0) > 0,
                 staged: !unstaged,
                 discardable: row.discardable === true,
                 untracked: row.untracked === true,
             }, null, fileActionHost, item, x, y)
             return
         }
-        const selection = row.selected ? keysOf(candidate => candidate.selected).map(key => {
-            for (let i = 0; i < model.count(); ++i) {
-                const candidate = model.get(i)
-                if (candidate.key === key)
-                    return candidate
-            }
-            return null
-        }).filter(candidate => candidate !== null) : []
-        const discardable = selection.every(candidate => candidate.discardable === true)
-        fileMenu.targets = selection.length >= 2 ? selection : [row]
-        fileMenu.target = row
+        const multi = row.selected === true && owner.selectedCount >= 2
         fileMenu.showFor({
             source: unstaged ? "unstagedFile" : "stagedFile",
             path: row.path,
@@ -228,10 +209,10 @@ Item {
             staged: !unstaged,
             discardable: row.discardable === true,
             untracked: row.untracked === true,
-        }, selection.length >= 2 ? {
-            count: selection.length,
+        }, multi ? {
+            count: owner.selectedCount,
             staged: !unstaged,
-            clean: discardable ? selection.every(candidate => candidate.untracked === true) : null,
+            clean: owner.selectedDiscardable ? owner.selectedCleanOnly : null,
         } : null, fileActionHost, item, x, y)
     }
 
@@ -245,14 +226,24 @@ Item {
     property string flightKey: ""
     /// The last commit in this repository: the staged rows leave as it does.
     property int commitSequence: 0
-    property var _leavingKeys: []
+    property var _leavingSet: ({})
+    property var _movingSet: ({})
     property bool _commitLeaving: false
     property int _seenCommit: -1
     property int _arrivals: 0
     /// Rows still fading out; the empty state waits for them.
     property int leavingRows: 0
     onMutationSequenceChanged: {
-        _leavingKeys = mutationSource === side ? movingKeys : []
+        const leaving = {}
+        const moving = {}
+        for (let i = 0; i < movingKeys.length; ++i) {
+            const key = movingKeys[i]
+            moving[key] = true
+            if (mutationSource === side)
+                leaving[key] = true
+        }
+        _leavingSet = leaving
+        _movingSet = moving
         _arrivals = 0
     }
     onCommitSequenceChanged: {
@@ -263,18 +254,18 @@ Item {
     /// Whether the row `key` the list just removed leaves visibly (fading and collapsing):
     /// a committed staged file, or a file moving to the other list.
     function leaves(key) {
-        const leaving = _commitLeaving || _leavingKeys.indexOf(key) >= 0
+        const leaving = _commitLeaving || _leavingSet[key] === true
         if (leaving)
             Qt.callLater(owner._settleLeaving)
         return leaving
     }
     function _settleLeaving() {
         _commitLeaving = false
-        _leavingKeys = []
+        _leavingSet = ({})
     }
     /// Whether the row `key` the list just added came from the other list.
     function arrives(key) {
-        return mutationSource.length > 0 && mutationSource !== side && movingKeys.indexOf(key) >= 0
+        return mutationSource.length > 0 && mutationSource !== side && _movingSet[key] === true
     }
     function nextArrival() {
         return _arrivals++
@@ -284,7 +275,9 @@ Item {
         const item = list.itemAtIndex(model.indexOf(key))
         if (!item)
             return false
+        // qmllint disable missing-property
         item.capture()
+        // qmllint enable missing-property
         return true
     }
     /// Whether a file at `path` arriving here would land in view.
@@ -334,7 +327,7 @@ Item {
             const other = Store.changesSections["staged"]
             if (!row || !other)
                 return
-            owner.startDrag([row.key], owner, Qt.point(owner.width / 2, 20))
+            owner.startDrag(false, row.key, 1, owner, Qt.point(owner.width / 2, 20))
             owner.moveDrag(other, Qt.point(other.width / 2, other.height / 2))
             if (parts[1] !== "hold")
                 Qt.callLater(owner.endDrag)
@@ -351,35 +344,46 @@ Item {
     FileActionMenu {
         id: fileMenu
         property var target: null
-        property var targets: []
         run: (action, selection) => {
-            const rows = selection ? targets : [target]
             const folder = target.directory === true
-            const keys = folder ? (target.keys ?? []) : rows.map(row => row.key)
             const path = target.path
             switch (action) {
             case "stage":
             case "unstage":
-                Store.changes.stageFiles(owner.side, keys); return
+                if (folder)
+                    Store.changes.stageFolder(owner.side, path)
+                else if (selection)
+                    Store.changes.stageSelectedFiles(owner.side)
+                else
+                    Store.changes.stageFiles(owner.side, [target.key])
+                return
             case "inspectChanges":
                 Store.actions.showLineSelection(owner.side, target.key); return
             case "createPatch": {
                 if (folder) {
-                    Store.actions.showPatchDialog({ kind: "keys", side: owner.side, keys: keys }, "create")
+                    Store.actions.showPatchDialog({ kind: "folder", side: owner.side, path: path }, "create")
+                    return
+                }
+                if (selection) {
+                    Store.actions.showPatchDialog({ kind: "selection" }, "create")
                     return
                 }
                 const paths = []
-                for (const row of rows) {
-                    for (const candidate of [row.source ?? "", row.path])
-                        if (candidate.length > 0 && paths.indexOf(candidate) < 0)
-                            paths.push(candidate)
-                }
+                for (const candidate of [target.source ?? "", target.path])
+                    if (candidate.length > 0 && paths.indexOf(candidate) < 0)
+                        paths.push(candidate)
                 Store.actions.showPatchDialog({ kind: "files", side: owner.side, paths: paths }, "create")
                 return
             }
             case "discard":
             case "clean":
-                Store.changes.discardFiles(keys); return
+                if (folder)
+                    Store.changes.discardFolder(path)
+                else if (selection)
+                    Store.changes.discardSelectedFiles()
+                else
+                    Store.changes.discardFiles([target.key])
+                return
             case "copyPath":
                 Store.actions.copyText(path, L10n.t("filePathCopied")); return
             case "openExternally":
@@ -387,7 +391,7 @@ Item {
             case "revealInFileBrowser":
                 Store.workflows.openTool("fileManager", path); return
             case "addToGitignore":
-                Store.workflows.ignorePath(path, folder, rows.some(row => row.untracked !== true)); return
+                Store.workflows.ignorePath(path, folder, target.untracked !== true); return
             case "blame":
                 Store.actions.inspectWorkingFile(path, "blame", false); return
             case "fileHistory":
@@ -459,7 +463,7 @@ Item {
                 iconColorOverride: Theme.colors.danger
                 enabled: !owner.busy && owner.selectedCount > 0
                     && (owner.paneState.disabled ?? []).indexOf("discardChanges") < 0
-                onClicked: Store.changes.discardFiles(owner.selectedKeys())
+                onClicked: Store.changes.discardSelectedFiles()
             }
             MeridianIconButton {
                 visible: owner.unstaged
@@ -468,7 +472,7 @@ Item {
                 controlSize: MeridianButton.Small
                 iconColorOverride: Theme.colors.danger
                 enabled: !owner.busy && owner.shown > 0
-                onClicked: Store.changes.discardFiles(owner.keysOf(() => true))
+                onClicked: Store.changes.discardAll()
             }
             Rectangle {
                 visible: owner.unstaged
@@ -484,7 +488,7 @@ Item {
                 transform: Translate { x: selectedShake.offset }
                 controlSize: MeridianButton.Small
                 enabled: (!owner.busy || owner.paneState.canQueue === true) && owner.selectedCount > 0
-                onClicked: Store.changes.stageFiles(owner.side, owner.selectedKeys())
+                onClicked: Store.changes.stageSelectedFiles(owner.side)
             }
             MeridianIconButton {
                 visible: !sectionHeader.wide
@@ -545,7 +549,7 @@ Item {
                 Store.changes.toggleFocused()
                 event.accepted = true
             } else if (event.key === Qt.Key_A && (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier))) {
-                Store.changes.select(owner.side, owner.keysOf(() => true))
+                Store.changes.selectAll(owner.side)
                 event.accepted = true
             } else if (event.key === Qt.Key_Delete && owner.unstaged) {
                 Store.changes.discardSelection()
@@ -632,7 +636,9 @@ Item {
                             status: model.status ?? ""
                             partial: model.partial === true
                             selected: model.selected === true
-                            opacity: pending ? 0.5 : owner.draggingKeys.indexOf(key) >= 0 ? GitLamaLayout.opacityDragSource : 1
+                            opacity: pending ? 0.5
+                                : (owner.draggingSelection ? model.selected === true : owner.draggingKey === key)
+                                    ? GitLamaLayout.opacityDragSource : 1
                             onLongPressed: if (!folder && gripEnabled) owner.startLongDrag(fileRow, pointer.point.position)
                             readonly property bool gripEnabled: !pending && (!owner.busy || owner.paneState.canQueue === true)
                             activeFocusOnTab: false
@@ -643,12 +649,12 @@ Item {
                             onDoubleClicked: if (!folder) Store.changes.stageFiles(owner.side, [fileRow.key])
                             onFolderToggled: Store.changes.toggleFolder(owner.side, model.path)
                             onContextMenuRequested: (x, y) => owner.showFileMenu(fileRow.index, fileRow, x, y)
-                            // The rows an action on this one affects: the selection when the
-                            // row belongs to a multiple selection.
-                            readonly property var actionRows: model.selected === true && owner.selectedCount > 1
-                                ? owner.rowsOf(owner.selectedKeys()) : [model]
-                            readonly property bool discardShown: owner.unstaged && actionRows.length > 0 && actionRows.every(entry => entry.discardable === true)
-                            readonly property bool cleanOnly: actionRows.every(entry => entry.untracked === true)
+                            // Whether an action on this row affects the multiple selection.
+                            readonly property bool actsOnSelection: model.selected === true && owner.selectedCount > 1
+                            readonly property bool discardShown: owner.unstaged
+                                && (actsOnSelection ? owner.selectedDiscardable : model.discardable === true)
+                            readonly property bool cleanOnly: actsOnSelection ? owner.selectedCleanOnly : model.untracked === true
+                            readonly property bool actionPending: actsOnSelection ? owner.selectedAllPending : pending
                             trailing: folder ? null : rowActions
                             Component {
                                 id: rowActions
@@ -658,25 +664,29 @@ Item {
                                     MeridianIconButton {
                                         visible: rowHover.hovered || fileRow.activeFocus
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: fileRow.actionRows.length > 1
+                                        text: fileRow.actsOnSelection
                                             ? (owner.unstaged ? L10n.t("stageSelected") : L10n.t("unstageSelected"))
                                             : (owner.unstaged ? L10n.t("stageFile") : L10n.t("unstageFile"))
                                         iconName: owner.unstaged ? "arrow-down" : "arrow-up"
                                         controlSize: MeridianButton.Small
                                         enabled: (!owner.busy || owner.paneState.canQueue === true)
-                                            && !fileRow.actionRows.every(entry => entry.pending === true)
-                                        onClicked: Store.changes.stageFiles(owner.side, fileRow.actionRows.map(entry => entry.key))
+                                            && !fileRow.actionPending
+                                        onClicked: fileRow.actsOnSelection
+                                            ? Store.changes.stageSelectedFiles(owner.side)
+                                            : Store.changes.stageFiles(owner.side, [fileRow.key])
                                     }
                                     MeridianIconButton {
                                         visible: (rowHover.hovered || fileRow.activeFocus) && fileRow.discardShown
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: fileRow.cleanOnly
-                                            ? (fileRow.actionRows.length > 1 ? L10n.t("cleanSelected") : L10n.t("cleanFile"))
-                                            : (fileRow.actionRows.length > 1 ? L10n.t("discardSelected") : L10n.t("discardFile"))
+                                            ? (fileRow.actsOnSelection ? L10n.t("cleanSelected") : L10n.t("cleanFile"))
+                                            : (fileRow.actsOnSelection ? L10n.t("discardSelected") : L10n.t("discardFile"))
                                         iconName: "undo"
                                         controlSize: MeridianButton.Small
                                         enabled: !owner.busy
-                                        onClicked: Store.changes.discardFiles(fileRow.actionRows.map(entry => entry.key))
+                                        onClicked: fileRow.actsOnSelection
+                                            ? Store.changes.discardSelectedFiles()
+                                            : Store.changes.discardFiles([fileRow.key])
                                     }
                                     // Queued work spins; otherwise the grip drags the file to
                                     // the other list.
@@ -707,10 +717,14 @@ Item {
                                             target: null
                                             enabled: !owner.busy || owner.paneState.canQueue === true
                                             onActiveChanged: {
-                                                if (active)
-                                                    owner.startDrag(fileRow.actionRows.map(entry => entry.key), grip, centroid.position)
-                                                else
+                                                if (active) {
+                                                    if (fileRow.actsOnSelection)
+                                                        owner.startDrag(true, "", owner.selectedCount, grip, centroid.position)
+                                                    else
+                                                        owner.startDrag(false, fileRow.key, 1, grip, centroid.position)
+                                                } else {
                                                     owner.endDrag()
+                                                }
                                             }
                                             onCentroidChanged: if (active) owner.moveDrag(grip, centroid.position)
                                         }

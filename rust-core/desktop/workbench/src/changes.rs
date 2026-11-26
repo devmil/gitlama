@@ -114,7 +114,9 @@ pub fn discardable(entry: &NativeStatusEntry) -> bool {
 
 /// What Discard does to `entries`: Clean when all are untracked, Discard
 /// when any are tracked; None when empty or holding a conflict or ignored file.
-pub fn discard_kind_of(entries: &[NativeStatusEntry]) -> Option<NativeDiscardKind> {
+pub fn discard_kind_of<'a>(
+    entries: impl IntoIterator<Item = &'a NativeStatusEntry>,
+) -> Option<NativeDiscardKind> {
     let (mut untracked, mut tracked) = (false, false);
     for entry in entries {
         if !discardable(entry) {
@@ -131,6 +133,19 @@ pub fn discard_kind_of(entries: &[NativeStatusEntry]) -> Option<NativeDiscardKin
         (_, false) => Some(NativeDiscardKind::Clean),
         _ => Some(NativeDiscardKind::Discard),
     }
+}
+
+/// Whether `entry`'s normalized path is inside `folder` (a `/`-separated tree identity).
+pub fn entry_in_folder(entry: &NativeStatusEntry, folder: &str) -> bool {
+    let normalized = display_identity(entry)
+        .replace('\\', "/")
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("/");
+    normalized
+        .strip_prefix(folder)
+        .is_some_and(|rest| rest.starts_with('/'))
 }
 
 /// The status letter of `entry` on `side`.
@@ -492,6 +507,31 @@ impl ChangesService {
     pub fn select(&self, tab: u64, side: NativeStagingSide, keys: HashSet<String>) {
         self.with_tab(tab, |state| {
             state.selection_revision += 1;
+            state.selection = Selection {
+                staged: if side == NativeStagingSide::Staged {
+                    keys.clone()
+                } else {
+                    HashSet::new()
+                },
+                unstaged: if side == NativeStagingSide::Unstaged {
+                    keys
+                } else {
+                    HashSet::new()
+                },
+                focused: side,
+            };
+        });
+        self.notify();
+    }
+
+    /// Toggles `key` in the selection of `side`, which becomes the focused list.
+    pub fn toggle_select(&self, tab: u64, side: NativeStagingSide, key: String) {
+        self.with_tab(tab, |state| {
+            state.selection_revision += 1;
+            let mut keys = state.selection.of(side).clone();
+            if !keys.remove(&key) {
+                keys.insert(key);
+            }
             state.selection = Selection {
                 staged: if side == NativeStagingSide::Staged {
                     keys.clone()
@@ -1110,7 +1150,7 @@ impl ChangesService {
                     }],
                     None => [NativeDiscardKind::Clean, NativeDiscardKind::Discard]
                         .into_iter()
-                        .filter_map(|part| {
+                        .flat_map(|part| {
                             let clean = part == NativeDiscardKind::Clean;
                             let chosen: Vec<NativeStatusEntry> = entries
                                 .iter()
@@ -1119,13 +1159,16 @@ impl ChangesService {
                                 })
                                 .cloned()
                                 .collect();
-                            (!chosen.is_empty()).then(|| NativeDiscardRequest {
-                                kind: part,
-                                scope: NativeDiscardScope::Files,
-                                working_diff_request_id: None,
-                                paths: unique_command_paths(&chosen),
-                                row_ids: Vec::new(),
-                            })
+                            unique_command_paths(&chosen)
+                                .chunks(STAGE_PATHS)
+                                .map(|chunk| NativeDiscardRequest {
+                                    kind: part,
+                                    scope: NativeDiscardScope::Files,
+                                    working_diff_request_id: None,
+                                    paths: chunk.to_vec(),
+                                    row_ids: Vec::new(),
+                                })
+                                .collect::<Vec<_>>()
                         })
                         .collect(),
                 };
@@ -1322,5 +1365,66 @@ pub fn failure_reason_key(code: FailureCode) -> &'static str {
         FailureCode::RemoteNotOffered => "remoteCommandUnsupported",
         FailureCode::RemoteWriteNotPermitted => "remoteCommandWritesUnavailable",
         _ => "operationFailureRead",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gitlama_contract::domain::path_identity::NativePathPlatform;
+
+    fn status_entry(path: &str, kind: NativeStatusEntryKind) -> NativeStatusEntry {
+        NativeStatusEntry {
+            path: NativePathIdentity {
+                platform: NativePathPlatform::Unix,
+                units: path.bytes().map(u16::from).collect(),
+                remote: None,
+            },
+            source: None,
+            kind,
+            index: NativeChangeKind::Unmodified,
+            worktree: if kind == NativeStatusEntryKind::Untracked {
+                NativeChangeKind::Unmodified
+            } else {
+                NativeChangeKind::Modified
+            },
+        }
+    }
+
+    #[test]
+    fn entry_in_folder_matches_exact_directory_prefix() {
+        let inside = status_entry(
+            ".dart_tool/flutter_build/a.dill",
+            NativeStatusEntryKind::Untracked,
+        );
+        let nested = status_entry("src\\sub\\file.rs", NativeStatusEntryKind::Ordinary);
+        let sibling = status_entry(".dart_tool_backup/a.dill", NativeStatusEntryKind::Untracked);
+        let exact = status_entry(".dart_tool", NativeStatusEntryKind::Untracked);
+
+        assert!(entry_in_folder(&inside, ".dart_tool"));
+        assert!(entry_in_folder(&inside, ".dart_tool/flutter_build"));
+        assert!(entry_in_folder(&nested, "src"));
+        assert!(entry_in_folder(&nested, "src/sub"));
+        assert!(!entry_in_folder(&sibling, ".dart_tool"));
+        assert!(!entry_in_folder(&exact, ".dart_tool"));
+        assert!(!entry_in_folder(&inside, ""));
+    }
+
+    #[test]
+    fn discard_kind_of_accepts_borrowed_entries() {
+        let untracked = status_entry("a.txt", NativeStatusEntryKind::Untracked);
+        let tracked = status_entry("b.txt", NativeStatusEntryKind::Ordinary);
+        let unmerged = status_entry("c.txt", NativeStatusEntryKind::Unmerged);
+
+        assert_eq!(
+            discard_kind_of([&untracked]),
+            Some(NativeDiscardKind::Clean)
+        );
+        assert_eq!(
+            discard_kind_of([&untracked, &tracked]),
+            Some(NativeDiscardKind::Discard)
+        );
+        assert_eq!(discard_kind_of([&untracked, &unmerged]), None);
+        assert_eq!(discard_kind_of(std::iter::empty()), None);
     }
 }

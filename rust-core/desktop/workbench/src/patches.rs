@@ -43,6 +43,11 @@ pub enum Source {
         side: NativeStagingSide,
         keys: Vec<String>,
     },
+    /// Every Changes file under `folder` on `side`.
+    Folder {
+        side: NativeStagingSide,
+        folder: String,
+    },
 }
 
 fn patch_side(side: NativeStagingSide) -> NativePatchSide {
@@ -276,6 +281,25 @@ impl PatchService {
                         crate::changes::entries_on(&status, *side)
                             .into_iter()
                             .filter(|entry| keys.contains(&crate::changes::change_key(entry)))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                working_tree_request(
+                    *side,
+                    unique_command_paths(&entries),
+                    destination,
+                    overwrite,
+                )
+            }
+            Source::Folder { side, folder } => {
+                let entries: Vec<_> = self
+                    .workspace
+                    .current()
+                    .and_then(|session| session.snapshot.status.clone())
+                    .map(|status| {
+                        crate::changes::entries_on(&status, *side)
+                            .into_iter()
+                            .filter(|entry| crate::changes::entry_in_folder(entry, folder))
                             .collect()
                     })
                     .unwrap_or_default();

@@ -79,6 +79,10 @@ pub fn parse_source(value: &Value) -> Option<Source> {
                 })
                 .unwrap_or_default(),
         },
+        "folder" => Source::Folder {
+            side: side(),
+            folder: value["path"].as_str()?.to_owned(),
+        },
         _ => return None,
     })
 }
@@ -449,6 +453,13 @@ mod tests {
             Some(Source::Lines {
                 request_id: 7,
                 rows: vec!["r1".into()]
+            })
+        );
+        assert_eq!(
+            parse_source(&json!({"kind": "folder", "side": "unstaged", "path": ".dart_tool"})),
+            Some(Source::Folder {
+                side: NativeStagingSide::Unstaged,
+                folder: ".dart_tool".into()
             })
         );
         assert_eq!(parse_source(&json!({"kind": "other"})), None);
