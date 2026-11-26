@@ -22,6 +22,8 @@ impl Topics {
     pub const EVENTS: Topics = Topics(1 << 11);
     pub const STARTUP: Topics = Topics(1 << 12);
     pub const CONFLICTS: Topics = Topics(1 << 13);
+    /// Work the application's operation center lists started or ended (a transfer).
+    pub const ACTIVITY: Topics = Topics(1 << 14);
     pub const ALL: Topics = Topics(u64::MAX);
 
     pub fn contains(self, other: Topics) -> bool {

@@ -3486,6 +3486,18 @@
   "@stashBusyDrop": {
     "description": "Shown over the repository while a stash is dropped."
   },
+  "commitBusy": "Committing…",
+  "@commitBusy": {
+    "description": "Shown in the repository Compass while a commit runs (hooks and signing can take a while)."
+  },
+  "changesBusyStage": "Updating staged changes…",
+  "@changesBusyStage": {
+    "description": "Shown in the repository Compass while files are staged or unstaged."
+  },
+  "changesBusyDiscard": "Discarding changes…",
+  "@changesBusyDiscard": {
+    "description": "Shown in the repository Compass while changes are discarded."
+  },
   "stashBusyRename": "Renaming stash…",
   "@stashBusyRename": {
     "description": "Shown over the repository while a stash is renamed."

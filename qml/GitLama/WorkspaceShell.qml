@@ -18,7 +18,28 @@ Rectangle {
     readonly property bool operationsVisible: panel === "operations"
     property bool activityVisible: false
     readonly property var activityIsland: activity.item
-    /// The operation the toolbar's Compass shows, with its progress.
+    /// The active tab's own workflow (commit, stash, merge, rebase, staging, ...):
+    /// {key, args}, or null. The Compass names it once it outlasts
+    /// `localWorkDelay`, so quick ones do not flash the pill.
+    readonly property var localWork: Store.workflows ? Store.workflows.work : null
+    property var shownWork: null
+    onLocalWorkChanged: {
+        if (localWork === null) {
+            workDelay.stop()
+            shownWork = null
+        } else if (shownWork !== null) {
+            shownWork = localWork
+        } else {
+            workDelay.restart()
+        }
+    }
+    Timer {
+        id: workDelay
+        interval: GitLamaLayout.localWorkDelay
+        onTriggered: shell.shownWork = shell.localWork
+    }
+    /// The operation the toolbar's Compass shows, with its progress: a person's
+    /// running Git operation first, else the tab's own workflow.
     readonly property var operationSummary: {
         const center = Store.operations ? (Store.operations.center ?? ({})) : ({})
         const entries = center.entries ?? []
@@ -30,9 +51,11 @@ Rectangle {
             const progress = Labels.operationProgress(foreground.progress)
             detail = progress.length > 0 ? L10n.tn("operationRunningDetail", { operation: action(foreground.action), detail: progress }) : ""
         }
+        const work = foreground === null && shell.shownWork !== null
+            ? { label: L10n.tn(shell.shownWork.key, shell.shownWork.args ?? ({})), detail: "" } : null
         return {
-            foreground: foreground ? { label: action(foreground.action), detail: detail } : null,
-            running: running !== null,
+            foreground: foreground ? { label: action(foreground.action) + "…", detail: detail } : work,
+            running: running !== null || work !== null,
             progress: running && running.progress ? running.progress.percent / 100 : -1,
             failedCount: center.failed ?? 0,
             runningCount: center.running ?? 0,

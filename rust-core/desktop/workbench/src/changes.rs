@@ -820,8 +820,9 @@ impl ChangesService {
 
     async fn drain_stages(&self, tab: u64) {
         let this = self.this();
+        let staging = BusyActivity::Changes("stage");
         self.busy
-            .run(Some(tab), BusyActivity::Changes, false, None, async move {
+            .run(Some(tab), staging, false, None, async move {
                 loop {
                     let intent = this.with_tab(tab, |state| {
                         if state.pending.is_empty() {
@@ -1154,8 +1155,9 @@ impl ChangesService {
             return;
         }
         let this = self.this();
+        let discarding = BusyActivity::Changes("discard");
         self.busy
-            .run(Some(tab), BusyActivity::Changes, false, None, async move {
+            .run(Some(tab), discarding, false, None, async move {
                 let requests: Vec<NativeDiscardRequest> = match accepted_request {
                     Some(request) => vec![NativeDiscardRequest {
                         kind: NativeDiscardKind::Discard,

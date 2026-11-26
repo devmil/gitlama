@@ -65,6 +65,7 @@ pub struct CommitService {
     prompts: Rc<Prompts>,
     notices: Rc<Notices>,
     notifier: Notifier,
+    busy: Rc<crate::busy::BusyService>,
     flashes: RefCell<VecDeque<(NativePathIdentity, Committed)>>,
     sequence: Cell<u64>,
     /// Per session and HEAD: a new HEAD brings new recent messages.
@@ -114,6 +115,7 @@ impl CommitService {
         prompts: Rc<Prompts>,
         notices: Rc<Notices>,
         notifier: Notifier,
+        busy: Rc<crate::busy::BusyService>,
     ) -> Rc<Self> {
         Rc::new(Self {
             calls,
@@ -122,6 +124,7 @@ impl CommitService {
             prompts,
             notices,
             notifier,
+            busy,
             flashes: RefCell::new(VecDeque::new()),
             sequence: Cell::new(0),
             tools: RefCell::new(HashMap::new()),
@@ -253,9 +256,21 @@ impl CommitService {
         {
             return Outcome::Declined;
         }
+        // Hooks and signing can take a while: the Compass names the commit meanwhile.
+        let execute = self.calls.repository_session_commit_execute(
+            session.native_id,
+            session.generation,
+            preview.token,
+        );
         let result = match self
-            .calls
-            .repository_session_commit_execute(session.native_id, session.generation, preview.token)
+            .busy
+            .run(
+                Some(tab.id),
+                crate::busy::BusyActivity::Commit,
+                false,
+                None,
+                execute,
+            )
             .await
         {
             Ok(result) => result,

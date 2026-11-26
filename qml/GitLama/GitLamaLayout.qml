@@ -215,6 +215,8 @@ QtObject {
     readonly property int glint: Motion.celebrate
     readonly property int remotePathFollowDelay: 250
     readonly property int syncGlintDelay: 300
+    /// The tab's own workflow shows in the Compass once it runs this long.
+    readonly property int localWorkDelay: 300
     readonly property real glintWidth: 40
     /// The Compass's indeterminate activity band, as a share of the pill.
     readonly property real compassFillBandFraction: 0.45

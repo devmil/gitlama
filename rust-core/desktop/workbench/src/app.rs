@@ -224,6 +224,7 @@ impl Services {
             Rc::clone(&prompts),
             Rc::clone(&notices),
             notifier.clone(),
+            Rc::clone(&busy),
         );
         let sync = crate::sync::SyncTracker::new(
             Rc::clone(&workspace),

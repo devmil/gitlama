@@ -52,6 +52,7 @@
 ## Unreleased Beta
 
 - Staging, unstaging or discarding files in the Changes tree view no longer hides remaining folders or files until you toggle between list and tree view.
+- The repository pill now shows all work that takes a moment, including a push right after Commit & push, and commits, stashes, merges, rebases, staging and discarding.
 - Long lines in diffs scroll sideways again with Shift and the mouse wheel or a sideways swipe on the touchpad.
 - While GitLama works on a repository, the repository pill at the top now fills with a soft tint behind its text instead of showing a thin line along its bottom edge. It fills as the work progresses, sweeps gently while the progress is unknown, and fades out when the work is done.
 - Staging, unstaging and discarding large sets of changed files (more than 256 files or deep directory trees like `.dart_tool`, locally and on remote repositories) now succeeds instead of failing with a request validation error.

@@ -28,7 +28,9 @@ pub enum BusyActivity {
         root_branch: Vec<u8>,
     },
     ConflictPrediction,
-    Changes,
+    /// Staging, unstaging or discarding: "stage" or "discard".
+    Changes(&'static str),
+    Commit,
 }
 
 impl BusyActivity {
@@ -77,7 +79,15 @@ impl BusyActivity {
             ),
             Self::Restack { root_branch } => ("restackBusy", json!({"root": text(root_branch)})),
             Self::ConflictPrediction => ("conflictPredictionBusy", Value::Null),
-            Self::Changes => ("loading", Value::Null),
+            Self::Changes(kind) => (
+                if *kind == "discard" {
+                    "changesBusyDiscard"
+                } else {
+                    "changesBusyStage"
+                },
+                Value::Null,
+            ),
+            Self::Commit => ("commitBusy", Value::Null),
         }
     }
 }
@@ -114,6 +124,14 @@ impl BusyService {
                 .find(|operation| operation.blocking)
                 .cloned()
         })
+    }
+
+    /// The latest operation of `tab`, blocking or not: what the Compass names.
+    pub fn latest_of(&self, tab: Option<u64>) -> Option<Rc<BusyOperation>> {
+        self.operations
+            .borrow()
+            .get(&tab?)
+            .and_then(|operations| operations.last().cloned())
     }
 
     pub fn is_blocked(&self, tab: Option<u64>) -> bool {
@@ -182,5 +200,39 @@ impl BusyService {
         }
         let _done = Done(self, tab, id);
         operation.await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::pin::pin;
+    use std::task::{Context, Poll, Waker};
+
+    #[test]
+    fn a_running_commit_names_the_tab_without_blocking_it() {
+        let busy = BusyService::new(Notifier::new());
+        let mut run = pin!(busy.run(
+            Some(7),
+            BusyActivity::Commit,
+            false,
+            None,
+            std::future::pending::<()>(),
+        ));
+        let mut context = Context::from_waker(Waker::noop());
+        assert!(matches!(run.as_mut().poll(&mut context), Poll::Pending));
+        let latest = busy.latest_of(Some(7)).expect("the commit");
+        assert_eq!(latest.activity.label().0, "commitBusy");
+        assert!(busy.blocking_of(Some(7)).is_none());
+        assert!(busy.latest_of(Some(8)).is_none());
+    }
+
+    #[test]
+    fn staging_and_discarding_have_their_own_labels() {
+        assert_eq!(BusyActivity::Changes("stage").label().0, "changesBusyStage");
+        assert_eq!(
+            BusyActivity::Changes("discard").label().0,
+            "changesBusyDiscard"
+        );
     }
 }

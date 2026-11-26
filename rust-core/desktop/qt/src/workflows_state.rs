@@ -18,6 +18,9 @@ mod workflows_state {
         /// The active tab's blocking operation for the busy overlay:
         /// {key, args, cancellable, canceling}, or null.
         pub(crate) busy: Value,
+        /// The active tab's latest workflow, blocking or not, for the Compass:
+        /// {key, args}, or null.
+        pub(crate) work: Value,
         /// The file manager's name for "Open in …".
         pub(crate) file_browser: String,
         /// A snapshot being saved: {running, started, files, total, writing}.
@@ -34,6 +37,7 @@ mod workflows_state {
 
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
+        qproperty!("work", Member = work, Notify = work_changed);
         qproperty!(
             "fileBrowser",
             Member = file_browser,
@@ -232,6 +236,8 @@ mod workflows_state {
 
         #[qsignal]
         pub fn busy_changed(&mut self);
+        #[qsignal]
+        pub fn work_changed(&mut self);
         /// The answer of `worktree_menu`.
         #[qsignal]
         pub fn worktree_menu_ready(&mut self, rows: Value);

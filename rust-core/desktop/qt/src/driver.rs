@@ -112,7 +112,8 @@ impl Driver {
                 | Topics::REMOTE
                 | Topics::CHANGES
                 | Topics::HISTORY
-                | Topics::CONFLICTS,
+                | Topics::CONFLICTS
+                | Topics::ACTIVITY,
         ) && let Some(services) = self.app.services()
         {
             services.operations.poke();
@@ -332,10 +333,21 @@ impl Driver {
                         "canceling": operation.canceling.get(),
                     })
                 });
+            let work = services
+                .busy
+                .latest_of(services.workspace.active_tab_id())
+                .map_or(Value::Null, |operation| {
+                    let (key, args) = operation.activity.label();
+                    serde_json::json!({"key": key, "args": args})
+                });
             let mut workflows = self.workflows.borrow_mut();
             if workflows.busy != busy {
                 workflows.busy = busy;
                 workflows.busy_changed();
+            }
+            if workflows.work != work {
+                workflows.work = work;
+                workflows.work_changed();
             }
         }
         if changed.intersects(Topics::SETTINGS | Topics::UPDATES)

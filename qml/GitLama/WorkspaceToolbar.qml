@@ -167,7 +167,7 @@ Item {
             behind: toolbar.active ? toolbar.active.behind : 0
             dirty: toolbar.active ? toolbar.active.dirty : 0
             conflicts: toolbar.active ? toolbar.active.conflicts : 0
-            operation: toolbar.operations.foreground ? toolbar.operations.foreground.label + "…" : ""
+            operation: toolbar.operations.foreground ? toolbar.operations.foreground.label : ""
             operationDetail: toolbar.operations.foreground && toolbar.operations.foreground.detail
                              ? toolbar.operations.foreground.detail : ""
             activeProgress: toolbar.operations.running === true

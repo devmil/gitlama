@@ -573,7 +573,7 @@ impl TransferService {
         self.running
             .borrow_mut()
             .push((preview.token, preview.kind, identity));
-        self.notifier.notify(Topics::OPERATIONS);
+        self.notifier.notify(Topics::OPERATIONS | Topics::ACTIVITY);
         let call = match credentials {
             None => self.calls.repository_session_transfer_execute(
                 identity.native_id,
@@ -606,7 +606,7 @@ impl TransferService {
         self.running
             .borrow_mut()
             .retain(|(token, _, _)| *token != preview.token);
-        self.notifier.notify(Topics::OPERATIONS);
+        self.notifier.notify(Topics::OPERATIONS | Topics::ACTIVITY);
         diagnostics::info(
             "Transfers",
             "transfer_execute_finished",
