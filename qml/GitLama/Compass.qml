@@ -30,6 +30,11 @@ Item {
     property bool compact: false
     signal showDetails()
 
+    /// Shows that work ended, even work that ended before it showed as running.
+    function finish() {
+        activityFill.finish()
+    }
+
     /// Changes appeared while the Compass was on screen (NM-04).
     property bool _dirtyPopIn: false
     property bool _shown: false
@@ -98,6 +103,7 @@ Item {
         }
 
         CompassFill {
+            id: activityFill
             objectName: "compassFill"
             anchors.fill: parent
             radius: pill.radius

@@ -176,6 +176,14 @@ Item {
             syncChanged: toolbar.syncChanged
             compact: toolbar.compact
             onShowDetails: toolbar.command("showRepositoryDetails", {})
+            // A transfer the person started ended: show it, however quick it was.
+            Connections {
+                target: Store.workflows
+                function onWorkFinished(succeeded) {
+                    if (succeeded)
+                        compass.finish()
+                }
+            }
         }
         Item { width: Theme.space.s2; height: 1 }
         MeridianIconButton {

@@ -16,7 +16,7 @@ use gitlama_contract::transfer::{
     NativeTransferFailureKind, NativeTransferKind, NativeTransferPreview, NativeTransferRequest,
 };
 use serde_json::{Value, json};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 pub fn kind_name(kind: NativeTransferKind) -> &'static str {
@@ -221,6 +221,39 @@ fn result_payload(
     })
 }
 
+/// A transfer the person started that has ended: the event the Compass's
+/// finish answers, so even a transfer that ends before any refresh shows it
+/// ran.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TransferFinished {
+    /// Grows by one per finished transfer.
+    pub sequence: u64,
+    pub tab: u64,
+    pub succeeded: bool,
+}
+
+/// The latest finished transfer, for the driver to announce once.
+#[derive(Default)]
+pub struct FinishedTransfers {
+    latest: Cell<Option<TransferFinished>>,
+}
+
+impl FinishedTransfers {
+    pub fn record(&self, tab: u64, succeeded: bool) {
+        let sequence = self.latest.get().map_or(1, |latest| latest.sequence + 1);
+        self.latest.set(Some(TransferFinished {
+            sequence,
+            tab,
+            succeeded,
+        }));
+    }
+
+    /// The latest finished transfer when it is newer than `seen`.
+    pub fn after(&self, seen: u64) -> Option<TransferFinished> {
+        self.latest.get().filter(|latest| latest.sequence > seen)
+    }
+}
+
 pub struct TransferService {
     calls: Rc<dyn SessionCalls>,
     workspace: Rc<WorkspaceService>,
@@ -233,6 +266,8 @@ pub struct TransferService {
     pub sync: Rc<crate::sync::SyncTracker>,
     /// The active tab before the transfer running now.
     baseline: RefCell<Option<crate::sync::SyncBaseline>>,
+    /// The person's transfers as they end.
+    pub finished: FinishedTransfers,
 }
 
 impl TransferService {
@@ -253,6 +288,7 @@ impl TransferService {
             running: RefCell::new(Vec::new()),
             sync,
             baseline: RefCell::new(None),
+            finished: FinishedTransfers::default(),
         })
     }
 
@@ -287,7 +323,12 @@ impl TransferService {
         let Some(request) = parse_request(&answer) else {
             return;
         };
-        Box::pin(self.execute(request, true)).await;
+        let tab = self.workspace.active_tab_id();
+        let succeeded = Box::pin(self.execute(request, true)).await;
+        if let Some(tab) = tab {
+            self.finished.record(tab, succeeded);
+            self.notifier.notify(Topics::ACTIVITY);
+        }
     }
 
     fn same_session(&self, tab: u64, identity: SessionIdentity) -> bool {
@@ -742,5 +783,24 @@ impl TransferService {
         } else {
             self.notices.status(key, args);
         }
+    }
+}
+
+#[cfg(test)]
+mod finished_tests {
+    use super::FinishedTransfers;
+
+    #[test]
+    fn a_finished_transfer_is_announced_once() {
+        let finished = FinishedTransfers::default();
+        assert_eq!(finished.after(0), None);
+        finished.record(7, true);
+        let first = finished.after(0).expect("announced");
+        assert_eq!((first.tab, first.succeeded), (7, true));
+        assert_eq!(finished.after(first.sequence), None);
+        finished.record(7, false);
+        let second = finished.after(first.sequence).expect("the next one");
+        assert!(second.sequence > first.sequence);
+        assert!(!second.succeeded);
     }
 }

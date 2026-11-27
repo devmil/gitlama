@@ -6,8 +6,9 @@ import Meridian
 // runs, the pill rests at a light `accent-soft` tint; a band with an `accent`
 // crest sweeps across it while Git cannot tell the progress, and `accent-soft`
 // fills it from its leading end to the progress once it can. When the
-// operation ends the pill fills to 100%, a highlight crosses it once, it holds
-// and fades (NH-2, MM-63). Every piece is a full-size rounded copy of the pill
+// operation ends, or `finish()` reports work that ended before it showed, the
+// pill fills to 100%, a highlight crosses it once, it holds and fades (NH-2,
+// MM-63). Every piece is a full-size rounded copy of the pill
 // (clipped for the fill, a gradient for the bands), so the wash keeps the
 // pill's rounded ends without a layer (a layer drew the text above it through
 // a texture and blurred it).
@@ -19,7 +20,9 @@ Item {
     property real progress: -1
     property real radius: height / 2
     property bool _finishing: false
-    readonly property bool shown: active || _finishing
+    /// Set while `finish()` plays for work this wash never saw running.
+    property bool _flashing: false
+    readonly property bool shown: active || _finishing || _flashing
     readonly property bool indeterminate: !_finishing && progress < 0
     readonly property real _target: _finishing ? 1 : indeterminate ? 0 : Math.max(0, Math.min(1, progress))
     /// The filled fraction; animated as a fraction so a resizing window does not lag it.
@@ -43,17 +46,30 @@ Item {
     Accessible.name: indeterminate ? "" : Math.round(_target * 100) + "%"
 
     onActiveChanged: {
-        finish.stop()
+        finishAnimation.stop()
         shine.position = 0
         _restart = active
-        _finishing = !active && !Motion.reduced
+        _flashing = false
+        _finishing = !active
         _restart = false
         if (_finishing)
-            finish.restart()
+            finishAnimation.restart()
     }
-    // Fill, one highlight across the full pill, hold; then the wash fades.
+
+    /// Plays the finish for work that ended before it showed as running, so a
+    /// quick pull still shows it happened. Running or finishing work keeps its own.
+    function finish() {
+        if (active || _finishing)
+            return
+        shine.position = 0
+        _flashing = true
+        _finishing = true
+        finishAnimation.restart()
+    }
+    // Fill, one highlight across the full pill, hold; then the wash fades. Under
+    // reduced motion the fill appears at once and holds without the highlight.
     SequentialAnimation {
-        id: finish
+        id: finishAnimation
         PauseAnimation { duration: Motion.emphasized }
         NumberAnimation {
             target: shine
@@ -65,7 +81,15 @@ Item {
             easing.bezierCurve: Motion.standard
         }
         PauseAnimation { duration: GitLamaLayout.compassFillFinishHold }
-        ScriptAction { script: fill._finishing = false }
+        ScriptAction {
+            script: {
+                // The wash fades out full instead of retracting.
+                fill._restart = true
+                fill._finishing = false
+                fill._flashing = false
+                fill._restart = false
+            }
+        }
     }
 
     component Wash: Item {

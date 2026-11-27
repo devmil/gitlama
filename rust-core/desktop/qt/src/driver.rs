@@ -68,6 +68,8 @@ pub struct Driver {
     /// The history reference scope last seen in the settings; a change
     /// reloads the shown history.
     pub history_other_refs: std::cell::Cell<Option<bool>>,
+    /// The last finished transfer announced to QML (`work_finished`).
+    pub transfers_announced: std::cell::Cell<u64>,
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -340,7 +342,31 @@ impl Driver {
                     let (key, args) = operation.activity.label();
                     serde_json::json!({"key": key, "args": args})
                 });
+            // The person's transfer running in the active tab, from the
+            // transfer service's own start and end (no operation center poll).
+            let session = services.workspace.current().map(|session| session.identity);
+            let transfer = services
+                .transfers
+                .running()
+                .into_iter()
+                .find(|(_, _, identity)| Some(*identity) == session)
+                .map_or(Value::Null, |(_, kind, _)| {
+                    use gitlama_contract::transfer::NativeTransferKind;
+                    let action = match kind {
+                        NativeTransferKind::Fetch => "fetch",
+                        NativeTransferKind::Pull => "pull",
+                        NativeTransferKind::Push
+                        | NativeTransferKind::PushTag
+                        | NativeTransferKind::DeleteTag
+                        | NativeTransferKind::DeleteBranch => "push",
+                    };
+                    serde_json::json!({"action": action})
+                });
             let mut workflows = self.workflows.borrow_mut();
+            if workflows.running_transfer != transfer {
+                workflows.running_transfer = transfer;
+                workflows.running_transfer_changed();
+            }
             if workflows.busy != busy {
                 workflows.busy = busy;
                 workflows.busy_changed();
@@ -348,6 +374,20 @@ impl Driver {
             if workflows.work != work {
                 workflows.work = work;
                 workflows.work_changed();
+            }
+        }
+        if changed.intersects(Topics::ACTIVITY)
+            && let Some(services) = self.app.services()
+            && let Some(finished) = services
+                .transfers
+                .finished
+                .after(self.transfers_announced.get())
+        {
+            self.transfers_announced.set(finished.sequence);
+            if services.workspace.active_tab_id() == Some(finished.tab) {
+                self.workflows
+                    .borrow_mut()
+                    .work_finished(finished.succeeded);
             }
         }
         if changed.intersects(Topics::SETTINGS | Topics::UPDATES)

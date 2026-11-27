@@ -38,25 +38,29 @@ Rectangle {
         interval: GitLamaLayout.localWorkDelay
         onTriggered: shell.shownWork = shell.localWork
     }
-    /// The operation the toolbar's Compass shows, with its progress: a person's
-    /// running Git operation first, else the tab's own workflow.
+    /// The operation the toolbar's Compass shows, with its progress: the
+    /// person's fetch, pull or push in the active tab first (from the transfer
+    /// service's start and end), else the tab's own workflow. The progress comes
+    /// from the operation center's entry for that transfer.
     readonly property var operationSummary: {
         const center = Store.operations ? (Store.operations.center ?? ({})) : ({})
         const entries = center.entries ?? []
-        const foreground = entries.find(entry => entry.origin === "user" && entry.state === "running") ?? null
-        const running = foreground ?? entries.find(entry => entry.state === "running") ?? null
+        const transfer = Store.workflows ? Store.workflows.runningTransfer : null
+        const entry = transfer
+            ? entries.find(entry => entry.origin === "user" && entry.state === "running" && entry.action === transfer.action) ?? null
+            : null
         const action = name => L10n.t("operation" + name.charAt(0).toUpperCase() + name.slice(1))
         let detail = ""
-        if (foreground && foreground.progress) {
-            const progress = Labels.operationProgress(foreground.progress)
-            detail = progress.length > 0 ? L10n.tn("operationRunningDetail", { operation: action(foreground.action), detail: progress }) : ""
+        if (entry && entry.progress) {
+            const progress = Labels.operationProgress(entry.progress)
+            detail = progress.length > 0 ? L10n.tn("operationRunningDetail", { operation: action(transfer.action), detail: progress }) : ""
         }
-        const work = foreground === null && shell.shownWork !== null
+        const work = !transfer && shell.shownWork !== null
             ? { label: L10n.tn(shell.shownWork.key, shell.shownWork.args ?? ({})), detail: "" } : null
         return {
-            foreground: foreground ? { label: action(foreground.action) + "…", detail: detail } : work,
-            running: running !== null || work !== null,
-            progress: running && running.progress ? running.progress.percent / 100 : -1,
+            foreground: transfer ? { label: action(transfer.action) + "…", detail: detail } : work,
+            running: !!transfer || work !== null,
+            progress: entry && entry.progress ? entry.progress.percent / 100 : -1,
             failedCount: center.failed ?? 0,
             runningCount: center.running ?? 0,
         }

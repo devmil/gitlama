@@ -81,14 +81,43 @@ Item {
             compare(part(fill, "compassFillExtent").width, 0, "no retracting fill")
         }
 
-        function test_reduced_motion_skips_the_finish() {
+        function test_reduced_motion_holds_the_finish_without_moving() {
             Theme.reducedMotion = true
             const fill = makeFill()
             fill.progress = 0.25
             fill.active = true
             compare(part(fill, "compassFillExtent").width, 50, "jumps to the progress")
             fill.active = false
-            tryVerify(() => !fill.visible, 1000)
+            compare(part(fill, "compassFillExtent").width, fill.width, "jumps to full")
+            verify(fill.visible, "the finish still shows")
+            tryVerify(() => !fill.visible, 5000)
+        }
+
+        function test_finish_shows_work_that_never_showed_running() {
+            const fill = makeFill()
+            fill.finish()
+            verify(fill.shown)
+            tryCompare(fill, "opacity", 1)
+            tryCompare(part(fill, "compassFillExtent"), "width", fill.width)
+            tryVerify(() => !fill.visible, 5000, "the wash fades after the finish")
+            compare(part(fill, "compassFillExtent").width, 0, "ready for the next work")
+        }
+
+        function test_finish_leaves_running_work_alone() {
+            const fill = makeFill()
+            fill.active = true
+            fill.finish()
+            verify(fill.indeterminate, "still sweeping")
+            compare(part(fill, "compassFillExtent").width, 0)
+        }
+
+        function test_reduced_motion_finish_still_shows() {
+            Theme.reducedMotion = true
+            const fill = makeFill()
+            fill.finish()
+            verify(fill.visible)
+            compare(part(fill, "compassFillExtent").width, fill.width)
+            tryVerify(() => !fill.visible, 5000)
         }
 
         function test_compass_names_running_work() {
@@ -115,6 +144,14 @@ Item {
             compass.operationDetail = ""
             verify(state.visible)
             verify(!fill.active)
+        }
+
+        function test_compass_finish_reaches_its_wash() {
+            const compass = createTemporaryObject(compassComponent, root)
+            const fill = findChild(compass, "compassFill")
+            compass.finish()
+            verify(fill.shown)
+            tryCompare(fill, "opacity", 1)
         }
 
         function test_compass_shows_progress_without_a_name() {

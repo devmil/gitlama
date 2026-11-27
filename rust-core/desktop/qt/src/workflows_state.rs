@@ -21,6 +21,9 @@ mod workflows_state {
         /// The active tab's latest workflow, blocking or not, for the Compass:
         /// {key, args}, or null.
         pub(crate) work: Value,
+        /// The person's fetch, pull or push running in the active tab:
+        /// {action}, or null.
+        pub(crate) running_transfer: Value,
         /// The file manager's name for "Open in …".
         pub(crate) file_browser: String,
         /// A snapshot being saved: {running, started, files, total, writing}.
@@ -38,6 +41,7 @@ mod workflows_state {
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
         qproperty!("work", Member = work, Notify = work_changed);
+        qproperty!("runningTransfer", Member = running_transfer, Notify = running_transfer_changed);
         qproperty!(
             "fileBrowser",
             Member = file_browser,
@@ -238,6 +242,12 @@ mod workflows_state {
         pub fn busy_changed(&mut self);
         #[qsignal]
         pub fn work_changed(&mut self);
+        #[qsignal]
+        pub fn running_transfer_changed(&mut self);
+        /// A fetch, pull or push the person started in the active tab ended,
+        /// even one that ended before any refresh showed it running.
+        #[qsignal]
+        pub fn work_finished(&mut self, succeeded: bool);
         /// The answer of `worktree_menu`.
         #[qsignal]
         pub fn worktree_menu_ready(&mut self, rows: Value);
