@@ -1,0 +1,5 @@
+module GitLamaNative
+GraphRow 1.0 GraphRow.qml
+TextFormatter 1.0 TextFormatter.qml
+SyntaxHighlighter 1.0 SyntaxHighlighter.qml
+LineColours 1.0 LineColours.qml

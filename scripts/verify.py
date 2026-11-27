@@ -94,7 +94,7 @@ def source_checks():
 
 
 def qml_checks():
-    """Lints every GitLama QML file with no warning allowed."""
+    """Lints every GitLama QML file with no warning allowed and runs the QML tests."""
     qmllint = qt_tool('qmllint')
     files = sorted((ROOT / 'qml/GitLama').glob('*.qml'))
     # Linted on its own, a singleton reports its own module's import as
@@ -104,6 +104,11 @@ def qml_checks():
     run(qmllint, '-I', 'qml', '--max-warnings', '0', *others)
     if singletons:
         run(qmllint, '-I', 'qml', '--import', 'info', '--max-warnings', '0', *singletons)
+    # Qt Quick Tests catch major regressions in the QML (every file compiles,
+    # the Compass shows work, diffs scroll); native types come from stubs.
+    environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QTEST_DISABLE_STACK_DUMP='1')
+    run(qt_tool('qmltestrunner'), '-import', 'qml', '-import', 'qml/tests/stubs', '-input', 'qml/tests',
+        env=environment)
 
 
 def rust_checks():

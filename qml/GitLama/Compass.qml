@@ -98,6 +98,7 @@ Item {
         }
 
         CompassFill {
+            objectName: "compassFill"
             anchors.fill: parent
             radius: pill.radius
             active: compass.operation.length > 0 || compass.activeProgress
@@ -169,6 +170,7 @@ Item {
                     implicitHeight: GitLamaLayout.compassHeight
                     CompassState {
                         id: stateRow
+                        objectName: "stateRow"
                         visible: compass.operation.length === 0
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.right: parent.right
@@ -181,6 +183,7 @@ Item {
                     }
                     MeridianText {
                         id: operationText
+                        objectName: "operationText"
                         visible: compass.operation.length > 0
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width

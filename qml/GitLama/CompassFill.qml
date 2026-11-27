@@ -24,9 +24,10 @@ Item {
     readonly property real _target: _finishing ? 1 : indeterminate ? 0 : Math.max(0, Math.min(1, progress))
     /// The filled fraction; animated as a fraction so a resizing window does not lag it.
     property real _fraction: _target
-    // Fills grow; new work after a finish starts empty instead of retracting.
+    /// Set while new work replaces a finish: its fill starts empty instead of retracting.
+    property bool _restart: false
     Behavior on _fraction {
-        enabled: fill.shown && !Motion.reduced && fill._target >= fill._fraction
+        enabled: fill.shown && !Motion.reduced && !fill._restart
         NumberAnimation { duration: Motion.emphasized; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
     }
     readonly property color _crest: Theme.blend(Theme.colors.accentSoft, Theme.colors.accent,
@@ -44,7 +45,9 @@ Item {
     onActiveChanged: {
         finish.stop()
         shine.position = 0
+        _restart = active
         _finishing = !active && !Motion.reduced
+        _restart = false
         if (_finishing)
             finish.restart()
     }
