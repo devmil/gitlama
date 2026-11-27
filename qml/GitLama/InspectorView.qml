@@ -590,6 +590,8 @@ Rectangle {
                                 path: modelData.label
                                 depth: modelData.depth
                                 folder: modelData.directory
+                                sourceHint: modelData.directory || modelData.kind !== "renamed" && modelData.kind !== "copied"
+                                    ? "" : Labels.renameSource(modelData.oldPath ?? "", modelData.path)
                                 folderIcon: true
                                 expanded: modelData.expanded
                                 showDirectory: inspector.paneState.filesTree !== true

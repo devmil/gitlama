@@ -51,7 +51,7 @@
 
 ## Unreleased Beta
 
-- When there is no diff to show, the lama now says why: it carries a moved file into its new folder, wears a new name tag for a renamed one, waits beside your files until you pick one, and more.
+- When there is no diff to show, the lama now says why: it carries a moved file into its new folder, wears a new name tag for a renamed one, waits beside your files until you pick one, and more, in the Changes view and when inspecting commits alike.
 - All corners of the work areas are rounded again in Changes and History, and a subtle line now separates unstaged from staged changes.
 - Renamed and moved files are easier to read: the file lists show the new name with where it came from, the detail names the previous path, and a file moved or renamed without content changes says so instead of showing an empty diff.
 - The repository pill now always shows the work of the tab you are looking at: switching tabs no longer plays a "done" animation for work that is still running, and switching back shows the running work right away.

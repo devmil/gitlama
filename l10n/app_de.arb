@@ -2528,5 +2528,7 @@
   "workingDiffMovedFrom": "Verschoben von {path}",
   "workingDiffRenamedUnchanged": "Umbenannt, Inhalt unverändert",
   "workingDiffMovedUnchanged": "Verschoben, Inhalt unverändert",
-  "workingDiffRenameUnchangedDetail": "Der Inhalt der Datei ist am neuen Pfad derselbe."
+  "workingDiffRenameUnchangedDetail": "Der Inhalt der Datei ist am neuen Pfad derselbe.",
+  "diffCopiedUnchanged": "Kopiert, Inhalt unverändert",
+  "diffCopiedUnchangedDetail": "Die Kopie hat denselben Inhalt wie das Original."
 }

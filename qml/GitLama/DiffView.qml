@@ -170,8 +170,19 @@ Item {
     property point _dragAt: Qt.point(0, 0)
     Connections {
         target: view.model
-        function onModelReset() { view.clearTextSelection() }
-        function onReplaced() { view.clearTextSelection() }
+        function onModelReset() { view.clearTextSelection(); view.refreshSoleRename() }
+        function onReplaced() { view.clearTextSelection(); view.refreshSoleRename() }
+        function onCountChanged() { view.refreshSoleRename() }
+        function onDataChanged() { view.refreshSoleRename() }
+    }
+
+    /// A diff that is only a renamed or copied file whose content is the same
+    /// ({kind, oldPath, newPath}), or null: the lama shows it under the header.
+    property var soleRename: null
+    function refreshSoleRename() {
+        const next = model && typeof model.soleRename === "function" ? model.soleRename() : null
+        if (JSON.stringify(next) !== JSON.stringify(soleRename))
+            soleRename = next
     }
 
     /// Row `index`'s delegate, when built; a delegate type has no name to check against.
@@ -441,7 +452,7 @@ Item {
         }
     }
 
-    onModelChanged: { textOffset = 0; widestText = 0; clearTextSelection(); if (model) model.setLatin1(encoding === "latin1") }
+    onModelChanged: { refreshSoleRename(); textOffset = 0; widestText = 0; clearTextSelection(); if (model) model.setLatin1(encoding === "latin1") }
     onMaximumOffsetChanged: textOffset = Math.min(textOffset, maximumOffset)
 
     // The syntax palette, checked against the surfaces lines are drawn on.
@@ -1005,6 +1016,29 @@ Item {
             list.contentY = Math.max(list.originY, Math.min(list.originY + Math.max(0, list.contentHeight - list.height), list.contentY + step))
             view._extend(view._dragAt.x, view._dragAt.y)
         }
+    }
+
+    // A rename, move or copy that kept the content: the lama under the file's
+    // header says so instead of an empty diff.
+    MeridianEmptyState {
+        objectName: "diffRenameUnchanged"
+        readonly property bool moved: view.soleRename !== null
+            && Labels.movedFolder(view.soleRename.oldPath, view.soleRename.newPath)
+        readonly property bool copied: view.soleRename !== null && view.soleRename.kind === "copied"
+        visible: view.soleRename !== null
+        y: Theme.size.row
+        width: list.width
+        height: Math.max(0, view.height - y)
+        compact: true
+        illustration: Component {
+            LamaScene {
+                scene: view.soleRename !== null && Labels.movedFolder(view.soleRename.oldPath, view.soleRename.newPath)
+                    ? "moved" : "renamed"
+            }
+        }
+        title: copied ? L10n.t("diffCopiedUnchanged")
+            : L10n.t(moved ? "workingDiffMovedUnchanged" : "workingDiffRenamedUnchanged")
+        message: copied ? L10n.t("diffCopiedUnchangedDetail") : L10n.t("workingDiffRenameUnchangedDetail")
     }
 
     // The minimap: where lines were added and

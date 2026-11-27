@@ -9471,5 +9471,13 @@
   "workingDiffRenameUnchangedDetail": "The file's content is the same at its new path.",
   "@workingDiffRenameUnchangedDetail": {
     "description": "Detail below the unchanged rename or move state."
+  },
+  "diffCopiedUnchanged": "Copied without content changes",
+  "@diffCopiedUnchanged": {
+    "description": "Shown under the header of a diff that is only a copied file with identical content."
+  },
+  "diffCopiedUnchangedDetail": "The copy has the same content as the original.",
+  "@diffCopiedUnchangedDetail": {
+    "description": "Detail below the unchanged copy state."
   }
 }

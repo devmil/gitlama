@@ -24,8 +24,6 @@ Rectangle {
     /// A renamed or moved file's previous path, or "".
     readonly property string source: detail.source ?? ""
     readonly property bool moved: Labels.movedFolder(source, detail.identity ?? "")
-    /// A rename or move that kept the content: its diff is only the file's header.
-    readonly property bool contentUnchanged: source.length > 0 && detail.hasDiff === true && (detail.rows ?? 0) <= 1
 
     color: Theme.colors.pane
     /// The diff (development screenshot steps).
@@ -221,24 +219,13 @@ Rectangle {
             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
         }
         MeridianEmptyState {
-            visible: (pane.detail.rows ?? 0) === 0 && !pane.contentUnchanged
+            visible: (pane.detail.rows ?? 0) === 0
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
             width: parent.width
             compact: true
             illustration: Component { LamaScene { scene: "unchanged" } }
             title: L10n.t("workingDiffEmpty")
-        }
-        MeridianEmptyState {
-            objectName: "workingDiffRenameUnchanged"
-            visible: pane.contentUnchanged
-            anchors.top: toolbar.bottom
-            anchors.bottom: parent.bottom
-            width: parent.width
-            compact: true
-            illustration: Component { LamaScene { scene: pane.moved ? "moved" : "renamed" } }
-            title: L10n.t(pane.moved ? "workingDiffMovedUnchanged" : "workingDiffRenamedUnchanged")
-            message: L10n.t("workingDiffRenameUnchangedDetail")
         }
         // An image change shows its images instead of the diff rows.
         ImageDiffView {
@@ -264,7 +251,7 @@ Rectangle {
             id: diff
             opacity: workingImage.row === null ? 1 : 0
             enabled: workingImage.row === null
-            visible: (pane.detail.rows ?? 0) > 0 && !pane.contentUnchanged
+            visible: (pane.detail.rows ?? 0) > 0
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
             width: parent.width

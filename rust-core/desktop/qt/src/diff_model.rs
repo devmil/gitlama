@@ -517,6 +517,33 @@ mod diff_model {
             found
         }
 
+        /// A diff that is only a renamed or copied file's header (its
+        /// content is the same): {kind, oldPath, newPath}, or null.
+        #[qslot]
+        fn sole_rename(&self) -> Value {
+            let Some(document) = &self.document else {
+                return Value::Null;
+            };
+            if document.total() != 1 {
+                return Value::Null;
+            }
+            document
+                .with_row(0, |row| {
+                    let kind = match (row.kind, row.file_kind) {
+                        (NativeDiffRowKind::File, Some(NativeDiffFileKind::Renamed)) => "renamed",
+                        (NativeDiffRowKind::File, Some(NativeDiffFileKind::Copied)) => "copied",
+                        _ => return Value::Null,
+                    };
+                    let text = |path: &Option<Vec<u8>>| {
+                        path.as_deref()
+                            .map(|path| String::from_utf8_lossy(path).into_owned())
+                            .unwrap_or_default()
+                    };
+                    json!({"kind": kind, "oldPath": text(&row.old_path), "newPath": text(&row.new_path)})
+                })
+                .unwrap_or(Value::Null)
+        }
+
         /// Reads text as Latin-1 (true) or UTF-8.
         #[qslot]
         fn set_latin1(&mut self, latin1: bool) {

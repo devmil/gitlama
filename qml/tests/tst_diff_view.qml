@@ -112,6 +112,24 @@ Item {
             tryVerify(() => diff.textOffset > 0 && view.contentY > 0, 2000)
         }
 
+        function test_a_rename_without_changes_shows_the_lama() {
+            const diff = createTemporaryObject(diffComponent, root)
+            const rows = fakeModel(1)
+            rows[0] = Object.assign(line(0, "file", "src/New.swift"), { fileKind: "renamed", oldPath: "lib/New.swift", newPath: "src/New.swift" })
+            rows.soleRename = () => ({ kind: "renamed", oldPath: "lib/New.swift", newPath: "src/New.swift" })
+            diff.model = rows
+            const state = findChild(diff, "diffRenameUnchanged")
+            verify(state.visible)
+            verify(state.moved, "another folder is a move")
+            tryVerify(() => findChild(state, "meridianEmptyStateIllustration").item !== null)
+            compare(findChild(state, "meridianEmptyStateIllustration").item.scene, "moved")
+        }
+
+        function test_a_diff_with_lines_shows_no_lama() {
+            const diff = makeDiff(60)
+            verify(!findChild(diff, "diffRenameUnchanged").visible)
+        }
+
         function test_sideways_offset_stays_within_the_text() {
             const diff = makeDiff(60)
             diff.scrollText(-1e6)
