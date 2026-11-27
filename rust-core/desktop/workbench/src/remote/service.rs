@@ -49,10 +49,9 @@ struct Connection {
     >,
 }
 
-/// How long a quiet connection answers from its last read of the helper's operations.
-const OPERATIONS_QUIET: Duration = Duration::from_secs(3);
-/// How long after a write the helper is asked on every poll.
-const OPERATIONS_AFTER_WRITE_MS: u64 = 10_000;
+/// The helper publishes its operation center when it changes; a center older than this is
+/// asked for again, in case a publication was missed.
+const OPERATIONS_FALLBACK: Duration = Duration::from_secs(10);
 
 type Attempt = Shared<LocalBoxFuture<'static, Result<ConnectionState, Failure>>>;
 
@@ -70,6 +69,8 @@ pub struct RemoteService {
     connector: Connector,
     notifier: Notifier,
     workspace: RefCell<Weak<WorkspaceService>>,
+    /// Called when a helper publishes its operation center (the operation center's refresh).
+    on_operations: RefCell<Option<Rc<dyn Fn()>>>,
     reconnector: RefCell<Option<Rc<Reconnector>>>,
     live: RefCell<HashMap<String, Rc<Connection>>>,
     /// Closed connections whose sessions tabs still hold: their events drain from what
@@ -125,6 +126,7 @@ impl RemoteService {
             connector: Connector::new(),
             notifier,
             workspace: RefCell::new(Weak::new()),
+            on_operations: RefCell::new(None),
             reconnector: RefCell::new(None),
             live: RefCell::new(HashMap::new()),
             retired: RefCell::new(Vec::new()),
@@ -734,6 +736,14 @@ impl RemoteService {
                 }
             }),
         );
+        let operations_service = self.this.clone();
+        sessions.set_on_operations(Rc::new(move || {
+            if let Some(service) = operations_service.upgrade()
+                && let Some(listener) = service.on_operations.borrow().clone()
+            {
+                listener();
+            }
+        }));
         let events_service = self.this.clone();
         sessions.set_on_events(Rc::new(move || {
             if let Some(service) = events_service.upgrade()
@@ -965,6 +975,11 @@ impl RemoteService {
 
     // The operation center -------------------------------------------------------
 
+    /// Installs the callback run when a helper publishes a changed operation center.
+    pub fn set_on_operations(&self, callback: Rc<dyn Fn()>) {
+        *self.on_operations.borrow_mut() = Some(callback);
+    }
+
     /// The helpers' operations of every live connection, under local session identifiers.
     pub async fn remote_operations(
         &self,
@@ -978,18 +993,15 @@ impl RemoteService {
             .collect();
         let mut snapshots = Vec::new();
         for connection in connections {
-            let cached = connection.operations.borrow().clone();
-            let eager = cached.as_ref().is_none_or(|(snapshot, at)| {
-                snapshot.running_count > 0 || at.elapsed() >= OPERATIONS_QUIET
-            }) || connection
-                .sessions
-                .recently_wrote(OPERATIONS_AFTER_WRITE_MS);
-            if !eager {
-                if let Some((snapshot, _)) = cached {
-                    snapshots.push(snapshot);
-                }
+            // What the helper published is current; ask only before its first publication
+            // or when it has been quiet for a while.
+            if let Some((snapshot, at)) = connection.sessions.pushed_operation_center()
+                && at.elapsed() < OPERATIONS_FALLBACK
+            {
+                snapshots.push(snapshot);
                 continue;
             }
+            let cached = connection.operations.borrow().clone();
             match connection.sessions.operation_center(64).await {
                 Ok(Some(snapshot)) => {
                     *connection.operations.borrow_mut() =

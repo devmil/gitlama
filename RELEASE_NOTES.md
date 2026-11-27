@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- Progress of fetches, pulls, pushes and other Git work now updates as soon as Git reports it, on this computer and on remote hosts, instead of being checked several times a second. GitLama uses less CPU and network while work runs. Hosts receive a new GitLama helper.
 - Staging, unstaging or discarding files in the Changes tree view no longer hides remaining folders or files until you toggle between list and tree view.
 - The repository pill now shows all work that takes a moment, including a push right after Commit & push, and commits, stashes, merges, rebases, staging and discarding.
 - Long lines in diffs scroll sideways again with Shift and the mouse wheel or a sideways swipe on the touchpad.

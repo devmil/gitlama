@@ -41,7 +41,11 @@ mod workflows_state {
     impl WorkflowsState {
         qproperty!("busy", Member = busy, Notify = busy_changed);
         qproperty!("work", Member = work, Notify = work_changed);
-        qproperty!("runningTransfer", Member = running_transfer, Notify = running_transfer_changed);
+        qproperty!(
+            "runningTransfer",
+            Member = running_transfer,
+            Notify = running_transfer_changed
+        );
         qproperty!(
             "fileBrowser",
             Member = file_browser,

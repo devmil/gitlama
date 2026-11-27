@@ -93,6 +93,9 @@ pub struct RemoteSessions {
     writes_in_flight: Cell<u32>,
     last_write_at_ms: Cell<u64>,
     on_events: RefCell<Option<Rc<dyn Fn()>>>,
+    /// The helper's operation center as it last published it (helper session IDs), and when.
+    pushed_operations: RefCell<Option<(NativeOperationCenterSnapshot, std::time::Instant)>>,
+    on_operations: RefCell<Option<Rc<dyn Fn()>>>,
     this: Weak<RemoteSessions>,
 }
 
@@ -148,6 +151,8 @@ impl RemoteSessions {
             writes_in_flight: Cell::new(0),
             last_write_at_ms: Cell::new(0),
             on_events: RefCell::new(None),
+            pushed_operations: RefCell::new(None),
+            on_operations: RefCell::new(None),
             this: this.clone(),
         });
         let weak = Rc::downgrade(&sessions);
@@ -228,25 +233,56 @@ impl RemoteSessions {
         *self.on_events.borrow_mut() = Some(callback);
     }
 
+    /// Installs a callback invoked whenever the helper publishes its operation center.
+    pub fn set_on_operations(&self, callback: Rc<dyn Fn()>) {
+        *self.on_operations.borrow_mut() = Some(callback);
+    }
+
+    /// The operation center the helper last published, under local session identifiers,
+    /// and when it arrived.
+    pub fn pushed_operation_center(
+        &self,
+    ) -> Option<(NativeOperationCenterSnapshot, std::time::Instant)> {
+        let pushed = self.pushed_operations.borrow().clone()?;
+        Some((self.localize(pushed.0), pushed.1))
+    }
+
     fn publish(&self, publication: &Publication) {
-        let Ok(result) = g::dec_native_repository_events_result(&publication.events) else {
+        match publication {
+            Publication::SessionEvents { session_id, events } => {
+                self.publish_events(*session_id, events);
+            }
+            Publication::OperationCenter { operations } => {
+                let Ok(result) = g::dec_native_operation_center_result(operations) else {
+                    return;
+                };
+                let Some(snapshot) = result.snapshot else {
+                    return;
+                };
+                *self.pushed_operations.borrow_mut() = Some((snapshot, std::time::Instant::now()));
+                if let Some(callback) = self.on_operations.borrow().clone() {
+                    callback();
+                }
+            }
+        }
+    }
+
+    fn publish_events(&self, helper_session: u64, events: &Value) {
+        let Ok(result) = g::dec_native_repository_events_result(events) else {
             return;
         };
         let mut inner = self.inner.borrow_mut();
-        let Some(local) = inner.local_by_helper.get(&publication.session_id).copied() else {
-            if inner
-                .closed_helper_sessions
-                .contains(&publication.session_id)
-            {
+        let Some(local) = inner.local_by_helper.get(&helper_session).copied() else {
+            if inner.closed_helper_sessions.contains(&helper_session) {
                 return;
             }
             // The open reply may still be on its way; keep a bounded backlog.
             if inner.orphans.len() >= MAXIMUM_ORPHAN_SESSIONS
-                && !inner.orphans.contains_key(&publication.session_id)
+                && !inner.orphans.contains_key(&helper_session)
             {
                 return;
             }
-            let backlog = inner.orphans.entry(publication.session_id).or_default();
+            let backlog = inner.orphans.entry(helper_session).or_default();
             if backlog.len() >= MAXIMUM_ORPHAN_BATCHES {
                 backlog.remove(0);
             }
@@ -291,8 +327,14 @@ impl RemoteSessions {
         let Some(snapshot) = result.snapshot else {
             return Ok(None);
         };
+        Ok(Some(self.localize(snapshot)))
+    }
+
+    /// `snapshot` with entries of this connection's live sessions under their local session
+    /// identifiers.
+    fn localize(&self, snapshot: NativeOperationCenterSnapshot) -> NativeOperationCenterSnapshot {
         let inner = self.inner.borrow();
-        Ok(Some(NativeOperationCenterSnapshot {
+        NativeOperationCenterSnapshot {
             entries: snapshot
                 .entries
                 .into_iter()
@@ -308,7 +350,7 @@ impl RemoteSessions {
                 })
                 .collect(),
             ..snapshot
-        }))
+        }
     }
 
     /// Dismisses a finished operation of local session `session_id`.

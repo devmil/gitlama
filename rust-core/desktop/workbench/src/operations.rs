@@ -16,7 +16,9 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 /// How often the operation center polls the application.
-const POLL: Duration = Duration::from_millis(250);
+/// While operations run, the center is also read this often, in case a change was missed.
+/// Changes themselves arrive as wakeups (`enable_local_wakeup`) and remote publications.
+const FALLBACK: Duration = Duration::from_secs(10);
 const MAXIMUM_ENTRIES: u32 = 256;
 
 /// An entry's stable key: its activity, else its start time.
@@ -65,16 +67,43 @@ impl OperationCenter {
     /// Lists the operations of remote hosts' helpers beside this computer's.
     pub fn set_remote(&self, remote: &Rc<crate::remote::service::RemoteService>) {
         *self.remote.borrow_mut() = Rc::downgrade(remote);
+        // A helper's published change refreshes the center like a local one.
+        let weak = self.this.clone();
+        remote.set_on_operations(Rc::new(move || {
+            if let Some(center) = weak.upgrade() {
+                center.poke();
+            }
+        }));
     }
 
     pub fn current(&self) -> NativeOperationCenterSnapshot {
         self.snapshot.borrow().clone()
     }
 
-    /// Reads the current operations once, and polls every [`POLL`] only while an
-    /// operation is running.
+    /// Reads the current operations once; afterwards changes arrive as wakeups,
+    /// with a [`FALLBACK`] read only while an operation is running.
     pub fn start(&self) {
         self.poke();
+    }
+
+    /// Returns the callback the core calls when its operations change: it
+    /// refreshes the center on this runtime.
+    pub fn enable_local_wakeup(self: &Rc<Self>) -> std::sync::Arc<dyn Fn() + Send + Sync> {
+        let signal = std::sync::Arc::new(rt::WakeSignal::new());
+        let listener = std::sync::Arc::clone(&signal);
+        let weak = Rc::downgrade(self);
+        rt::spawn_detached(async move {
+            while listener.next().await {
+                let Some(center) = weak.upgrade() else {
+                    break;
+                };
+                if center.disposed.get() {
+                    break;
+                }
+                center.poke();
+            }
+        });
+        std::sync::Arc::new(move || signal.notify())
     }
 
     /// Requests a refresh after workspace/session/transfer activity; when idle, no
@@ -107,7 +136,7 @@ impl OperationCenter {
             return;
         }
         let weak = self.this.clone();
-        *self.timer.borrow_mut() = TimerHandle::start(POLL, move || {
+        *self.timer.borrow_mut() = TimerHandle::start(FALLBACK, move || {
             let Some(center) = weak.upgrade() else { return };
             rt::spawn_detached(async move {
                 center.refresh().await;

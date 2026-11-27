@@ -403,6 +403,7 @@ impl Services {
             crate::operations::OperationCenter::new(notifier.clone(), Rc::clone(&transfers));
         operations.set_remote(&remote);
         *cli.remote.borrow_mut() = Some(Rc::clone(&remote_workflows));
+        gitlama_core::api::set_operation_center_wakeup(Some(operations.enable_local_wakeup()));
         operations.start();
         Ok(Self {
             view_cache: stored_view_cache,
@@ -453,6 +454,7 @@ impl Services {
 
     async fn dispose(&self) {
         gitlama_core::api::set_repository_session_wakeup(None);
+        gitlama_core::api::set_operation_center_wakeup(None);
         self.prompts.cancel_all();
         self.cli.dispose().await;
         self.hosting.dispose().await;

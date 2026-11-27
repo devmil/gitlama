@@ -680,3 +680,46 @@ fn syntax_colours_are_parsed_on_the_host_beside_foreground_reads() {
     );
     assert_eq!(stale["failure"]["kind"], "staleGeneration", "{stale}");
 }
+
+#[test]
+fn operation_center_changes_arrive_as_publications() {
+    let home = Root::new("operations");
+    let repository = ordinary_repository(&home.0);
+    let mut helper = Helper::spawn(&home.0);
+    helper.acknowledge(&["read"]);
+    helper.open(&repository, 1);
+    // Opening runs Git (the status scan), which changes the operation center.
+    let started = Instant::now();
+    let mut ready = false;
+    while (!ready || helper.operation_centers.is_empty())
+        && started.elapsed() < Duration::from_secs(20)
+    {
+        let envelope = helper.next().unwrap();
+        if envelope["kind"] == "publication" {
+            ready |= envelope["payload"]["events"]["events"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|event| event["snapshot"]["phase"] == "ready");
+        }
+    }
+    assert!(ready);
+    let publication = helper
+        .operation_centers
+        .last()
+        .expect("the helper publishes its operation center without being asked");
+    assert_eq!(publication["requestId"], "0");
+    assert!(publication["payload"]["operations"]["snapshot"].is_object());
+    let sequences: Vec<u64> = helper
+        .operation_centers
+        .iter()
+        .map(|envelope| {
+            envelope["payload"]["sequence"]
+                .as_str()
+                .unwrap()
+                .parse()
+                .unwrap()
+        })
+        .collect();
+    assert!(sequences.windows(2).all(|pair| pair[0] < pair[1]));
+}

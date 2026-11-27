@@ -26,6 +26,10 @@ const BULK_WORKERS: usize = 2;
 /// Accepted results wait for the writer while this many bytes are queued.
 const RESULT_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 const PUMP_EVENTS: u32 = 64;
+/// Entries in an `operationCenter` publication (what the client asked for before).
+const PUBLISHED_OPERATIONS: u32 = 64;
+/// Operation center publications are at least this far apart; progress in between merges.
+const OPERATIONS_INTERVAL: Duration = Duration::from_millis(100);
 /// Pending events per session before they collapse into one resynchronization.
 const PENDING_EVENTS: usize = 256;
 /// The whole teardown, from the decision to stop to process exit.
@@ -53,6 +57,8 @@ struct OutState {
     result_bytes: usize,
     publications: VecDeque<u64>,
     pending: HashMap<u64, Pending>,
+    /// The newest unsent operation center (`NativeOperationCenterResult`).
+    operations: Option<Value>,
     next_sequence: u64,
     next_transaction: u64,
     closed: bool,
@@ -135,6 +141,16 @@ impl Outbound {
         self.ready.notify_all();
     }
 
+    /// Queues the operation center, replacing an unsent one.
+    fn publish_operations(&self, result: Value) {
+        let mut state = lock(&self.state);
+        if state.closed {
+            return;
+        }
+        state.operations = Some(result);
+        self.ready.notify_all();
+    }
+
     fn forget(&self, session_id: u64) {
         let mut state = lock(&self.state);
         state.pending.remove(&session_id);
@@ -182,6 +198,19 @@ impl Outbound {
                                 ));
                                 state.next_transaction = transaction;
                             }
+                            continue;
+                        }
+                        if let Some(operations) = state.operations.take() {
+                            state.next_sequence += 1;
+                            let sequence = state.next_sequence;
+                            let mut transaction = state.next_transaction;
+                            inflight.extend(operations_frames(
+                                session,
+                                sequence,
+                                operations,
+                                &mut transaction,
+                            ));
+                            state.next_transaction = transaction;
                             continue;
                         }
                     }
@@ -291,6 +320,24 @@ fn publication_frames(
     frames(session, 0, bytes, transaction)
 }
 
+fn operations_frames(
+    session: &Session,
+    sequence: u64,
+    operations: Value,
+    transaction: &mut u64,
+) -> Vec<Vec<u8>> {
+    let mut payload = Map::new();
+    payload.insert("sequence".into(), Value::from(sequence.to_string()));
+    payload.insert("type".into(), Value::from("operationCenter"));
+    payload.insert("operations".into(), operations);
+    let bytes = w::to_bytes(&session.envelope_publication(Value::Object(payload)));
+    if bytes.len() > protocol::TRANSACTION_BYTES {
+        // Too large to carry: the client keeps asking for the center instead.
+        return Vec::new();
+    }
+    frames(session, 0, bytes, transaction)
+}
+
 /// One frame, or a chunk transaction for a message above the chunk size.
 fn frames(
     session: &Session,
@@ -367,6 +414,8 @@ pub struct Connection {
     work_ready: Condvar,
     pump_pending: Mutex<bool>,
     pump_ready: Condvar,
+    /// The operation center changed since the pump last published it.
+    operations_changed: AtomicBool,
     listings: Mutex<crate::directory::Listings>,
     closing: AtomicBool,
 }
@@ -390,9 +439,15 @@ impl Connection {
             work_ready: Condvar::new(),
             pump_pending: Mutex::new(true),
             pump_ready: Condvar::new(),
+            operations_changed: AtomicBool::new(true),
             listings: Mutex::new(crate::directory::Listings::default()),
             closing: AtomicBool::new(false),
         })
+    }
+
+    fn operations_changed(&self) {
+        self.operations_changed.store(true, Ordering::Release);
+        self.wake_pump();
     }
 
     fn wake_pump(&self) {
@@ -498,6 +553,7 @@ impl Connection {
     }
 
     fn pump(self: &Arc<Self>) {
+        let mut operations_published: Option<Instant> = None;
         while !self.closing.load(Ordering::Acquire) {
             {
                 let mut pending = lock(&self.pump_pending);
@@ -513,10 +569,34 @@ impl Connection {
                     && self.sessions.is_live(session_id)
                 {
                     self.outbound.publish(session_id, result);
+                    // A finished refresh shows in the operation center with its snapshot.
+                    self.operations_changed.store(true, Ordering::Release);
                 }
+            }
+            let due = operations_published.map_or(Instant::now(), |at| at + OPERATIONS_INTERVAL);
+            if self.operations_changed.load(Ordering::Acquire) && Instant::now() >= due {
+                self.operations_changed.store(false, Ordering::Release);
+                operations_published = Some(Instant::now());
+                self.outbound.publish_operations(g::enc_native_operation_center_result(
+                    &gitlama_application::application::operation_center::application_operation_center(
+                        PUBLISHED_OPERATIONS,
+                    ),
+                ));
             }
             let mut pending = lock(&self.pump_pending);
             while !*pending && !self.closing.load(Ordering::Acquire) {
+                if self.operations_changed.load(Ordering::Acquire) {
+                    // A change waits for its interval, then publishes.
+                    let wait = due
+                        .saturating_duration_since(Instant::now())
+                        .max(Duration::from_millis(1));
+                    pending = self
+                        .pump_ready
+                        .wait_timeout(pending, wait)
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .0;
+                    break;
+                }
                 pending = self
                     .pump_ready
                     .wait(pending)
@@ -567,6 +647,10 @@ pub fn serve(
         gitlama_application::application::session::set_session_wakeup(Some(Arc::new(move || {
             wake_connection.wake_pump();
         })));
+        let operations_connection = Arc::clone(connection);
+        gitlama_application::activity::set_operations_wakeup(Some(Arc::new(move || {
+            operations_connection.operations_changed();
+        })));
         let connection = Arc::clone(connection);
         std::thread::spawn(move || connection.pump())
     };
@@ -584,6 +668,7 @@ pub fn serve(
     connection.closing.store(true, Ordering::Release);
     connection.wake_pump();
     gitlama_application::application::session::set_session_wakeup(None);
+    gitlama_application::activity::set_operations_wakeup(None);
     let queued: Vec<u64> = {
         let mut work = lock(&connection.work);
         work.closed = true;

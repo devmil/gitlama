@@ -2459,6 +2459,11 @@ pub fn configure_native_diagnostics(detailed: bool, clear: bool) {
     }
 }
 
+/// Installs a callback invoked when an operation starts, reports progress or ends.
+pub fn set_operation_center_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
+    gitlama_application::activity::set_operations_wakeup(wakeup);
+}
+
 /// Installs a wakeup callback invoked from repository workers when events are queued.
 pub fn set_repository_session_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
     gitlama_application::application::session::set_session_wakeup(wakeup);

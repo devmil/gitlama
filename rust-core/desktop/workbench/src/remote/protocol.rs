@@ -402,13 +402,18 @@ pub fn hello_ack(hello: &Hello, nonce: &str) -> Value {
     })
 }
 
-/// One `sessionEvents` publication.
+/// An unsolicited helper message.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Publication {
-    /// The helper-local session ID.
-    pub session_id: u64,
-    /// The decoded `NativeRepositoryEventsResult` JSON.
-    pub events: Value,
+pub enum Publication {
+    /// A session's queued events.
+    SessionEvents {
+        /// The helper-local session ID.
+        session_id: u64,
+        /// The decoded `NativeRepositoryEventsResult` JSON.
+        events: Value,
+    },
+    /// The helper's operation center changed: the `NativeOperationCenterResult` JSON.
+    OperationCenter { operations: Value },
 }
 
 /// A message the helper sent after the acknowledgement.
@@ -548,24 +553,29 @@ impl EnvelopeSession {
                 if request_id != 0 {
                     return Err(invalid("request id"));
                 }
-                let publication = w::object(
-                    payload,
-                    "publication",
-                    &["sequence", "type", "sessionId", "events"],
-                )?;
+                let kind = payload.get("type").and_then(Value::as_str);
+                let fields: &[&str] = match kind {
+                    Some("sessionEvents") => &["sequence", "type", "sessionId", "events"],
+                    Some("operationCenter") => &["sequence", "type", "operations"],
+                    _ => return Err(invalid("publication type")),
+                };
+                let publication = w::object(payload, "publication", fields)?;
                 let sequence: u64 = w::big_d(publication.field("sequence"))?;
                 if sequence <= self.last_sequence {
                     return Err(invalid("sequence"));
                 }
-                if publication.field("type").as_str() != Some("sessionEvents") {
-                    return Err(invalid("publication type"));
-                }
-                let session_id: u64 = w::big_d(publication.field("sessionId"))?;
+                let message = if kind == Some("sessionEvents") {
+                    Publication::SessionEvents {
+                        session_id: w::big_d(publication.field("sessionId"))?,
+                        events: publication.field("events").clone(),
+                    }
+                } else {
+                    Publication::OperationCenter {
+                        operations: publication.field("operations").clone(),
+                    }
+                };
                 self.last_sequence = sequence;
-                Ok(HelperMessage::Publication(Publication {
-                    session_id,
-                    events: publication.field("events").clone(),
-                }))
+                Ok(HelperMessage::Publication(message))
             }
             "chunk" => Ok(HelperMessage::Chunk {
                 request_id,
@@ -911,10 +921,26 @@ mod tests {
             };
         let first = publication("1");
         let replay = publication("1");
-        assert!(
-            matches!(session.read(&first, None).unwrap(), HelperMessage::Publication(p) if p.session_id == 3)
-        );
+        assert!(matches!(
+            session.read(&first, None).unwrap(),
+            HelperMessage::Publication(Publication::SessionEvents { session_id: 3, .. })
+        ));
         assert!(session.read(&replay, None).is_err());
+        let operations = session.envelope(
+            0,
+            "publication",
+            serde_json::json!({"sequence": "2", "type": "operationCenter", "operations": {}}),
+        );
+        assert!(matches!(
+            session.read(&operations, None).unwrap(),
+            HelperMessage::Publication(Publication::OperationCenter { .. })
+        ));
+        let unknown = session.envelope(
+            0,
+            "publication",
+            serde_json::json!({"sequence": "3", "type": "other", "operations": {}}),
+        );
+        assert!(session.read(&unknown, None).is_err());
         let mut forged = session.envelope(id, "pong", serde_json::json!({}));
         forged["connectionNonce"] = serde_json::json!("x".repeat(32));
         assert!(session.read(&forged, None).is_err());

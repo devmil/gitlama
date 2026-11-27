@@ -220,10 +220,16 @@ connection.
 | Kind | Payload |
 | --- | --- |
 | `result` | `{"ok": <value>}` or `{"error": {"code": "<code>"}}` |
-| `publication` | `{"sequence": "<decimal>", "type": "sessionEvents", "sessionId": "<decimal>", "events": <NativeRepositoryEventsResult>}` |
+| `publication` | `{"sequence": "<decimal>", "type": "sessionEvents", "sessionId": "<decimal>", "events": <NativeRepositoryEventsResult>}`, or `{"sequence": "<decimal>", "type": "operationCenter", "operations": <NativeOperationCenterResult>}` |
 | `chunk` | See [transactions](#transactions) |
 | `pong`, `goodbye` | `{}` |
 | `fatal` | `{"code": "<code>"}`; the helper exits afterwards |
+
+The helper publishes `operationCenter` when its operation center changes: an operation starts,
+reports progress or ends, or a session publishes events. Changes within 100 ms merge into one
+publication of the newest center (at most 64 entries of all the helper's sessions; the client
+keeps the entries of its own sessions). A client reads the center with the `operationCenter` call only before the first
+publication or when none arrived for 10 seconds.
 
 ### Transactions
 

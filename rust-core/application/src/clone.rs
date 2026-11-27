@@ -306,6 +306,7 @@ fn clone_run_configured(
         }
         if !destination_available(attempt.destination.path().as_path()) {
             attempt.state = NativeCloneState::Failed;
+            crate::activity::wake_operations();
             attempt.failure = Some(NativeCloneFailureKind::DestinationOccupied);
             return NativeCloneRunResult {
                 snapshot: Some(project_attempt(attempt_id, attempt)),
@@ -314,6 +315,7 @@ fn clone_run_configured(
             };
         }
         attempt.state = NativeCloneState::Running;
+        crate::activity::wake_operations();
         (
             attempt.source.clone(),
             attempt.destination.clone(),
@@ -436,6 +438,7 @@ fn clone_run_configured(
             return run_failure(NativeCloneFailureKind::UnknownAttempt);
         };
         attempt.state = NativeCloneState::Succeeded;
+        crate::activity::wake_operations();
         attempt.failure = None;
         attempt.partial_destination = false;
         project_attempt(attempt_id, attempt)
@@ -719,6 +722,7 @@ fn finish_failure(
     } else {
         NativeCloneState::Failed
     };
+    crate::activity::wake_operations();
     attempt.failure = Some(failure);
     attempt.partial_destination = destination_is_partial(destination);
     NativeCloneRunResult {
