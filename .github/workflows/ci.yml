@@ -115,6 +115,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The runner image's Microsoft package source started answering 403, which
+          # fails apt-get update; GitLama installs nothing from it.
+          { grep -rlZ 'packages.microsoft.com' /etc/apt/sources.list.d || true; } | xargs -0r sudo rm -f
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends clang pkg-config patchelf git-lfs \
             libgl1-mesa-dev libegl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
