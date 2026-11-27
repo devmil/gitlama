@@ -51,6 +51,8 @@
 
 ## Unreleased Beta
 
+- All corners of the work areas are rounded again in Changes and History, and a subtle line now separates unstaged from staged changes.
+- Renamed and moved files are easier to read: the file lists show the new name with where it came from, the detail names the previous path, and a file moved or renamed without content changes says so instead of showing an empty diff.
 - The repository pill now always shows the work of the tab you are looking at: switching tabs no longer plays a "done" animation for work that is still running, and switching back shows the running work right away.
 - Progress of fetches, pulls, pushes and other Git work now updates as soon as Git reports it, on this computer and on remote hosts, instead of being checked several times a second. GitLama uses less CPU and network while work runs. Hosts receive a new GitLama helper.
 - Staging, unstaging or discarding files in the Changes tree view no longer hides remaining folders or files until you toggle between list and tree view.

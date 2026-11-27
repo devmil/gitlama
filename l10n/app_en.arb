@@ -9432,5 +9432,44 @@
   "folderPickerUnavailable": "No folder picker could open. Install a desktop portal (xdg-desktop-portal with a file chooser backend) or drop the repository folder onto the window.",
   "@folderPickerUnavailable": {
     "description": "Shown when neither the platform's folder picker nor Qt's own could open."
+  },
+  "renamedFromHint": "from {path}",
+  "@renamedFromHint": {
+    "description": "Where a renamed or moved file came from, after its name in a file list: the old folder and/or name.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "workingDiffRenamedFrom": "Renamed from {path}",
+  "@workingDiffRenamedFrom": {
+    "description": "Previous path of a renamed file above its diff.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "workingDiffMovedFrom": "Moved from {path}",
+  "@workingDiffMovedFrom": {
+    "description": "Previous path of a moved file above its diff.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "workingDiffRenamedUnchanged": "Renamed without content changes",
+  "@workingDiffRenamedUnchanged": {
+    "description": "Shown in place of the diff of a file renamed with identical content."
+  },
+  "workingDiffMovedUnchanged": "Moved without content changes",
+  "@workingDiffMovedUnchanged": {
+    "description": "Shown in place of the diff of a file moved with identical content."
+  },
+  "workingDiffRenameUnchangedDetail": "The file's content is the same at its new path.",
+  "@workingDiffRenameUnchangedDetail": {
+    "description": "Detail below the unchanged rename or move state."
   }
 }

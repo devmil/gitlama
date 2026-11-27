@@ -154,6 +154,12 @@ Item {
                     movingKeys: pane.movingKeys
                     flightKey: pane.flightKey
                 }
+                // The lists share the island: a hairline in the gutter tells them apart.
+                MeridianHairline {
+                    objectName: "changes-pane-divider"
+                    y: unstagedSection.height + Math.floor((Theme.space.s3 - height) / 2)
+                    width: parent.width
+                }
                 MeridianResizeHandle {
                     objectName: "changes-pane-splitter"
                     y: unstagedSection.height

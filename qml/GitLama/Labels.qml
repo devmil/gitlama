@@ -269,4 +269,35 @@ QtObject {
         const separator = trimmed.lastIndexOf("/")
         return separator < 0 || separator === trimmed.length - 1 ? trimmed : trimmed.slice(separator + 1)
     }
+
+    /// What tells a renamed or moved file's `source` path apart from its
+    /// `path`: the old name for a rename in place, otherwise the old folder
+    /// after the folders both share ("…/Classes/"), with the old name when
+    /// that changed too; "./" is the repository's top folder. "" for no move.
+    function renameSource(source, path) {
+        if (!source || !path || source === path)
+            return ""
+        const oldParts = source.split("/")
+        const newParts = path.split("/")
+        const oldName = oldParts.pop()
+        const name = newParts.pop()
+        const renamed = oldName !== name
+        if (oldParts.join("/") === newParts.join("/"))
+            return oldName
+        let shared = 0
+        while (shared < oldParts.length && shared < newParts.length && oldParts[shared] === newParts[shared])
+            ++shared
+        const folder = oldParts.slice(shared)
+        const lead = shared > 0 ? "…/" : oldParts.length === 0 ? "./" : ""
+        return lead + folder.map(part => part + "/").join("") + (renamed ? oldName : "")
+    }
+
+    /// Whether `source` → `path` changed the file's folder (a move) rather
+    /// than only its name.
+    function movedFolder(source, path) {
+        if (!source || !path)
+            return false
+        const folder = value => value.lastIndexOf("/") < 0 ? "" : value.slice(0, value.lastIndexOf("/"))
+        return folder(source) !== folder(path)
+    }
 }

@@ -1,12 +1,19 @@
+pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Shapes
 
 // The rounded work surface on ground: `pane`, `radius-lg`, `shadow-pane`
 // (the shadow is the edge; islands have no border and never nest). While
-// keyboard focus is inside, it draws a 1px `accent-soft` halo.
+// keyboard focus is inside, it draws a 1px `accent-soft` halo. Its content
+// keeps the rounded corners even where it paints its own background: a clip
+// is rectangular, so the corners outside the rounding are covered with the
+// ground the island sits on.
 FocusScope {
     id: root
 
     property color color: Theme.colors.pane
+    /// What the island sits on, shown at its corners outside the rounding.
+    property color groundColor: Theme.colors.ground
     readonly property bool focused: activeFocus
     default property alias content: body.data
 
@@ -66,6 +73,44 @@ FocusScope {
             anchors.top: header.bottom
             anchors.bottom: parent.bottom
         }
+    }
+
+    // Above the content, each corner outside the rounding in `groundColor`:
+    // a square of `radius-lg` at its corner minus the quarter circle.
+    component Corner: Shape {
+        id: corner
+        property bool atRight: false
+        property bool atBottom: false
+        readonly property real cornerX: atRight ? width : 0
+        readonly property real cornerY: atBottom ? height : 0
+        width: Theme.radius.lg
+        height: Theme.radius.lg
+        x: atRight ? root.width - width : 0
+        y: atBottom ? root.height - height : 0
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeWidth: -1
+            fillColor: root.groundColor
+            startX: corner.cornerX; startY: corner.cornerY
+            PathLine { x: corner.width - corner.cornerX; y: corner.cornerY }
+            PathArc {
+                x: corner.cornerX
+                y: corner.height - corner.cornerY
+                radiusX: corner.width
+                radiusY: corner.height
+                // A mirrored corner turns the other way.
+                direction: corner.atRight !== corner.atBottom ? PathArc.Clockwise : PathArc.Counterclockwise
+            }
+            PathLine { x: corner.cornerX; y: corner.cornerY }
+        }
+    }
+    Item {
+        objectName: "meridianIslandCorners"
+        anchors.fill: parent
+        Corner { }
+        Corner { atRight: true }
+        Corner { atRight: true; atBottom: true }
+        Corner { atBottom: true }
     }
 
     Rectangle {

@@ -629,6 +629,7 @@ Item {
                             readonly property bool pending: model.pending === true
                             width: slot.width
                             path: model.label ?? model.path ?? ""
+                            sourceHint: Labels.renameSource(model.source ?? "", model.path ?? "")
                             depth: model.depth ?? 0
                             folder: model.directory === true
                             folderIcon: true

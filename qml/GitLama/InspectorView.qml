@@ -897,6 +897,7 @@ Rectangle {
                                     width: ListView.view.width
                                     path: modelData.path
                                     status: inspector.fileStatus(modelData.kind)
+                                    sourceHint: Labels.renameSource(modelData.oldPath ?? "", modelData.newPath ?? "")
                                     onClicked: inspector.bridge.openFileLens(modelData.path, "diff", false, historyHeader.entry.commit)
                                 }
                             }

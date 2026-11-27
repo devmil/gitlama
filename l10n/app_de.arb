@@ -2522,5 +2522,11 @@
   "textMenuCopy": "Kopieren",
   "textMenuPaste": "Einfügen",
   "textMenuSelectAll": "Alles auswählen",
-  "folderPickerUnavailable": "Es konnte keine Ordnerauswahl geöffnet werden. Installiere ein Desktop-Portal (xdg-desktop-portal mit einem Dateiauswahl-Backend) oder ziehe den Repository-Ordner ins Fenster."
+  "folderPickerUnavailable": "Es konnte keine Ordnerauswahl geöffnet werden. Installiere ein Desktop-Portal (xdg-desktop-portal mit einem Dateiauswahl-Backend) oder ziehe den Repository-Ordner ins Fenster.",
+  "renamedFromHint": "von {path}",
+  "workingDiffRenamedFrom": "Umbenannt von {path}",
+  "workingDiffMovedFrom": "Verschoben von {path}",
+  "workingDiffRenamedUnchanged": "Umbenannt, Inhalt unverändert",
+  "workingDiffMovedUnchanged": "Verschoben, Inhalt unverändert",
+  "workingDiffRenameUnchangedDetail": "Der Inhalt der Datei ist am neuen Pfad derselbe."
 }

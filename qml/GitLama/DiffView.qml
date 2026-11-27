@@ -629,10 +629,12 @@ Item {
                 active: line.kind === "file"
                 anchors.fill: parent
                 sourceComponent: Item {
+                    id: fileHeader
                     anchors.fill: parent
                     Accessible.role: Accessible.Button
                     Accessible.name: view.collapsed[line.stableId] ? L10n.t("diffExpandFile") : L10n.t("diffCollapseFile")
-                    Accessible.description: line.text
+                    Accessible.description: fileHeader.sourceHint.length > 0
+                        ? line.text + ", " + L10n.tn("renamedFromHint", { path: fileHeader.sourceHint }) : line.text
                     Accessible.ignored: !visible
                     MeridianIcon {
                         id: fileChevron
@@ -643,13 +645,29 @@ Item {
                         rotation: view.collapsed[line.stableId] ? -90 : 0
                         Behavior on rotation { NumberAnimation { duration: Motion.quick } }
                     }
+                    // The path; a renamed, moved or copied file then names where it came from.
+                    readonly property string sourceHint: line.fileKind === "renamed" || line.fileKind === "copied"
+                        ? Labels.renameSource(line.oldPath, line.newPath) : ""
                     MeridianText {
+                        id: filePath
                         x: fileChevron.x + fileChevron.width + Theme.space.s3
-                        width: parent.width - x - Theme.space.s3
+                        width: Math.min(implicitWidth, parent.width - x - Theme.space.s3)
                         anchors.verticalCenter: parent.verticalCenter
                         role: MeridianText.CodeSm
                         text: line.text
                         elide: Text.ElideRight
+                    }
+                    MeridianText {
+                        objectName: "diffFileSource"
+                        visible: fileHeader.sourceHint.length > 0
+                        x: filePath.x + filePath.width
+                        width: Math.max(0, parent.width - x - Theme.space.s3)
+                        anchors.verticalCenter: parent.verticalCenter
+                        leftPadding: Theme.space.s3
+                        role: MeridianText.Caption
+                        color: Theme.colors.inkMuted
+                        text: L10n.tn("renamedFromHint", { path: fileHeader.sourceHint })
+                        elide: Text.ElideMiddle
                     }
                 }
             }

@@ -21,6 +21,11 @@ Rectangle {
         return reason.startsWith("remote") ? Commands.reasonText(reason) : ""
     }
     readonly property bool busy: paneState.busy === true
+    /// A renamed or moved file's previous path, or "".
+    readonly property string source: detail.source ?? ""
+    readonly property bool moved: Labels.movedFolder(source, detail.identity ?? "")
+    /// A rename or move that kept the content: its diff is only the file's header.
+    readonly property bool contentUnchanged: source.length > 0 && detail.hasDiff === true && (detail.rows ?? 0) <= 1
 
     color: Theme.colors.pane
     /// The diff (development screenshot steps).
@@ -139,23 +144,38 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
 
-        // The file.
+        // The file, and where a renamed or moved file came from.
         Item {
             id: fileLine
             width: parent.width
-            height: Theme.size.row + 2 * Theme.space.s3
+            height: fileText.height + 2 * Theme.space.s3
             MeridianIcon {
                 id: fileIcon
                 x: Theme.space.s4
-                anchors.verticalCenter: parent.verticalCenter
+                y: Theme.space.s3 + (Theme.size.row - height) / 2
                 name: "file"
             }
-            MeridianText {
+            Column {
+                id: fileText
                 x: fileIcon.x + fileIcon.width + Theme.space.s3
+                y: Theme.space.s3
                 width: parent.width - x - Theme.space.s4
-                anchors.verticalCenter: parent.verticalCenter
-                text: pane.detail.identity ?? ""
-                elide: Text.ElideMiddle
+                MeridianText {
+                    width: parent.width
+                    height: Theme.size.row
+                    verticalAlignment: Text.AlignVCenter
+                    text: pane.detail.identity ?? ""
+                    elide: Text.ElideMiddle
+                }
+                MeridianText {
+                    objectName: "workingDiffSource"
+                    visible: pane.source.length > 0
+                    width: parent.width
+                    role: MeridianText.Caption
+                    color: Theme.colors.inkMuted
+                    text: L10n.tn(pane.moved ? "workingDiffMovedFrom" : "workingDiffRenamedFrom", { path: pane.source })
+                    elide: Text.ElideMiddle
+                }
             }
             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
         }
@@ -201,13 +221,24 @@ Rectangle {
             MeridianHairline { anchors.bottom: parent.bottom; width: parent.width }
         }
         MeridianEmptyState {
-            visible: (pane.detail.rows ?? 0) === 0
+            visible: (pane.detail.rows ?? 0) === 0 && !pane.contentUnchanged
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
             width: parent.width
             compact: true
             iconName: "file-diff"
             title: L10n.t("workingDiffEmpty")
+        }
+        MeridianEmptyState {
+            objectName: "workingDiffRenameUnchanged"
+            visible: pane.contentUnchanged
+            anchors.top: toolbar.bottom
+            anchors.bottom: parent.bottom
+            width: parent.width
+            compact: true
+            iconName: pane.moved ? "folder-input" : "pencil"
+            title: L10n.t(pane.moved ? "workingDiffMovedUnchanged" : "workingDiffRenamedUnchanged")
+            message: L10n.t("workingDiffRenameUnchangedDetail")
         }
         // An image change shows its images instead of the diff rows.
         ImageDiffView {
@@ -233,7 +264,7 @@ Rectangle {
             id: diff
             opacity: workingImage.row === null ? 1 : 0
             enabled: workingImage.row === null
-            visible: (pane.detail.rows ?? 0) > 0
+            visible: (pane.detail.rows ?? 0) > 0 && !pane.contentUnchanged
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
             width: parent.width

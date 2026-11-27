@@ -158,10 +158,11 @@ QtObject {
             const objectId = historyRows.objectIdAt(Number(argument))
             if (objectId.length > 0)
                 history.select(objectId)
-        } else if (name === "unstaged" && changes && unstagedRows) {
-            const row = unstagedRows.get(Number(argument))
+        } else if ((name === "unstaged" || name === "staged") && changes && (name === "staged" ? stagedRows : unstagedRows)) {
+            // unstaged:<row> or staged:<row> selects that row's file.
+            const row = (name === "staged" ? stagedRows : unstagedRows).get(Number(argument))
             if (row) {
-                changes.select("unstaged", [row.key])
+                changes.select(name, [row.key])
                 history.select(row.path)
             }
         } else if (name === "diffDrag" && workingDiffPane) {

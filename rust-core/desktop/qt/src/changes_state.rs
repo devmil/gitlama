@@ -41,21 +41,14 @@ pub const FILE_ROLES: &[&str] = &[
     "pending",
 ];
 
-/// A Changes file's label: its path, or "old → new" for a rename; as base
-/// names in a tree.
+/// A Changes file's label: its path, or its base name in a tree. A rename
+/// is labelled by its new path; the row names where it came from.
 fn file_label(entry: &NativeStatusEntry, basename: bool) -> String {
-    let shown = |path: &gitlama_contract::dto::NativePathIdentity| {
-        let value = gitlama_workbench::session::display_path(path).replace('\\', "/");
-        if basename {
-            value.rsplit('/').next().unwrap_or_default().to_owned()
-        } else {
-            value
-        }
-    };
-    let target = shown(&entry.path);
-    match &entry.source {
-        Some(source) => format!("{} → {target}", shown(source)),
-        None => target,
+    let value = gitlama_workbench::session::display_path(&entry.path).replace('\\', "/");
+    if basename {
+        value.rsplit('/').next().unwrap_or_default().to_owned()
+    } else {
+        value
     }
 }
 
@@ -271,6 +264,10 @@ pub fn project(services: &Services, filter: &str, collapsed: &[HashSet<String>; 
             "side": key.as_ref().map(|key| side_name(key.side)),
             "status": entry.as_ref().zip(key.as_ref()).map(|(entry, key)| status_code(entry, key.side)),
             "untracked": entry.as_ref().is_some_and(|entry| entry.kind == NativeStatusEntryKind::Untracked),
+            "source": entry
+                .as_ref()
+                .and_then(|entry| entry.source.as_ref())
+                .map(gitlama_workbench::session::display_path),
             "loading": detail.loading(),
             "waiting": detail.waiting(),
             "failure": detail.failure().map(|code| code.name()),

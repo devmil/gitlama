@@ -16,6 +16,8 @@ Item {
     property bool folder: false
     property bool expanded: false
     property bool showDirectory: true
+    /// Where a renamed or moved file came from (`Labels.renameSource`), muted after its name.
+    property string sourceHint
 
     signal clicked()
     signal doubleClicked()
@@ -40,7 +42,8 @@ Item {
     activeFocusOnTab: true
 
     Accessible.role: Accessible.ListItem
-    Accessible.name: status.length > 0 ? status + ", " + path : path
+    Accessible.name: (status.length > 0 ? status + ", " + path : path)
+        + (sourceText.visible ? ", " + sourceText.text : "")
     // A tree's folder says whether it is open.
     Accessible.description: folder ? (expanded ? L10n.t("gitFolderExpanded") : L10n.t("gitFolderCollapsed")) : ""
     Accessible.selected: selected
@@ -117,11 +120,14 @@ Item {
             width: parent.width - GitLamaLayout.glyphSize - parent.spacing
                 - (leadingLoader.active ? leadingLoader.width + parent.spacing : 0)
                 - (row.folder && row.folderIcon ? Theme.size.icon + parent.spacing : 0)
-            // The name keeps its width; the folder gives way from its start.
+            // The name keeps its width; the folder gives way from its start,
+            // then where a moved file came from from its middle.
+            readonly property real afterName: (partialText.visible ? partialText.implicitWidth : 0)
+                + (sourceText.visible ? sourceText.implicitWidth : 0)
             MeridianText {
                 visible: text.length > 0
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, Math.max(0, label.width - nameText.implicitWidth - (partialText.visible ? partialText.implicitWidth : 0)))
+                width: Math.min(implicitWidth, Math.max(0, label.width - nameText.implicitWidth - label.afterName))
                 text: row.directory
                 color: Theme.colors.inkMuted
                 elide: Text.ElideLeft
@@ -134,6 +140,18 @@ Item {
                 text: row.folder ? row.path : row.name
                 color: Theme.colors.ink
                 elide: Text.ElideRight
+            }
+            MeridianText {
+                id: sourceText
+                objectName: "fileRowSource"
+                visible: row.sourceHint.length > 0 && !row.folder
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, Math.max(0, label.width - nameText.width
+                    - (partialText.visible ? partialText.implicitWidth : 0)))
+                leftPadding: Theme.space.s3
+                text: L10n.tn("renamedFromHint", { path: row.sourceHint })
+                color: Theme.colors.inkMuted
+                elide: Text.ElideMiddle
             }
             // A file with staged and unstaged changes says so after its name.
             MeridianText {
