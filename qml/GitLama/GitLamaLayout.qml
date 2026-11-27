@@ -229,6 +229,11 @@ QtObject {
     readonly property int compassFillShine: Motion.celebrate
     readonly property real compassFillShineFraction: 0.35
     readonly property int compassFillFinishHold: Motion.hold
+    /// LamaScene: the empty diff's illustration (200×112 artwork).
+    readonly property int lamaSceneWidth: 172
+    readonly property int lamaSceneHeight: 96
+    /// The lama's body in the dark theme: `accent` into `pane`.
+    readonly property real lamaSceneDarkBody: 0.5
     readonly property int detailDebounce: 150
     readonly property int refreshSpinDelay: Motion.spinnerDelay
     readonly property int stageWash: Motion.emphasized

@@ -3,7 +3,9 @@ import QtQuick
 // What an empty, loading or failed list or screen says (Flutter:
 // MeridianEmptyState). `title` says what is true ("No messages match
 // “invoice”"), `message` one sentence on what to do, and one action goes in
-// `action`. No mascots, no emoji, no exclamation marks.
+// `action`. No emoji, no exclamation marks. An app may show its own
+// `illustration` (its mascot in a scene that says what is true) in place of
+// the icon in its detail panes.
 //
 // `progress` is the loading state of the same place: a spinner replaces the
 // icon after 150ms and the title says what is loading. The parts enter one
@@ -14,6 +16,8 @@ Item {
     property string title
     property string message
     property string iconName
+    /// The app's own artwork in place of the icon; `progress` still shows the spinner.
+    property Component illustration: null
     /// First-run and welcome screens: the `display` style.
     property bool headline: false
     /// The in-pane size for small islands and detail panes.
@@ -36,12 +40,20 @@ Item {
             id: art
             property int stage: 0
             width: parent.width
-            height: visible ? 24 : 0
-            visible: root.iconName.length > 0 || root.progress
+            readonly property bool illustrated: root.illustration !== null && !root.progress
+            height: !visible ? 0 : illustrated && artLoader.item ? artLoader.implicitHeight : 24
+            visible: root.iconName.length > 0 || root.progress || root.illustration !== null
             opacity: 0
+            Loader {
+                id: artLoader
+                objectName: "meridianEmptyStateIllustration"
+                anchors.horizontalCenter: parent.horizontalCenter
+                active: art.illustrated
+                sourceComponent: root.illustration
+            }
             MeridianIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: !root.progress
+                visible: !root.progress && !art.illustrated
                 name: root.iconName
                 extent: 24
                 color: Theme.colors.inkMuted

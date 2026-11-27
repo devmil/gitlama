@@ -4,8 +4,9 @@ pragma Singleton
 import QtQuick
 import Meridian
 
-// GitLama's git colours: the diff, rename, conflict-side and tag tokens
-// that only a Git client needs. They follow Meridian's light or dark theme.
+// GitLama's own colours: the diff, rename, conflict-side and tag tokens
+// that only a Git client needs, and the brand lama's. They follow
+// Meridian's light or dark theme.
 QtObject {
     /// Intraline highlight of the changed words inside an added line (ink on it).
     readonly property color addedStrong: Theme.dark ? "#1d4a2e" : "#bfe5c9"
@@ -25,4 +26,6 @@ QtObject {
     readonly property color tagInk: Theme.dark ? "#f2c46b" : "#7a4a00"
     /// Tag chip fill.
     readonly property color tagBg: Theme.dark ? "#33270f" : "#fbf0d9"
+    /// The brand lama's sunglasses in its illustrations; dark in both themes.
+    readonly property color lamaShades: Theme.dark ? "#17171e" : "#17171e"
 }

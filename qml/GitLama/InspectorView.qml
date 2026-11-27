@@ -268,7 +268,7 @@ Rectangle {
         visible: inspector.location === null
         anchors.fill: parent
         compact: true
-        iconName: "inspect"
+        illustration: Component { LamaScene { scene: "select" } }
         title: L10n.t("workspaceNoSelection")
     }
 

@@ -38,6 +38,7 @@ ToolbarCommand 1.0 ToolbarCommand.qml
 WorkspaceToolbar 1.0 WorkspaceToolbar.qml
 singleton CommandMenus 1.0 CommandMenus.qml
 BrandSignature 1.0 BrandSignature.qml
+LamaScene 1.0 LamaScene.qml
 LamaSignature 1.0 LamaSignature.qml
 RepositoryTabs 1.0 RepositoryTabs.qml
 WorkspaceBody 1.0 WorkspaceBody.qml

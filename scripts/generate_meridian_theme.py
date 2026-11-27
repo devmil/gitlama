@@ -31,6 +31,7 @@ GIT_TOKENS = (
     "side-theirs",
     "tag-ink",
     "tag-bg",
+    "lama-shades",
 )
 
 # GitLama's reference names for Meridian's shared tokens.
@@ -74,8 +75,9 @@ def generate(tokens: dict) -> str:
         "import QtQuick",
         "import Meridian",
         "",
-        "// GitLama's git colours: the diff, rename, conflict-side and tag tokens",
-        "// that only a Git client needs. They follow Meridian's light or dark theme.",
+        "// GitLama's own colours: the diff, rename, conflict-side and tag tokens",
+        "// that only a Git client needs, and the brand lama's. They follow",
+        "// Meridian's light or dark theme.",
         "QtObject {",
     ]
     for token in git:

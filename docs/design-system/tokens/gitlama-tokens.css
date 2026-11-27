@@ -36,6 +36,7 @@
   --conflict-bg: #FDEBDD;
   --side-ours: #6B4FC8;
   --side-theirs: #0E7C86;
+  --lama-shades: #17171E;
   --tag-ink: #7A4A00;
   --tag-bg: #FBF0D9;
   --fjord: #14242B;
@@ -87,6 +88,7 @@
   --conflict-bg: #3D2413;
   --side-ours: #B39DFF;
   --side-theirs: #4FD1DB;
+  --lama-shades: #17171E;
   --tag-ink: #F2C46B;
   --tag-bg: #33270F;
   --fjord: #1F3A48;
@@ -139,6 +141,7 @@
     --conflict-bg: #3D2413;
     --side-ours: #B39DFF;
     --side-theirs: #4FD1DB;
+    --lama-shades: #17171E;
     --tag-ink: #F2C46B;
     --tag-bg: #33270F;
     --fjord: #1F3A48;

@@ -114,7 +114,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
         compact: true
-        iconName: "inspect"
+        illustration: Component { LamaScene { scene: "select" } }
         title: L10n.t("workspaceNoSelection")
     }
     MeridianEmptyState {
@@ -123,7 +123,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
         compact: true
-        iconName: "circle-alert"
+        illustration: Component { LamaScene { scene: "failed" } }
         title: L10n.t("workingDiffFailed")
     }
     MeridianEmptyState {
@@ -132,7 +132,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
         compact: true
-        iconName: "hourglass"
+        illustration: Component { LamaScene { scene: "waiting" } }
         title: L10n.t("workingDiffWaitingForGit")
         message: L10n.t("workingDiffWaitingForGitDetail")
     }
@@ -226,7 +226,7 @@ Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width
             compact: true
-            iconName: "file-diff"
+            illustration: Component { LamaScene { scene: "unchanged" } }
             title: L10n.t("workingDiffEmpty")
         }
         MeridianEmptyState {
@@ -236,7 +236,7 @@ Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width
             compact: true
-            iconName: pane.moved ? "folder-input" : "pencil"
+            illustration: Component { LamaScene { scene: pane.moved ? "moved" : "renamed" } }
             title: L10n.t(pane.moved ? "workingDiffMovedUnchanged" : "workingDiffRenamedUnchanged")
             message: L10n.t("workingDiffRenameUnchangedDetail")
         }
