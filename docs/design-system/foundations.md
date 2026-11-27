@@ -68,7 +68,7 @@ These are what give GitLama its own character. Keep them.
 
 **Depth.** Two levels only. `shadow-pane` for islands and `shadow-float` for anything that floats (popover, menu, Logbook, palette, dialog). Controls get at most a 1px lip (`shadow-control`). No inner shadows, no gradients.
 
-**Motion.** Quick and physical. Hover and press: 80ms. Selection bar move: 120ms ease-out. Popover and palette enter: 140ms, fading in while rising 4px. Island resize: follows the pointer with no easing. The Compass activity wash sweeps across the pill until Git reports progress, then fills to it. Honour Reduce Motion by replacing movement with a fade.
+**Motion.** Quick and physical. Hover and press: 80ms. Selection bar move: 120ms ease-out. Popover and palette enter: 140ms, fading in while rising 4px. Island resize: follows the pointer with no easing. The Compass activity wash tints the pill while work runs, sweeps a band across it until Git reports progress, then fills to it; when the work ends it fills, flashes one highlight across and fades. Honour Reduce Motion by replacing movement with a fade.
 
 **States** (every control): rest, hover (`pane-hover` or `ground-hover`), pressed (hover plus 4% `ink`), focus (2px `focus` ring, 1px offset, `radius-md`), disabled (`ink-faint` label, no hover), loading (label kept, spinner replaces the icon), error (`danger` edge plus message below). Keyboard focus is always visible. Mouse focus shows the ring only on text fields.
 

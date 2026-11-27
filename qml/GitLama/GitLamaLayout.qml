@@ -221,6 +221,14 @@ QtObject {
     /// The Compass's indeterminate activity band, as a share of the pill.
     readonly property real compassFillBandFraction: 0.45
     readonly property int compassFillSweep: 1600
+    /// The Compass wash's resting tint under the band, as a share of `accent-soft`.
+    readonly property real compassFillRest: 0.55
+    /// How much `accent` the band's crest mixes into `accent-soft`.
+    readonly property real compassFillCrest: 0.16
+    /// The highlight that crosses the filled pill once an operation ends.
+    readonly property int compassFillShine: Motion.celebrate
+    readonly property real compassFillShineFraction: 0.35
+    readonly property int compassFillFinishHold: Motion.hold
     readonly property int detailDebounce: 150
     readonly property int refreshSpinDelay: Motion.spinnerDelay
     readonly property int stageWash: Motion.emphasized
