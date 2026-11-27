@@ -29,8 +29,11 @@ Item {
     property real _fraction: _target
     /// Set while new work replaces a finish: its fill starts empty instead of retracting.
     property bool _restart: false
+    /// Set for the rest of the turn in which the Compass changed repository: the
+    /// wash shows that repository's state at once, with no finish and no fade.
+    property bool _snapping: false
     Behavior on _fraction {
-        enabled: fill.shown && !Motion.reduced && !fill._restart
+        enabled: fill.shown && !Motion.reduced && !fill._restart && !fill._snapping
         NumberAnimation { duration: Motion.emphasized; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
     }
     readonly property color _crest: Theme.blend(Theme.colors.accentSoft, Theme.colors.accent,
@@ -40,7 +43,10 @@ Item {
 
     visible: opacity > 0
     opacity: shown ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: Motion.fade(fill.shown ? Motion.quick : Motion.exit) } }
+    Behavior on opacity {
+        enabled: !fill._snapping
+        NumberAnimation { duration: Motion.fade(fill.shown ? Motion.quick : Motion.exit) }
+    }
 
     Accessible.role: Accessible.ProgressBar
     Accessible.name: indeterminate ? "" : Math.round(_target * 100) + "%"
@@ -50,10 +56,24 @@ Item {
         shine.position = 0
         _restart = active
         _flashing = false
-        _finishing = !active
+        // Work does not end because another repository is shown.
+        _finishing = !active && !_snapping
         _restart = false
         if (_finishing)
             finishAnimation.restart()
+    }
+
+    /// The Compass now shows another repository: drops a finish in progress and
+    /// shows the new state without animating, including changes later in this turn.
+    function snap() {
+        _snapping = true
+        finishAnimation.stop()
+        shine.position = 0
+        _restart = true
+        _finishing = false
+        _flashing = false
+        _restart = false
+        Qt.callLater(() => { fill._snapping = false })
     }
 
     /// Plays the finish for work that ended before it showed as running, so a

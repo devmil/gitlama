@@ -350,7 +350,7 @@ impl Driver {
                 .running()
                 .into_iter()
                 .find(|(_, _, identity)| Some(*identity) == session)
-                .map_or(Value::Null, |(_, kind, _)| {
+                .map_or(Value::Null, |(_, kind, identity)| {
                     use gitlama_contract::transfer::NativeTransferKind;
                     let action = match kind {
                         NativeTransferKind::Fetch => "fetch",
@@ -360,7 +360,7 @@ impl Driver {
                         | NativeTransferKind::DeleteTag
                         | NativeTransferKind::DeleteBranch => "push",
                     };
-                    serde_json::json!({"action": action})
+                    serde_json::json!({"action": action, "session": identity.native_id.to_string()})
                 });
             let mut workflows = self.workflows.borrow_mut();
             if workflows.running_transfer != transfer {

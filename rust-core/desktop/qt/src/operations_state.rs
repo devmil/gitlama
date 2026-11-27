@@ -81,6 +81,7 @@ pub fn project(
             let entry = &snapshot.entries[index];
             json!({
                 "key": entry_key(entry).to_string(),
+                "session": entry.session_id.map(|session| session.to_string()),
                 "count": count,
                 "state": state_name(entry.state),
                 "origin": match entry.origin {

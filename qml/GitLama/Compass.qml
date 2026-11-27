@@ -29,6 +29,9 @@ Item {
     property bool syncChanged: false
     property bool compact: false
     signal showDetails()
+    /// Which repository (tab) the Compass shows; a change shows its state without animating.
+    property var context: null
+    onContextChanged: activityFill.snap()
 
     /// Shows that work ended, even work that ended before it showed as running.
     function finish() {

@@ -175,6 +175,7 @@ Item {
             syncSequence: toolbar.syncSequence
             syncChanged: toolbar.syncChanged
             compact: toolbar.compact
+            context: toolbar.active ? toolbar.active.tabId : null
             onShowDetails: toolbar.command("showRepositoryDetails", {})
             // A transfer the person started ended: show it, however quick it was.
             Connections {

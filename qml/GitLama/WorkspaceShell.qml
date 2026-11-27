@@ -47,7 +47,8 @@ Rectangle {
         const entries = center.entries ?? []
         const transfer = Store.workflows ? Store.workflows.runningTransfer : null
         const entry = transfer
-            ? entries.find(entry => entry.origin === "user" && entry.state === "running" && entry.action === transfer.action) ?? null
+            ? entries.find(entry => entry.origin === "user" && entry.state === "running"
+                                   && entry.action === transfer.action && entry.session === transfer.session) ?? null
             : null
         const action = name => L10n.t("operation" + name.charAt(0).toUpperCase() + name.slice(1))
         let detail = ""

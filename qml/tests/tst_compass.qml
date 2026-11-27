@@ -146,6 +146,41 @@ Item {
             verify(!fill.active)
         }
 
+        function test_switching_away_from_running_work_does_not_finish() {
+            const compass = createTemporaryObject(compassComponent, root)
+            const fill = findChild(compass, "compassFill")
+            compass.context = 1
+            compass.operation = "Pull…"
+            tryCompare(fill, "opacity", 1)
+            // The other tab has nothing running; both change in the same turn.
+            compass.context = 2
+            compass.operation = ""
+            verify(!fill.shown, "no finish for work that only went out of view")
+            compare(fill.opacity, 0, "hidden at once")
+        }
+
+        function test_switching_to_running_work_shows_it_at_once() {
+            const compass = createTemporaryObject(compassComponent, root)
+            const fill = findChild(compass, "compassFill")
+            compass.context = 1
+            wait(0)
+            compass.context = 2
+            compass.operation = "Pull…"
+            compare(fill.opacity, 1, "no fade-in for work already running")
+            verify(fill.indeterminate)
+        }
+
+        function test_switching_during_a_finish_drops_it() {
+            const compass = createTemporaryObject(compassComponent, root)
+            const fill = findChild(compass, "compassFill")
+            compass.context = 1
+            compass.finish()
+            verify(fill.shown)
+            compass.context = 2
+            verify(!fill.shown)
+            compare(fill.opacity, 0)
+        }
+
         function test_compass_finish_reaches_its_wash() {
             const compass = createTemporaryObject(compassComponent, root)
             const fill = findChild(compass, "compassFill")

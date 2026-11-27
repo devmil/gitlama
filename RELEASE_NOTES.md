@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- The repository pill now always shows the work of the tab you are looking at: switching tabs no longer plays a "done" animation for work that is still running, and switching back shows the running work right away.
 - Progress of fetches, pulls, pushes and other Git work now updates as soon as Git reports it, on this computer and on remote hosts, instead of being checked several times a second. GitLama uses less CPU and network while work runs. Hosts receive a new GitLama helper.
 - Staging, unstaging or discarding files in the Changes tree view no longer hides remaining folders or files until you toggle between list and tree view.
 - The repository pill now shows all work that takes a moment, including a push right after Commit & push, and commits, stashes, merges, rebases, staging and discarding.
