@@ -64,9 +64,14 @@ pub fn other_side(side: NativeStagingSide) -> NativeStagingSide {
     }
 }
 
-/// The bytes Git names `path` by.
+/// The bytes Git names `path` by: a Unix path's own bytes (not necessarily
+/// UTF-8), a Windows path in UTF-8.
 pub fn path_bytes(path: &NativePathIdentity) -> Vec<u8> {
-    display_path(path).into_bytes()
+    use gitlama_contract::domain::path_identity::NativePathPlatform;
+    match path.platform {
+        NativePathPlatform::Unix => path.units.iter().map(|unit| *unit as u8).collect(),
+        NativePathPlatform::Windows => String::from_utf16_lossy(&path.units).into_bytes(),
+    }
 }
 
 /// A stable key of one status entry.
@@ -1453,6 +1458,25 @@ pub fn failure_reason_key(code: FailureCode) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_unix_path_keeps_bytes_that_are_not_utf8() {
+        use gitlama_contract::domain::path_identity::NativePathPlatform;
+        // `café.txt` written in Latin-1, as old archives and Windows tools leave it.
+        let bytes = b"caf\xe9.txt".to_vec();
+        let path = NativePathIdentity {
+            platform: NativePathPlatform::Unix,
+            units: bytes.iter().map(|byte| u16::from(*byte)).collect(),
+            remote: None,
+        };
+        assert_eq!(path_bytes(&path), bytes);
+        let windows = NativePathIdentity {
+            platform: NativePathPlatform::Windows,
+            units: "café.txt".encode_utf16().collect(),
+            remote: None,
+        };
+        assert_eq!(path_bytes(&windows), "café.txt".as_bytes());
+    }
     use gitlama_contract::domain::path_identity::NativePathPlatform;
 
     fn status_entry(path: &str, kind: NativeStatusEntryKind) -> NativeStatusEntry {
