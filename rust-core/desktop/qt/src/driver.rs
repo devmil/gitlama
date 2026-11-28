@@ -1118,7 +1118,20 @@ impl Driver {
             }
             folded.1.clone()
         };
-        let state = crate::inspector_state::project(service, tree, &collapsed);
+        let (state, rows) = crate::inspector_state::project(service, tree, &collapsed);
+        {
+            let _span = crate::trace::Span::new("insp.rows");
+            let (files, all) = {
+                let shown = shown.borrow();
+                (shown.file_rows.clone(), shown.all_rows.clone())
+            };
+            if let Some(files) = files {
+                files.borrow_mut().publish(rows.files);
+            }
+            if let Some(all) = all {
+                all.borrow_mut().publish(rows.all);
+            }
+        }
         {
             let _span = crate::trace::Span::new("insp.state.emit");
             let mut inspector = shown.borrow_mut();

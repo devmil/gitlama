@@ -15,12 +15,16 @@ T.Popup {
     /// The Compass, which the panel grows from.
     property Item anchorItem: null
     readonly property var details: Store.workspace ? (Store.workspace.details ?? null) : null
+    /// What the panel shows: follows `details` only while it is shown, so a
+    /// closed panel does not re-evaluate its content on every workspace change.
     property var shown: null
     onDetailsChanged: {
-        if (details)
+        if (!details) {
+            if (opened)
+                close()
+        } else if (visible) {
             shown = details
-        else if (opened)
-            close()
+        }
     }
 
     /// 0 is the Compass, 1 the open panel.
@@ -37,7 +41,10 @@ T.Popup {
         const at = anchorItem.mapToItem(parent, 0, 0)
         source = Qt.rect(at.x, at.y, anchorItem.width, anchorItem.height)
     }
-    onAboutToShow: measure()
+    onAboutToShow: {
+        shown = details
+        measure()
+    }
     onAboutToHide: measure()
     readonly property Connections followLayout: Connections {
         target: popup.parent

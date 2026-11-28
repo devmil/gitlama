@@ -90,6 +90,7 @@ mod inspection_windows {
             self.next.set(id);
             let state = Rc::new(RefCell::new(InspectorState::default()));
             InspectorState::attach_qobject(&state);
+            crate::inspector_state::attach_row_models(&state);
             {
                 let mut shown = state.borrow_mut();
                 shown.commands = Some(commands.clone());

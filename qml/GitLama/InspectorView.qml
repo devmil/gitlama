@@ -20,6 +20,9 @@ Rectangle {
     property string windowRepository
 
     readonly property var paneState: inspector.bridge ? (inspector.bridge.state ?? ({})) : ({})
+    // Keyed models: a state change that leaves the files alone keeps every row.
+    readonly property var fileRowsModel: inspector.bridge ? inspector.bridge.fileRows() : null
+    readonly property var allRowsModel: inspector.bridge ? inspector.bridge.allRows() : null
     readonly property var location: paneState.location ?? null
     /// The configured diff renderer and its run for the shown diff.
     readonly property var renderer: Store.settings ? (Store.settings.renderer ?? ({})) : ({})
@@ -569,7 +572,7 @@ Rectangle {
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             reuseItems: true
-                            model: inspector.paneState.fileRows ?? []
+                            model: inspector.fileRowsModel
                             MeridianWheelScroll { flickable: fileList }
                             C.ScrollBar.vertical: MeridianScrollBar {}
                             header: MeridianListRow {
@@ -583,28 +586,36 @@ Rectangle {
                                 onClicked: inspector.bridge.selectFile("")
                             }
                             delegate: FileRow {
-                                required property var modelData
+                                required property string label
+                                required property string filePath
+                                required property int rowDepth
+                                required property bool isDirectory
+                                required property bool isExpanded
+                                required property string kind
+                                required property var mode
+                                required property string oldPath
                                 ListView.onPooled: visible = false
                                 ListView.onReused: visible = true
                                 width: fileList.width - fileList.leftMargin - fileList.rightMargin
-                                path: modelData.label
-                                depth: modelData.depth
-                                folder: modelData.directory
-                                sourceHint: modelData.directory || modelData.kind !== "renamed" && modelData.kind !== "copied"
-                                    ? "" : Labels.renameSource(modelData.oldPath ?? "", modelData.path)
+                                path: label
+                                depth: rowDepth
+                                folder: isDirectory
+                                sourceHint: isDirectory || kind !== "renamed" && kind !== "copied"
+                                    ? "" : Labels.renameSource(oldPath, filePath)
                                 folderIcon: true
-                                expanded: modelData.expanded
+                                expanded: isExpanded
                                 showDirectory: inspector.paneState.filesTree !== true
-                                status: modelData.directory ? "" : inspector.fileStatus(modelData.kind)
-                                selected: !modelData.directory && inspector.location !== null && inspector.location.path === modelData.path
+                                status: isDirectory ? "" : inspector.fileStatus(kind)
+                                selected: !isDirectory && inspector.location !== null && inspector.location.path === filePath
                                 onClicked: {
-                                    if (modelData.directory)
-                                        inspector.bridge.toggleFolder(modelData.path)
+                                    if (isDirectory)
+                                        inspector.bridge.toggleFolder(filePath)
                                     else
-                                        inspector.bridge.selectFile(modelData.path)
+                                        inspector.bridge.selectFile(filePath)
                                 }
-                                onFolderToggled: inspector.bridge.toggleFolder(modelData.path)
-                                onContextMenuRequested: (x, y) => inspector.showFileMenu(modelData, this, x, y)
+                                onFolderToggled: inspector.bridge.toggleFolder(filePath)
+                                onContextMenuRequested: (x, y) => inspector.showFileMenu({ path: filePath, directory: isDirectory,
+                                    kind: kind, mode: mode, oldPath: oldPath }, this, x, y)
                             }
                         }
                         // Every file of the commit, one folder read at a time.
@@ -620,50 +631,62 @@ Rectangle {
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             reuseItems: true
-                            model: visible ? (inspector.paneState.allRows ?? []) : []
+                            model: inspector.allRowsModel
                             MeridianWheelScroll { flickable: allList }
                             C.ScrollBar.vertical: MeridianScrollBar {}
                             delegate: Loader {
                                 id: allRow
-                                required property var modelData
+                                required property string rowKind
+                                required property string filePath
+                                required property string label
+                                required property int rowDepth
+                                required property bool isExpanded
+                                required property bool loading
+                                required property string kind
+                                required property string treeKind
+                                required property var mode
+                                required property string oldPath
+                                /// What the file menus read.
+                                readonly property var menuRow: ({ path: filePath, rowKind: rowKind, kind: kind,
+                                    treeKind: treeKind, mode: mode, oldPath: oldPath, directory: rowKind === "folder" })
                                 ListView.onPooled: visible = false
                                 ListView.onReused: visible = true
                                 width: allList.width - allList.leftMargin - allList.rightMargin
-                                sourceComponent: modelData.rowKind === "retry" || modelData.rowKind === "more" ? extraRow : treeRow
+                                sourceComponent: rowKind === "retry" || rowKind === "more" ? extraRow : treeRow
                                 Component {
                                     id: treeRow
                                     FileRow {
                                         width: allRow.width
-                                        path: allRow.modelData.label
-                                        depth: allRow.modelData.depth
-                                        folder: allRow.modelData.rowKind === "folder"
+                                        path: allRow.label
+                                        depth: allRow.rowDepth
+                                        folder: allRow.rowKind === "folder"
                                         folderIcon: true
-                                        expanded: allRow.modelData.expanded
+                                        expanded: allRow.isExpanded
                                         showDirectory: false
-                                        status: inspector.fileStatus(allRow.modelData.kind)
-                                        selected: !folder && inspector.location !== null && inspector.location.path === allRow.modelData.path
+                                        status: inspector.fileStatus(allRow.kind)
+                                        selected: !folder && inspector.location !== null && inspector.location.path === allRow.filePath
                                         function toggleFolder() {
-                                            if (allRow.modelData.expanded)
-                                                inspector.bridge.collapseDirectory(allRow.modelData.path)
+                                            if (allRow.isExpanded)
+                                                inspector.bridge.collapseDirectory(allRow.filePath)
                                             else
-                                                inspector.bridge.expandDirectory(allRow.modelData.path)
+                                                inspector.bridge.expandDirectory(allRow.filePath)
                                         }
-                                        onClicked: folder ? toggleFolder() : inspector.bridge.selectFile(allRow.modelData.path)
+                                        onClicked: folder ? toggleFolder() : inspector.bridge.selectFile(allRow.filePath)
                                         onFolderToggled: toggleFolder()
-                                        onContextMenuRequested: (x, y) => inspector.showTreeMenu(allRow.modelData, this, x, y)
+                                        onContextMenuRequested: (x, y) => inspector.showTreeMenu(allRow.menuRow, this, x, y)
                                     }
                                 }
                                 Component {
                                     id: extraRow
                                     MeridianListRow {
                                         width: allRow.width
-                                        leftPadding: Theme.space.s4 + allRow.modelData.depth * Metrics.treeIndent
-                                        text: allRow.modelData.rowKind === "retry" ? L10n.t("retry") : L10n.t("inspectorLoadMoreFiles")
-                                        iconName: allRow.modelData.rowKind === "retry" ? "rotate-ccw" : "more"
-                                        enabled: allRow.modelData.loading !== true
-                                        onClicked: allRow.modelData.rowKind === "retry"
-                                            ? inspector.bridge.expandDirectory(allRow.modelData.path)
-                                            : inspector.bridge.loadMoreDirectory(allRow.modelData.path)
+                                        leftPadding: Theme.space.s4 + allRow.rowDepth * Metrics.treeIndent
+                                        text: allRow.rowKind === "retry" ? L10n.t("retry") : L10n.t("inspectorLoadMoreFiles")
+                                        iconName: allRow.rowKind === "retry" ? "rotate-ccw" : "more"
+                                        enabled: !allRow.loading
+                                        onClicked: allRow.rowKind === "retry"
+                                            ? inspector.bridge.expandDirectory(allRow.filePath)
+                                            : inspector.bridge.loadMoreDirectory(allRow.filePath)
                                     }
                                 }
                             }

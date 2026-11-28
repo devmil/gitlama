@@ -41,7 +41,7 @@ pub use history_model::HistoryModel;
 pub use history_state::HistoryState;
 pub use hosting_state::HostingState;
 pub use inspection_windows::InspectionWindows;
-pub use inspector_state::InspectorState;
+pub use inspector_state::{InspectorState, attach_row_models as attach_inspector_row_models};
 pub use line_selection_state::{LINE_ROLES, LineSelectionState};
 pub use operations_state::OperationsState;
 pub use patch_state::PatchState;

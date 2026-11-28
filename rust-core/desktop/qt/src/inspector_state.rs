@@ -36,9 +36,43 @@ fn text(bytes: &[u8]) -> String {
 use gitlama_workbench::inspector::whitespace_name;
 pub use gitlama_workbench::inspector::whitespace_of as parse_whitespace;
 
-/// The inspector's state as QML reads it.
-/// The changed files as list or tree rows: {key, path, label, depth,
-/// directory, expanded, kind, mode, oldPath}.
+/// The roles of the changed files list (`InspectorState::fileRows`).
+/// (`filePath`, `rowDepth`, `isDirectory` and `isExpanded` leave `FileRow`'s own
+/// properties alone.)
+pub const FILE_ROW_ROLES: &[&str] = &[
+    "key",
+    "filePath",
+    "label",
+    "rowDepth",
+    "isDirectory",
+    "isExpanded",
+    "kind",
+    "mode",
+    "oldPath",
+];
+/// The roles of the All files tree (`InspectorState::allRows`).
+pub const ALL_ROW_ROLES: &[&str] = &[
+    "key",
+    "rowKind",
+    "filePath",
+    "label",
+    "rowDepth",
+    "isExpanded",
+    "loading",
+    "kind",
+    "treeKind",
+    "mode",
+    "oldPath",
+];
+
+/// The inspector's rows, published to keyed models so a state change that
+/// leaves them alone keeps every delegate.
+pub struct Rows {
+    pub files: Vec<Value>,
+    pub all: Vec<Value>,
+}
+
+/// The changed files as list or tree rows (`FILE_ROW_ROLES`).
 fn file_rows(
     files: &[gitlama_contract::dto::NativeCommitFile],
     tree: bool,
@@ -55,22 +89,22 @@ fn file_rows(
         .map(|row| match row.item {
             Some(file) => json!({
                 "key": format!("file:{}", row.identity),
-                "path": row.identity,
+                "filePath": row.identity,
                 "label": row.label,
-                "depth": row.depth,
-                "directory": false,
-                "expanded": false,
+                "rowDepth": row.depth,
+                "isDirectory": false,
+                "isExpanded": false,
                 "kind": change_kind_name(file.kind),
                 "mode": file.new_mode,
                 "oldPath": text(&file.old_path),
             }),
             None => json!({
                 "key": format!("dir:{}", row.identity),
-                "path": row.identity,
+                "filePath": row.identity,
                 "label": row.label,
-                "depth": row.depth,
-                "directory": true,
-                "expanded": !collapsed.contains(&row.identity),
+                "rowDepth": row.depth,
+                "isDirectory": true,
+                "isExpanded": !collapsed.contains(&row.identity),
                 "kind": "",
                 "mode": null,
                 "oldPath": "",
@@ -124,27 +158,27 @@ fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> 
                 let expanded = state.expanded.contains(&path);
                 let loading =
                     expanded && state.tree.get(&path).is_some_and(|loaded| loaded.loading);
-                rows.push(json!({"key": format!("dir:{path}"), "rowKind": "folder", "path": path, "label": name, "depth": depth,
-                    "expanded": expanded, "loading": loading, "kind": "", "treeKind": "directory", "mode": entry.mode}));
+                rows.push(json!({"key": format!("dir:{path}"), "rowKind": "folder", "filePath": path, "label": name, "rowDepth": depth,
+                    "isExpanded": expanded, "loading": loading, "kind": "", "treeKind": "directory", "mode": entry.mode, "oldPath": ""}));
                 if expanded {
                     add(state, changed, Some(&entry.path), depth + 1, rows);
                 }
                 continue;
             }
             let change = changed.get(&path);
-            rows.push(json!({"key": format!("file:{path}"), "rowKind": "file", "path": path, "label": name, "depth": depth,
-                "expanded": false, "loading": false,
+            rows.push(json!({"key": format!("file:{path}"), "rowKind": "file", "filePath": path, "label": name, "rowDepth": depth,
+                "isExpanded": false, "loading": false,
                 "kind": change.map_or("", |file| change_kind_name(file.kind)),
                 "oldPath": change.map_or(String::new(), |file| text(&file.old_path)),
                 "treeKind": tree_kind_name(entry.kind),
                 "mode": change.map_or(entry.mode, |file| file.new_mode)}));
         }
         if folder.failed {
-            rows.push(json!({"key": format!("retry:{key}"), "rowKind": "retry", "path": key, "label": "", "depth": depth, "expanded": false,
-                "loading": false, "kind": "", "treeKind": "", "mode": null}));
+            rows.push(json!({"key": format!("retry:{key}"), "rowKind": "retry", "filePath": key, "label": "", "rowDepth": depth, "isExpanded": false,
+                "loading": false, "kind": "", "treeKind": "", "mode": null, "oldPath": ""}));
         } else if folder.next_offset.is_some() {
-            rows.push(json!({"key": format!("more:{key}"), "rowKind": "more", "path": key, "label": "", "depth": depth, "expanded": false,
-                "loading": folder.loading, "kind": "", "treeKind": "", "mode": null}));
+            rows.push(json!({"key": format!("more:{key}"), "rowKind": "more", "filePath": key, "label": "", "rowDepth": depth, "isExpanded": false,
+                "loading": folder.loading, "kind": "", "treeKind": "", "mode": null, "oldPath": ""}));
         }
     }
     add(state, &changed, None, 0, &mut rows);
@@ -155,7 +189,7 @@ pub fn project(
     inspector: &InspectorService,
     tree: bool,
     collapsed: &std::collections::HashSet<String>,
-) -> Value {
+) -> (Value, Rows) {
     let state = inspector.current();
     let location = state.location.as_ref().map(|location| {
         json!({
@@ -254,7 +288,24 @@ pub fn project(
         })
         .unwrap_or_default();
     let options = inspector.diff_options();
-    json!({
+    let rows = Rows {
+        files: state
+            .inspection
+            .as_ref()
+            .map_or_else(Vec::new, |inspection| {
+                file_rows(&inspection.files, tree, collapsed)
+            }),
+        all: if state
+            .location
+            .as_ref()
+            .is_some_and(|location| location.scope == Scope::All)
+        {
+            all_rows(&state)
+        } else {
+            Vec::new()
+        },
+    };
+    let value = json!({
         "phase": match state.phase { Phase::Empty => "empty", Phase::Loading => "loading", Phase::Ready => "ready", Phase::Failed => "failed" },
         "failure": state.failure.map(|code| code.name()),
         "contentFailure": state.content_failure.map(|code| code.name()),
@@ -263,8 +314,6 @@ pub fn project(
         "summary": summary,
         "files": files,
         "filesTree": tree,
-        "fileRows": state.inspection.as_ref().map_or_else(Vec::new, |inspection| file_rows(&inspection.files, tree, collapsed)),
-        "allRows": if state.location.as_ref().is_some_and(|location| location.scope == Scope::All) { all_rows(&state) } else { Vec::new() },
         "allLoading": state.tree.get("").is_none_or(|root| root.loading),
         "hasDiff": state.diff.is_some(),
         "contents": contents,
@@ -309,7 +358,8 @@ pub fn project(
             "layout": match options.layout { NativeDiffLayout::Unified => "unified", NativeDiffLayout::SideBySide => "sideBySide" },
         },
         "forceText": inspector.force_text(),
-    })
+    });
+    (value, rows)
 }
 
 #[qobject(ConvertToCamelCase)]
@@ -330,6 +380,9 @@ mod inspector_state {
         pub(crate) service: Option<Rc<InspectorService>>,
         /// An inspection window's own object, for its signals.
         pub(crate) this: Option<std::rc::Weak<std::cell::RefCell<InspectorState>>>,
+        /// The changed files and the All files tree (see `attach_row_models`).
+        pub(crate) file_rows: Option<Rc<std::cell::RefCell<crate::row_model::RowModel>>>,
+        pub(crate) all_rows: Option<Rc<std::cell::RefCell<crate::row_model::RowModel>>>,
     }
 
     impl InspectorState {
@@ -350,6 +403,18 @@ mod inspector_state {
         /// selected rows hold no change or the diff was replaced.
         #[qsignal]
         pub fn patch_ready(&mut self, patch: String);
+
+        /// The changed files, as list or tree rows.
+        #[qslot]
+        fn file_rows(&self) -> Rc<std::cell::RefCell<crate::row_model::RowModel>> {
+            self.file_rows.clone().unwrap_or_default()
+        }
+
+        /// The All files tree's visible rows.
+        #[qslot]
+        fn all_rows(&self) -> Rc<std::cell::RefCell<crate::row_model::RowModel>> {
+            self.all_rows.clone().unwrap_or_default()
+        }
 
         #[qslot]
         fn back(&self) {
@@ -909,3 +974,64 @@ mod inspector_state {
 }
 
 pub use inspector_state::InspectorState;
+
+/// Gives `state` its keyed row models; call once after `attach_qobject`.
+pub fn attach_row_models(state: &Rc<std::cell::RefCell<InspectorState>>) {
+    use crate::row_model::RowModel;
+    use qtbridge::QObjectHolder;
+    let files = Rc::new(std::cell::RefCell::new(RowModel::with_roles(
+        "key",
+        FILE_ROW_ROLES,
+    )));
+    RowModel::attach_qobject(&files);
+    let all = Rc::new(std::cell::RefCell::new(RowModel::with_roles(
+        "key",
+        ALL_ROW_ROLES,
+    )));
+    RowModel::attach_qobject(&all);
+    let mut shown = state.borrow_mut();
+    shown.file_rows = Some(files);
+    shown.all_rows = Some(all);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gitlama_contract::dto::NativeCommitFile;
+
+    fn file(path: &str) -> NativeCommitFile {
+        NativeCommitFile {
+            old_mode: 0o100644,
+            new_mode: 0o100644,
+            old_object_id: None,
+            new_object_id: None,
+            kind: NativeFileChangeKind::Modified,
+            similarity: None,
+            old_path: path.as_bytes().to_vec(),
+            new_path: path.as_bytes().to_vec(),
+        }
+    }
+
+    /// QML delegates require every role: a row missing one (or carrying a key the
+    /// model does not publish) fails to create its delegate.
+    #[test]
+    fn changed_file_rows_carry_exactly_the_published_roles() {
+        let files = [file("src/main.rs"), file("README.md")];
+        for tree in [false, true] {
+            let rows = file_rows(&files, tree, &Default::default());
+            assert!(!rows.is_empty());
+            for row in rows {
+                let mut keys: Vec<&str> = row
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .map(String::as_str)
+                    .collect();
+                keys.sort_unstable();
+                let mut roles = FILE_ROW_ROLES.to_vec();
+                roles.sort_unstable();
+                assert_eq!(keys, roles, "tree {tree}");
+            }
+        }
+    }
+}

@@ -52,6 +52,7 @@
 ## Unreleased Beta
 
 - Resizing the window on Linux follows your pointer smoothly: the content now keeps up with the window edge instead of updating at half the rate.
+- Switching repositories and selecting commits in History pause the interface less, especially in commits with many files.
 - When there is no diff to show, the lama now says why: it carries a moved file into its new folder, wears a new name tag for a renamed one, waits beside your files until you pick one, and more, in the Changes view and when inspecting commits alike.
 - All corners of the work areas are rounded again in Changes and History, and a subtle line now separates unstaged from staged changes.
 - Renamed and moved files are easier to read: the file lists show the new name with where it came from, the detail names the previous path, and a file moved or renamed without content changes says so instead of showing an empty diff.

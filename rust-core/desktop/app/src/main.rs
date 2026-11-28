@@ -260,6 +260,7 @@ fn main() {
 
     let inspector = Rc::new(RefCell::new(gitlama_qt::InspectorState::default()));
     gitlama_qt::InspectorState::attach_qobject(&inspector);
+    gitlama_qt::attach_inspector_row_models(&inspector);
     inspector.borrow_mut().commands = Some(commands.clone());
     let inspector_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
     gitlama_qt::DiffModel::attach_qobject(&inspector_diff);
