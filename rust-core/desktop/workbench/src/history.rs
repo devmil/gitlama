@@ -171,6 +171,17 @@ pub enum SelectionOrigin {
     Inspector,
 }
 
+/// The parents the inspector compares a selected row with. A shallow clone's
+/// boundary row draws the parents the clone does not have; the commit is a
+/// root there, so it is compared with the empty tree instead.
+fn inspection_parents(row: NativeHistoryRow) -> Vec<String> {
+    if row.shape == gitlama_contract::dto::NativeHistoryNodeShape::Boundary {
+        Vec::new()
+    } else {
+        row.parents
+    }
+}
+
 /// The commit or comparison the graph selects for inspection.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HistorySelection {
@@ -1484,7 +1495,7 @@ impl HistoryService {
             }
             inner.shown_selection = Some((new_object_id.clone(), old_object_id.clone()));
         }
-        let parents = self.row_by_id(&new_object_id).map(|row| row.parents);
+        let parents = self.row_by_id(&new_object_id).map(inspection_parents);
         self.emit_selection(&HistorySelection {
             commit: Some(new_object_id),
             base: old_object_id,
@@ -1962,6 +1973,43 @@ fn with_known_metadata(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn row(shape: gitlama_contract::dto::NativeHistoryNodeShape) -> NativeHistoryRow {
+        NativeHistoryRow {
+            object_id: "a".repeat(40),
+            parents: vec!["b".repeat(40)],
+            parent_count: 1,
+            parents_truncated: false,
+            refs: vec![],
+            ref_count: 0,
+            refs_truncated: false,
+            lane: 0,
+            shape,
+            metadata_available: false,
+            subject: vec![],
+            author: vec![],
+            avatar_hash: String::new(),
+            author_time: 0,
+            metadata_failure: None,
+            selected: false,
+            current: false,
+            lit: false,
+            compared: false,
+            wip_changed_files: 0,
+            wip_staged_files: 0,
+        }
+    }
+
+    #[test]
+    fn a_shallow_boundary_is_inspected_against_the_empty_tree() {
+        use gitlama_contract::dto::NativeHistoryNodeShape;
+        // The boundary row draws the parent the shallow clone does not have.
+        assert!(inspection_parents(row(NativeHistoryNodeShape::Boundary)).is_empty());
+        assert_eq!(
+            inspection_parents(row(NativeHistoryNodeShape::Commit)),
+            vec!["b".repeat(40)]
+        );
+    }
 
     #[test]
     fn branch_filter_toggles_with_upstream() {

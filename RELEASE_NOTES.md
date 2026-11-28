@@ -52,6 +52,7 @@
 ## Unreleased Beta
 
 - Files with names in an older encoding (such as Latin-1) can be staged, discarded and compared again.
+- In a shallow clone, the newest commit's changes can be inspected again.
 - Resizing the window on Linux follows your pointer smoothly: the content now keeps up with the window edge instead of updating at half the rate.
 - Switching repositories and selecting commits in History pause the interface less, especially in commits with many files.
 - When there is no diff to show, the lama now says why: it carries a moved file into its new folder, wears a new name tag for a renamed one, waits beside your files until you pick one, and more, in the Changes view and when inspecting commits alike.
