@@ -189,7 +189,7 @@ FocusScope {
                 id: leadingRow
                 readonly property var item: root.entry ?? ({})
                 spacing: Theme.space.s3
-                leftPadding: leadingRow.item.depth * Metrics.treeIndent
+                leftPadding: (leadingRow.item?.depth ?? 0) * Metrics.treeIndent
                 Item {
                     width: Metrics.chevronSize
                     height: Metrics.chevronSize
@@ -212,13 +212,13 @@ FocusScope {
                 MeridianIcon {
                     id: glyph
                     anchors.verticalCenter: parent.verticalCenter
-                    name: leadingRow.item.icon
+                    name: leadingRow.item?.icon ?? ""
                     iconSize: MeridianIcon.Small
-                    color: leadingRow.item.current === true ? Theme.colors.accentInk : Theme.colors.inkMuted
+                    color: leadingRow.item?.current === true ? Theme.colors.accentInk : Theme.colors.inkMuted
                     HoverHandler { id: glyphHover }
                     MeridianTooltip {
-                        shown: glyphHover.hovered && (leadingRow.item.currentDescription ?? "").length > 0
-                        text: leadingRow.item.currentDescription ? L10n.t(leadingRow.item.currentDescription) : ""
+                        shown: glyphHover.hovered && (leadingRow.item?.currentDescription ?? "").length > 0
+                        text: leadingRow.item?.currentDescription ? L10n.t(leadingRow.item?.currentDescription) : ""
                     }
                 }
             }
@@ -230,7 +230,7 @@ FocusScope {
                 readonly property var item: root.entry ?? ({})
                 spacing: Theme.space.s2
                 Item {
-                    visible: trailingRow.item.filtered === true || trailingRow.item.holdsFiltered === true
+                    visible: trailingRow.item?.filtered === true || trailingRow.item?.holdsFiltered === true
                     objectName: "sidebar-ref-filtered"
                     width: Metrics.chevronSize
                     height: Metrics.chevronSize
@@ -239,7 +239,7 @@ FocusScope {
                         anchors.centerIn: parent
                         name: "list-filter"
                         iconSize: MeridianIcon.Small
-                        color: trailingRow.item.filtered === true ? Theme.colors.accentInk : Theme.colors.inkMuted
+                        color: trailingRow.item?.filtered === true ? Theme.colors.accentInk : Theme.colors.inkMuted
                     }
                     HoverHandler { id: filterHover }
                     MeridianTooltip {
@@ -248,43 +248,43 @@ FocusScope {
                     }
                 }
                 SyncBadge {
-                    visible: trailingRow.item.ahead > 0 || trailingRow.item.behind > 0
+                    visible: trailingRow.item?.ahead > 0 || trailingRow.item?.behind > 0
                     anchors.verticalCenter: parent.verticalCenter
-                    ahead: trailingRow.item.ahead
-                    behind: trailingRow.item.behind
+                    ahead: trailingRow.item?.ahead ?? 0
+                    behind: trailingRow.item?.behind ?? 0
                     HoverHandler { id: syncHover }
                     MeridianTooltip {
                         shown: syncHover.hovered
-                        text: L10n.tn("transferAheadBehind", { ahead: String(trailingRow.item.ahead), behind: String(trailingRow.item.behind) })
+                        text: L10n.tn("transferAheadBehind", { ahead: String(trailingRow.item?.ahead), behind: String(trailingRow.item?.behind) })
                     }
                 }
                 // A branch's CI state, or the bound integration's main
                 // branch's.
                 HostingStatus {
                     id: branchChecks
-                    readonly property string checkState: trailingRow.item.hostingCheck ?? ""
-                    visible: checkState.length > 0 && !(trailingRow.item.pullRequest)
+                    readonly property string checkState: trailingRow.item?.hostingCheck ?? ""
+                    visible: checkState.length > 0 && !(trailingRow.item?.pullRequest)
                     anchors.verticalCenter: parent.verticalCenter
                     checks: checkState
                     HoverHandler { id: branchChecksHover }
                     MeridianTooltip {
                         shown: branchChecksHover.hovered
-                        text: trailingRow.item.hostingCheckBranch
-                            ? L10n.tn("hostingBranchChecks", { branch: trailingRow.item.hostingCheckBranch, checks: branchChecks.label(branchChecks.checkState) })
+                        text: trailingRow.item?.hostingCheckBranch
+                            ? L10n.tn("hostingBranchChecks", { branch: trailingRow.item?.hostingCheckBranch, checks: branchChecks.label(branchChecks.checkState) })
                             : branchChecks.label(branchChecks.checkState)
                     }
                 }
                 // A pull request's checks and conflicts.
                 HostingStatus {
-                    visible: trailingRow.item.pullRequest !== null && trailingRow.item.pullRequest !== undefined
+                    visible: trailingRow.item?.pullRequest !== null && trailingRow.item?.pullRequest !== undefined
                     anchors.verticalCenter: parent.verticalCenter
-                    checks: trailingRow.item.pullRequest ? (trailingRow.item.pullRequest.checks ?? "") : ""
-                    conflicting: trailingRow.item.pullRequest ? trailingRow.item.pullRequest.conflicting === true : false
+                    checks: trailingRow.item?.pullRequest ? (trailingRow.item?.pullRequest.checks ?? "") : ""
+                    conflicting: trailingRow.item?.pullRequest ? trailingRow.item?.pullRequest.conflicting === true : false
                 }
                 MeridianText {
                     id: subtitleText
                     readonly property string shown: {
-                        const value = trailingRow.item.subtitle ?? ""
+                        const value = trailingRow.item?.subtitle ?? ""
                         return value.startsWith("@") ? L10n.t(value.slice(1)) : value
                     }
                     visible: shown.length > 0
@@ -297,8 +297,8 @@ FocusScope {
                     HoverHandler { id: subtitleHover }
                     MeridianTooltip {
                         shown: subtitleHover.hovered
-                        text: trailingRow.item.pullRequest
-                            ? L10n.tn("hostingPullRequestBranches", { source: trailingRow.item.pullRequest.source, target: trailingRow.item.pullRequest.target })
+                        text: trailingRow.item?.pullRequest
+                            ? L10n.tn("hostingPullRequestBranches", { source: trailingRow.item?.pullRequest.source, target: trailingRow.item?.pullRequest.target })
                             : subtitleText.shown
                     }
                 }
