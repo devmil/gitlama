@@ -13,6 +13,9 @@ Item {
     /// The checked-out branch, or the detached label.
     property string branch
     property bool detached: false
+    /// Whether there is a branch or detached HEAD to show: not while a repository opens or
+    /// after it failed to.
+    readonly property bool hasHead: branch.length > 0 || detached
     property int ahead: 0
     property int behind: 0
     property int dirty: 0
@@ -125,8 +128,8 @@ Item {
                 id: identity
                 height: parent.height
                 width: Math.max(0, row.width - stateSwap.width - Theme.space.s5)
-                implicitWidth: (compass.compact ? 0 : repositoryText.implicitWidth + separator.implicitWidth)
-                    + branchIcon.width + Theme.space.s2 + branchText.implicitWidth
+                implicitWidth: (compass.compact ? 0 : repositoryText.implicitWidth)
+                    + (compass.hasHead ? (compass.compact ? 0 : separator.implicitWidth) + branchIcon.width + Theme.space.s2 + branchText.implicitWidth : 0)
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width
@@ -142,22 +145,24 @@ Item {
                     }
                     MeridianText {
                         id: separator
-                        visible: !compass.compact
+                        visible: !compass.compact && compass.hasHead
                         anchors.verticalCenter: parent.verticalCenter
                         color: Theme.colors.inkFaint
                         text: "  /  "
                     }
                     MeridianIcon {
                         id: branchIcon
+                        visible: compass.hasHead
                         anchors.verticalCenter: parent.verticalCenter
                         name: compass.detached ? "circle-dot" : "branch"
                         iconSize: MeridianIcon.Small
                         color: Theme.colors.accentInk
                     }
-                    Item { width: Theme.space.s2; height: 1 }
+                    Item { visible: compass.hasHead; width: Theme.space.s2; height: 1 }
                     // A checkout swaps the branch name with a rise (NM-02).
                     MeridianSwapText {
                         id: branchText
+                        visible: compass.hasHead
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.max(0, Math.min(contentWidth, identity.width - x))
                         text: compass.branch.length > 0 ? compass.branch : L10n.t("detachedHead")

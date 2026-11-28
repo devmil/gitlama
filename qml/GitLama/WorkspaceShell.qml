@@ -153,6 +153,9 @@ Rectangle {
             // repository.
             readonly property bool remoteFailed: activeTab !== null && activeTab.phase === "failed" && !!activeTab.remoteProfile
                 && (activeTab.failure === "remoteDisconnected" || activeTab.failure === "remoteIdentityChanged")
+            // A tab on this computer that could not open says so instead of loading forever.
+            readonly property bool localFailed: activeTab !== null && activeTab.phase === "failed" && !remoteFailed
+                && !activeTab.remoteProfile
             // An open remote tab whose connection is gone shows its last state under a banner.
             readonly property bool remoteStale: activeTab !== null && activeTab.phase === "open" && !!activeTab.remoteProfile
                 && activeTab.remoteStale === true
@@ -169,12 +172,20 @@ Rectangle {
                 active: body.remoteFailed
                 sourceComponent: RemoteTabFailure { tab: body.activeTab }
             }
+            Loader {
+                anchors.fill: parent
+                active: body.localFailed
+                sourceComponent: LocalTabFailure {
+                    tab: body.activeTab
+                    onCommand: id => shell.command(id, ({}))
+                }
+            }
             WorkspaceBody {
                 x: 0
                 y: staleBanner.active ? staleBanner.height + Theme.space.s3 : 0
                 width: parent.width
                 height: parent.height - y
-                visible: !body.choosing && !body.remoteFailed
+                visible: !body.choosing && !body.remoteFailed && !body.localFailed
                 // Keyboard focus stays out while an operation holds the tab.
                 enabled: busyLoader.active === false
                 onCommand: (id, options) => shell.command(id, options)

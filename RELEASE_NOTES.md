@@ -51,6 +51,8 @@
 
 ## Unreleased Beta
 
+- A repository that can no longer be opened, for example because its folder was moved or deleted, now says so and offers to close the tab or open another repository, instead of loading forever.
+- Bare repositories show their history instead of loading forever.
 - Files with names in an older encoding (such as Latin-1) can be staged, discarded and compared again.
 - In a shallow clone, the newest commit's changes can be inspected again.
 - Resizing the window on Linux follows your pointer smoothly: the content now keeps up with the window edge instead of updating at half the rate.

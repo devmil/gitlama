@@ -8,6 +8,9 @@ Item {
     id: body
 
     readonly property var active: Store.workspace ? Store.workspace.active : null
+    /// A bare repository never has a status: it is shown once open, History only.
+    readonly property bool bare: active !== null && active.bare === true
+    readonly property bool ready: active !== null && (active.hasStatus === true || bare)
     readonly property var appearance: Store.appearance
     readonly property bool compactSidebar: width < GitLamaLayout.compactBreakpoint + Theme.space.s5
     readonly property real sidebarWidth: Math.max(Metrics.sidebarMinWidth,
@@ -25,7 +28,7 @@ Item {
 
     /// The repository whose islands enter one after the other the first time it shows its
     /// status this session (NH-7); empty while it loads.
-    readonly property string openMotionKey: active && active.phase === "open" && active.hasStatus === true
+    readonly property string openMotionKey: active && active.phase === "open" && ready
         ? "repository-open|" + active.tabId + "|" + (active.name ?? "") : ""
 
     function setSidebarWidth(width) {
@@ -147,8 +150,10 @@ Item {
                     visible: !workspace.history && (body.active === null || !body.active.hasStatus)
                     anchors.fill: parent
                     compact: true
-                    progress: true
-                    title: L10n.t("workspaceLoadingRepository")
+                    progress: !body.bare
+                    iconName: body.bare ? "archive" : ""
+                    title: L10n.t(body.bare ? "workspaceBareTitle" : "workspaceLoadingRepository")
+                    message: body.bare ? L10n.t("workspaceBareMessage") : ""
                 }
             }
         }

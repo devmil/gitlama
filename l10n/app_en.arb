@@ -626,6 +626,14 @@
   "@workspaceNoSelection": {
     "description": "Empty detail-region state."
   },
+  "workspaceBareTitle": "Bare repository",
+  "@workspaceBareTitle": {
+    "description": "Changes pane of a bare repository (no working tree): title."
+  },
+  "workspaceBareMessage": "A bare repository holds only the history, so there are no working files to change here. Its commits are in History.",
+  "@workspaceBareMessage": {
+    "description": "Changes pane of a bare repository (no working tree): explanation."
+  },
   "workspaceLoadingRepository": "Opening repository…",
   "@workspaceLoadingRepository": {
     "description": "Pending repository-tab state."

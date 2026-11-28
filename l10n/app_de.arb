@@ -209,6 +209,8 @@
   "workingDiffWaitingForGit": "Warte auf Git …",
   "workingDiffWaitingForGitDetail": "Git arbeitet noch an diesem Repository, zum Beispiel an einem großen Arbeitsverzeichnis. Der Diff erscheint, sobald Git antwortet.",
   "workingDiffEmpty": "Für diese Datei gibt es keine Zeilenänderungen.",
+  "workspaceBareTitle": "Bare-Repository",
+  "workspaceBareMessage": "Ein Bare-Repository enthält nur den Verlauf, daher gibt es hier keine Arbeitsdateien zu ändern. Seine Commits stehen im Verlauf.",
   "workspaceLoadingRepository": "Repository wird geöffnet…",
   "workspaceUnavailableRepository": "Dieses Repository ist nicht verfügbar.",
   "workspaceCloseTab": "{name} schließen",
