@@ -54,6 +54,7 @@
 
 ## Unreleased Beta
 
+- Opening the first repository from the welcome screen no longer freezes the window: `HomeScreen` builds the workspace with an asynchronous Loader and keeps the welcome screen until it is ready (fdroiddata, 123,000 commits: longest GUI stall 920 ms before, 70-80 ms after). The remote helper keeps version 25.
 - A repository tab that cannot open (its folder is gone, is not a repository or cannot be read) shows why, with Close and Open another repository, instead of "Opening repository…" forever, as the Flutter build did; the Compass no longer calls such a tab "Detached HEAD" while it has no head. Bare repositories, which never have a working-tree status, open into History and say in Changes that they have no working files instead of loading forever. The remote helper keeps version 25.
 - Files whose names are not valid UTF-8 (a Latin-1 `café.txt`) can be staged, unstaged, discarded and diffed in Changes. Requests named the file by its lossily decoded name (`changes::path_bytes`) instead of the path's bytes, so Git did not find it. The remote helper keeps version 25.
 - The newest commit of a shallow clone opens in the inspector. Its History row draws the parent the clone does not have, the inspector compared the commit with that parent and failed with a missing object; a shallow boundary is now compared with the empty tree. The remote helper keeps version 25.

@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- Opening a repository from the welcome screen no longer freezes the window for a moment.
 - A repository that can no longer be opened, for example because its folder was moved or deleted, now says so and offers to close the tab or open another repository, instead of loading forever.
 - Bare repositories show their history instead of loading forever.
 - Files with names in an older encoding (such as Latin-1) can be staged, discarded and compared again.
