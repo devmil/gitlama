@@ -7,7 +7,8 @@ The check fails when:
   no `@key` metadata;
 - a message's placeholders, or its plural and select arguments with their
   cases, differ between English and German;
-- a message is not used by the application (`lib/` outside `lib/l10n/`);
+- a message is not used by the application (`qml/GitLama`, the Rust desktop
+  layers and their data files);
 - one English text has different German translations under different keys
   (see docs/design-system/GLOSSARY.md). Pairs where the same English word
   genuinely needs two German words are listed in `DIVERGENT_ALLOWED`.
@@ -23,7 +24,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-L10N = ROOT / "lib/l10n"
+L10N = ROOT / "l10n"
 
 # English text -> reason, when one English text needs different German
 # translations under different keys (a noun and a verb, for example).
@@ -112,20 +113,27 @@ def arguments(message: str) -> dict[str, tuple[str, frozenset[str]]]:
 
 
 def used_keys(candidates: set[str]) -> set[str]:
+    """Keys the application names: quoted in QML (`L10n.t("key")`), in the
+    Rust layers (projected labels and `"@key"` subtitles) and in their data
+    files (the command registry)."""
     sources = [
-        path.read_text(encoding="utf-8")
-        for path in (ROOT / "lib").rglob("*.dart")
-        if not path.relative_to(ROOT).as_posix().startswith("lib/l10n/")
+        *sorted((ROOT / "qml/GitLama").glob("*.qml")),
+        *sorted((ROOT / "rust-core/desktop").rglob("*.rs")),
+        *sorted((ROOT / "rust-core/desktop").rglob("data/*.json")),
     ]
-    # The developer gallery lives with the tests; only its own `gallery*`
-    # messages may be used from there.
-    gallery = (ROOT / "test" / "support" / "component_gallery.dart").read_text(encoding="utf-8")
-    sources.append(
-        "\n".join(re.findall(r"\.\s*gallery[A-Za-z0-9_]*", gallery))
+    text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sources
+        if path.name != "L10n.qml" and "target" not in path.parts
     )
-    text = "\n".join(sources)
-    identifiers = set(re.findall(r"\.\s*([A-Za-z_][A-Za-z0-9_]*)", text))
-    return candidates & identifiers
+    identifiers = set(re.findall(r"[\"'`]@?([A-Za-z_][A-Za-z0-9_]*)[\"'`]", text))
+    # A key completed at run time (`L10n.t("operation" + kind)`) uses every
+    # key under its prefix.
+    prefixes = set(re.findall(r"L10n\.tn?\(\s*\"([A-Za-z]+)\"\s*\+", text))
+    return {
+        key for key in candidates
+        if key in identifiers or any(key.startswith(prefix) for prefix in prefixes)
+    }
 
 
 def main() -> int:
@@ -182,7 +190,8 @@ def main() -> int:
                     f"(en={sorted(cases)}, de={sorted(de_cases)})"
                 )
 
-    unused = sorted(english_keys - used_keys(english_keys))
+    used = used_keys(english_keys)
+    unused = sorted(english_keys - used)
     if unused:
         errors.append(f"unused messages ({len(unused)}): {unused}")
 

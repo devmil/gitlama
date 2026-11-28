@@ -106,9 +106,6 @@ pub struct NativeAppearanceSettings {
 }
 
 impl Default for NativeAppearanceSettings {
-    // flutter_rust_bridge reads this crate as a third-party input and would expose a Dart
-    // `default_()` for every `Default` impl; the bridge types carry no functions.
-    /// flutter_rust_bridge:ignore
     fn default() -> Self {
         Self {
             theme: "system".into(),
@@ -210,9 +207,6 @@ pub struct NativeAutoFetchSettings {
 }
 
 impl Default for NativeAutoFetchSettings {
-    // flutter_rust_bridge reads this crate as a third-party input and would expose a Dart
-    // `default_()` for every `Default` impl; the bridge types carry no functions.
-    /// flutter_rust_bridge:ignore
     fn default() -> Self {
         Self {
             enabled: true,
@@ -230,7 +224,7 @@ pub struct NativeRepositoryOptions {
     pub auto_fetch: Option<bool>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeSettingsDocument {
     pub appearance: NativeAppearanceSettings,
@@ -267,36 +261,6 @@ pub struct NativeSettingsDocument {
     /// load, and written as true so those versions keep showing them.
     #[serde(default)]
     pub remote_workspaces_enabled: bool,
-}
-
-// A derived impl would carry no `flutter_rust_bridge:ignore` marker.
-#[allow(clippy::derivable_impls)]
-impl Default for NativeSettingsDocument {
-    // flutter_rust_bridge reads this crate as a third-party input and would expose a Dart
-    // `default_()` for every `Default` impl; the bridge types carry no functions.
-    /// flutter_rust_bridge:ignore
-    fn default() -> Self {
-        Self {
-            appearance: Default::default(),
-            recent_repositories: Default::default(),
-            worktrees: Default::default(),
-            open_worktrees: Default::default(),
-            active_worktree: Default::default(),
-            integrations: Default::default(),
-            diff_renderer: Default::default(),
-            hosting_connections: Default::default(),
-            hosting_bindings: Default::default(),
-            hosting_expanded_nodes: Default::default(),
-            shortcut_overrides: Default::default(),
-            repository_appearances: Default::default(),
-            release_channel: Default::default(),
-            auto_fetch: Default::default(),
-            repository_options: Default::default(),
-            tab_groups: Default::default(),
-            remote_profiles: Default::default(),
-            remote_workspaces_enabled: Default::default(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

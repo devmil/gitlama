@@ -241,17 +241,19 @@ def qualify(
                 (app / "Contents/Frameworks/Sparkle.framework/Versions/Current/Sparkle").is_file(),
                 "packaged application is missing the update framework",
             )
-            assets = app / "Contents/Frameworks/App.framework/Resources/flutter_assets"
+            require(
+                (app / "Contents/Frameworks/QtQuick.framework/QtQuick").is_file(),
+                "packaged application is missing the Qt Quick framework",
+            )
+            licenses = app / "Contents/Resources/licenses"
             for relative in (
-                "AssetManifest.bin",
-                "NOTICES.Z",
                 "LICENSE",
                 "THIRD_PARTY_NOTICES.md",
-                "assets/licenses/RUST-DEPENDENCIES.md",
-                "assets/licenses/FLUTTER-DEPENDENCIES.md",
-                "assets/licenses/SYNTAX-GRAMMARS.md",
+                "RUST-DEPENDENCIES.md",
+                "QT-RUNTIME.md",
+                "SYNTAX-GRAMMARS.md",
             ):
-                require((assets / relative).is_file(), f"packaged legal or Flutter asset missing: {relative}")
+                require((licenses / relative).is_file(), f"packaged legal notice missing: {relative}")
 
             run("codesign", "--verify", "--deep", "--strict", app)
             signature = output("codesign", "-dvvv", app)

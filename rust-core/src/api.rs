@@ -47,9 +47,18 @@ pub use gitlama_contract::hosting_runtime::{
     NativeHostingResourceStartResult,
 };
 
+fn install_native_diagnostics() {
+    gitlama_application::application::session::set_diagnostic_sink(Some(std::sync::Arc::new(
+        |code, level, fields, detailed| {
+            devmil_logging::record(code, level, fields, detailed);
+        },
+    )));
+}
+
 /// Runs through FRB's worker pool and proves the shared Git crate is linked.
 #[must_use]
 pub fn core_info() -> CoreInfo {
+    install_native_diagnostics();
     devmil_logging::record("gitlama.native_ready", "INFO", &[], false);
     let minimum = GitVersion::new(2, 39, 0);
     CoreInfo {
@@ -80,51 +89,6 @@ pub fn remote_pending_save(
     operations: Vec<NativeRemotePendingOperation>,
 ) -> NativeRemotePendingSaveResult {
     gitlama_application::remote_pending::save(&directory, operations)
-}
-
-pub use gitlama_contract::child_process::{
-    NativeCapturedProcess, NativeChildEvent, NativeChildEventKind, NativeEnvironmentVariable,
-};
-
-/// Starts a child process the application owns outside Git, such as the SSH transport of a
-/// remote workspace, and reports its output and exit on `sink`. See [`crate::child_process`].
-pub fn child_process_start(
-    executable: String,
-    arguments: Vec<String>,
-    environment: Vec<NativeEnvironmentVariable>,
-    sink: crate::frb_generated::StreamSink<NativeChildEvent>,
-) {
-    crate::child_process::start(executable, arguments, environment, sink);
-}
-
-/// Queues bytes for a child's standard input; false once it closed.
-#[flutter_rust_bridge::frb(sync)]
-#[must_use]
-pub fn child_process_write(child_id: u64, bytes: Vec<u8>) -> bool {
-    crate::child_process::write(child_id, bytes)
-}
-
-#[flutter_rust_bridge::frb(sync)]
-pub fn child_process_close_stdin(child_id: u64) {
-    crate::child_process::close_stdin(child_id);
-}
-
-/// Sends SIGTERM, or SIGKILL when `kill`, to a running child.
-#[flutter_rust_bridge::frb(sync)]
-#[must_use]
-pub fn child_process_signal(child_id: u64, kill: bool) -> bool {
-    crate::child_process::signal(child_id, kill)
-}
-
-/// Runs a short probe such as `ssh -V` and keeps its bounded standard error.
-#[must_use]
-pub fn child_process_run_capture(
-    executable: String,
-    arguments: Vec<String>,
-    timeout_ms: u32,
-    maximum_bytes: u32,
-) -> NativeCapturedProcess {
-    crate::child_process::run_capture(executable, arguments, timeout_ms, maximum_bytes)
 }
 
 /// The remote helper ID this library was built with: the helper's compatibility version as 40
@@ -168,6 +132,26 @@ pub fn cli_forwarding_respond(request_id: u64, response: NativeCliResponseKind) 
 
 pub fn cli_forwarding_shutdown() {
     crate::cli_forwarding::shutdown();
+}
+
+pub fn cli_forwarding_set_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
+    crate::cli_forwarding::set_command_wakeup(wakeup);
+}
+
+/// Sends SIGKILL to a direct child process on Unix while the caller still owns its reap.
+pub fn kill_process_id(pid: u32) {
+    #[cfg(unix)]
+    {
+        if let Ok(raw) = i32::try_from(pid) {
+            if let Some(pid) = rustix::process::Pid::from_raw(raw) {
+                let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = pid;
+    }
 }
 
 #[must_use]
@@ -484,37 +468,6 @@ pub fn application_view_cache_remove(
     identity: NativePathIdentity,
 ) -> NativeViewCacheCommandResult {
     gitlama_application::view_cache::view_cache_remove(directory, identity)
-}
-
-#[must_use]
-pub fn application_recovery_begin(directory: String) -> NativeRecoveryStartResult {
-    gitlama_application::recovery::recovery_begin(directory)
-}
-
-#[must_use]
-pub fn application_recovery_default_directory() -> NativeRecoveryPathResult {
-    gitlama_application::recovery::recovery_default_directory()
-}
-
-#[must_use]
-pub fn application_recovery_checkpoint(
-    directory: String,
-    document: NativeSettingsDocument,
-) -> NativeRecoveryCommandResult {
-    gitlama_application::recovery::recovery_checkpoint(directory, document)
-}
-
-#[must_use]
-pub fn application_recovery_finish_clean(
-    directory: String,
-    document: NativeSettingsDocument,
-) -> NativeRecoveryCommandResult {
-    gitlama_application::recovery::recovery_finish_clean(directory, document)
-}
-
-#[must_use]
-pub fn application_recovery_inspect_repository(path: String) -> NativeSequencerInspectionResult {
-    gitlama_application::recovery::recovery_inspect_repository(path)
 }
 
 #[must_use]
@@ -965,7 +918,6 @@ pub fn repository_session_lfs_pointer(
 
 /// The top-level `.gitignore` pattern that matches exactly this repository-relative path, or
 /// `None` when no ignore line can express it.
-#[flutter_rust_bridge::frb(sync)]
 #[must_use]
 pub fn ignore_exact_pattern(path: Vec<u8>, directory: bool) -> Option<String> {
     devmil_git::ignore::exact_pattern(&path, directory)
@@ -2496,25 +2448,25 @@ pub fn repository_session_close(session_id: u64, generation: u64) -> NativeRepos
     gitlama_application::application::session::repository_session_close(session_id, generation)
 }
 
-/// Drops the native StreamSink before Dart cancels its stream subscription.
-pub fn detach_native_diagnostics() {
-    devmil_logging::set_detailed(false);
-    devmil_logging::install_hook(None);
-}
-/// Installs the Dart diagnostic availability hook. At most one notification is
-/// outstanding until the bounded native history is drained.
-pub fn watch_native_diagnostics(sink: crate::frb_generated::StreamSink<()>) {
-    devmil_logging::install_hook(Some(std::sync::Arc::new(move || sink.add(()).is_ok())));
-    devmil_logging::record("native.hook_ready", "INFO", &[], false);
-}
 pub fn drain_native_diagnostics() -> Vec<String> {
     devmil_logging::drain()
 }
 pub fn configure_native_diagnostics(detailed: bool, clear: bool) {
+    install_native_diagnostics();
     devmil_logging::set_detailed(detailed);
     if clear {
         devmil_logging::clear();
     }
+}
+
+/// Installs a callback invoked when an operation starts, reports progress or ends.
+pub fn set_operation_center_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
+    gitlama_application::activity::set_operations_wakeup(wakeup);
+}
+
+/// Installs a wakeup callback invoked from repository workers when events are queued.
+pub fn set_repository_session_wakeup(wakeup: Option<std::sync::Arc<dyn Fn() + Send + Sync>>) {
+    gitlama_application::application::session::set_session_wakeup(wakeup);
 }
 
 #[cfg(test)]

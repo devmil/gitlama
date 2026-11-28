@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Cross-platform fast gate. Native smoke is an explicit separate invocation."""
+"""Cross-platform fast gate of the Rust/QML application.
+
+Lanes:
+  (none)      everything a change must pass on Linux
+  --platform  the checks whose result depends on the operating system
+  --source    the checks that need neither Rust nor Qt (website, docs, metadata)
+"""
 from pathlib import Path
-import json
 import os
 import shutil
 import subprocess
 import sys
-ROOT=Path(__file__).resolve().parent.parent
+
+ROOT = Path(__file__).resolve().parent.parent
+
 
 def admit_file_descriptors(minimum=4096):
     """Admit analysis/native tools without changing the host or hard limit."""
@@ -27,6 +34,7 @@ def admit_file_descriptors(minimum=4096):
             raise SystemExit('verification_nofile_adjustment_unacknowledged')
     print(f'verification_nofile original={soft} effective={effective} hard={hard}', flush=True)
 
+
 def admit_inotify_instances(minimum=16):
     """Distinguish Linux per-user watcher exhaustion from RLIMIT_NOFILE."""
     if not sys.platform.startswith('linux'):
@@ -45,93 +53,80 @@ def admit_inotify_instances(minimum=16):
             os.close(handle)
     print(f'verification_inotify available_at_least={minimum}', flush=True)
 
-def run(*args):
+
+def run(*args, env=None):
     command = shutil.which(args[0]) or args[0]
-    subprocess.run([command, *args[1:]], check=True)
+    subprocess.run([command, *args[1:]], check=True, env=env)
 
-# What the Flutter tool reports when the first request to a test file's
-# harness port is not the test process's WebSocket. A local port scanner, such
-# as an IDE's port auto-detection, can send that request first; the file then
-# fails to load before any test in it runs.
-HARNESS_CONNECTION_FAILURE = 'Unable to connect to flutter_tester process'
-HARNESS_RETRIES = 5
-# `flutter test` found no test that matches its tags. A rerun names only the
-# files that failed to load, and those may hold none of the tagged tests.
-NO_TESTS_RAN = 79
 
-def harness_failures(report):
-    """The test files of [report] that failed only to connect to their test
-    process, or None when anything else failed."""
-    suites, tests, errors, failed = {}, {}, {}, set()
-    for line in report.read_text(encoding='utf-8').splitlines():
-        event = json.loads(line)
-        kind = event.get('type')
-        if kind == 'suite':
-            suites[event['suite']['id']] = event['suite']['path']
-        elif kind == 'testStart':
-            tests[event['test']['id']] = event['test']['suiteID']
-        elif kind == 'error':
-            errors.setdefault(event['testID'], []).append(event.get('error', ''))
-        elif kind == 'testDone' and event.get('result') != 'success':
-            failed.add(event['testID'])
-    files = set()
-    for test in failed:
-        messages = errors.get(test, [])
-        if not messages or not all(HARNESS_CONNECTION_FAILURE in m for m in messages):
-            return None
-        files.add(suites[tests[test]])
-    return sorted(files)
-
-def flutter_test(*args):
-    """Runs `flutter test`, and reruns only the files that failed to connect
-    to their test process. Every other failure fails at once."""
-    report = ROOT/'build'/'verify_flutter_test.json'
-    report.parent.mkdir(parents=True, exist_ok=True)
-    files = []
-    for attempt in range(HARNESS_RETRIES + 1):
-        report.unlink(missing_ok=True)
+def qt_tool(name):
+    """A Qt 6 tool: the qmake6-reported bin directory first, then PATH."""
+    qmake = shutil.which('qmake6') or shutil.which('qmake')
+    if qmake:
         try:
-            run('flutter', 'test', *args, f'--file-reporter=json:{report}', *files)
-            return
-        except subprocess.CalledProcessError as error:
-            if files and error.returncode == NO_TESTS_RAN:
-                return
-            retry = harness_failures(report) if report.exists() else None
-            if not retry or attempt == HARNESS_RETRIES:
-                raise
-        print(f'verification_flutter_tester_connection_retry files={len(retry)}', flush=True)
-        files = [str(Path(path).relative_to(ROOT)) if Path(path).is_absolute() else path
-                 for path in retry]
+            bins = subprocess.check_output([qmake, '-query', 'QT_INSTALL_BINS'], text=True).strip()
+            candidate = Path(bins) / (name + ('.exe' if os.name == 'nt' else ''))
+            if candidate.is_file():
+                return str(candidate)
+        except subprocess.CalledProcessError:
+            pass
+    for candidate in (name + '6', name, f'/usr/lib/qt6/bin/{name}'):
+        found = shutil.which(candidate)
+        if found:
+            return found
+    raise SystemExit(f'verification_missing_qt_tool {name}')
+
+
+def isolated_git_environment():
+    """Tests build their own repositories; the person's Git configuration
+    (diff prefixes, pull defaults, signing) must not change their output."""
+    environment = dict(os.environ)
+    environment['GIT_CONFIG_GLOBAL'] = os.devnull
+    environment['GIT_CONFIG_NOSYSTEM'] = '1'
+    return environment
+
 
 def source_checks():
-    """The checks that need neither Flutter nor Rust nor resolved packages."""
-    run(sys.executable,'-m','unittest','discover','-s','tests/package','-v')
-    run(sys.executable,'scripts/check_architecture.py')
-    run(sys.executable,'scripts/check_helper_compatibility.py')
+    """The checks that need neither Rust nor Qt nor resolved packages."""
+    run(sys.executable, '-m', 'unittest', 'discover', '-s', 'tests/package', '-v')
+    run(sys.executable, 'scripts/check_architecture.py')
+    run(sys.executable, 'scripts/check_helper_compatibility.py')
 
-def use_fvm_flutter():
-    """Put FVM's copy of the pinned SDK first on PATH when FVM is installed.
 
-    The pin check below still runs, so a missing FVM falls back to the
-    Flutter on PATH and fails there if it is the wrong version.
-    """
-    fvm = shutil.which('fvm')
-    if fvm is None:
-        return
-    version = json.loads((ROOT/'.fvmrc').read_text(encoding="utf-8"))['flutter']
-    try:
-        context = json.loads(subprocess.check_output([fvm, 'api', 'context'], text=True))
-    except subprocess.CalledProcessError:
-        # FVM 2 has no api command; use its cache layout and never install.
-        home = os.environ.get('FVM_CACHE_PATH') or os.environ.get('FVM_HOME')
-        sdk = Path(home or Path.home()/'fvm')/'versions'/version
-        if (sdk/'bin').is_dir():
-            os.environ['PATH'] = os.pathsep.join([str(sdk/'bin'), os.environ.get('PATH', '')])
-        return
-    sdk = Path(context['context']['versionsCachePath'])/version
-    if not (sdk/'bin').is_dir():
-        subprocess.run([fvm, 'install', version, '--skip-pub-get'], check=True)
-    os.environ['PATH'] = os.pathsep.join([str(sdk/'bin'), os.environ.get('PATH', '')])
+def qml_checks():
+    """Lints every GitLama QML file with no warning allowed and runs the QML tests."""
+    qmllint = qt_tool('qmllint')
+    files = sorted((ROOT / 'qml/GitLama').glob('*.qml'))
+    # Linted on its own, a singleton reports its own module's import as
+    # unresolved; that category stays informational for singletons only.
+    singletons = [str(path) for path in files if 'pragma Singleton' in path.read_text(encoding='utf-8')]
+    others = [str(path) for path in files if str(path) not in singletons]
+    run(qmllint, '-I', 'qml', '--max-warnings', '0', *others)
+    if singletons:
+        run(qmllint, '-I', 'qml', '--import', 'info', '--max-warnings', '0', *singletons)
+    # Qt Quick Tests catch major regressions in the QML (every file compiles,
+    # the Compass shows work, diffs scroll); native types come from stubs.
+    environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QTEST_DISABLE_STACK_DUMP='1')
+    run(qt_tool('qmltestrunner'), '-import', 'qml', '-import', 'qml/tests/stubs', '-input', 'qml/tests',
+        env=environment)
+
+
+def rust_checks():
+    """Lints and tests of the Rust workspace; their results differ by platform."""
+    manifest = ['--manifest-path', 'rust-core/Cargo.toml']
+    # Cargo compiles the sibling devmil-git tree: it must be the pinned revision.
+    run(sys.executable, 'scripts/shared_git_pin.py', '--check')
+    run('cargo', 'clippy', *manifest, '--locked', '--workspace', '--all-targets', '--', '-D', 'warnings')
+    # The remote helper builds the application crate without its image codecs.
+    run('cargo', 'clippy', *manifest, '--locked', '-p', 'gitlama_application', '-p', 'gitlama-remote-helper',
+        '--all-targets', '--no-default-features', '--', '-D', 'warnings')
+    environment = isolated_git_environment()
+    # The core's tests share process-wide session state.
+    run('cargo', 'test', *manifest, '--locked', '-p', 'gitlama_contract', '-p', 'gitlama_application', '-p', 'gitlama_core',
+        '--', '--test-threads=1', env=environment)
+    run('cargo', 'test', *manifest, '--locked', '-p', 'gitlama-remote-helper', env=environment)
+    run('cargo', 'test', *manifest, '--locked', '-p', 'gitlama-workbench', '-p', 'gitlama-qt', env=environment)
+
 
 def main():
     os.chdir(ROOT)
@@ -141,48 +136,27 @@ def main():
         return
     admit_file_descriptors()
     admit_inotify_instances()
-    use_fvm_flutter()
-    actual=json.loads(subprocess.check_output([shutil.which('flutter'), '--version', '--machine'],text=True))['frameworkVersion']
-    assert actual == json.loads((ROOT/'.fvmrc').read_text(encoding="utf-8"))['flutter'], 'Use the pinned Flutter SDK'
-    if '--native' in sys.argv:
-        run('flutter','test','test/native_bridge_test.dart')
-    elif '--platform' in sys.argv:
+    if '--platform' in sys.argv:
         # The CI lane of the platforms besides Linux: only the checks whose
         # result depends on the operating system. Linux runs the full gate.
         rust_checks()
-    else:
-        # Flutter does not create the parent of untranslated-messages-file.
-        # A clean release checkout therefore needs this before gen-l10n runs.
-        (ROOT/'build').mkdir(parents=True, exist_ok=True)
-        run('flutter','gen-l10n')
-        run(sys.executable,'scripts/check_l10n.py')
-        run('dart','format','--output=none','--set-exit-if-changed','lib','test','hook')
-        run('flutter','analyze','--no-fatal-infos')
-        flutter_test('--exclude-tags','native,visual,remote,ssh')
-        run(sys.executable,'tooling/remote_wire/generate.py','--check')
-        run(sys.executable,'scripts/check_helper_compatibility.py')
-        run('cargo','fmt','--manifest-path','rust-core/Cargo.toml','--all','--check')
-        rust_checks()
-        if sys.platform != 'win32':
-            # The client stack against the helper the previous step built.
-            flutter_test('--tags','remote')
-        run(sys.executable,'-m','unittest','discover','-s','tests/package','-v')
-        run(sys.executable,'scripts/check_architecture.py')
-        run(sys.executable,'scripts/check_dependencies.py')
-        run(sys.executable,'scripts/generate_meridian_theme.py','--check')
-        run(sys.executable,'scripts/check_meridian_usage.py')
-        run(sys.executable,'scripts/check_design_contract.py')
-        run(sys.executable,'scripts/audit_command_inventory.py')
+        return
+    run(sys.executable, 'tooling/l10n/generate.py', '--check')
+    run(sys.executable, 'scripts/check_l10n.py')
+    qml_checks()
+    run(sys.executable, 'tooling/remote_wire/generate.py', '--check')
+    run(sys.executable, 'tooling/remote_wire/generate_calls.py', '--check')
+    run(sys.executable, 'scripts/check_helper_compatibility.py')
+    run('cargo', 'fmt', '--manifest-path', 'rust-core/Cargo.toml', '--all', '--check')
+    rust_checks()
+    run(sys.executable, '-m', 'unittest', 'discover', '-s', 'tests/package', '-v')
+    run(sys.executable, 'scripts/check_architecture.py')
+    run(sys.executable, 'scripts/check_dependencies.py')
+    run(sys.executable, 'scripts/check_qml_numbers.py')
+    run(sys.executable, 'scripts/check_meridian_usage.py')
+    run(sys.executable, 'scripts/check_design_contract.py')
+    run(sys.executable, 'scripts/audit_command_inventory.py')
 
-def rust_checks():
-    """Lints and tests of the Rust workspace; their results differ by platform."""
-    # Cargo compiles the sibling devmil-git tree: it must be the pinned revision.
-    run(sys.executable,'scripts/shared_git_pin.py','--check')
-    run('cargo','clippy','--manifest-path','rust-core/Cargo.toml','--locked','--workspace','--all-targets','--','-D','warnings')
-    # The remote helper builds the application crate without its image codecs.
-    run('cargo','clippy','--manifest-path','rust-core/Cargo.toml','--locked','-p','gitlama_application','-p','gitlama-remote-helper','--all-targets','--no-default-features','--','-D','warnings')
-    run('cargo','test','--manifest-path','rust-core/Cargo.toml','--locked','-p','gitlama_contract','-p','gitlama_application','-p','gitlama_core','--','--test-threads=1')
-    run('cargo','test','--manifest-path','rust-core/Cargo.toml','--locked','-p','gitlama-remote-helper')
 
 if __name__ == '__main__':
     main()

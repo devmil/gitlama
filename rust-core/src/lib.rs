@@ -1,11 +1,9 @@
-//! GitLama's desktop library: the flutter_rust_bridge facade (`api`) Flutter loads and the
-//! desktop-only services (hosting, CLI forwarding, child processes, avatars). Product
+//! GitLama's desktop library: the in-process facade (`api`) the desktop application calls and
+//! the desktop-only services (hosting, CLI forwarding, child processes, avatars). Product
 //! behaviour lives in `gitlama_application`; the bridge types in `gitlama_contract`.
 pub mod api;
 pub mod avatar;
-pub mod child_process;
 pub mod cli_forwarding;
-mod frb_generated;
 pub mod hosting;
 pub mod hosting_reference;
 pub mod hosting_review;

@@ -1,0 +1,81 @@
+import QtQuick.tooling 1.2
+
+// The natively painted items GitLama registers from C++
+// (rust-core/desktop/app/src/native), described for qmllint. The types
+// themselves are registered by the application at startup.
+Module {
+    Component {
+        file: "graph_row.h"
+        name: "gitlama::GraphRow"
+        accessSemantics: "reference"
+        prototype: "QQuickPaintedItem"
+        exports: ["GitLamaNative/GraphRow 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "row"; type: "QVariant" }
+        Property { name: "clipRight"; type: "double" }
+        Property { name: "laneColors"; type: "QVariantList" }
+        Property { name: "wipColor"; type: "QColor" }
+        Property { name: "conflictColor"; type: "QColor" }
+        Property { name: "nodeBackground"; type: "QColor" }
+        Property { name: "strongInk"; type: "QColor" }
+        Property { name: "faintColor"; type: "QColor" }
+        Property { name: "addedColor"; type: "QColor" }
+        Property { name: "strong"; type: "bool" }
+        Property { name: "lightingActive"; type: "bool" }
+        Property { name: "lit"; type: "bool" }
+        Property { name: "incomingLit"; type: "bool" }
+        Property { name: "drawProgress"; type: "double" }
+        Property { name: "landing"; type: "bool" }
+        Property { name: "ringOpacity"; type: "double" }
+        Property { name: "ringClose"; type: "double" }
+        Property { name: "halo"; type: "double" }
+        Property { name: "core"; type: "double" }
+        Property { name: "rowKey"; type: "QString" }
+        Property { name: "litBlend"; type: "double" }
+        Property { name: "rowLitness"; type: "double"; isReadonly: true }
+        Signal { name: "changed" }
+        Signal { name: "lightingTransition" }
+    }
+    Component {
+        file: "text_formatter.h"
+        name: "gitlama::TextFormatter"
+        accessSemantics: "reference"
+        prototype: "QObject"
+        exports: ["GitLamaNative/TextFormatter 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "document"; type: "QQuickTextDocument"; isPointer: true }
+        Property { name: "lineHeight"; type: "double" }
+        Signal { name: "documentChanged" }
+        Signal { name: "lineHeightChanged" }
+    }
+    Component {
+        file: "syntax_highlighter.h"
+        name: "gitlama::SyntaxHighlighter"
+        accessSemantics: "reference"
+        prototype: "QObject"
+        exports: ["GitLamaNative/SyntaxHighlighter 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "document"; type: "QQuickTextDocument"; isPointer: true }
+        Property { name: "palette"; type: "QVariantMap" }
+        Signal { name: "documentChanged" }
+        Signal { name: "paletteChanged" }
+        Method {
+            name: "setLines"
+            Parameter { name: "firstLine"; type: "int" }
+            Parameter { name: "lines"; type: "QVariantList" }
+        }
+        Method { name: "clear" }
+    }
+    Component {
+        file: "syntax_highlighter.h"
+        name: "gitlama::LineColours"
+        accessSemantics: "reference"
+        prototype: "QObject"
+        exports: ["GitLamaNative/LineColours 1.0"]
+        exportMetaObjectRevisions: [256]
+        Property { name: "document"; type: "QQuickTextDocument"; isPointer: true }
+        Property { name: "runs"; type: "QVariantList" }
+        Signal { name: "documentChanged" }
+        Signal { name: "runsChanged" }
+    }
+}

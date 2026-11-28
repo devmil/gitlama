@@ -7,7 +7,6 @@ SPEC = importlib.util.spec_from_file_location("ci_scope", ROOT / "scripts/ci_sco
 ci_scope = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ci_scope)
 
-PUBSPEC = "name: gitlama\nversion: {version}\n\ndependencies:\n  path: ^1.9.0\n"
 MANIFEST = (
     '[package]\nname = "gitlama_core"\nversion = "{version}"\n\n'
     '[dependencies]\nserde = {{ version = "1.0" }}\n'
@@ -27,13 +26,11 @@ class CiScopeTest(unittest.TestCase):
     def test_release_preparation_runs_the_source_lane(self) -> None:
         before = {
             "VERSION": "0.1.0-beta.19\n20\n",
-            "pubspec.yaml": PUBSPEC.format(version="0.1.0-beta.19+20"),
             "rust-core/Cargo.toml": MANIFEST.format(version="0.1.0-beta.19"),
             "rust-core/Cargo.lock": LOCK.format(version="0.1.0-beta.19"),
         }
         after = {
             "VERSION": "0.1.0-beta.20\n21\n",
-            "pubspec.yaml": PUBSPEC.format(version="0.1.0-beta.20+21"),
             "rust-core/Cargo.toml": MANIFEST.format(version="0.1.0-beta.20"),
             "rust-core/Cargo.lock": LOCK.format(version="0.1.0-beta.20"),
         }
@@ -57,11 +54,6 @@ class CiScopeTest(unittest.TestCase):
 
     def test_a_dependency_change_beside_the_version_builds(self) -> None:
         for path, before, after in [
-            (
-                "pubspec.yaml",
-                PUBSPEC.format(version="1.0.0+1"),
-                PUBSPEC.format(version="1.0.1+2").replace("^1.9.0", "^1.9.1"),
-            ),
             (
                 "rust-core/Cargo.toml",
                 MANIFEST.format(version="1.0.0"),

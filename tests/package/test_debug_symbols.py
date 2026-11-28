@@ -138,13 +138,12 @@ class DebugSymbolsTest(unittest.TestCase):
         self.assertTrue(matches(runtime, symbols))
         self.assertFalse(matches(runtime, identity(self.write('old', elf(build=b'old-build-id-1234')))))
 
-    def test_locally_built_plugin_needs_matching_symbols(self):
-        runtime = self.write('bundle/lib/libsuper_native_extensions.so', elf())
-        maps = self.write('maps/app.symbols', b'Dart fixture map').parent
+    def test_locally_built_library_needs_matching_symbols(self):
+        runtime = self.write('bundle/lib/libgitlama_fixture.so', elf())
         with patch.object(collector, 'provenance', return_value={'source_commit': COMMIT}):
             with self.assertRaisesRegex(SymbolError, 'required_symbols_missing'):
-                collector.collect(runtime.parent.parent, 'linux-x86_64', self.root / 'missing-plugin', [], maps, [])
-            symbols = self.write('original/libsuper_native_extensions.so', elf(debug=True))
+                collector.collect(runtime.parent.parent, 'linux-x86_64', self.root / 'missing-plugin', [], [])
+            symbols = self.write('original/libgitlama_fixture.so', elf(debug=True))
             # Format fixtures run on every host, including macOS without
             # objcopy. Exercise the collector and identity checks while
             # simulating only the external extraction tool. The Linux native
@@ -157,19 +156,18 @@ class DebugSymbolsTest(unittest.TestCase):
 
             with patch.object(collector.shutil, 'which', return_value='fixture-objcopy'), \
                     patch.object(collector.subprocess, 'run', side_effect=extract_debug) as extraction:
-                archive = collector.collect(runtime.parent.parent, 'linux-x86_64', self.root / 'plugin', [symbols], maps, [])
+                archive = collector.collect(runtime.parent.parent, 'linux-x86_64', self.root / 'plugin', [symbols], [])
             extraction.assert_called_once()
         packet = retention.unpack_verified(archive, self.root / 'plugin-packet')
         self.assertEqual(packet['binaries'][0]['coverage'], 'native_symbols')
 
-    def test_objective_c_framework_uses_hook_symbols_and_refuses_a_gap(self):
+    def test_nested_framework_uses_separate_dsym_and_refuses_a_gap(self):
         runtime = self.write('bundle/Contents/Frameworks/objective_c.framework/Versions/A/objective_c', macho())
-        maps = self.write('maps/app.symbols', b'Dart fixture map').parent
         with patch.object(collector, 'provenance', return_value={'source_commit': COMMIT}):
             with self.assertRaisesRegex(SymbolError, 'required_symbols_missing'):
-                collector.collect(self.root / 'bundle', 'macos-arm64', self.root / 'missing-objective', [], maps, [])
+                collector.collect(self.root / 'bundle', 'macos-arm64', self.root / 'missing-objective', [], [])
             symbols = self.write('hooks/objective_c.dSYM/Contents/Resources/DWARF/objective_c.dylib', macho(debug=True))
-            archive = collector.collect(self.root / 'bundle', 'macos-arm64', self.root / 'objective', [self.root / 'hooks'], maps, [])
+            archive = collector.collect(self.root / 'bundle', 'macos-arm64', self.root / 'objective', [self.root / 'hooks'], [])
         packet = retention.unpack_verified(archive, self.root / 'objective-packet')
         record = packet['binaries'][0]
         self.assertEqual(record['coverage'], 'native_symbols')
@@ -189,8 +187,8 @@ class DebugSymbolsTest(unittest.TestCase):
         self.assertTrue(identity(original)['debug'])
         self.assertFalse(identity(runtime)['debug'])
         self.assertTrue(matches(identity(runtime), identity(original)))
-        with patch.object(collector, 'provenance', return_value={'source_commit': COMMIT, 'engine_revision': None}):
-            archive = collector.collect(runtime, 'helper-linux-x86_64', self.root / 'output', [original], None, [], helper=True)
+        with patch.object(collector, 'provenance', return_value={'source_commit': COMMIT, 'qt_version': None}):
+            archive = collector.collect(runtime, 'helper-linux-x86_64', self.root / 'output', [original], [], helper=True)
         unpacked = self.root / 'unpacked'
         manifest = retention.unpack_verified(archive, unpacked)
         retention.validate_unit(manifest, unpacked)
@@ -201,14 +199,14 @@ class DebugSymbolsTest(unittest.TestCase):
         self.assertIn('fixture.c:1', mapped)
         with patch.object(collector, 'provenance', return_value={'source_commit': COMMIT}):
             with self.assertRaisesRegex(SymbolError, 'required_symbols_missing'):
-                collector.collect(runtime, 'helper-linux-x86_64', self.root / 'missing', [], None, [], helper=True)
+                collector.collect(runtime, 'helper-linux-x86_64', self.root / 'missing', [], [], helper=True)
 
     def test_format_fixture_collection_preserves_dsym_bundles_and_excludes_pdb_payloads(self):
         for mac in (True, False):
             base = self.root / ('mac' if mac else 'windows')
             bundle = base / 'bundle'
             search = base / 'search'
-            payload_names = ['GitLama', 'gitlama_core', 'FlutterMacOS'] if mac else ['gitlama.exe', 'gitlama_core.dll', 'flutter_windows.dll']
+            payload_names = ['GitLama'] if mac else ['gitlama.exe']
             for name in payload_names:
                 self.write(str((bundle / name).relative_to(self.root)), macho() if mac else pe())
                 if mac:
@@ -218,20 +216,21 @@ class DebugSymbolsTest(unittest.TestCase):
                 else:
                     self.write(str((search / (name + '.pdb')).relative_to(self.root)), pdb())
                     self.write(str((bundle / (name + '.pdb')).relative_to(self.root)), pdb())
-            dart_path = bundle / 'App.framework/Versions/A/App' if mac else bundle / 'data/app.so'
-            self.write(str(dart_path.relative_to(self.root)), macho() if mac else elf())
+            # Qt's prebuilt runtime has no symbols of its own: a recorded vendor gap.
+            qt_path = bundle / 'QtQuick.framework/Versions/A/QtQuick' if mac else bundle / 'Qt6Quick.dll'
+            self.write(str(qt_path.relative_to(self.root)), macho(uid=uuid.uuid4()) if mac else pe(uuid.uuid4()))
             for unit in sorted(u for u in retention.UNITS if u.startswith('helper-')):
                 arch = 'arm64' if unit.endswith('arm64') else 'x86_64'
                 data = macho(arch) if 'macos' in unit else elf(arch)
                 self.write(str((bundle / 'remote-helper' / unit[7:] / 'gitlama-remote-helper').relative_to(self.root)), data)
-            dart = base / 'dart'
-            self.write(str((dart / 'app.symbols').relative_to(self.root)), b'Dart map fixture')
             with patch.object(collector, 'provenance', return_value={'source_commit': COMMIT}):
-                archive = collector.collect(bundle, 'macos-arm64' if mac else 'windows-x86_64', base / 'output', [search], dart, [])
+                archive = collector.collect(bundle, 'macos-arm64' if mac else 'windows-x86_64', base / 'output', [search], [])
             unpacked = base / 'unpacked'
             packet = retention.unpack_verified(archive, unpacked)
             retention.validate_unit(packet, unpacked)
-            self.assertEqual(len(packet['binaries']), 8)
+            self.assertEqual(len(packet['binaries']), 6)
+            qt = next(b for b in packet['binaries'] if b['file'] == 'binaries/' + qt_path.relative_to(bundle).as_posix())
+            self.assertEqual((qt['coverage'], qt['reason']), ('vendor_symbols_unavailable', 'qt_prebuilt_symbols_external'))
             if mac:
                 symbol = unpacked / next(b['symbol_file'] for b in packet['binaries'] if b['coverage'] == 'native_symbols')
                 self.assertTrue(symbol.parents[3].name.endswith('.dSYM'))
@@ -240,7 +239,7 @@ class DebugSymbolsTest(unittest.TestCase):
                 self.assertFalse(any(b['file'].endswith('.pdb') for b in packet['binaries']))
                 self.assertTrue(all(Path(b['symbol_file']).suffix == '.pdb' for b in packet['binaries'] if b['coverage'] == 'native_symbols'))
 
-    def fixtures(self, *, wrong_symbol=False, wrong_helper=False, commit=COMMIT, omit_map=False, purpose='release'):
+    def fixtures(self, *, wrong_symbol=False, wrong_helper=False, commit=COMMIT, omit_qt=False, purpose='release'):
         packages = self.root / 'packages'
         packages.mkdir(exist_ok=True)
         for target in TARGETS:
@@ -251,7 +250,7 @@ class DebugSymbolsTest(unittest.TestCase):
             mac = 'macos' in unit
             win = 'windows' in unit
             arch = 'arm64' if unit.endswith('arm64') else 'x86_64'
-            names = ['gitlama-remote-helper'] if helper else ['GitLama', 'gitlama_core', 'FlutterMacOS'] if mac else ['gitlama.exe', 'gitlama_core.dll', 'flutter_windows.dll'] if win else ['gitlama', 'libgitlama_core.so', 'libflutter_linux_gtk.so']
+            names = ['gitlama-remote-helper'] if helper else ['GitLama'] if mac else ['gitlama.exe'] if win else ['gitlama']
             runtime = macho(arch) if mac else pe() if win else elf(arch)
             debug = macho(arch, True, uuid.uuid4() if wrong_symbol else GUID) if mac else pdb() if win else elf(arch, True)
             content = {'symbols/native.pdb' if win else 'symbols/native.debug': debug}
@@ -265,10 +264,13 @@ class DebugSymbolsTest(unittest.TestCase):
                 binaries.append({**file_record(binary, relative), 'identity': identity(binary),
                     'coverage': 'native_symbols', 'symbol_file': symbol_name, 'symbol_identity': identity(symbols)})
             if not helper:
-                relative = 'binaries/App.framework/Versions/A/App' if mac else 'binaries/data/app.so'
-                content[relative] = runtime
-                binary = self.write('temporary-dart-runtime', runtime)
-                binaries.append({**file_record(binary, relative), 'identity': identity(binary), 'coverage': 'dart_split_debug_info'})
+                if not omit_qt:
+                    relative = ('binaries/QtQuick.framework/Versions/A/QtQuick' if mac
+                                else 'binaries/Qt6Quick.dll' if win else 'binaries/lib/libQt6Quick.so.6')
+                    content[relative] = runtime
+                    binary = self.write('temporary-qt-runtime', runtime)
+                    binaries.append({**file_record(binary, relative), 'identity': identity(binary),
+                                     'coverage': 'vendor_symbols_unavailable', 'reason': 'qt_prebuilt_symbols_external'})
                 for target in sorted(u for u in retention.UNITS if u.startswith('helper-')):
                     host_arch = 'arm64' if target.endswith('arm64') else 'x86_64'
                     relative = f'binaries/remote-helper/{target[7:]}/gitlama-remote-helper'
@@ -276,11 +278,9 @@ class DebugSymbolsTest(unittest.TestCase):
                     content[relative] = data
                     binary = self.write('temporary-helper-runtime', data)
                     binaries.append({**file_record(binary, relative), 'identity': identity(binary), 'coverage': 'separate_helper_archive', 'helper_unit': target})
-            if not helper and not omit_map:
-                content['dart/app.symbols'] = b'Dart fixture map'
             records = [{'file': name, 'bytes': len(value), 'sha256': hashlib.sha256(value).hexdigest()} for name, value in content.items()]
             packet = {'schema': 1, 'unit': unit, 'version': VERSION.marketing, 'build': VERSION.build,
-                'provenance': {'source_commit': commit, 'build_purpose': purpose, 'engine_revision': None if helper else 'e' * 40, 'flutter_version': '3.47.5', 'rustc': 'rustc fixture', 'shared_git_revision': 'f' * 40},
+                'provenance': {'source_commit': commit, 'build_purpose': purpose, 'qt_version': None if helper else '6.11.2', 'rustc': 'rustc fixture', 'shared_git_revision': 'f' * 40},
                 'binaries': binaries, 'files': records,
                 'packages': [file_record(packages / artifact_name(VERSION, *target), artifact_name(VERSION, *target))
                              for target in TARGETS if not helper and target[0] == ('macos' if mac else 'windows' if win else 'linux')]}
@@ -306,7 +306,7 @@ class DebugSymbolsTest(unittest.TestCase):
         with self.assertRaises(SymbolError):
             retention.verify_retention(root, packages, f'v{VERSION.marketing}-{VERSION.build}')
 
-    def test_missing_targets_stale_source_wrong_symbols_and_maps_are_refused(self):
+    def test_missing_targets_stale_source_wrong_symbols_and_qt_runtime_are_refused(self):
         archives, packages = self.fixtures()
         with self.assertRaisesRegex(SymbolError, 'set_incomplete'):
             retention.verify_set(archives[:-1], packages, VERSION, COMMIT)
@@ -321,8 +321,8 @@ class DebugSymbolsTest(unittest.TestCase):
         archives, packages = self.fixtures(purpose='development')
         with self.assertRaisesRegex(SymbolError, 'candidate_identity'):
             retention.verify_set(archives, packages, VERSION, COMMIT)
-        archives, packages = self.fixtures(omit_map=True)
-        with self.assertRaisesRegex(SymbolError, 'dart_maps_missing'):
+        archives, packages = self.fixtures(omit_qt=True)
+        with self.assertRaisesRegex(SymbolError, 'qt_runtime_inventory_incomplete'):
             retention.verify_set(archives, packages, VERSION, COMMIT)
 
     def test_unsafe_archive_members_are_refused_before_extraction(self):

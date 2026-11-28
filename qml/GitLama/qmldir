@@ -1,0 +1,153 @@
+module GitLama
+singleton L10n 1.0 L10n.qml
+singleton Store 1.0 Store.qml
+singleton GitLamaLayout 1.0 GitLamaLayout.qml
+singleton BranchFilters 1.0 BranchFilters.qml
+singleton ReferenceMenu 1.0 ReferenceMenu.qml
+singleton GitColors 1.0 GitColors.qml
+singleton SyntaxStyle 1.0 SyntaxStyle.qml
+CaptionBand 1.0 CaptionBand.qml
+HomeScreen 1.0 HomeScreen.qml
+ImageDiffView 1.0 ImageDiffView.qml
+LinuxResizeEdges 1.0 LinuxResizeEdges.qml
+StartupScreen 1.0 StartupScreen.qml
+WindowControls 1.0 WindowControls.qml
+WindowDragArea 1.0 WindowDragArea.qml
+WindowGeometry 1.0 WindowGeometry.qml
+LocalTabFailure 1.0 LocalTabFailure.qml
+DevControl 1.0 DevControl.qml
+singleton Labels 1.0 Labels.qml
+singleton Notifications 1.0 Notifications.qml
+AboutDialog 1.0 AboutDialog.qml
+Actions 1.0 Actions.qml
+InitializeRepositoryDialog 1.0 InitializeRepositoryDialog.qml
+RecentRepositoryList 1.0 RecentRepositoryList.qml
+StatusNotificationText 1.0 StatusNotificationText.qml
+WelcomeScreen 1.0 WelcomeScreen.qml
+WorkspaceShell 1.0 WorkspaceShell.qml
+Boot 1.0 Boot.qml
+singleton GitLamaIcons 1.0 GitLamaIcons.qml
+singleton Commands 1.0 Commands.qml
+Compass 1.0 Compass.qml
+CompassGlint 1.0 CompassGlint.qml
+CompassFill 1.0 CompassFill.qml
+CompassState 1.0 CompassState.qml
+DirtyCount 1.0 DirtyCount.qml
+SyncBadge 1.0 SyncBadge.qml
+SyncPart 1.0 SyncPart.qml
+CommandMenu 1.0 CommandMenu.qml
+ToolbarCommand 1.0 ToolbarCommand.qml
+WorkspaceToolbar 1.0 WorkspaceToolbar.qml
+singleton CommandMenus 1.0 CommandMenus.qml
+BrandSignature 1.0 BrandSignature.qml
+LamaScene 1.0 LamaScene.qml
+LamaSignature 1.0 LamaSignature.qml
+RepositoryTabs 1.0 RepositoryTabs.qml
+WorkspaceBody 1.0 WorkspaceBody.qml
+WorkspaceStatusBar 1.0 WorkspaceStatusBar.qml
+singleton AppearanceColors 1.0 AppearanceColors.qml
+RepositoryDetailsPanel 1.0 RepositoryDetailsPanel.qml
+RepositoryIcon 1.0 RepositoryIcon.qml
+RepositoryIconDialog 1.0 RepositoryIconDialog.qml
+GroupContextMenu 1.0 GroupContextMenu.qml
+TabContextMenu 1.0 TabContextMenu.qml
+TabGroupDialog 1.0 TabGroupDialog.qml
+TabMark 1.0 TabMark.qml
+WorktreeOpenMenu 1.0 WorktreeOpenMenu.qml
+WorktreeRow 1.0 WorktreeRow.qml
+WorkspaceSidebar 1.0 WorkspaceSidebar.qml
+SidebarRefRow 1.0 SidebarRefRow.qml
+SidebarSectionRow 1.0 SidebarSectionRow.qml
+SidebarGroupLabel 1.0 SidebarGroupLabel.qml
+ShortcutReferenceDialog 1.0 ShortcutReferenceDialog.qml
+SidebarRail 1.0 SidebarRail.qml
+SnapshotsPanel 1.0 SnapshotsPanel.qml
+PowerTools 1.0 PowerTools.qml
+PullRequestChip 1.0 PullRequestChip.qml
+HostingStatus 1.0 HostingStatus.qml
+IntegrationsPanel 1.0 IntegrationsPanel.qml
+HostingSettings 1.0 HostingSettings.qml
+HostingField 1.0 HostingField.qml
+HostingGuideDialog 1.0 HostingGuideDialog.qml
+ExternalMergeAction 1.0 ExternalMergeAction.qml
+BranchFilterEditor 1.0 BranchFilterEditor.qml
+PowerToolsPanel 1.0 PowerToolsPanel.qml
+CustomCommandsPage 1.0 CustomCommandsPage.qml
+UpdatesPage 1.0 UpdatesPage.qml
+DiffRendererPage 1.0 DiffRendererPage.qml
+DiffRendererConfirm 1.0 DiffRendererConfirm.qml
+StatusAccelerationSettings 1.0 StatusAccelerationSettings.qml
+ExtensionsPanel 1.0 ExtensionsPanel.qml
+RefChip 1.0 RefChip.qml
+AuthorAvatar 1.0 AuthorAvatar.qml
+HistoryMotion 1.0 HistoryMotion.qml
+HistoryRow 1.0 HistoryRow.qml
+HistoryPane 1.0 HistoryPane.qml
+StatusGlyph 1.0 StatusGlyph.qml
+FileActionMenu 1.0 FileActionMenu.qml
+FileRow 1.0 FileRow.qml
+DiffFind 1.0 DiffFind.qml
+DiffToolbar 1.0 DiffToolbar.qml
+DiffView 1.0 DiffView.qml
+DiffViewingActions 1.0 DiffViewingActions.qml
+CommitSummaryCard 1.0 CommitSummaryCard.qml
+InspectorView 1.0 InspectorView.qml
+ChangesSection 1.0 ChangesSection.qml
+ChangesPane 1.0 ChangesPane.qml
+WorkingDiffPane 1.0 WorkingDiffPane.qml
+CommitEditor 1.0 CommitEditor.qml
+ReferenceField 1.0 ReferenceField.qml
+TransferDialog 1.0 TransferDialog.qml
+HostKeyDialog 1.0 HostKeyDialog.qml
+CredentialDialog 1.0 CredentialDialog.qml
+TransferFailureDialog 1.0 TransferFailureDialog.qml
+RefMutationDialog 1.0 RefMutationDialog.qml
+RefConfirmDialog 1.0 RefConfirmDialog.qml
+EditBranchDialog 1.0 EditBranchDialog.qml
+IgnoreDialog 1.0 IgnoreDialog.qml
+PatchDialog 1.0 PatchDialog.qml
+LineSelectionDialog 1.0 LineSelectionDialog.qml
+LineSelectionRow 1.0 LineSelectionRow.qml
+CommandShortcuts 1.0 CommandShortcuts.qml
+CommandPalette 1.0 CommandPalette.qml
+StashDialog 1.0 StashDialog.qml
+StashConfirmDialog 1.0 StashConfirmDialog.qml
+GitCommands 1.0 GitCommands.qml
+CommitCheckoutDialog 1.0 CommitCheckoutDialog.qml
+SettingsChoice 1.0 SettingsChoice.qml
+HistoryMutationDialog 1.0 HistoryMutationDialog.qml
+ListWell 1.0 ListWell.qml
+InspectorContents 1.0 InspectorContents.qml
+InspectorBlame 1.0 InspectorBlame.qml
+InspectorHistoryList 1.0 InspectorHistoryList.qml
+TimelineRow 1.0 TimelineRow.qml
+LogbookPanel 1.0 LogbookPanel.qml
+ActivityIsland 1.0 ActivityIsland.qml
+WorkflowHeader 1.0 WorkflowHeader.qml
+ConflictFileDetails 1.0 ConflictFileDetails.qml
+ConflictComparison 1.0 ConflictComparison.qml
+ConflictResultPane 1.0 ConflictResultPane.qml
+ConflictResolvedPage 1.0 ConflictResolvedPage.qml
+ConflictResolver 1.0 ConflictResolver.qml
+RepositoryConditions 1.0 RepositoryConditions.qml
+StepNumber 1.0 StepNumber.qml
+BranchIntegrationDialog 1.0 BranchIntegrationDialog.qml
+RebaseTargetDialog 1.0 RebaseTargetDialog.qml
+RebaseEditorDialog 1.0 RebaseEditorDialog.qml
+RebasePreviewDialog 1.0 RebasePreviewDialog.qml
+RestackRootDialog 1.0 RestackRootDialog.qml
+RestackPreviewDialog 1.0 RestackPreviewDialog.qml
+HistoryMutationPreviewDialog 1.0 HistoryMutationPreviewDialog.qml
+SettingsDialog 1.0 SettingsDialog.qml
+RemoteDirectoryPicker 1.0 RemoteDirectoryPicker.qml
+RemoteField 1.0 RemoteField.qml
+RemoteHelperLocation 1.0 RemoteHelperLocation.qml
+RemoteHostEditor 1.0 RemoteHostEditor.qml
+RemoteHostsDialog 1.0 RemoteHostsDialog.qml
+RemoteHostsSettings 1.0 RemoteHostsSettings.qml
+RemoteHostStatus 1.0 RemoteHostStatus.qml
+RemoteInstallHelperDialog 1.0 RemoteInstallHelperDialog.qml
+RemoteOperationsDialog 1.0 RemoteOperationsDialog.qml
+RemoteReconnect 1.0 RemoteReconnect.qml
+RemoteTabBanner 1.0 RemoteTabBanner.qml
+RemoteTabFailure 1.0 RemoteTabFailure.qml

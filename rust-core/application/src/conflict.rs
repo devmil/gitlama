@@ -1050,20 +1050,7 @@ fn operation_labels(
             let incoming = devmil_git::status::operation_heads(git_dir, OperationKind::Merge)
                 .ok()
                 .and_then(|heads| heads.into_iter().next())
-                .and_then(|head| {
-                    let oid = head.as_str();
-                    snapshot.refs.iter().find_map(|section| match section {
-                        devmil_git::loading::refs::RefsSectionData::Remotes {
-                            references, ..
-                        } => references.iter().find_map(|reference| {
-                            (reference.target.as_str() == oid)
-                                .then(|| reference.id.as_bytes().strip_prefix(b"refs/remotes/"))
-                                .flatten()
-                                .map(Vec::from)
-                        }),
-                        _ => None,
-                    })
-                })
+                .and_then(|head| merge_head_label(snapshot, git_dir, head.as_str()))
                 .or_else(|| {
                     run_read(
                         worktree,
@@ -1089,6 +1076,51 @@ fn operation_labels(
         NativeConflictOperationKind::Stash => (branch, b"stashed changes".to_vec()),
         NativeConflictOperationKind::Standalone => (branch, b"incoming changes".to_vec()),
     }
+}
+
+/// The name of the reference being merged: the one the merge message names when it still
+/// points at `MERGE_HEAD`, otherwise a local branch, then a remote-tracking branch there.
+fn merge_head_label(snapshot: &RepositorySnapshot, git_dir: &Path, oid: &str) -> Option<Vec<u8>> {
+    use devmil_git::loading::refs::RefsSectionData;
+    use devmil_git::merge::MergeSourceName;
+    let mut candidates = Vec::new();
+    for section in snapshot.refs.iter() {
+        let (rows, prefix): (Vec<_>, &[u8]) = match section {
+            RefsSectionData::Branches { rows, .. } => (
+                rows.iter().map(|row| (&row.id, &row.target)).collect(),
+                b"refs/heads/",
+            ),
+            RefsSectionData::Remotes { references, .. } => (
+                references
+                    .iter()
+                    .map(|row| (&row.id, &row.target))
+                    .collect(),
+                b"refs/remotes/",
+            ),
+            _ => continue,
+        };
+        candidates.extend(rows.into_iter().filter_map(|(id, target)| {
+            (target.as_str() == oid)
+                .then(|| id.as_bytes().strip_prefix(prefix))
+                .flatten()
+                .map(|name| (prefix == b"refs/heads/", name.to_vec()))
+        }));
+    }
+    let message = std::fs::read(git_dir.join("MERGE_MSG")).ok();
+    let named = message
+        .as_deref()
+        .and_then(|message| std::str::from_utf8(message).ok())
+        .and_then(devmil_git::merge::merge_message_source)
+        .and_then(|source| match source {
+            MergeSourceName::Branch(name) => Some((true, name.as_bytes().to_vec())),
+            MergeSourceName::RemoteTrackingBranch(name) => Some((false, name.as_bytes().to_vec())),
+            MergeSourceName::Tag(_) => None,
+        });
+    if let Some(named) = named.filter(|named| candidates.contains(named)) {
+        return Some(named.1);
+    }
+    candidates.sort_by_key(|(local, _)| !local);
+    candidates.into_iter().next().map(|(_, name)| name)
 }
 
 fn trim_ref(mut value: Vec<u8>) -> Vec<u8> {
@@ -1550,6 +1582,44 @@ mod session_tests {
     use std::os::unix::fs::PermissionsExt;
     #[allow(unused_imports)] // Only some platforms' tests use it.
     use std::path::{Path, PathBuf};
+
+    #[test]
+    fn a_merged_local_branch_is_named_although_its_remote_points_there_too() {
+        let fixture = GitFixture::new();
+        fs::write(fixture.0.join("conflict.txt"), b"base\n").unwrap();
+        transfer_git(&fixture.0, &["add", "."]);
+        transfer_git(&fixture.0, &["commit", "-qm", "base"]);
+        transfer_git(&fixture.0, &["switch", "-c", "topic"]);
+        fs::write(fixture.0.join("conflict.txt"), b"incoming\n").unwrap();
+        transfer_git(&fixture.0, &["commit", "-qam", "topic"]);
+        transfer_git(&fixture.0, &["switch", "main"]);
+        fs::write(fixture.0.join("conflict.txt"), b"current\n").unwrap();
+        transfer_git(&fixture.0, &["commit", "-qam", "main"]);
+        transfer_git(&fixture.0, &["remote", "add", "origin", "."]);
+        transfer_git(
+            &fixture.0,
+            &["update-ref", "refs/remotes/origin/topic", "topic"],
+        );
+        transfer_git_expect_failure(&fixture.0, &["merge", "topic"]);
+
+        let session = repository_session_open_with_options(
+            fixture.0.clone(),
+            1_222,
+            RepositoryOptions {
+                watch: false,
+                ..RepositoryOptions::default()
+            },
+            ActivityStore::default(),
+        )
+        .session
+        .unwrap();
+        wait_for_ready(&session);
+        let snapshot = repository_session_conflicts(session.session_id, session.generation)
+            .snapshot
+            .unwrap();
+        assert_eq!(snapshot.incoming_label, b"topic");
+        assert!(repository_session_close(session.session_id, session.generation).accepted);
+    }
 
     #[test]
     fn conflict_resolver_takes_regions_undoes_staging_and_continues_merge() {

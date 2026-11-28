@@ -1,4 +1,4 @@
-//! Bounded diff projection used by Flutter and byte-exact partial-patch proofs.
+//! Bounded diff projection used by the desktop views and byte-exact partial-patch proofs.
 pub use gitlama_contract::diff::*;
 
 use devmil_git::diff::model::{

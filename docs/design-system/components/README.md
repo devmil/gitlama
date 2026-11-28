@@ -1,6 +1,6 @@
 # Components
 
-Every Meridian component has a usage guideline (below), a live specimen in [`../specimens/`](../specimens/index.html), and a reference implementation in [`reference/`](reference/). The reference is plain React plus CSS, and it drives the specimens. It is the visual and behavioural oracle for the Flutter widgets in `lib/widgets/`. It is not shipped code.
+Every Meridian component has a usage guideline (below), a live specimen in [`../specimens/`](../specimens/index.html), and a reference implementation in [`reference/`](reference/). The reference is plain React plus CSS, and it drives the specimens. It is the visual and behavioural oracle for the QML components in `qml/GitLama` and the vendored `qml/Meridian`. It is not shipped code.
 
 | Group | Component | Summary |
 |---|---|---|
@@ -32,7 +32,7 @@ Every Meridian component has a usage guideline (below), a live specimen in [`../
 | Containers | [SettingsRow](SettingsRow.md) | A desktop-native settings form: the label is right-aligned in a 200px column, controls sit on the left of the next column, and help goes below in `caption` `ink-muted`. |
 | Showcase | [Workspace](Workspace.md) | The whole window put together from the system: toolbar with Compass, repo tabs, sidebar on `ground`, and the History and Detail islands. |
 
-The Flutter widget for each component and its migration status are listed in [`../FLUTTER_ADAPTATION.md`](../FLUTTER_ADAPTATION.md#component-mapping).
+How the QML consumes each component is described in [`../QML_ADAPTATION.md`](../QML_ADAPTATION.md).
 
 ## Intentional additions
 

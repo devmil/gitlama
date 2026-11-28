@@ -359,6 +359,14 @@ pub fn repository_session_history_complete(
     if previous.topology.frozen_tips != topology.frozen_tips {
         return history_failure(NativeRepositoryFailureKind::StaleGeneration);
     }
+    let snapshot = session.repository.snapshot();
+    let refs = &snapshot.refs;
+    let stash_commits = history_stash_commits(refs);
+    // A stash hides its index and untracked commits from the graph. A preview laid out
+    // before the snapshot listed a stash gave those commits lanes, so it is stale.
+    if previous.stash_commits != stash_commits {
+        return history_failure(NativeRepositoryFailureKind::StaleGeneration);
+    }
     if Arc::ptr_eq(&previous.topology, &topology) {
         let history = session.history.projection.as_mut().unwrap();
         history.complete = true;
@@ -379,10 +387,7 @@ pub fn repository_session_history_complete(
     let accepted_query = previous.accepted_query.clone();
     let expanded_stashes = previous.expanded_stashes.clone();
     let metadata = std::mem::take(&mut session.history.projection.as_mut().unwrap().metadata);
-    let snapshot = session.repository.snapshot();
-    let refs = &snapshot.refs;
     let stash_refs = history_ref_decorations(refs);
-    let stash_commits = history_stash_commits(refs);
     let commit_order = topology
         .rows
         .iter()
@@ -2856,5 +2861,57 @@ mod session_tests {
             cached_diff_us[99],
         );
         assert!(repository_session_close(session.session_id, 79).accepted);
+    }
+
+    #[test]
+    fn completion_rejects_a_preview_laid_out_before_its_stashes_were_known() {
+        let fixture = GitFixture::new();
+        fast_import_linear(&fixture.0, 2);
+        transfer_git(&fixture.0, &["reset", "--hard", "-q"]);
+        fs::write(fixture.0.join("stashed.txt"), b"stashed\n").unwrap();
+        transfer_git(&fixture.0, &["add", "--", "stashed.txt"]);
+        transfer_git(&fixture.0, &["stash", "push", "-q"]);
+        let session = repository_session_open_with_options(
+            fixture.0.clone(),
+            791,
+            RepositoryOptions {
+                watch: false,
+                ..RepositoryOptions::default()
+            },
+            ActivityStore::default(),
+        )
+        .session
+        .unwrap();
+        let _ = wait_for_ready(&session);
+        let preview = repository_session_history_load(session.session_id, 791, false, 8, false)
+            .page
+            .unwrap();
+        // The preview of an opening repository can be laid out before its snapshot
+        // lists the stashes.
+        lock_sessions()
+            .session_mut(SessionKey::new(session.session_id, 791))
+            .unwrap()
+            .history
+            .projection
+            .as_mut()
+            .unwrap()
+            .stash_commits
+            .clear();
+        let stale =
+            repository_session_history_complete(session.session_id, 791, preview.request_id, 8);
+        assert!(stale.page.is_none());
+        assert_eq!(
+            stale.failure.unwrap().kind,
+            NativeRepositoryFailureKind::StaleGeneration
+        );
+
+        let preview = repository_session_history_load(session.session_id, 791, false, 8, false)
+            .page
+            .unwrap();
+        let complete =
+            repository_session_history_complete(session.session_id, 791, preview.request_id, 8);
+        assert!(complete.failure.is_none());
+        assert!(complete.page.unwrap().topology_complete);
+        assert!(repository_session_close(session.session_id, 791).accepted);
     }
 }

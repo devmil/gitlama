@@ -2,13 +2,7 @@
 
 GitLama is released under the MIT License; see `LICENSE`. The design specimens in `docs/design-system/specimens/lib/` bundle React 18.3.1 under the MIT License, with its licence header kept in each file. The shared `devmil-git`, `devmil_logging` and `meridian_ui` libraries are MIT-licensed as well.
 
-Flutter, Dart and their resolved packages, flutter_rust_bridge and the Cargo dependency graph retain their respective upstream licenses. Exact locked production inventories and source license texts are generated into `assets/licenses/FLUTTER-DEPENDENCIES.md` and `assets/licenses/RUST-DEPENDENCIES.md` and ship in the in-app Licenses view. The syntax grammars bundled for diff highlighting (two-face, curated from bat, parsed by syntect with Oniguruma) are listed with their licences in `assets/licenses/SYNTAX-GRAMMARS.md`, generated from the pinned grammar bundle and checked by a Rust test.
-
-The `file_selector` Flutter plugin is Copyright 2013 The Flutter Authors and is distributed under the BSD 3-Clause License.
-
-The `desktop_drop` Flutter plugin is Copyright 2021 Mixin and is distributed under the Apache License 2.0.
-
-The `window_manager` and `screen_retriever` Flutter plugins are Copyright LiJianying and are distributed under the MIT License.
+Qt 6 (Qt Core, Qt Gui, Qt Qml, Qt Quick and their platform plugins) is linked dynamically under the GNU Lesser General Public License version 3; `assets/licenses/QT-RUNTIME.md` carries the notice and licence text and ships in the in-app Licenses view. The Cargo dependency graph, including the `qtbridge` crates that connect Rust and QML, retains its respective upstream licenses. The exact locked production inventory and source license texts are generated into `assets/licenses/RUST-DEPENDENCIES.md` and ship in the in-app Licenses view. The syntax grammars bundled for diff highlighting (two-face, curated from bat, parsed by syntect with Oniguruma) are listed with their licences in `assets/licenses/SYNTAX-GRAMMARS.md`, generated from the pinned grammar bundle and checked by a Rust test.
 
 The native recovery store uses Bytecode Alliance `cap-std` 4.0.2 under Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT, and RustCrypto `sha2` under MIT OR Apache-2.0.
 

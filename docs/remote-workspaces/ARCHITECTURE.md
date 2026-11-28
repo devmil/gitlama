@@ -4,7 +4,8 @@ Status: implementation design, 2026-10-05, with the [implementation record](#imp
 
 ## Existing baseline and intake
 
-The source inspected for this design was GitLama `14b81a32a3333011496fb7cef0cb26227540d50f` with shared `devmil-git` checkout `4daa8611fdd43d42e3c3ea8720458dd14806e345`. Both trees were clean at inspection. The CI preparation script names the same shared revision. These are provenance, not permanent feature pins; re-inspect committed APIs before implementation.
+This intake records the first, Flutter client the design was made against; the paths in
+the table below are that client's and are kept as provenance. The source inspected was GitLama `14b81a32a3333011496fb7cef0cb26227540d50f` with shared `devmil-git` checkout `4daa8611fdd43d42e3c3ea8720458dd14806e345`. Both trees were clean at inspection. The CI preparation script names the same shared revision. These are provenance, not permanent feature pins; re-inspect committed APIs before implementation.
 
 | Existing boundary | Observed shape | Required remote adaptation |
 | --- | --- | --- |
@@ -35,45 +36,41 @@ The helper can reconnect to durable identity/receipts, but cannot reattach to a 
 
 ## Components and dependency direction
 
-```text
-Flutter widgets / command registration
-  -> RepositorySessionService (tabs, drafts, preview UX, application policy)
-      -> RepositoryBackend service port / BackendRouter (typed location routing)
-          -> LocalRepositoryBackendService
-              -> existing NativeRepositorySessionRepository -> FRB -> Rust use cases
-          -> RemoteWorkspaceService
-              -> RemoteRepositorySessionRepository (Dart network adapter)
-                  -> owned dart:io SSH process + bounded wire codec
-                      -> SSH stdin/stdout
-                          -> gitlama-remote-helper (Rust, no Flutter dependency)
-                              -> GitLama headless use cases / projections
-                                  -> devmil_git::Repository + shared Git primitives
-                                  -> remote private identity/receipt/recovery store
-```
-
-`RepositoryBackend` is a service-facing contract with the currently supported typed repository commands plus `WorkspaceLocation` and capabilities. `BackendRouter` lives in the service layer; it dispatches by authoritative session identity, never by a user-visible path string. `LocalRepositoryBackendService` owns the existing native repository; `RemoteWorkspaceService` owns the remote network repository. Other services, including History and Operation Center, call backend service ports rather than obtaining a second owner of a repository. Extract the smallest routing/ownership slice; do not rewrite every screen or duplicate repository workflows.
-
-Register implementations in `lib/di/app_components.dart`, expose initialized services through `AppRuntime`, and test with isolated composition. Transport/protocol mapping never belongs in widgets. The existing FRB path remains the only in-process native bridge. The remote adapter is a network boundary, not a second C ABI or platform-channel Git interface.
-
-The local SSH child is **Dart-owned** using `dart:io Process.start` with `runInShell: false`; a qualified owner drains stdout/stderr and owns exit/cancellation. This avoids introducing an unqualified native child reaper inside Flutter. It runs asynchronous I/O; frame decoding above the per-turn budget moves to an owned Dart worker isolate. The helper is a standalone Rust executable, so its shared Rust Git subprocess owner operates outside the Dart runtime. Test both situations through their actual runtime entry paths.
-
-Proposed Rust organization after the extraction proof:
+The client is Rust, in `rust-core/desktop/workbench/src/remote/` (this section describes it
+since the Rust and Qt Quick client replaced the first, Flutter client in 2026-11):
 
 ```text
-rust-workspace/
-  Cargo.toml / Cargo.lock              # workspace members, one locked graph
-  application/                        # headless GitLama session/use-case/projection library
-  remote-protocol/                     # serde wire DTOs, validation, fixtures
-  remote-helper/                       # Linux and macOS executable; stdin/stdout, stores, lifecycle
-rust-core/                            # existing FRB crate, depends on application/protocol
-lib/models/remote_workspace.dart
-lib/services/repository_backend.dart
-lib/services/remote_workspace_service.dart
-lib/repositories/remote_repository_session_repository.dart
-lib/repositories/impl/ssh_remote_repository_session_repository.dart
+QML views (qml/GitLama/Remote*.qml)
+  -> RemoteState (rust-core/desktop/qt: projection and commands)
+      -> RemoteWorkflows (connect, install, reconnect, access, open, initialize)
+          -> RemoteService (profiles, connections, ledger, reconnector)
+              -> Router / RoutedCalls (the session backend of the workspace)
+                  -> local sessions: gitlama_core::api -> gitlama_application use cases
+                  -> RemoteSessions (calls.rs: allowlisted reads, receipt-bound writes)
+                      -> Channel (frames, handshake, transactions, liveness)
+                          -> RemoteProcess (an owned OpenSSH child; reader, writer, stderr, wait)
+                              -> SSH stdin/stdout
+                                  -> gitlama-remote-helper (Rust; the application crate headless)
+                                      -> devmil_git::Repository + shared Git primitives
+                                      -> remote private identity/receipt/recovery store
 ```
 
-Final crate paths must be chosen in RW-02 after checking hook/packaging assumptions. Prefer a single root Cargo workspace that includes `rust-core`; the schematic above is organizational guidance, not permission to leave excluded manifests unverified. Every external source reached by the native hook must be an invalidating input. The helper must build without FRB/Flutter, keychain SDKs, OAuth/provider runtime or image renderer dependencies it does not use. Remote R1 image previews use an explicit unsupported state until bounded transport/decoder acceptance is added.
+`RemoteService` owns every connection and is the only owner of the remote network boundary.
+The workspace's session backend is `Router`: it dispatches by the authoritative session
+identity (remote session IDs start at 2^62), never by a displayed path, and keeps a
+retired connection routable so a disconnected tab still shows its last state. Other
+services, including History and the operation center, go through the same session calls
+rather than holding a second owner of a repository. Transport and protocol mapping never
+reach QML.
+
+The SSH child is owned by `RemoteProcess`, started without a shell, with its own threads
+draining stdout and stderr and owning exit and cancellation; frame decoding runs off the
+GUI thread. The helper is a standalone Rust executable that depends only on the
+application crate, without the image codecs, keychain or provider runtime.
+
+The Rust workspace layout is in [the architecture](../ARCHITECTURE.md): `contract`,
+`application` (with the generated `wire/` adapter), `remote-helper`, the core and the
+desktop crates.
 
 ## Host profile and SSH contract
 
@@ -115,9 +112,9 @@ Each session receives random helper-local session IDs and an opaque worktree/rep
 
 ## Wire format and limits
 
-Use a 4-byte unsigned big-endian payload length followed by UTF-8 JSON. The protocol crate and Dart codec share committed golden fixtures; generated FRB DTOs are not serialized as the wire contract. Reject invalid UTF-8, duplicate object keys, invalid envelopes and out-of-range values before allocating nested DTOs. Use closed command tags, with additive optional fields allowed only according to negotiated minor versions. Unknown commands return `unsupportedCommand`; unknown critical envelope versions close the channel.
+Use a 4-byte unsigned big-endian payload length followed by UTF-8 JSON. The helper and client tests share committed golden fixtures; in-process data types are not serialized as the wire contract. Reject invalid UTF-8, duplicate object keys, invalid envelopes and out-of-range values before allocating nested DTOs. Use closed command tags, with additive optional fields allowed only according to negotiated minor versions. Unknown commands return `unsupportedCommand`; unknown critical envelope versions close the channel.
 
-Integer IDs/revisions/offsets are decimal strings, losslessly mapped to Rust `u64`/Dart `BigInt` with range checks; random IDs are fixed lowercase hex strings. Unix native paths/ref names/content bytes are canonical padded base64 fields, never lossy UTF-8 JSON strings. Decode only after encoded-size validation; use escaped safe display strings separately. JSON arrays/objects have explicit cardinality/nesting limits as well as frame limits.
+Integer IDs/revisions/offsets are decimal strings, losslessly mapped to Rust `u64` with range checks; random IDs are fixed lowercase hex strings. Unix native paths/ref names/content bytes are canonical padded base64 fields, never lossy UTF-8 JSON strings. Decode only after encoded-size validation; use escaped safe display strings separately. JSON arrays/objects have explicit cardinality/nesting limits as well as frame limits.
 
 Every post-hello envelope carries `protocolMajor`, `connectionNonce`, `helperIncarnation`, `requestId`, `kind` and a typed payload. Session requests also carry session ID, workspace binding and client generation; publications carry helper repository revision and monotonically increasing publication sequence. Responses additionally carry the query/request revision they answer. The client rejects mismatches before changing UI or completing a different future. Counter overflow retires the connection rather than wrapping.
 
@@ -242,11 +239,11 @@ R1 disables open-terminal/editor/file-manager, external diff/merge/renderers, cu
 
 ## Security and compatibility gates
 
-All launch paths and wire commands are allowlisted. Remote content never becomes Dart code, executable markup, shell text, arbitrary config or unvalidated provider URLs. Trust the selected SSH account to execute the helper; do not describe the helper as a sandbox against that account. The same account can replace its helper/store, so verify binaries/ownership for supply-chain integrity without promising protection from a malicious account owner.
+All launch paths and wire commands are allowlisted. Remote content never becomes code, executable markup, shell text, arbitrary config or unvalidated provider URLs. Trust the selected SSH account to execute the helper; do not describe the helper as a sandbox against that account. The same account can replace its helper/store, so verify binaries/ownership for supply-chain integrity without promising protection from a malicious account owner.
 
 Protocol major must match; negotiated minor is the minimum supported version and gates optional fields/capabilities. R1 requires an exact approved helper build ID for the client release; a later compatibility matrix may relax it after fixture proof. A helper update never replaces running binaries or changes an active session's protocol. Connect the next session to a selected immutable build and keep rollback artifacts. Wrong architecture/glibc, missing executable permission, noexec storage, full disk, missing Git and unsupported Git version are separate setup states when structured evidence permits them; otherwise retain generic bootstrap failure.
 
-Verification covers golden codecs, fuzz/malformed bounds, real-Git fixtures, loopback SSH fault injection, embedded Flutter SSH ownership, three client installed artifacts and each advertised helper target. Test actual ProxyJump, watcher backend and filesystem behavior before making those claims. R0 measurements and local tests are not user-host or physical-platform acceptance.
+Verification covers golden codecs, fuzz/malformed bounds, real-Git fixtures, loopback SSH fault injection, the client's SSH process ownership, three client installed artifacts and each advertised helper target. Test actual ProxyJump, watcher backend and filesystem behavior before making those claims. R0 measurements and local tests are not user-host or physical-platform acceptance.
 
 ## Implementation record
 
@@ -254,12 +251,12 @@ Recorded 2026-10-05 against GitLama branch `t3code/3a25bd1e` and shared `devmil-
 
 | Concern | Built | Relation to the design |
 | --- | --- | --- |
-| Headless application backend (RW-02) | `gitlama_core` has a default `desktop` feature (Flutter bridge, keychain, image codecs, CLI forwarding, hosting). The helper links the core without it and executes the same `repository_session_*` API in its own process. | Replaces a separate `application` crate: one projection implementation serves both backends, so remote/local projection parity holds by construction. `cargo clippy -p gitlama_core --no-default-features` guards the headless build. |
-| Rust workspace | `rust-core/Cargo.toml` is the workspace root with members `.` (`gitlama_core`, the FRB facade and desktop-only services), `contract` (`gitlama_contract`, the bridge types), `application` (`gitlama_application`, domain, use cases and the wire adapter) and `remote-helper`; one lockfile. The Flutter build hook builds only the core package; the helper depends on the application crate without its image codecs, never on the core. | As designed; split into crates on 2026-10-12 (LAY-7). The helper, contract and application have version `0.0.0`; the helper's identity is the build ID. |
-| Wire DTOs (RW-03) | `tooling/remote_wire/generate.py` derives strict Rust and Dart codecs from the bridged types and the read allowlist (`tooling/remote_wire/surface.json`). Field names are the Dart names. | Generated rather than hand-written DTOs; R1 binds client and helper to one build ID, so the generated shape is the versioned contract of that build. `--check` keeps it fresh. |
-| Call seam | `NativeRepositorySessionRepository` calls a generated `RepositorySessionCalls` interface. Locally it forwards to the bridge; remotely `RemoteSessionCalls` encodes allowlisted reads and rejects every other call before sending. | The remote adapter reuses every existing model mapping. |
-| Location and authority (RW-02/08) | `NativePathIdentity.remote` (`RemoteAuthority`: profile, store, account) marks remote identities in Dart and Rust persistence; local path conversions in Rust (`native_path`, `native_identity_bytes`, open identity, view cache) and Dart (session open, view cache, icons) reject them. `RepositorySessionIdentity.backend` routes sessions; remote session IDs are allocated from 2^62 upward. | Realizes `WorkspaceLocation` without renaming every local key. Helper-local session IDs are the core's sequential IDs inside the helper process, which serves exactly one connection; the client never uses them as local IDs. |
-| Routing | `RepositoryBackendRouter` (services) implements every repository session interface and is the `RepositorySessionService` repository. | As designed (`BackendRouter`). Unsupported calls fail asynchronously with a typed `unsupported` failure. |
+| Headless application backend (RW-02) | The helper runs the application crate (`gitlama_application`) headless and executes the same `repository_session_*` use cases as the desktop, in its own process. | One projection implementation serves both backends, so remote and local projection parity holds by construction. `cargo clippy -p gitlama_application -p gitlama-remote-helper --no-default-features` guards the headless build. |
+| Rust workspace | `rust-core/Cargo.toml` is the workspace root with members `.` (`gitlama_core`, the core facade and desktop-only services), `contract` (`gitlama_contract`, the data types), `application` (`gitlama_application`, domain, use cases and the wire adapter), `remote-helper` and the desktop crates (`desktop/workbench`, `desktop/qt`, `desktop/app`); one lockfile. The helper depends on the application crate without its image codecs, never on the core or the desktop crates. | Split into crates on 2026-10-12 (LAY-7); the desktop crates joined with the Rust and Qt Quick client in 2026-11. The helper, contract and application have version `0.0.0`; the helper's identity is the build ID. |
+| Wire DTOs (RW-03) | `tooling/remote_wire/generate.py` derives strict Rust codecs from the contract types and the read allowlist (`tooling/remote_wire/surface.json`). Field names are the camelCase Rust names; enum values keep the names released helpers send. | Generated rather than hand-written DTOs; R1 binds client and helper to one build ID, so the generated shape is the versioned contract of that build. `--check` (part of `verify.sh`) keeps it fresh. |
+| Call seam | The workbench's `SessionCalls` trait carries every session call. Locally `LocalCalls` forwards to the core facade; remotely `RemoteSessions` (generated routing in `remote/calls.rs` from `tooling/remote_wire/generate_calls.py`) encodes allowlisted reads and receipt-bound writes and rejects every other call before sending. | The remote adapter reuses every service and projection of the desktop. |
+| Location and authority (RW-02/08) | `NativePathIdentity.remote` (`RemoteAuthority`: profile, store, account) marks remote identities in persistence; local path conversions (`native_path`, `native_identity_bytes`, open identity, the view and link caches) reject them. Remote session IDs are allocated from 2^62 upward. | Realizes `WorkspaceLocation` without renaming every local key. Helper-local session IDs are the core's sequential IDs inside the helper process, which serves exactly one connection; the client never uses them as local IDs. |
+| Routing | `remote::service::Router` with `backend::RoutedCalls` is the workspace's session backend; retired connections stay routable for the tabs they served. | As designed (`BackendRouter`). Unsupported calls fail asynchronously with a typed `unsupported` failure. |
 | Read-only Git policy | `IndexRefreshPolicy::PrivateOnly` (new in `devmil-git`) keeps status stat-cache refreshes private; commit and comparison diffs pass `--no-textconv` (new); the helper sets `GIT_NO_LAZY_FETCH=1` and `GIT_TERMINAL_PROMPT=0` for every child. | As designed; the two shared changes were published upstream. |
 | Protocol stdio isolation | The helper moves the protocol to private descriptors and points fd 0 at `/dev/null` and fd 1 at stderr before any work. | Strengthens "protocol is the only stdout writer". |
 | Workspace binding | SHA-256 over the store ID and device, inode and canonical bytes of the worktree root and common Git directory. Bindings are remembered for the running app and checked on reopen. | Bindings are not persisted, so the first open after an application restart establishes a new binding instead of detecting a replaced repository. |

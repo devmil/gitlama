@@ -1,7 +1,7 @@
 name: Diagnose Windows IPC credential storage
 
 # Compiles and tests the production Windows IPC and protocol modules through
-# tests/native_windows_ipc, without a Flutter build. Use it when the release's
+# tests/native_windows_ipc, without an application build. Use it when the release's
 # Windows credential preflight fails.
 on:
   workflow_dispatch:

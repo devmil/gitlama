@@ -37,7 +37,7 @@ Meridian is GitLama's design language: a dense, keyboard-first Git workspace tha
 
 These are what give GitLama its own character. Keep them.
 
-- **Compass.** A pill in the title bar with the repo name, the branch in `polar-ink` and a sync readout (↑2 ↓6). While an operation runs, a 2px `polar` progress rule runs along its bottom edge and the text says the verb ("Fetching origin…"). Click it for the repository's details: where it lives, its path, branch, upstream, changes and running work. The Commands button beside it, or ⌘P / Ctrl P, opens the palette to run any command. The Logbook hangs off its right edge.
+- **Compass.** A pill in the title bar with the repo name, the branch in `polar-ink` and a sync readout (↑2 ↓6). While an operation runs, a soft `accent-soft` wash fills the pill behind its text and the text says the verb ("Fetching origin…"). Click it for the repository's details: where it lives, its path, branch, upstream, changes and running work. The Commands button beside it, or ⌘P / Ctrl P, opens the palette to run any command. The Logbook hangs off its right edge.
 - **Spline graph.** Lanes are 2px strokes, `size-lane` apart. A lane changes column along a curve, never a diagonal (the "spline"). Commit nodes are 8px rings in the lane colour, cut out of `pane`. HEAD is a filled node with a 2px `pane` gap and an outer ring. Merges are a ring with a centre dot. Stash entries are dashed rings. Hovering a node for 400ms follows that commit's first-parent line and fades every other lane to `ink-faint`.
 - **Tracking pairs.** When a local branch and its upstream point at the same commit, they share one chip: `● main ⟷ origin`. When they diverge, each gets its own chip and the local one shows ↑/↓. Tags are notched chips in `tag-bg`. HEAD never gets its own chip: the checked-out branch's chip is solid `ink` with `pane` text.
 - **Status glyphs.** File state is a 16px tile with a letter (M A D R C U ! ?) on a tint of its status colour. Letter and colour always come together, so no state relies on colour alone.
@@ -68,7 +68,7 @@ These are what give GitLama its own character. Keep them.
 
 **Depth.** Two levels only. `shadow-pane` for islands and `shadow-float` for anything that floats (popover, menu, Logbook, palette, dialog). Controls get at most a 1px lip (`shadow-control`). No inner shadows, no gradients.
 
-**Motion.** Quick and physical. Hover and press: 80ms. Selection bar move: 120ms ease-out. Popover and palette enter: 140ms, fading in while rising 4px. Island resize: follows the pointer with no easing. The Compass progress rule is indeterminate until Git reports progress, then determinate. Honour Reduce Motion by replacing movement with a fade.
+**Motion.** Quick and physical. Hover and press: 80ms. Selection bar move: 120ms ease-out. Popover and palette enter: 140ms, fading in while rising 4px. Island resize: follows the pointer with no easing. The Compass activity wash tints the pill while work runs, sweeps a band across it until Git reports progress, then fills to it; when the work ends it fills, flashes one highlight across and fades. Honour Reduce Motion by replacing movement with a fade.
 
 **States** (every control): rest, hover (`pane-hover` or `ground-hover`), pressed (hover plus 4% `ink`), focus (2px `focus` ring, 1px offset, `radius-md`), disabled (`ink-faint` label, no hover), loading (label kept, spinner replaces the icon), error (`danger` edge plus message below). Keyboard focus is always visible. Mouse focus shows the ring only on text fields.
 

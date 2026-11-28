@@ -1,0 +1,4 @@
+module GitLamaNative
+typeinfo plugin.qmltypes
+depends QtQuick
+import QtQuick

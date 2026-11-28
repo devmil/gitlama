@@ -358,7 +358,7 @@
     {
       "name": "summaryCharacters",
       "value": 256,
-      "doc": "Unicode scalar values (Dart runes, Rust chars) of a pending operation's summary."
+      "doc": "Unicode scalar values (Rust chars) of a pending operation's summary."
     },
     {
       "name": "pageRows",

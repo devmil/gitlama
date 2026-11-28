@@ -5,23 +5,39 @@ edition = "2021"
 rust-version = "1.97.1"
 license = "MIT"
 publish = false
-description = "GitLama's desktop library: the flutter_rust_bridge facade and desktop-only services."
+description = "GitLama's desktop library: the in-process facade and desktop-only services."
 
-# Three layers and the headless remote helper share this lockfile:
+# The shared layers, the headless remote helper and the Qt desktop application share
+# this lockfile:
 # - contract (gitlama_contract): the bridge types, data only;
 # - application (gitlama_application): domain, use cases and the remote wire adapter;
-# - this package (gitlama_core): the FRB facade and desktop-only services, the library
-#   Flutter loads;
-# - remote-helper: the headless helper, built on the application crate alone.
-# The Flutter build hook builds only this package, so the helper never enters the desktop
-# bundle.
+# - this package (gitlama_core): the in-process facade (`api`) and desktop-only services;
+# - remote-helper: the headless helper, built on the application crate alone;
+# - desktop/workbench: the desktop application's services (workspace, sessions,
+#   history, changes, inspector, hosting, remote workspaces), independent of Qt;
+# - desktop/qt: the Qt Bridges QObjects and item models;
+# - desktop/app: the composition root and the `gitlama` executable.
+# The helper never depends on the desktop crates, so it never enters the desktop bundle.
 [workspace]
-members = [".", "contract", "application", "remote-helper"]
+members = [
+    ".",
+    "contract",
+    "application",
+    "remote-helper",
+    "desktop/workbench",
+    "desktop/qt",
+    "desktop/app",
+]
 
 [workspace.dependencies]
+gitlama_core = { path = "." }
+gitlama-workbench = { path = "desktop/workbench" }
+gitlama-qt = { path = "desktop/qt" }
+qtbridge = "=0.2.0"
+futures = { version = "0.3", default-features = false, features = ["std", "executor", "async-await"] }
 gitlama_contract = { path = "contract" }
 gitlama_application = { path = "application", default-features = false }
-devmil-git = { git = "https://github.com/devmil/devmil-rust-git", rev = "88e6c995ed77b465e028db649ab591de1c230fdd", features = ["hosting", "syntax-highlighting"] }
+devmil-git = { git = "https://github.com/devmil/devmil-rust-git", rev = "0183b7dba3e2d8c84b5b8945bb140ed0b018531c", features = ["hosting", "syntax-highlighting"] }
 cap-std = "=4.0.2"
 cap-primitives = "=4.0.3"
 serde = { version = "1", features = ["derive"] }
@@ -49,11 +65,10 @@ windows = { version = "=0.62.2", default-features = false, features = [
 ] }
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 devmil-logging = { git = "https://github.com/devmil/devmil-logging", rev = "ddd8873c5f161574ad08757f0a9380fbcf2f5229" }
-flutter_rust_bridge = { version = "=2.13.0-beta.5" }
 gitlama_contract = { workspace = true }
 # The desktop library decodes images with the application's codecs.
 gitlama_application = { workspace = true, features = ["image-codecs"] }
@@ -75,10 +90,6 @@ nix = { workspace = true }
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true }
 
-[lints.rust]
-# flutter_rust_bridge's `frb` attribute expands to this cfg.
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(frb_expand)"] }
-
 [profile.release]
 lto = true
 # Keep crash symbols until the packaging step retains matching debug files.
@@ -92,3 +103,14 @@ strip = false
 inherits = "dev"
 debug = false
 strip = true
+
+# Fast local builds of the desktop app that still run like release.
+[profile.dev-opt]
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
+debug = 1
+
+[patch.crates-io]
+qtbridge-interfaces = { path = "third_party/qtbridge-interfaces" }

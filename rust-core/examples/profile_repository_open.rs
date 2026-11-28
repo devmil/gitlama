@@ -11,9 +11,9 @@ fn main() {
         .expect("open failed");
     println!("open_ms={}", start.elapsed().as_millis());
     let t = Instant::now();
-    let preview = repository_session_history_load(session.session_id, 1, false, 512, false)
-        .page
-        .expect("preview failed");
+    let loaded = repository_session_history_load(session.session_id, 1, false, 512, false);
+    println!("preview_failure={:?}", loaded.failure);
+    let preview = loaded.page.expect("preview failed");
     println!("preview_ms={}", t.elapsed().as_millis());
     let t = Instant::now();
     let result =

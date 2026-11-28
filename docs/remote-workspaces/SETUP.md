@@ -82,12 +82,13 @@ Changing the host's SSH alias or confirming a changed identity turns it off agai
 
 ### Builds from source
 
-Builds from source (`flutter run`, debug or release mode) bundle helpers of their own: the build
-hook builds them from the checkout into `build/remote-helper/<platform>/` with the stripped
-`helper-dev` profile, and **Install helper** offers them like in a release. The application looks
-there only when it runs from that `build` directory and carries no packaged helper.
+Builds from source (`scripts/run-dev.sh`, debug or `--release`) bundle helpers of their own:
+`scripts/build_dev_helpers.py` builds them from the checkout into
+`build/remote-helper/<platform>/` with the stripped `helper-dev` profile, and **Install helper**
+offers them like in a release. The application looks there only when it runs from the
+checkout's `rust-core/target` and carries no packaged helper.
 
-- On Linux the hook builds the Linux x86_64 helper with the Rust toolchain alone, and the Linux
+- On Linux the script builds the Linux x86_64 helper with the Rust toolchain alone, and the Linux
   arm64 helper when `rustup target add aarch64-unknown-linux-gnu` was run and a cross linker
   (`aarch64-linux-gnu-gcc` with its C library) or cargo-zigbuild is installed.
 - On a Mac it builds the macOS helper for the Mac's own processor natively, and both Linux
@@ -100,7 +101,7 @@ there only when it runs from that `build` directory and carries no packaged help
   ```
 
 A helper that could not be built is skipped, and `build/remote-helper/build-failure-<platform>.txt`
-says why; the application still builds and shows the manual location for that platform. A bundle
+says why; the application still runs and shows the manual location for that platform. A bundle
 of the same helper version built on another computer sharing the checkout is offered as well;
 the helper ID, platform and SHA-256 are checked either way. A checkout that changes the helper
 raises its version (see "Remote helper compatibility" in `AGENTS.md`), so hosts install the new

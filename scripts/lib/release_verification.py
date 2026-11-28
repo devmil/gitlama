@@ -16,7 +16,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit
 
 from .package_contract import (
-    REMOTE_HELPER_TARGETS, TARGETS, RemoteHelperTarget, Version, artifact_name,
+    LEGACY_TARGETS, REMOTE_HELPER_TARGETS, TARGETS, RemoteHelperTarget, Version, artifact_name,
 )
 from .release_manifest import (
     CHANNELS, MAX_RELEASES_PER_CHANNEL, MINIMUM_SYSTEM, TRUST, UPDATE_TARGETS,
@@ -149,9 +149,9 @@ def _release(value: Any) -> tuple[dict[str, Any], list[VerifiedAsset]]:
     for note in notes:
         _text(note, "release note", 4096)
     records = value.get("assets")
-    if not isinstance(records, list) or len(records) != len(TARGETS):
+    if not isinstance(records, list) or len(records) not in (len(TARGETS), len(LEGACY_TARGETS)):
         raise ValueError("release does not contain the exact target set")
-    expected = set(TARGETS)
+    expected = set(TARGETS) if len(records) == len(TARGETS) else set(LEGACY_TARGETS)
     assets: list[VerifiedAsset] = []
     seen: set[tuple[str, str, str]] = set()
     for record in records:

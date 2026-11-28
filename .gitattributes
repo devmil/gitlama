@@ -7,17 +7,18 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.ps1 text eol=crlf
-# Flutter generators emit LF; keep release checkouts clean on Windows too.
-/lib/l10n/app_localizations*.dart text eol=lf
-/linux/flutter/generated* text eol=lf
-/windows/flutter/generated* text eol=lf
-/macos/Flutter/GeneratedPluginRegistrant.swift text eol=lf
+# Generated sources emit LF; keep release checkouts clean on Windows too.
+*.qml text eol=lf
+*.rs text eol=lf
+*.arb text eol=lf
 # Generated notices preserve upstream text and Markdown hard line breaks.
 # Keep LF-stable bytes; intentional trailing spaces are not source-code defects.
 assets/licenses/*.md text eol=lf whitespace=-blank-at-eol
 *.png binary
 *.ico binary
 *.woff2 binary
+*.ttf binary
+*.otf binary
 *.dmg binary
 *.msi binary
 *.AppImage binary

@@ -1,7 +1,7 @@
 # GitLama
 
 GitLama is a desktop Git client for macOS, Linux and Windows, built with
-Flutter and Rust. It works with the Git you already have installed: your
+Rust and Qt Quick. It works with the Git you already have installed: your
 configuration, hooks, filters, credential helpers and Git LFS keep working as
 they do on the command line.
 
@@ -28,25 +28,20 @@ The application executable also accepts a single path or `--open <path>` on desk
 
 ## Build from source
 
-You need the Flutter version pinned in `.fvmrc` ([FVM](https://fvm.app) picks it
-up automatically), Rust 1.97.1 (`rust-toolchain.toml`) and the desktop toolchain
-of your platform (Xcode, Visual Studio with C++ desktop tools, or a Linux C/C++
-toolchain with GTK 3 development files). Then run:
+You need Rust 1.97.1 (`rust-toolchain.toml`), Qt 6.11 with Qt Quick (`qmake6` on
+the `PATH`, or `QMAKE` pointing at it) and the C/C++ toolchain of your platform
+(Xcode, Visual Studio with C++ desktop tools, or a Linux toolchain with
+pkg-config and OpenGL headers). Then run:
 
 ```sh
-flutter pub get --enforce-lockfile
 ./scripts/verify.sh
-flutter run -d macos
+./scripts/run-dev.sh
 ```
 
-Use `-d linux` or `-d windows` on those hosts. The native-assets hook builds the
-Rust core automatically. After a Rust change, fully stop and restart the app.
-
-Bridge regeneration requires `flutter_rust_bridge_codegen` 2.13.0-beta.5:
-
-```sh
-./scripts/generate-rust-bridge.sh
-```
+`run-dev.sh` builds the application and loads the QML from the checkout, so a
+QML change needs only a restart; `--release` builds an optimized binary. Set
+`GITLAMA_PROFILE_ROOT` to run with a separate profile beside an installed
+GitLama. [Packaging](docs/PACKAGING.md) builds the release artifacts.
 
 GitLama builds on three libraries from the same author, each pinned to an exact
 commit: [devmil-git](https://github.com/devmil/devmil-rust-git) (Git

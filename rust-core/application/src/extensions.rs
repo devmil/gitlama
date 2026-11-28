@@ -906,9 +906,95 @@ mod session_tests {
         )
         .pointer
         .is_none());
+        let lfs_session = if initial.lfs_available {
+            None
+        } else {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+
+                let actual_git =
+                    std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+                        .map(|directory| directory.join("git"))
+                        .find(|candidate| candidate.is_file())
+                        .unwrap();
+                let wrapper = fixture.0.join("git-with-fake-lfs");
+                let escaped_git = actual_git.to_string_lossy().replace('\'', "'\"'\"'");
+                let script = format!(
+                    r#"#!/bin/sh
+workdir="$PWD"
+prev=""
+found_lfs=""
+subcmd=""
+pattern=""
+for arg in "$@"; do
+  if [ "$prev" = "-C" ]; then
+    workdir="$arg"
+    prev=""
+    continue
+  fi
+  if [ "$prev" = "-c" ]; then
+    prev=""
+    continue
+  fi
+  if [ -z "$found_lfs" ]; then
+    case "$arg" in
+      -C|-c) prev="$arg" ;;
+      -*) ;;
+      lfs) found_lfs=1 ;;
+      *) break ;;
+    esac
+  elif [ -z "$subcmd" ]; then
+    subcmd="$arg"
+  elif [ "$arg" != "--" ] && [ -z "$pattern" ]; then
+    pattern="$arg"
+  fi
+done
+if [ -n "$found_lfs" ]; then
+  case "$subcmd" in
+    version|--version) echo "git-lfs/3.0.0 (fake test shim)"; exit 0 ;;
+    ls-files) echo '{{"files":[]}}'; exit 0 ;;
+    track)
+      printf '%s filter=lfs diff=lfs merge=lfs -text\n' "$pattern" >> "$workdir/.gitattributes"
+      exit 0 ;;
+    untrack)
+      if [ -f "$workdir/.gitattributes" ]; then
+        grep -Fv "$pattern filter=lfs" "$workdir/.gitattributes" > "$workdir/.gitattributes.tmp" || true
+        mv "$workdir/.gitattributes.tmp" "$workdir/.gitattributes"
+      fi
+      exit 0 ;;
+    *) exit 0 ;;
+  esac
+fi
+exec '{escaped_git}' "$@"
+"#
+                );
+                fs::write(&wrapper, script).unwrap();
+                fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o700)).unwrap();
+                let wrapped = repository_session_open_with_options(
+                    fixture.0.clone(),
+                    1_216,
+                    RepositoryOptions {
+                        git_executable: wrapper.into_os_string(),
+                        watch: false,
+                        ..RepositoryOptions::default()
+                    },
+                    ActivityStore::default(),
+                )
+                .session
+                .unwrap();
+                wait_for_ready(&wrapped);
+                Some(wrapped)
+            }
+            #[cfg(not(unix))]
+            {
+                None
+            }
+        };
+        let active_lfs = lfs_session.as_ref().unwrap_or(&session);
         let tracked = repository_session_extension_execute(
-            session.session_id,
-            session.generation,
+            active_lfs.session_id,
+            active_lfs.generation,
             NativeExtensionMutationRequest {
                 kind: NativeExtensionMutationKind::LfsTrack,
                 path: None,
@@ -924,8 +1010,8 @@ mod session_tests {
                 .contains("*.bin filter=lfs")
         );
         let untracked = repository_session_extension_execute(
-            session.session_id,
-            session.generation,
+            active_lfs.session_id,
+            active_lfs.generation,
             NativeExtensionMutationRequest {
                 kind: NativeExtensionMutationKind::LfsUntrack,
                 path: None,
@@ -940,6 +1026,9 @@ mod session_tests {
                 .unwrap()
                 .contains("*.bin filter=lfs")
         );
+        if let Some(wrapped) = lfs_session {
+            assert!(repository_session_close(wrapped.session_id, wrapped.generation).accepted);
+        }
         assert!(repository_session_close(session.session_id, session.generation).accepted);
         let _ = fs::remove_dir_all(linked);
     }

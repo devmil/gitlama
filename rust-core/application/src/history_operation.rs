@@ -17,7 +17,8 @@ use devmil_git::loading::conflict_prediction::{
 use devmil_git::loading::refs::RefsSectionData;
 use devmil_git::merge::local_changes::{local_change_overlap, LocalChangeOverlap};
 use devmil_git::merge::{
-    cherry_pick_arguments, merge_arguments_with_mode, revert_many_arguments_with_mode, MergeMode,
+    cherry_pick_arguments, merge_arguments_with_message, merge_arguments_with_mode,
+    revert_many_arguments_with_mode, MergeMode, MergeSourceName,
 };
 use devmil_git::process::{ActivityGitRunner, GitProcessCommand, ProcessArgument};
 use devmil_git::status::{BranchHead, OperationKind, RepositoryStatus, WorkingTreeState};
@@ -643,28 +644,28 @@ fn build_plan(
             NativeHistoryMutationFailureKind::Read
         }
     })?;
+    // Which kind of reference the merge source names, checked against the commit to merge.
+    let mut source_kind = None;
     if request.kind == NativeHistoryMutationKind::Merge {
         if let Some(source_name) = request.source_name.as_ref() {
-            let matches_target = snapshot.refs.iter().any(|section| match section {
-                RefsSectionData::Branches { rows, .. } => rows.iter().any(|row| {
-                    row.target == targets[0]
-                        && row
-                            .id
-                            .as_bytes()
-                            .strip_prefix(b"refs/heads/")
-                            .is_some_and(|name| name == source_name)
-                }),
-                RefsSectionData::Remotes { references, .. } => references.iter().any(|row| {
-                    row.target == targets[0]
-                        && row
-                            .id
-                            .as_bytes()
-                            .strip_prefix(b"refs/remotes/")
-                            .is_some_and(|name| name == source_name)
-                }),
-                _ => false,
+            let names = |id: &[u8], prefix: &[u8]| {
+                id.strip_prefix(prefix)
+                    .is_some_and(|name| name == source_name)
+            };
+            source_kind = snapshot.refs.iter().find_map(|section| match section {
+                RefsSectionData::Branches { rows, .. } => rows
+                    .iter()
+                    .any(|row| row.target == targets[0] && names(row.id.as_bytes(), b"refs/heads/"))
+                    .then_some(MergeSourceKind::Branch),
+                RefsSectionData::Remotes { references, .. } => references
+                    .iter()
+                    .any(|row| {
+                        row.target == targets[0] && names(row.id.as_bytes(), b"refs/remotes/")
+                    })
+                    .then_some(MergeSourceKind::RemoteTrackingBranch),
+                _ => None,
             });
-            if !matches_target {
+            if source_kind.is_none() {
                 return Err(NativeHistoryMutationFailureKind::Stale);
             }
         }
@@ -700,14 +701,25 @@ fn build_plan(
         return Err(NativeHistoryMutationFailureKind::PublicationConfirmationRequired);
     }
     let arguments = match request.kind {
-        NativeHistoryMutationKind::Merge => merge_arguments_with_mode(
-            targets[0].as_str(),
-            match request.merge_mode {
+        NativeHistoryMutationKind::Merge => {
+            let mode = match request.merge_mode {
                 NativeHistoryMergeMode::FastForwardIfPossible => MergeMode::FastForwardIfPossible,
                 NativeHistoryMergeMode::FastForwardOnly => MergeMode::FastForwardOnly,
                 NativeHistoryMergeMode::NoFastForward => MergeMode::NoFastForward,
-            },
-        ),
+            };
+            // Git is given the exact commit that was checked, so it would name the merge
+            // after the object ID; the message `git merge <name>` writes keeps the name.
+            let message =
+                source_kind
+                    .zip(request.source_name.as_deref())
+                    .and_then(|(kind, name)| {
+                        merge_message(&facts.worktree, &targets[0], kind, name, activity)
+                    });
+            match message {
+                Some(message) => merge_arguments_with_message(&targets[0], mode, &message),
+                None => merge_arguments_with_mode(targets[0].as_str(), mode),
+            }
+        }
         NativeHistoryMutationKind::CherryPick => cherry_pick_arguments(&targets),
         NativeHistoryMutationKind::Revert => {
             revert_many_arguments_with_mode(&targets, request.no_commit)
@@ -842,6 +854,38 @@ fn validate_live_preconditions(
 
 fn history_facts(snapshot: &RepositorySnapshot) -> Option<HistoryFacts> {
     crate::domain::facts::BranchFacts::capture(snapshot)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum MergeSourceKind {
+    Branch,
+    RemoteTrackingBranch,
+}
+
+/// The message `git merge <name>` would write, or None when Git cannot produce it (the merge
+/// then names the object ID, as before).
+fn merge_message(
+    worktree: &Path,
+    commit: &ObjectId,
+    kind: MergeSourceKind,
+    name: &[u8],
+    activity: &ActivityStore,
+) -> Option<String> {
+    let name = std::str::from_utf8(name).ok()?;
+    let source = match kind {
+        MergeSourceKind::Branch => MergeSourceName::Branch(name),
+        MergeSourceKind::RemoteTrackingBranch => MergeSourceName::RemoteTrackingBranch(name),
+    };
+    crate::git_probe::run_published_probe(activity, |executor| {
+        devmil_git::probes::merge_message(
+            std::ffi::OsStr::new("git"),
+            worktree,
+            commit,
+            source,
+            executor,
+        )
+    })
+    .ok()
 }
 
 fn is_ancestor(
@@ -1131,7 +1175,13 @@ mod session_tests {
         )
         .preview
         .unwrap();
-        assert_eq!(merge.arguments, ["merge", "--no-edit", "--no-ff", &second]);
+        // The exact commit is merged under its branch's name, as `git merge topic` would.
+        assert_eq!(
+            merge.arguments[..5],
+            ["merge", "--no-edit", "--no-ff", "--no-log", "-m"]
+        );
+        assert!(merge.arguments[5].starts_with("Merge branch 'topic'"));
+        assert_eq!(merge.arguments[6], second);
         let merged = repository_session_history_mutation_execute(
             session.session_id,
             session.generation,
@@ -1147,6 +1197,11 @@ mod session_tests {
             .split_whitespace()
             .count(),
             3
+        );
+        assert!(
+            String::from_utf8(transfer_git(&fixture.0, &["log", "-1", "--format=%s"]))
+                .unwrap()
+                .starts_with("Merge branch 'topic'")
         );
         let contained = repository_session_history_mutation_preview(
             session.session_id,

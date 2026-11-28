@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build one unsigned native package from a complete Flutter release bundle."""
+"""Build one unsigned native package from the Rust/QML release build."""
 
 from __future__ import annotations
 
@@ -78,33 +78,159 @@ def require_file(path: Path, label: str) -> None:
         raise RuntimeError(f"{label} is missing")
 
 
-def require_release_bundle(platform_name: str) -> Path:
+SPARKLE_VERSION = "2.10.0"
+SPARKLE_SHA256 = "c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c"
+MACOS_MINIMUM_SYSTEM = "13.0"
+
+
+def bundle_path(platform_name: str) -> Path:
     if platform_name == "macos":
-        bundle = ROOT / "build/macos/Build/Products/Release/GitLama.app"
+        return ROOT / "build/macos/GitLama.app"
+    if platform_name == "windows":
+        return ROOT / "build/windows/bundle"
+    return ROOT / "build/linux/bundle"
+
+
+def require_release_bundle(platform_name: str) -> Path:
+    bundle = bundle_path(platform_name)
+    if platform_name == "macos":
         require_file(bundle / "Contents/MacOS/GitLama", "macOS executable")
-        require_file(
-            bundle / "Contents/Frameworks/gitlama_core.framework/gitlama_core",
-            "bundled Rust framework",
-        )
-        require_file(
-            bundle
-            / "Contents/Frameworks/App.framework/Resources/flutter_assets/NOTICES.Z",
-            "Flutter runtime license registry",
-        )
+        require_file(bundle / "Contents/Info.plist", "macOS bundle information")
+        require_file(bundle / "Contents/Frameworks/QtQuick.framework/QtQuick", "bundled Qt Quick")
+        require_file(bundle / "Contents/Frameworks/Sparkle.framework/Sparkle", "Sparkle framework")
         return bundle
     if platform_name == "windows":
-        bundle = ROOT / "build/windows/x64/runner/Release"
         require_file(bundle / "gitlama.exe", "Windows executable")
-        require_file(bundle / "gitlama_core.dll", "bundled Rust library")
-        require_file(bundle / "data/flutter_assets/AssetManifest.bin", "Flutter asset manifest")
-        require_file(bundle / "data/flutter_assets/NOTICES.Z", "Flutter runtime license registry")
+        require_file(bundle / "Qt6Quick.dll", "bundled Qt Quick")
+        if not (bundle / "qml").is_dir():
+            raise RuntimeError("bundled QML modules are missing")
         return bundle
-    bundle = ROOT / "build/linux/x64/release/bundle"
     require_file(bundle / "gitlama", "Linux executable")
-    require_file(bundle / "lib/libgitlama_core.so", "bundled Rust library")
-    require_file(bundle / "data/flutter_assets/AssetManifest.bin", "Flutter asset manifest")
-    require_file(bundle / "data/flutter_assets/NOTICES.Z", "Flutter runtime license registry")
+    require_file(bundle / "qt.conf", "bundled Qt configuration")
+    if not any((bundle / "lib").glob("libQt6Quick.so*")):
+        raise RuntimeError("bundled Qt Quick is missing")
     return bundle
+
+
+def cargo_build(target: str | None = None) -> Path:
+    arguments = ["cargo", "build", "--release", "--locked",
+                 "--manifest-path", ROOT / "rust-core/Cargo.toml", "-p", "gitlama"]
+    if target:
+        arguments += ["--target", target]
+    run(*arguments)
+    directory = ROOT / "rust-core/target" / (target or "") / "release"
+    return directory / ("gitlama.exe" if platform.system() == "Windows" else "gitlama")
+
+
+def qt_tool(name: str) -> str:
+    qmake = os.environ.get("QMAKE") or shutil.which("qmake6") or shutil.which("qmake")
+    if qmake:
+        candidate = Path(output(qmake, "-query", "QT_INSTALL_BINS")) / name
+        for path in (candidate, candidate.with_suffix(".exe")):
+            if path.is_file():
+                return str(path)
+    found = shutil.which(name)
+    if not found:
+        raise RuntimeError(f"{name} not found")
+    return found
+
+
+def build_linux() -> Path:
+    binary = cargo_build()
+    bundle = bundle_path("linux")
+    run(sys.executable, ROOT / "scripts/stage_linux_bundle.py", "--binary", binary, "--output", bundle)
+    return bundle
+
+
+def sparkle_framework() -> Path:
+    """The pinned Sparkle release, downloaded and verified once into build/sparkle."""
+    directory = ROOT / "build/sparkle" / SPARKLE_VERSION
+    framework = directory / "Sparkle.framework"
+    if framework.is_dir():
+        return framework
+    directory.mkdir(parents=True, exist_ok=True)
+    archive = directory / f"Sparkle-{SPARKLE_VERSION}.tar.xz"
+    run("curl", "--fail", "--location", "--proto", "=https", "--tlsv1.2", "--silent",
+        "--show-error", "--output", archive,
+        "https://github.com/sparkle-project/Sparkle/releases/download/"
+        f"{SPARKLE_VERSION}/Sparkle-{SPARKLE_VERSION}.tar.xz")
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != SPARKLE_SHA256:
+        archive.unlink()
+        raise RuntimeError("Sparkle archive checksum mismatch")
+    run("tar", "-xJf", archive, "-C", directory, "./Sparkle.framework", "./bin")
+    archive.unlink()
+    return framework
+
+
+def build_macos(version: Version) -> Path:
+    os.environ["MACOSX_DEPLOYMENT_TARGET"] = MACOS_MINIMUM_SYSTEM
+    binary = cargo_build("aarch64-apple-darwin")
+    app = bundle_path("macos")
+    if app.exists():
+        shutil.rmtree(app)
+    (app / "Contents/MacOS").mkdir(parents=True)
+    (app / "Contents/Resources").mkdir()
+    shutil.copy2(binary, app / "Contents/MacOS/GitLama")
+    template = (ROOT / "packaging/macos/Info.plist.in").read_text(encoding="utf-8")
+    (app / "Contents/Info.plist").write_text(
+        template.replace("@VERSION@", version.apple_bundle_short_version())
+        .replace("@BUILD@", str(version.build))
+        .replace("@MINIMUM_SYSTEM@", MACOS_MINIMUM_SYSTEM),
+        encoding="utf-8",
+    )
+    (app / "Contents/PkgInfo").write_text("APPL????", encoding="ascii")
+    with tempfile.TemporaryDirectory(prefix="gitlama-icon-") as temporary_directory:
+        iconset = Path(temporary_directory) / "AppIcon.iconset"
+        iconset.mkdir()
+        icons = ROOT / "packaging/macos/AppIcon.appiconset"
+        for size in (16, 32, 128, 256, 512):
+            shutil.copy2(icons / f"app_icon_{size}.png", iconset / f"icon_{size}x{size}.png")
+            shutil.copy2(icons / f"app_icon_{size * 2}.png", iconset / f"icon_{size}x{size}@2x.png")
+        run("iconutil", "-c", "icns", "-o", app / "Contents/Resources/AppIcon.icns", iconset)
+    run(qt_tool("macdeployqt"), app, f"-qmldir={ROOT / 'qml/GitLama'}",
+        f"-qmlimport={ROOT / 'qml'}", "-always-overwrite")
+    # macdeployqt copies every SQL driver; GitLama uses no Qt SQL.
+    shutil.rmtree(app / "Contents/PlugIns/sqldrivers", ignore_errors=True)
+    # Development builds also look in Qt's own lib folder; the bundle must not.
+    executable = app / "Contents/MacOS/GitLama"
+    qmake = os.environ.get("QMAKE") or shutil.which("qmake6") or shutil.which("qmake")
+    if qmake:
+        subprocess.run(["install_name_tool", "-delete_rpath", output(qmake, "-query", "QT_INSTALL_LIBS"),
+                        str(executable)], check=False, stderr=subprocess.DEVNULL)
+    if "@executable_path/../Frameworks" not in output("otool", "-l", executable):
+        raise RuntimeError("the macOS executable lacks the Frameworks rpath")
+    run("ditto", sparkle_framework(), app / "Contents/Frameworks/Sparkle.framework")
+    copy_legal_inventory(app / "Contents/Resources/licenses")
+    # macdeployqt sealed the bundle before the SQL drivers left and Sparkle and
+    # the licenses arrived; a stale seal makes macOS call a downloaded copy damaged.
+    seal_macos_adhoc(app)
+    return app
+
+
+def build_windows() -> Path:
+    binary = cargo_build()
+    bundle = bundle_path("windows")
+    if bundle.exists():
+        shutil.rmtree(bundle)
+    bundle.mkdir(parents=True)
+    shutil.copy2(binary, bundle / "gitlama.exe")
+    run(qt_tool("windeployqt"), "--release", "--qmldir", ROOT / "qml/GitLama",
+        "--qmlimport", ROOT / "qml", "--no-translations", "--no-system-d3d-compiler",
+        bundle / "gitlama.exe")
+    # The offscreen platform lets the package smoke test and qualification
+    # render the first window on a runner without a desktop session.
+    offscreen = Path(output(os.environ.get("QMAKE") or qt_tool("qmake"), "-query", "QT_INSTALL_PLUGINS"))
+    shutil.copy2(offscreen / "platforms/qoffscreen.dll", bundle / "platforms/qoffscreen.dll")
+    copy_legal_inventory(bundle / "licenses")
+    return bundle
+
+
+def build_release_bundle(platform_name: str, version: Version) -> Path:
+    if platform_name == "macos":
+        return build_macos(version)
+    if platform_name == "windows":
+        return build_windows()
+    return build_linux()
 
 
 REMOTE_HELPER = "gitlama-remote-helper"
@@ -235,7 +361,7 @@ def copy_legal_inventory(destination: Path) -> None:
         ROOT / "LICENSE",
         ROOT / "THIRD_PARTY_NOTICES.md",
         ROOT / "assets/licenses/RUST-DEPENDENCIES.md",
-        ROOT / "assets/licenses/FLUTTER-DEPENDENCIES.md",
+        ROOT / "assets/licenses/QT-RUNTIME.md",
         ROOT / "assets/licenses/SYNTAX-GRAMMARS.md",
     ):
         require_file(source, source.name)
@@ -264,7 +390,12 @@ def thin_macos_arm64(app: Path) -> None:
 
     # Local candidates are deliberately ad-hoc signed. Hardened runtime belongs
     # to the later Developer ID signing transaction; enabling it on only the
-    # outer ad-hoc signature makes macOS reject Flutter's nested framework.
+    # outer ad-hoc signature makes macOS reject the nested Qt frameworks.
+    seal_macos_adhoc(app)
+
+
+def seal_macos_adhoc(app: Path) -> None:
+    """Signs the finished bundle ad hoc and proves the seal covers what it holds."""
     run("codesign", "--force", "--deep", "--sign", "-", app)
     run("codesign", "--verify", "--deep", "--strict", app)
 
@@ -332,14 +463,17 @@ def stage_linux_system(source: Path, stage: Path) -> None:
     copy_legal_inventory(stage / "usr/share/doc/gitlama")
 
 
-def add_reproducible_tree(archive: tarfile.TarFile, source: Path, name: str, epoch: int) -> None:
+def add_reproducible_tree(archive: tarfile.TarFile, source: Path, name: str, epoch: int,
+                          executables: set[str] | None = None) -> None:
+    executables = {f"{name}/gitlama"} if executables is None else executables
+
     def filter_metadata(info: tarfile.TarInfo) -> tarfile.TarInfo:
         info.uid = 0
         info.gid = 0
         info.uname = "root"
         info.gname = "root"
         info.mtime = epoch
-        if info.name == f"{name}/gitlama":
+        if info.name in executables:
             info.mode = 0o755
         return info
 
@@ -379,6 +513,78 @@ def package_linux_appimage(stage: Path, destination: Path, epoch: int) -> None:
     run("appimagetool", "--no-appstream", stage, destination, environment=environment)
 
 
+# Host runtimes the private Qt needs; everything Qt-specific is bundled.
+DEB_DEPENDENCIES = (
+    "libc6 (>= 2.35)", "libstdc++6", "libgl1", "libegl1", "libfontconfig1", "libfreetype6",
+    "libglib2.0-0", "libdbus-1-3", "libwayland-client0", "libwayland-cursor0", "libwayland-egl1",
+    "libxkbcommon0", "libxkbcommon-x11-0", "libx11-6", "libx11-xcb1", "libxcb1", "libxcb-cursor0",
+    "libxcb-icccm4", "libxcb-image0", "libxcb-keysyms1", "libxcb-randr0", "libxcb-render-util0",
+    "libxcb-shape0", "libxcb-xfixes0", "libxcb-xkb1", "libpng16-16", "zlib1g", "libzstd1",
+    "libharfbuzz0b", "git (>= 2.39)",
+)
+RPM_DEPENDENCIES = (
+    "glibc >= 2.35", "libstdc++", "libglvnd-opengl", "libglvnd-egl", "fontconfig", "freetype",
+    "glib2", "dbus-libs", "libwayland-client", "libwayland-cursor", "libwayland-egl",
+    "libxkbcommon", "libxkbcommon-x11", "libX11", "libX11-xcb", "libxcb", "xcb-util-cursor",
+    "xcb-util-wm", "xcb-util-image", "xcb-util-keysyms", "xcb-util-renderutil", "libpng",
+    "zlib", "libzstd", "harfbuzz", "git >= 2.39",
+)
+ARCH_DEPENDENCIES = (
+    "glibc", "gcc-libs", "libglvnd", "fontconfig", "freetype2", "glib2", "dbus", "wayland",
+    "libxkbcommon", "libxkbcommon-x11", "libx11", "libxcb", "xcb-util-cursor", "xcb-util-wm",
+    "xcb-util-image", "xcb-util-keysyms", "xcb-util-renderutil", "libpng", "zlib", "zstd",
+    "harfbuzz", "git",
+)
+
+
+def package_linux_arch(stage: Path, destination: Path, version: Version, epoch: int) -> None:
+    """An Arch Linux (pacman) package, built by makepkg on an Arch host or in an Arch container."""
+    with tempfile.TemporaryDirectory(prefix="gitlama-arch-") as temporary_directory:
+        work = Path(temporary_directory)
+        depends = " ".join(f"'{dependency}'" for dependency in ARCH_DEPENDENCIES)
+        (work / "PKGBUILD").write_text(
+            "pkgname=gitlama\n"
+            f"pkgver={version.arch_pkgver()}\n"
+            f"pkgrel={version.build}\n"
+            "pkgdesc='GitLama desktop Git client'\n"
+            "arch=('x86_64')\n"
+            "url='https://devmil.de/gitlama/'\n"
+            "license=('MIT')\n"
+            f"depends=({depends})\n"
+            "options=('!debug' '!lto' '!purge' '!strip')\n"
+            "source=('root.tar')\n"
+            "sha256sums=('SKIP')\n\n"
+            "package() {\n  cp -a \"$srcdir/root/.\" \"$pkgdir/\"\n}\n",
+            encoding="utf-8",
+        )
+        with tarfile.open(work / "root.tar", "w", format=tarfile.PAX_FORMAT) as archive:
+            add_reproducible_tree(archive, stage, "root", epoch, executables={"root/usr/lib/gitlama/gitlama", "root/usr/bin/gitlama"})
+        for path in work.rglob("*"):
+            os.utime(path, (epoch, epoch), follow_symlinks=False)
+        environment = dict(os.environ, SOURCE_DATE_EPOCH=str(fpm_source_date_epoch(epoch)))
+        if shutil.which("makepkg") and Path("/etc/arch-release").exists():
+            run("makepkg", "--nodeps", "--force", "--noconfirm", cwd=work,
+                environment=dict(environment, PKGDEST=str(work)))
+        else:
+            engine = os.environ.get("GITLAMA_CONTAINER_ENGINE") or shutil.which("podman") or shutil.which("docker")
+            if not engine:
+                raise RuntimeError("makepkg on Arch Linux, podman or docker is required")
+            work.chmod(0o777)
+            run(engine, "run", "--rm", "--security-opt", "label=disable",
+                "--mount", f"type=bind,src={work},dst=/build",
+                "--env", f"SOURCE_DATE_EPOCH={environment['SOURCE_DATE_EPOCH']}",
+                os.environ.get("GITLAMA_ARCH_BUILD_IMAGE", "archlinux:base-devel"),
+                "bash", "-euo", "pipefail", "-c",
+                "useradd --create-home builder; cp -a /build /home/builder/pkg; "
+                "chown -R builder:builder /home/builder/pkg; "
+                "su builder -c 'cd /home/builder/pkg && makepkg --nodeps --force --noconfirm'; "
+                "cp /home/builder/pkg/*.pkg.tar.zst /build/")
+        built = sorted(work.glob("gitlama-*.pkg.tar.zst"))
+        if len(built) != 1:
+            raise RuntimeError("makepkg produced no single package")
+        shutil.move(built[0], destination)
+
+
 def package_linux_native(
     stage: Path,
     destination: Path,
@@ -390,11 +596,11 @@ def package_linux_native(
         package_version = version.debian_upstream()
         iteration = str(version.build)
         architecture = "amd64"
-        dependencies = ("libgtk-3-0", "libstdc++6", "libc6 (>= 2.35)", "git (>= 2.39)")
+        dependencies = DEB_DEPENDENCIES
     else:
         package_version, iteration = version.rpm_fields()
         architecture = "x86_64"
-        dependencies = ("gtk3", "libstdc++", "glibc >= 2.35", "git >= 2.39")
+        dependencies = RPM_DEPENDENCIES
     dependency_arguments = [item for dependency in dependencies for item in ("--depends", dependency)]
     environment = dict(os.environ, SOURCE_DATE_EPOCH=str(fpm_source_date_epoch(epoch)))
     run(
@@ -436,6 +642,8 @@ def package_linux(source: Path, destination: Path, version: Version, format_: st
         stage_linux_system(source, stage)
         if format_ == "AppImage":
             package_linux_appimage(stage, destination, epoch)
+        elif format_ == "pkg.tar.zst":
+            package_linux_arch(stage, destination, version, epoch)
         else:
             package_linux_native(stage, destination, version, format_, epoch)
 
@@ -465,6 +673,8 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("format", choices=sorted(target[2] for target in TARGETS))
     parser.add_argument("--skip-build", action="store_true", help="use an existing release build")
+    parser.add_argument("--build-only", action="store_true",
+                        help="build and stage the release bundle, then stop (to sign it first)")
     parser.add_argument("--replace", action="store_true", help="replace this exact candidate")
     parser.add_argument("--sign", action="store_true", help="use the configured native signing identity")
     parser.add_argument("--notarize", action="store_true", help="submit and staple a signed macOS candidate")
@@ -489,24 +699,22 @@ def main() -> None:
 
     version = Version.read(ROOT / "VERSION")
     destination = arguments.output_dir.resolve() / artifact_name(version, *target)
-    prepare_destination(destination, arguments.replace)
+    if not arguments.build_only:
+        prepare_destination(destination, arguments.replace)
+    if arguments.build_only and arguments.skip_build:
+        raise RuntimeError("--build-only and --skip-build exclude each other")
     if not arguments.skip_build:
         # Release packages carry the helper of the release baseline, not a
         # development build of it.
         os.environ["GITLAMA_DEV_REMOTE_HELPER"] = "0"
-        # Plugin crates (for example super_native_extensions) have their own
-        # manifests and do not inherit rust-core's release profile.
+        # Keep DWARF in the build tree for symbol collection; installers ship
+        # stripped copies.
         os.environ["CARGO_PROFILE_RELEASE_DEBUG"] = "1"
         os.environ["CARGO_PROFILE_RELEASE_STRIP"] = "none"
-        native_build_options = []
-        if platform_name == "macos":
-            # Never mutate the shared Pub cache. Preserve this audited overlay
-            # through the build by disabling Flutter's automatic pub get.
-            run("flutter", "pub", "get", "--enforce-lockfile")
-            run(sys.executable, ROOT / "scripts/prepare-macos-native-symbols.py")
-            native_build_options = ["--no-pub"]
-        run("flutter", "build", platform_name, "--release", *native_build_options,
-            f"--split-debug-info={ROOT / 'build/symbols/dart' / platform_name}")
+        build_release_bundle(platform_name, version)
+    if arguments.build_only:
+        print(require_release_bundle(platform_name))
+        return
     source = require_release_bundle(platform_name)
     # Build-tree originals remain available for symbol collection. Do not
     # ship native DWARF in installers or change signed helper payload bytes.

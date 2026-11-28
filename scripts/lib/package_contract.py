@@ -21,8 +21,13 @@ TARGETS = frozenset(
         ("linux", "x86_64", "deb"),
         ("linux", "x86_64", "rpm"),
         ("linux", "x86_64", "tar.gz"),
+        ("linux", "x86_64", "pkg.tar.zst"),
     }
 )
+
+# Releases before the Arch Linux package carried the other six targets; their
+# signed records stay valid.
+LEGACY_TARGETS = TARGETS - {("linux", "x86_64", "pkg.tar.zst")}
 
 
 @dataclass(frozen=True)
@@ -69,10 +74,12 @@ class Version:
         return f"{major}.{minor}.{self.build}"
 
     def apple_bundle_short_version(self) -> str:
-        """Return Flutter's numeric CFBundleShortVersionString.
+        """Return the numeric CFBundleShortVersionString.
 
-        Flutter removes every character except digits and dots, drops empty
-        segments, and pads the result to at least three segments. The complete
+        Every character except digits and dots is removed, empty segments are
+        dropped and the result is padded to at least three segments, exactly as
+        the earlier Flutter builds did, so Sparkle keeps comparing installed
+        versions the same way. The complete
         marketing identity remains in VERSION and the DMG name.
         """
 
@@ -86,6 +93,13 @@ class Version:
         major, minor, patch, prerelease = self.parts
         base = f"{major}.{minor}.{patch}"
         return base if prerelease is None else f"{base}~{prerelease}"
+
+    def arch_pkgver(self) -> str:
+        """pacman's pkgver: no hyphens; a pre-release sorts before its release
+        through vercmp's letter rule (0.1.0beta.67 < 0.1.0)."""
+        major, minor, patch, prerelease = self.parts
+        base = f"{major}.{minor}.{patch}"
+        return base if prerelease is None else f"{base}{prerelease.replace('-', '_')}"
 
     def rpm_fields(self) -> tuple[str, str]:
         major, minor, patch, prerelease = self.parts
@@ -106,6 +120,8 @@ def artifact_name(version: Version, platform: str, architecture: str, format_: s
         return f"gitlama_{identity}_amd64.deb"
     if format_ == "rpm":
         return f"gitlama-{identity}.x86_64.rpm"
+    if format_ == "pkg.tar.zst":
+        return f"gitlama-{identity}-x86_64.pkg.tar.zst"
     return f"GitLama-{identity}-{platform}-{architecture}.{format_}"
 
 
@@ -189,24 +205,8 @@ def fpm_source_date_epoch(epoch: int) -> int:
     return max(epoch, 1)
 
 
-def without_allowed_flutter_build_metadata(
-    data: bytes,
-    file_name: str,
-    source_root: Path,
-) -> bytes:
-    """Ignore Flutter's one generated registrant URI during path scans."""
-
-    if file_name != "libapp.so":
-        return data
-    registrant = (
-        f"{source_root.resolve().as_uri()}/.dart_tool/flutter_build/"
-        "dart_plugin_registrant.dart"
-    ).encode()
-    return data.replace(registrant, b"")
-
-
 # Generic CI checkout roots. They only count where an absolute path starts, so
-# Dart library URIs such as package:gitlama/app/workspace/... do not match.
+# embedded identifiers such as qrc:/GitLama/workspace/... do not match.
 CI_BUILD_ROOT = re.compile(rb"(?<![A-Za-z0-9_.-])(/home/runner/|/builds/|/workspace/)")
 
 

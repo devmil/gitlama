@@ -409,7 +409,7 @@ section.part>p{margin:0 0 16px;color:var(--ink-muted);max-width:75ch}
         <p class="spec">Balls travel for 600 ms so the curves are comparable. In the UI the curves run at their token durations.</p></article>
       <article class="island demo wide"><header><span class="id">springs</span><h3>Springs (mass 1)</h3><span class="sp" style="flex:1"></span><button class="btn press" id="playSprings">Play</button></header>
         <div class="stage"><div class="curves" id="springs"></div></div>
-        <p class="spec">Flutter: <code>SpringDescription.withDampingRatio(mass: 1, stiffness, ratio)</code>. Web: a generated <code>linear()</code> easing sampled every 8 ms.</p></article>
+        <p class="spec">Qt Quick: Meridian's <code>SpringSpec</code> (stiffness, damping ratio). Web: a generated <code>linear()</code> easing sampled every 8 ms.</p></article>
       <article class="island demo wide"><header><span class="id">durations</span><h3>Duration scale</h3></header>
         <div class="stage"><div class="ruler" id="ruler"></div></div>
         <p class="spec">Click a row to play that duration. Everything in the working UI stays under 320 ms; <code>motion-celebrate</code> and <code>motion-attention</code> are the only exceptions.</p></article>
@@ -570,7 +570,7 @@ section.part>p{margin:0 0 16px;color:var(--ink-muted);max-width:75ch}
             </div>
           </div>
         </div></div>
-        <p class="spec"><b>NH-1</b> commit lands: new row opens under the WIP row, its dashed ring closes and fills on <code>spring-pop</code>, the head chip travels, the row tints. <b>NH-2</b> sync: progress rule, glint, rolling ahead/behind, new rows draw their lanes in. <b>NH-3</b> lane focus after 400 ms: other lanes dim over 180 ms and the lit path flows down 12 ms per row. <b>NH-4</b> staging one file flies it to Staged. <b>NH-6</b> the palette grows out of the Compass. <b>NH-7</b> islands stagger in and lanes draw. Micro: NM-01 · 03 · 04 · 10 · 11 · 12 · 20 · 30 · 31 · 34 · 50 · 54 · 55 · 60 · 61 · 62.</p></article>
+        <p class="spec"><b>NH-1</b> commit lands: new row opens under the WIP row, its dashed ring closes and fills on <code>spring-pop</code>, the head chip travels, the row tints. <b>NH-2</b> sync: activity wash, glint, rolling ahead/behind, new rows draw their lanes in. <b>NH-3</b> lane focus after 400 ms: other lanes dim over 180 ms and the lit path flows down 12 ms per row. <b>NH-4</b> staging one file flies it to Staged. <b>NH-6</b> the palette grows out of the Compass. <b>NH-7</b> islands stagger in and lanes draw. Micro: NM-01 · 03 · 04 · 10 · 11 · 12 · 20 · 30 · 31 · 34 · 50 · 54 · 55 · 60 · 61 · 62.</p></article>
 
       <article class="island demo"><header><span class="id">NH-5</span><h3>Conflicts resolved</h3><span style="flex:1"></span><button class="btn press" id="cfReset">Reset</button></header>
         <div class="stage col">

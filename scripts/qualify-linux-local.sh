@@ -5,18 +5,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="gitlama-linux-release:ubuntu-22.04-x86_64"
 KEEP_STAGE=false
 CONTAINER_ENGINE="${GITLAMA_CONTAINER_ENGINE:-}"
-FLUTTER_VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["flutter"])' "$ROOT/.fvmrc")"
-FLUTTER_SHA256="$(python3 "$ROOT/scripts/flutter_linux_archive.py")"
 SOAK_SECONDS="${GITLAMA_SOAK_SECONDS:-0}"
+# The Arch Linux package is built by makepkg in this image, beside the Ubuntu
+# baseline that builds and qualifies everything else.
+ARCH_IMAGE="${GITLAMA_ARCH_BUILD_IMAGE:-docker.io/library/archlinux:base-devel}"
 
-[[ "$FLUTTER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-  echo "Invalid Flutter version in .fvmrc" >&2
-  exit 1
-}
-[[ "$FLUTTER_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
-  echo "Invalid Flutter Linux archive checksum" >&2
-  exit 1
-}
 [[ "$SOAK_SECONDS" =~ ^[0-9]+$ ]] || {
   echo "Invalid Linux soak duration" >&2
   exit 1
@@ -51,7 +44,7 @@ cleanup() {
   if [[ "$status" -ne 0 ]]; then
     # A failed qualification or soak still wrote its report; keep it for the
     # failure upload before the stage goes.
-    for report in "$STAGE"/Flutter/GitLama/dist/qualification/*.json; do
+    for report in "$STAGE"/GitLama/dist/qualification/*.json; do
       [[ -f "$report" ]] || continue
       mkdir -p "$ROOT/dist/qualification"
       cp -- "$report" "$ROOT/dist/qualification/" || true
@@ -96,15 +89,13 @@ case "$(basename "$CONTAINER_ENGINE")" in
   *podman*) VOLUME_SUFFIX=":Z" ;;
 esac
 
-mkdir -p "$STAGE/Flutter/GitLama"
+mkdir -p "$STAGE/GitLama"
 rsync -a \
-  --exclude .dart_tool \
-  --exclude .fvm \
   --exclude .git \
   --exclude build \
   --exclude dist \
   --exclude target \
-  "$ROOT/" "$STAGE/Flutter/GitLama/"
+  "$ROOT/" "$STAGE/GitLama/"
 CONTAINER_HELPER=""
 if [[ "$MODE" == packages && -n "$HELPER_INPUT" ]]; then
   mkdir -p "$STAGE/remote-helper"
@@ -112,7 +103,7 @@ if [[ "$MODE" == packages && -n "$HELPER_INPUT" ]]; then
   CONTAINER_HELPER=/work/remote-helper
 fi
 
-# The image downloads Ubuntu packages, Flutter, Git and Rust. A flaky connection fails a single
+# The image downloads Ubuntu packages, Qt, Git and Rust. A flaky connection fails a single
 # attempt; cached layers make each retry resume where the last one stopped.
 # CI provides GITHUB_TOKEN so GitHub API downloads avoid the shared anonymous rate limit.
 BUILD_SECRETS=()
@@ -123,8 +114,6 @@ for attempt in 1 2 3; do
   if "$CONTAINER_ENGINE" build \
     --platform linux/amd64 \
     "${BUILD_SECRETS[@]}" \
-    --build-arg "FLUTTER_VERSION=$FLUTTER_VERSION" \
-    --build-arg "FLUTTER_SHA256=$FLUTTER_SHA256" \
     --file "$ROOT/tooling/linux-release/Dockerfile" \
     --tag "$IMAGE" \
     "$ROOT"; then
@@ -140,7 +129,7 @@ done
 
 # While the shared Git dependencies are private, CI forwards a step-scoped
 # insteadOf rewrite (GIT_CONFIG_COUNT, GIT_CONFIG_KEY_0, GIT_CONFIG_VALUE_0)
-# so `flutter pub get` and Cargo inside the container can fetch them. A
+# so Cargo inside the container can fetch them. A
 # sudo-wrapped engine resets the environment, so the values travel in an
 # owner-only env file rather than by inheritance or on the command line.
 GIT_ENV_FILE="$(mktemp -t gitlama-linux-git-env.XXXXXX)"
@@ -158,8 +147,8 @@ if [[ "$MODE" == remote-helper ]]; then
     --env "GITLAMA_SOURCE_COMMIT=$SOURCE_COMMIT" \
     --env-file "$GIT_ENV_FILE" \
     --volume "$STAGE:/work$VOLUME_SUFFIX" \
-    --volume gitlama-linux-cargo-target:/work/Flutter/GitLama/rust-core/target \
-    --workdir /work/Flutter/GitLama \
+    --volume gitlama-linux-cargo-target:/work/GitLama/rust-core/target \
+    --workdir /work/GitLama \
     "$IMAGE" \
     bash -lc 'set -euo pipefail
       for target in linux-x86_64 linux-arm64; do
@@ -169,7 +158,7 @@ if [[ "$MODE" == remote-helper ]]; then
         bash scripts/prepare-linux-diagnostics-handoff.sh /work dist/diagnostics
       fi'
   mkdir -p "$ROOT/dist/remote-helper"
-  for file in "$STAGE"/Flutter/GitLama/dist/remote-helper/gitlama-remote-helper-*; do
+  for file in "$STAGE"/GitLama/dist/remote-helper/gitlama-remote-helper-*; do
     [[ ! -e "$ROOT/dist/remote-helper/$(basename "$file")" ]] || {
       echo "Remote helper candidate already exists: $(basename "$file")" >&2
       exit 1
@@ -179,7 +168,7 @@ if [[ "$MODE" == remote-helper ]]; then
   done
   if [[ "${GITLAMA_COLLECT_DIAGNOSTICS:-0}" == 1 ]]; then
     install -d -m 0700 -- "$ROOT/dist/diagnostics"
-    for diagnostic in "$STAGE/Flutter/GitLama/dist/diagnostics/"*-diagnostics.tar.gz; do
+    for diagnostic in "$STAGE/GitLama/dist/diagnostics/"*-diagnostics.tar.gz; do
       [[ ! -e "$ROOT/dist/diagnostics/$(basename "$diagnostic")" ]] || { echo "Diagnostics already exist" >&2; exit 1; }
       cp "$diagnostic" "$ROOT/dist/diagnostics/"
     done
@@ -194,40 +183,67 @@ fi
   --env "GITLAMA_REMOTE_HELPER_DIR=$CONTAINER_HELPER" \
   --env "GITLAMA_REQUIRE_REMOTE_HELPER=${GITLAMA_REQUIRE_REMOTE_HELPER:-0}" \
   --env "GITLAMA_SOAK_SECONDS=$SOAK_SECONDS" \
-  --env GITLAMA_NATIVE_TEST_TIMEOUT_SECONDS=180 \
-  --env GITLAMA_NATIVE_TEST_WAIT_SECONDS=30 \
   --env SOURCE_DATE_EPOCH=0 \
   --env "GITLAMA_COLLECT_DIAGNOSTICS=${GITLAMA_COLLECT_DIAGNOSTICS:-0}" \
   --env-file "$GIT_ENV_FILE" \
   --volume "$STAGE:/work$VOLUME_SUFFIX" \
-  --volume gitlama-linux-cargo-target:/work/Flutter/GitLama/rust-core/target \
-  --workdir /work/Flutter/GitLama \
+  --volume gitlama-linux-cargo-target:/work/GitLama/rust-core/target \
+  --workdir /work/GitLama \
   "$IMAGE" \
   bash -lc '
     set -euo pipefail
-    # Hooks filter GIT_CONFIG_* out of their environment. Resolve the full
-    # locked native graph here while the scoped HTTPS rewrite is available,
-    # then prohibit a second credential path from inside a hook.
     cargo fetch --manifest-path rust-core/Cargo.toml --locked --target x86_64-unknown-linux-gnu
-    export CARGO_GITLAMA_PREFETCHED=true
-    flutter config --enable-linux-desktop
-    flutter pub get --enforce-lockfile
     python3 scripts/package.py AppImage
     python3 scripts/package.py deb --skip-build
     python3 scripts/package.py rpm --skip-build
     python3 scripts/package.py tar.gz --skip-build
+  '
+
+# makepkg refuses to run as root; the Arch container builds as an unprivileged
+# user from the stripped bundle the Ubuntu build left in the stage.
+"$CONTAINER_ENGINE" run --rm \
+  --platform linux/amd64 \
+  --env SOURCE_DATE_EPOCH=0 \
+  --env "GITLAMA_REMOTE_HELPER_DIR=$CONTAINER_HELPER" \
+  --env "GITLAMA_REQUIRE_REMOTE_HELPER=${GITLAMA_REQUIRE_REMOTE_HELPER:-0}" \
+  --env "GITLAMA_SOURCE_COMMIT=$SOURCE_COMMIT" \
+  --volume "$STAGE:/work$VOLUME_SUFFIX" \
+  --workdir /work/GitLama \
+  "$ARCH_IMAGE" \
+  bash -lc '
+    set -euo pipefail
+    for attempt in 1 2 3 4 5; do pacman -Sy --noconfirm --needed python binutils && break; sleep 15; done
+    useradd --create-home builder
+    chown -R builder /work
+    su builder -c "env SOURCE_DATE_EPOCH=0 GITLAMA_REMOTE_HELPER_DIR=$GITLAMA_REMOTE_HELPER_DIR \
+      GITLAMA_REQUIRE_REMOTE_HELPER=$GITLAMA_REQUIRE_REMOTE_HELPER GITLAMA_SOURCE_COMMIT=$GITLAMA_SOURCE_COMMIT \
+      python3 scripts/package.py pkg.tar.zst --skip-build"
+    chown -R 0:0 /work
+  '
+
+"$CONTAINER_ENGINE" run --rm \
+  --platform linux/amd64 \
+  --env "GITLAMA_SOAK_SECONDS=$SOAK_SECONDS" \
+  --env "GITLAMA_SOURCE_COMMIT=$SOURCE_COMMIT" \
+  --env SOURCE_DATE_EPOCH=0 \
+  --env "GITLAMA_COLLECT_DIAGNOSTICS=${GITLAMA_COLLECT_DIAGNOSTICS:-0}" \
+  --volume "$STAGE:/work$VOLUME_SUFFIX" \
+  --volume gitlama-linux-cargo-target:/work/GitLama/rust-core/target \
+  --workdir /work/GitLama \
+  "$IMAGE" \
+  bash -lc '
+    set -euo pipefail
     python3 scripts/qualify-linux-packages.py dist --launch-seconds 4
     if [[ "$GITLAMA_COLLECT_DIAGNOSTICS" == 1 ]]; then
       version="$(sed -n "1p" VERSION)"
       build="$(sed -n "2p" VERSION)"
       python3 scripts/collect-debug-symbols.py --unit linux-x86_64 \
-        --bundle build/linux/x64/release/bundle \
-        --search build/linux/x64/release \
-        --search rust-core/target/x86_64-unknown-linux-gnu/release \
-        --dart-dir build/symbols/dart/linux \
+        --bundle build/linux/bundle \
+        --search rust-core/target/release \
         --package "dist/GitLama-${version}-${build}-linux-x86_64.AppImage" \
         --package "dist/gitlama_${version}-${build}_amd64.deb" \
         --package "dist/gitlama-${version}-${build}.x86_64.rpm" \
+        --package "dist/gitlama-${version}-${build}-x86_64.pkg.tar.zst" \
         --package "dist/GitLama-${version}-${build}-linux-x86_64.tar.gz"
       bash scripts/prepare-linux-diagnostics-handoff.sh /work dist/diagnostics
     fi
@@ -249,6 +265,7 @@ ARTIFACTS=(
   "GitLama-${VERSION}-${BUILD}-linux-x86_64.AppImage"
   "gitlama_${VERSION}-${BUILD}_amd64.deb"
   "gitlama-${VERSION}-${BUILD}.x86_64.rpm"
+  "gitlama-${VERSION}-${BUILD}-x86_64.pkg.tar.zst"
   "GitLama-${VERSION}-${BUILD}-linux-x86_64.tar.gz"
 )
 
@@ -258,12 +275,12 @@ for artifact in "${ARTIFACTS[@]}"; do
     echo "Candidate already exists: dist/$artifact" >&2
     exit 1
   }
-  cp "$STAGE/Flutter/GitLama/dist/$artifact" "$ROOT/dist/$artifact"
+  cp "$STAGE/GitLama/dist/$artifact" "$ROOT/dist/$artifact"
 done
-cp "$STAGE/Flutter/GitLama/dist/qualification/linux-x86_64.json" \
+cp "$STAGE/GitLama/dist/qualification/linux-x86_64.json" \
   "$ROOT/dist/qualification/linux-x86_64.json"
-if [[ -f "$STAGE/Flutter/GitLama/dist/qualification/linux-soak-x86_64.json" ]]; then
-  cp "$STAGE/Flutter/GitLama/dist/qualification/linux-soak-x86_64.json" \
+if [[ -f "$STAGE/GitLama/dist/qualification/linux-soak-x86_64.json" ]]; then
+  cp "$STAGE/GitLama/dist/qualification/linux-soak-x86_64.json" \
     "$ROOT/dist/qualification/linux-soak-x86_64.json"
 fi
 
@@ -272,7 +289,7 @@ printf '%s\n' "$ROOT/dist/qualification/linux-x86_64.json"
 
 if [[ "${GITLAMA_COLLECT_DIAGNOSTICS:-0}" == 1 ]]; then
   install -d -m 0700 -- "$ROOT/dist/diagnostics"
-  for diagnostic in "$STAGE/Flutter/GitLama/dist/diagnostics/"*-diagnostics.tar.gz; do
+  for diagnostic in "$STAGE/GitLama/dist/diagnostics/"*-diagnostics.tar.gz; do
     [[ ! -e "$ROOT/dist/diagnostics/$(basename "$diagnostic")" ]] || { echo "Diagnostics already exist" >&2; exit 1; }
     cp "$diagnostic" "$ROOT/dist/diagnostics/"
   done

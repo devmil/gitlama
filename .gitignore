@@ -23,35 +23,15 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
+# Build output
 /build/
 /coverage/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
 /rust-core/target/
-/.fvm/
 .env*
 /dist/
 
-# FVM Version Cache
-.fvm/
-# Golden failure diffs written by flutter test
+# Screenshot comparison failures
 /test/failures/
 
 /tests/native_windows_ipc/target/

@@ -2,8 +2,8 @@
 
 ## Orientation
 
-GitLama is a desktop Git client: Flutter presentation over a Rust core that runs
-the installed Git through `devmil-git`. Read [the architecture](docs/ARCHITECTURE.md),
+GitLama is a desktop Git client: a Qt Quick (QML) interface over Rust services and
+a Rust core that runs the installed Git through `devmil-git`. Read [the architecture](docs/ARCHITECTURE.md),
 the [decision records](docs/adr/) and [the design system](docs/design-system/README.md)
 before changing product behaviour. Remote workspaces have their own
 [architecture and protocol](docs/remote-workspaces/README.md).
@@ -24,7 +24,7 @@ right is part of every change:
   staging, commit, refs, stash, transfer, discard). A new client that needs a
   helper behaviour also needs a new version.
 - **Keep the version** for changes the helper does not run or that cannot
-  change its answers: Dart-only work, desktop-only Rust (`gitlama_core` in
+  change its answers: QML-only work, desktop-only Rust (`gitlama_core` in
   `rust-core/src`, the application's `image-codecs` engine), tests, docs and
   refactors with identical output.
 - When unsure, raise it. A needless raise costs one installation per host; a
@@ -41,15 +41,17 @@ right is part of every change:
 
 ## Architecture
 
-- Widgets and screens depend on service contracts.
-- Services own workflows and observable state.
-- Each repository owns one persistence, plugin, network, or native boundary and
-  has one owning service.
-- Register production implementations only in `lib/di/app_components.dart`.
-- Expose initialized, typed services through `AppRuntime`; widgets must not use
-  the component registry as a service locator.
+- QML views depend on the bridge objects in `rust-core/desktop/qt`; those
+  project workbench state and post commands, and never run Git or hold
+  workflow logic.
+- Workbench services (`rust-core/desktop/workbench`) own workflows and
+  observable state, independent of Qt.
+- Each persistence, network or native boundary has one owning service.
+- Compose production services only in `rust-core/desktop/workbench/src/app.rs`
+  and hand them to the bridge objects in `rust-core/desktop/app/src/main.rs`.
 - A failed bootstrap disposes partial work. Retry always creates a fresh
   composition root.
+- `scripts/check_architecture.py` enforces the layer directions.
 
 ## Shared Git library
 
@@ -68,7 +70,7 @@ navigation, presentation and workflow policy in this repository.
 Generic Git behaviour belongs in `devmil-git`; generic controls, tokens and UI
 behaviour belong in `meridian_ui`. This applies to existing code as well as new
 work. When a change touches or reveals such code living in GitLama (a Git
-argument builder, parser or process helper; a reusable widget, layout rule or
+argument builder, parser or process helper; a reusable control, layout rule or
 token), move it to the shared library, publish it there and consume it here
 instead of extending the local copy. Only GitLama-specific policy,
 git-domain presentation and workflow orchestration stay in this repository.
@@ -85,24 +87,22 @@ copies of Meridian components and unnamed sizes.
 
 ## Dialogs
 
-Use `MeridianDialog` (or `MeridianDialogSurface` for a custom layout) with
-`showMeridianDialog` for every application dialog. Shadow, surface, spacing and
+Use `MeridianDialog` (or `MeridianDialogSurface` for a custom layout) for
+every application dialog. Shadow, surface, spacing and
 scrim come from meridian_ui; a dialog opened from another keeps one scrim.
 
 ## Desktop menus
 
 - Render every context menu and action/overflow menu with the operating system's
-  native menu UI through [the shared presenter](lib/widgets/native_menu.dart).
-  Meridian menus (`MeridianSelect`, `MeridianMenuAnchor`, split toolbar
-  buttons) and text field menus reach it through the `MeridianMenuPresenter`
-  installed at both app roots.
+  native menu UI through [`CommandMenu`](qml/GitLama/CommandMenu.qml) (a
+  `MeridianMenu` with `nativeMenu: true`). Meridian's own menus (`MeridianSelect`,
+  split toolbar buttons) use the same native path.
   This applies to right-click menus, sidebar actions and toolbar menus on every
-  supported desktop platform. Use `nativeTextContextMenuBuilder` for text
-  editing and selectable-text menus.
-- Do not use Flutter `PopupMenuButton`, `showMenu`, `MenuAnchor`, or a custom
-  painted overlay for these menus. A dependency's Flutter fallback does not
-  satisfy the native-menu requirement. Searchable form pickers are separate
-  controls, not action menus.
+  supported desktop platform. Text fields and selectable text get their editing
+  menu from `MeridianTextMenu`, which Meridian's text controls include.
+- Do not open a Qt Quick Controls `Menu` or a custom painted overlay for these
+  menus; `scripts/check_architecture.py` rejects them. Searchable form pickers
+  are separate controls, not action menus.
 - Preserve enabled/checked states, localized labels, keyboard invocation,
   dismissal and invoking focus. Test menu models and the platform boundary;
   claim native appearance only on platforms actually checked.

@@ -1,0 +1,21 @@
+[package]
+name = "gitlama-workbench"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+publish = false
+description = "GitLama's desktop services: workspace, repository sessions, history, changes, inspector, hosting and remote workspaces, independent of Qt"
+
+[dependencies]
+gitlama_core = { workspace = true }
+gitlama_contract = { workspace = true }
+gitlama_application = { workspace = true, features = ["image-codecs"] }
+devmil-git = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+image = { workspace = true }
+base64 = "0.22"
+sha2 = { workspace = true }
+getrandom = { workspace = true }

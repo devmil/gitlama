@@ -181,38 +181,30 @@ class ReleaseUpdatesTest(unittest.TestCase):
             verify_update_signature(artifact, asset, public)
 
     def test_application_pins_the_feed_and_the_release_trust_root(self) -> None:
-        with (ROOT / "macos/Runner/Info.plist").open("rb") as stream:
+        with (ROOT / "packaging/macos/Info.plist.in").open("rb") as stream:
             plist = plistlib.load(stream)
         trust_root = (ROOT / "release/northspline-release-ed25519.pub").read_text(
             encoding="utf-8").strip()
         self.assertEqual(plist["SUPublicEDKey"], trust_root)
         self.assertEqual(plist["SUFeedURL"], FEED_URL)
-        updater = (ROOT / "lib/repositories/impl/native_app_updater_repository.dart").read_text(
+        self.assertEqual(plist["CFBundleIdentifier"], "de.devmil.gitlama")
+        bridge = (ROOT / "rust-core/desktop/app/src/native/sparkle_bridge.m").read_text(
             encoding="utf-8")
-        self.assertIn(f"'{FEED_URL}'", updater)
-        index = (ROOT / "lib/repositories/impl/native_release_index_repository.dart").read_text(
-            encoding="utf-8")
-        self.assertIn(f"'{RELEASES_URL}'", index)
-        self.assertIn("'https://devmil.de/gitlama/_data/releases.json'", index)
+        self.assertIn(f'@"{FEED_URL}"', bridge)
+        updates = (ROOT / "rust-core/desktop/workbench/src/updates.rs").read_text(encoding="utf-8")
+        self.assertIn(f'"{RELEASES_URL}"', updates)
+        self.assertIn('"https://devmil.de/gitlama/_data/releases.json"', updates)
         qualifier = (ROOT / "scripts/qualify-macos-package.py").read_text(encoding="utf-8")
         self.assertIn('"SUPublicEDKey"', qualifier)
         self.assertIn('"SUFeedURL"', qualifier)
 
-    def test_sparkle_is_pinned_to_one_resolved_revision(self) -> None:
-        project = (ROOT / "macos/Runner.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
-        requirement = re.search(
-            r'repositoryURL = "https://github.com/sparkle-project/Sparkle";\s*'
-            r"requirement = \{\s*kind = exactVersion;\s*version = ([0-9.]+);", project)
-        self.assertIsNotNone(requirement)
-        for location in ("macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved",
-                         "macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"):
-            pins = json.loads((ROOT / location).read_text(encoding="utf-8"))["pins"]
-            sparkle = [pin for pin in pins if pin["identity"] == "sparkle"]
-            self.assertEqual(len(sparkle), 1, location)
-            self.assertEqual(sparkle[0]["state"]["version"], requirement.group(1))
-            self.assertRegex(sparkle[0]["state"]["revision"], r"^[0-9a-f]{40}$")
+    def test_sparkle_is_pinned_to_one_release(self) -> None:
+        package = (ROOT / "scripts/package.py").read_text(encoding="utf-8")
+        version = re.search(r'SPARKLE_VERSION = "([0-9.]+)"', package)
+        self.assertIsNotNone(version)
+        self.assertRegex(package, r'SPARKLE_SHA256 = "[0-9a-f]{64}"')
         notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
-        self.assertIn(f"## Sparkle {requirement.group(1)}", notices)
+        self.assertIn(f"## Sparkle {version.group(1)}", notices)
         self.assertIn("Copyright (c) 2006-2013 Andy Matuschak.", notices)
 
     def test_release_workflow_signs_verifies_and_commits_the_feed(self) -> None:

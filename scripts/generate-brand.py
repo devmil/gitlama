@@ -116,14 +116,14 @@ def main() -> None:
     for size in TILE_SIZES:
         raster(ROOT / "resources/brand/tile-gitlama.svg", BRAND / f"tile-{size}.png", size)
 
-    contents = ROOT / "macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json"
-    for entry in json.loads(contents.read_text(encoding="utf-8"))["images"]:
-        size = int(entry["size"].split("x")[0]) * int(entry["scale"].rstrip("x"))
-        target = contents.parent / entry["filename"]
+    # The macOS iconset scripts/package.py turns into AppIcon.icns.
+    for size in (16, 32, 64, 128, 256, 512, 1024):
+        target = ROOT / f"packaging/macos/AppIcon.appiconset/app_icon_{size}.png"
         shutil.copyfile(BRAND / f"desktop-icon-{size}.png", target)
         outputs.append(target)
 
-    ico = ROOT / "windows/runner/resources/app_icon.ico"
+    # The executable's icon resource (rust-core/desktop/app/build.rs).
+    ico = ROOT / "packaging/windows/app_icon.ico"
     subprocess.run(
         [
             "magick",

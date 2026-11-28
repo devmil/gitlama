@@ -11,7 +11,7 @@ GitLama used to show a commit, a commit's tree, a file's blame and a file's hist
 - Path history replaced the header, which hid back/forward, and offered a "Close" that discarded navigation.
 - Going back did not restore the commit that had been shown.
 
-This spec defines **one inspector**. It has one location model, one navigation stack, one file list and one action catalogue. The same widget runs in two **hosts**: the Detail island of the repository window, and an inspector window.
+This spec defines **one inspector**. It has one location model, one navigation stack, one file list and one action catalogue. The same view runs in two **hosts**: the Detail island of the repository window, and an inspector window.
 
 ## 2. Vocabulary
 

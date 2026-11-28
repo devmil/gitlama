@@ -22,7 +22,60 @@ use devmil_git::{
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Optional sink for structured native diagnostics (static code, level, numeric fields, detailed-only).
+/// The desktop library installs `devmil_logging::record`; the remote helper leaves it unset.
+pub type DiagnosticSink =
+    Arc<dyn Fn(&'static str, &'static str, &[(&'static str, f64)], bool) + Send + Sync>;
+
+/// Optional wakeup called from a repository worker when new events are queued.
+pub type SessionWakeup = Arc<dyn Fn() + Send + Sync>;
+
+static DIAGNOSTIC_SINK: OnceLock<Mutex<Option<DiagnosticSink>>> = OnceLock::new();
+static SESSION_WAKEUP: OnceLock<Mutex<Option<SessionWakeup>>> = OnceLock::new();
+
+pub fn set_diagnostic_sink(sink: Option<DiagnosticSink>) {
+    let lock = DIAGNOSTIC_SINK.get_or_init(|| Mutex::new(None));
+    *lock
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = sink;
+}
+
+pub fn set_session_wakeup(wakeup: Option<SessionWakeup>) {
+    let lock = SESSION_WAKEUP.get_or_init(|| Mutex::new(None));
+    *lock
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = wakeup;
+}
+
+pub(crate) fn current_session_wakeup() -> Option<SessionWakeup> {
+    SESSION_WAKEUP.get().and_then(|lock| {
+        lock.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    })
+}
+
+pub(crate) fn record_diagnostic(
+    code: &'static str,
+    level: &'static str,
+    fields: &[(&'static str, f64)],
+    detailed: bool,
+) {
+    let sink = DIAGNOSTIC_SINK.get().and_then(|lock| {
+        lock.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    });
+    if let Some(sink) = sink {
+        sink(code, level, fields, detailed);
+    }
+}
+
+fn failure_kind_code(kind: NativeRepositoryFailureKind) -> f64 {
+    kind as u32 as f64
+}
 
 /// One open repository session. Each feature keeps its own state; the registry owns the
 /// sessions and [`with_session`] is the one way to reach one.
@@ -214,6 +267,7 @@ pub(crate) fn open_path_with_policy(
         temporary_paths: temporary_paths(),
         activity_sink: Some(activity.sink()),
         activity_id: Some(Arc::new(allocate_activity_id)),
+        wakeup: current_session_wakeup(),
         cache_bytes: policy.cache_bytes,
         refresh_read_policy: devmil_git::model::RefreshReadPolicy::ConcurrentScoped,
         index_refresh: if policy.private_index_refresh {
@@ -266,6 +320,7 @@ pub fn repository_initialize(
         temporary_paths: temporary_paths(),
         activity_sink: Some(activity.sink()),
         activity_id: Some(Arc::new(allocate_activity_id)),
+        wakeup: current_session_wakeup(),
         cache_bytes: 512 * 1024 * 1024,
         refresh_read_policy: devmil_git::model::RefreshReadPolicy::ConcurrentScoped,
         ..RepositoryOptions::default()
@@ -283,12 +338,17 @@ pub(crate) fn repository_session_open_with_options(
     options: RepositoryOptions,
     activity: ActivityStore,
 ) -> NativeRepositoryOpenResult {
+    let started = Instant::now();
     if generation == 0 {
+        record_diagnostic("gitlama.open.invalid_generation", "WARNING", &[], false);
         return open_failure(NativeRepositoryFailureKind::InvalidGeneration);
     }
     let repository_path = match RepositoryPath::new(&path) {
         Ok(path) => path,
-        Err(_) => return open_failure(NativeRepositoryFailureKind::InvalidOptions),
+        Err(_) => {
+            record_diagnostic("gitlama.open.path_invalid", "WARNING", &[], false);
+            return open_failure(NativeRepositoryFailureKind::InvalidOptions);
+        }
     };
     let request = DiscoveryRequest {
         path: repository_path,
@@ -297,17 +357,61 @@ pub(crate) fn repository_session_open_with_options(
     let discovery = RepositoryDiscovery::new(options.git_executable.clone());
     let activity_sink = activity.sink();
     let mut sink = move |event| activity_sink(event);
+    let discover_start = Instant::now();
     let discovered = match discovery.discover(&request, &mut |command| {
         ActivityGitRunner::run(command, allocate_activity_id(), None, &mut sink)
     }) {
         Ok(discovered) => discovered,
-        Err(error) => return open_failure(map_discovery_error_kind(error.kind)),
+        Err(error) => {
+            let mapped = map_discovery_error_kind(error.kind);
+            record_diagnostic(
+                "gitlama.open.discover_failed",
+                "WARNING",
+                &[
+                    ("kind", failure_kind_code(mapped)),
+                    ("elapsed_ms", discover_start.elapsed().as_millis() as f64),
+                ],
+                false,
+            );
+            return open_failure(mapped);
+        }
     };
+    let discover_ms = discover_start.elapsed().as_millis() as f64;
+    let create_start = Instant::now();
     let repository = match Repository::from_discovered(discovered, options) {
         Ok(repository) => repository,
-        Err(error) => return open_failure(map_error_kind(error.kind)),
+        Err(error) => {
+            let mapped = map_error_kind(error.kind);
+            record_diagnostic(
+                "gitlama.open.from_discovered_failed",
+                "WARNING",
+                &[
+                    ("kind", failure_kind_code(mapped)),
+                    ("elapsed_ms", create_start.elapsed().as_millis() as f64),
+                ],
+                false,
+            );
+            return open_failure(mapped);
+        }
     };
-    repository_session_start(repository, generation, activity)
+    let create_ms = create_start.elapsed().as_millis() as f64;
+    let load_start = Instant::now();
+    let result = repository_session_start(repository, generation, activity);
+    if let Some(session) = &result.session {
+        record_diagnostic(
+            "gitlama.open.succeeded",
+            "FINE",
+            &[
+                ("session_id", session.session_id as f64),
+                ("discover_ms", discover_ms),
+                ("create_ms", create_ms),
+                ("load_ms", load_start.elapsed().as_millis() as f64),
+                ("total_ms", started.elapsed().as_millis() as f64),
+            ],
+            true,
+        );
+    }
+    result
 }
 
 pub(crate) fn repository_session_start(
@@ -317,9 +421,20 @@ pub(crate) fn repository_session_start(
 ) -> NativeRepositoryOpenResult {
     let repository = Arc::new(repository);
     let subscription = repository.subscribe();
+    let load_start = Instant::now();
     if let Err(error) = repository.load() {
+        let mapped = map_error_kind(error.kind);
+        record_diagnostic(
+            "gitlama.open.load_failed",
+            "WARNING",
+            &[
+                ("kind", failure_kind_code(mapped)),
+                ("elapsed_ms", load_start.elapsed().as_millis() as f64),
+            ],
+            false,
+        );
         repository.close();
-        return open_failure(map_error_kind(error.kind));
+        return open_failure(mapped);
     }
     let snapshot = map_snapshot(&repository.snapshot());
     let mut sessions = lock_sessions();
@@ -351,6 +466,7 @@ pub(crate) fn open_discovered_repository(
         temporary_paths: temporary_paths(),
         activity_sink: Some(activity.sink()),
         activity_id: Some(Arc::new(allocate_activity_id)),
+        wakeup: current_session_wakeup(),
         cache_bytes: 512 * 1024 * 1024,
         refresh_read_policy: devmil_git::model::RefreshReadPolicy::ConcurrentScoped,
         ..RepositoryOptions::default()
@@ -515,8 +631,18 @@ pub fn repository_session_close(session_id: u64, generation: u64) -> NativeRepos
     }
     drop(sessions);
     // The session's own previews go with it; the families' stores are dismissed here.
+    let close_start = Instant::now();
     dismiss_family_work(session_id);
     session.repository.close();
+    record_diagnostic(
+        "gitlama.close.completed",
+        "FINE",
+        &[
+            ("session_id", session_id as f64),
+            ("elapsed_ms", close_start.elapsed().as_millis() as f64),
+        ],
+        true,
+    );
     NativeRepositoryCommandResult {
         accepted: true,
         failure: None,

@@ -368,7 +368,7 @@ fn decode_svg(
     if cancellation.load(Ordering::Acquire) {
         return Err(NativeImageDecodeFailureKind::Canceled);
     }
-    // tiny-skia renders premultiplied pixels; Flutter's rgba8888 upload expects
+    // tiny-skia renders premultiplied pixels; the image upload expects
     // straight alpha, as does the existing raster decoder.
     Ok(NativeDecodedImage {
         width,

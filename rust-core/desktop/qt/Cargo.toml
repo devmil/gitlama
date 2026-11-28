@@ -1,0 +1,16 @@
+[package]
+name = "gitlama-qt"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+publish = false
+description = "Qt Bridges adapters: the event pump, the window's QObjects and the item models"
+build = "build.rs"
+
+[dependencies]
+gitlama-workbench = { workspace = true }
+gitlama_contract = { workspace = true }
+qtbridge = { workspace = true, features = ["serde_json"] }
+serde_json = { workspace = true }
+serde = { workspace = true }

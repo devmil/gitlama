@@ -9991,6 +9991,10 @@ pub fn enc_native_operation_center_entry(
         enc_native_operation_center_action(&value.action),
     );
     map.insert(
+        "command".to_owned(),
+        w::opt_e(&value.command, |v| w::str_e(v)),
+    );
+    map.insert(
         "startedAtUnixMs".to_owned(),
         w::big_e(&value.started_at_unix_ms),
     );
@@ -10022,6 +10026,7 @@ pub fn dec_native_operation_center_entry(
             "state",
             "origin",
             "action",
+            "command",
             "startedAtUnixMs",
             "finishedAtUnixMs",
             "progress",
@@ -10038,6 +10043,7 @@ pub fn dec_native_operation_center_entry(
         state: dec_native_operation_center_state(object.field("state"))?,
         origin: dec_native_operation_center_origin(object.field("origin"))?,
         action: dec_native_operation_center_action(object.field("action"))?,
+        command: w::opt_d(object.field("command"), |v| w::str_d(v))?,
         started_at_unix_ms: w::big_d(object.field("startedAtUnixMs"))?,
         finished_at_unix_ms: w::opt_d(object.field("finishedAtUnixMs"), |v| w::big_d(v))?,
         progress: w::opt_d(object.field("progress"), |v| {

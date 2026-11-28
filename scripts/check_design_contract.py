@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the Meridian design system package and the Flutter code contracts that depend on it.
+"""Validate the Meridian design system package and the QML contracts that depend on it.
 
 Usage:
   python3 scripts/check_design_contract.py              # validate
@@ -29,9 +29,9 @@ def text_sha256(path: Path) -> str:
 
 # --- Package inventory -------------------------------------------------------
 sys.path.insert(0, str(root / "scripts"))
-from meridian_package import meridian_root, gitlama_icon_aliases  # noqa: E402
+from meridian_package import gitlama_icon_aliases, meridian_icon_names  # noqa: E402
 
-git_tokens = root / "lib/app/gitlama_tokens.g.dart"
+git_tokens = root / "qml/GitLama/GitColors.qml"
 if not git_tokens.is_file():
     errors.append("missing generated GitLama git colour tokens")
 if subprocess.run(
@@ -192,22 +192,18 @@ icons = json.loads((design / manifest["contracts"]["icons"]).read_text(encoding=
 if icons["pinnedVersion"] != "1.37.0":
     errors.append("Lucide version changed without a design review")
 # GitLama draws Meridian's Lucide set; its semantic names are aliases.
-meridian_icons = meridian_root() / "assets/icons"
+meridian_icons = meridian_icon_names()
 aliases = gitlama_icon_aliases()
 inventory = {item["file"][: -len(".svg")]: item for item in icons["icons"]}
 for name, item in inventory.items():
     lucide = item["lucide"]
     if name != lucide and aliases.get(name) != lucide:
         errors.append(f"icon {name} is neither a Meridian icon nor an alias of {lucide}")
-    source = meridian_icons / f"{lucide}.svg"
+    if lucide not in meridian_icons:
+        errors.append(f"Meridian has no Lucide icon {lucide}")
     copy = design / "assets/icons" / item["file"]
-    if not source.is_file():
-        errors.append(f"meridian_ui has no Lucide asset {lucide}")
-        continue
-    if "@license lucide-static v1.37.0 - ISC" not in source.read_text(encoding="utf-8"):
-        errors.append(f"Lucide asset lost its license header: {lucide}")
-    if not copy.is_file() or text_sha256(copy) != text_sha256(source):
-        errors.append(f"design icon copy differs from meridian_ui: {item['file']}")
+    if not copy.is_file() or "@license lucide-static v1.37.0 - ISC" not in copy.read_text(encoding="utf-8"):
+        errors.append(f"design icon copy is missing or lost its license header: {item['file']}")
 for alias in aliases:
     if alias not in inventory:
         errors.append(f"icon alias missing from inventory.json: {alias}")
@@ -217,234 +213,33 @@ for design_rel, app_rel in manifest["mirroredAssets"].items():
 if "SIL OPEN FONT LICENSE Version 1.1" not in (root / "assets/fonts/OFL.txt").read_text(encoding="utf-8"):
     errors.append("JetBrains Mono OFL text is missing")
 
-adaptation = design / "FLUTTER_ADAPTATION.md"
-if "No design decision blocks the migration" not in adaptation.read_text(encoding="utf-8"):
-    errors.append("Flutter adaptation contract is missing or incomplete")
+adaptation = design / manifest["contracts"]["qml"]
+if "No design decision blocks the port" not in adaptation.read_text(encoding="utf-8"):
+    errors.append("QML adaptation contract is missing or incomplete")
 
-# --- Flutter code contracts ------------------------------------------------------
-graph_golden = (root / "test/history_graph_golden_test.dart").read_text(encoding="utf-8")
-for primitive in (
-    "HistorySegmentKind.straight",
-    "HistorySegmentKind.join",
-    "HistorySegmentKind.merge",
-    "HistorySegmentKind.octopus",
-    "HistorySegmentKind.boundary",
-    "HistorySegmentKind.missing",
-    "HistorySegmentKind.collapsedMerge",
-    "containsAll(HistoryNodeShape.values)",
-    "row.refCount > 2",
-    "segment.startsAtTop",
-):
-    if primitive not in graph_golden:
-        errors.append(f"graph visual matrix lost coverage for {primitive}")
-
-graph_profile = (root / "integration_test/history_graph_profile_test.dart").read_text(encoding="utf-8")
-for contract in (
-    "activeLane < 24",
-    "startsAtTop: true",
-    "kind: HistorySegmentKind.merge",
-    "itemCount: 100000",
-):
-    if contract not in graph_profile:
-        errors.append(f"graph profile workload lost {contract}")
-
-graph_widget = (root / "lib/widgets/history_graph_view.dart").read_text(encoding="utf-8")
-workspace_shell = "\n".join(
-    path.read_text(encoding="utf-8")
-    for path in (
-        root / "lib/app/workspace_shell.dart",
-        *sorted((root / "lib/app/workspace").glob("*.dart")),
-    )
-)
-graph_widget_test = (root / "test/history_graph_view_test.dart").read_text(encoding="utf-8")
-home_screen_test = (root / "test/home_screen_test.dart").read_text(encoding="utf-8")
-# The FRB facade and the application use cases behind it.
-native_api = "\n".join(
-    path.read_text(encoding="utf-8")
-    for path in (
-        root / "rust-core/src/api.rs",
-        *sorted((root / "rust-core/application/src/application").glob("*.rs")),
-    )
-)
-theme_source = (root / "lib/app/app_theme.dart").read_text(encoding="utf-8")
-launcher_source = (root / "lib/app/app_launcher.dart").read_text(encoding="utf-8")
-inspection_source = (root / "lib/app/inspection_window_app.dart").read_text(
-    encoding="utf-8"
-)
-macos_window = (root / "macos/Runner/MainFlutterWindow.swift").read_text(
-    encoding="utf-8"
-)
-for contract, source in (
-    ("ContextMenuWidget", graph_widget),
-    ("_commitContextMenu", workspace_shell),
-    ("MenuAction(", workspace_shell),
-    ("AppCommandId.createBranch", workspace_shell),
-    ("initialTarget: row.objectId", workspace_shell),
-    ("secondary click requests a context menu for the exact row", graph_widget_test),
-):
-    if contract not in source:
-        errors.append(f"graph context-menu contract lost {contract}")
-
-for contract, source in (
-    ("HistoryNodeShape.wip", graph_widget),
-    ("HistoryNodeShape.wipConflict", graph_widget),
-    ("historyWorktreeObjectId", workspace_shell),
-    ("working-tree graph row opens Changes without selecting a commit", home_screen_test),
-    ("history_projection_tracks_worktree_row_and_head_edge", native_api),
-):
-    if contract not in source:
-        errors.append(f"working-tree graph contract lost {contract}")
-
-for forbidden in ("_HistoryColumnHeader", "historyColumnGraph"):
-    if forbidden in workspace_shell:
-        errors.append(f"headerless graph contract regained forbidden {forbidden}")
-if "history filters precede a headerless QSpline graph" not in home_screen_test:
-    errors.append("headerless graph geometry regression is missing")
-for contract in (
-    "commit-changed-files",
-    "commit-files-mode",
-    "commit-files-splitter",
-    "history HEAD badge stays on repository head after selection",
-    "restored history selection opens full-width detail with file mode toggle",
-):
-    if contract not in home_screen_test:
-        errors.append(f"History detail contract lost {contract}")
-
-changes_section = workspace_shell.split("class ChangesSection", 1)[-1].split(
-    "class PartialStagingChoice", 1
-)[0]
-working_diff = workspace_shell.split("class WorkingTreeDetailPane", 1)[-1].split(
-    "class DetailPane", 1
-)[0]
-for contract in (
-    # Meridian's split pane carries the file and detail columns.
-    "MeridianSplitPane",
-    "changes-file-column",
-    "changes-detail-column",
-    "changes-workspace-splitter",
-    "stacked: true",
-    "changesUnstagedMode",
-    "changesStagedMode",
-    "GitFileListMode.values.byName",
-    "_stagingArrow",
-    "GitLamaFileRow",
-    "_fileMenu",
-    "onDiscardAll",
-    "ContextMenuWidget",
-):
-    if contract not in workspace_shell:
-        errors.append(f"Changes visual contract lost {contract}")
-if "Checkbox(" in changes_section:
-    errors.append("Changes file rows regressed to checkbox-led presentation")
-for contract in (
-    "working-diff-toolbar-surface",
-    "width: double.infinity",
-    # The shared find bar replaced the hand-built search field.
-    "MeridianFindBar(",
-):
-    # dart format may wrap an argument after its name.
-    if contract not in re.sub(r"\s+", " ", working_diff):
-        errors.append(f"working diff toolbar geometry lost {contract}")
-if (
-    "changes use side-by-side columns with stacked persistent staging panes"
-    not in home_screen_test
-):
-    errors.append("Changes layout and persistence regression is missing")
-
-
-for dart_source in (root / "lib").rglob("*.dart"):
-    if "InkWell(" in dart_source.read_text(encoding="utf-8"):
-        errors.append(
-            f"Material InkWell returned outside MeridianInteraction: "
-            f"{dart_source.relative_to(root)}"
-        )
-for contract, source in (
-    ("MeridianTheme.resolve(", theme_source),
-    ("brand: MeridianBrands.gitlama", theme_source),
-    ("titleVisibility = .hidden", macos_window),
-    ("titlebarAppearsTransparent = true", macos_window),
-    (".fullSizeContentView", macos_window),
-    ("macos-titlebar-leading", workspace_shell),
-):
-    if contract not in source:
-        errors.append(f"GitLama desktop chrome contract lost {contract}")
-
-for contract in (
-    "_commitFooter",
-    "commit-failure-panel",
-    "commitSkipHooksConfirmTitle",
-    "CommitSigning.require",
-    "commitCommittedObject",
-    "context.l10n.commitCoauthors",
-    "context.l10n.commitSpellcheck",
-    "context.l10n.fixupSuggestionAction",
-):
-    if contract not in workspace_shell:
-        errors.append(f"commit editor visual/recovery contract lost {contract}")
-for contract in (
-    "NativeCommitFailureKind::Hook",
-    "NativeCommitFailureKind::Signing",
-    # devmil-git's CommitTrace adds GIT_TRACE2_EVENT to the commit invocation.
-    "pub(crate) use devmil_git::commands::commit::CommitTrace;",
-    ".invocation(commit_invocation(",
-    "take(40)",
-):
-    if contract not in native_api:
-        errors.append(f"commit failure boundary lost {contract}")
-if "commit hook failure stays inline and requires typed bypass" not in home_screen_test:
-    errors.append("commit hook recovery regression is missing")
-
-# Native action menus are a product requirement, including library fallbacks.
-for dart_source in (root / "lib").rglob("*.dart"):
-    source = dart_source.read_text(encoding="utf-8")
-    fields = len(re.findall(
-        r"\b(?:TextField|TextFormField|SelectableText|MeridianSelectableText)\(",
-        source,
-    ))
-    native_fields = len(re.findall(
-        r"\b(?:TextField|TextFormField|SelectableText|MeridianSelectableText)\(\s*"
-        r"contextMenuBuilder:\s*nativeTextContextMenuBuilder,", source
-    ))
-    if fields != native_fields:
-        errors.append(
-            f"Text context menu must use nativeTextContextMenuBuilder: "
-            f"{dart_source.relative_to(root)}"
-        )
-    for forbidden in (
-        r"\bPopupMenuButton", r"\bPopupMenuItem", r"\bMenuAnchor\s*\(",
-        r"\bshowMenu\s*[<(]", r"\bContextMenuWidget\s*\(",
-    ):
-        if re.search(forbidden, source):
-            errors.append(
-                f"Flutter action menu or platform fallback returned in "
-                f"{dart_source.relative_to(root)}: {forbidden}"
-            )
-
-# Every Meridian menu and text field menu is OS-native in both windows.
-for name, source in (
-    ("main window", launcher_source),
-    ("inspection window", inspection_source),
-):
-    # NativeMenus.scope installs meridian_native_menus' presenter for every
-    # Meridian menu and text field menu, and prepare() readies Linux menus.
-    for contract in (
-        "NativeMenus.scope(",
-        "NativeMenus.prepare()",
-    ):
-        if contract not in source:
-            errors.append(f"{name} lost the native menu presenter: {contract}")
-
-# Dialog presentation and modal dimming have one implementation: meridian_ui.
-for dart_source in (root / "lib").rglob("*.dart"):
-    if re.search(
-        r"\b(?:AlertDialog|SimpleDialog|Dialog|DialogRoute|showDialog|showGeneralDialog)\s*[<(]",
-        dart_source.read_text(encoding="utf-8"),
-    ):
-        errors.append(
-            "Use MeridianDialog or MeridianDialogSurface with showMeridianDialog: "
-            f"{dart_source.relative_to(root)}"
-        )
+# --- QML contracts ---------------------------------------------------------------
+qml = root / "qml/GitLama"
+# Every application dialog is a Meridian dialog.
+for path in sorted(qml.glob("*Dialog.qml")):
+    if not re.search(r"^(MeridianDialog|MeridianSettingsDialog)\s*\{", path.read_text(encoding="utf-8"), re.M):
+        errors.append(f"{path.relative_to(root)}: an application dialog must be a MeridianDialog")
+# Text a person edits or selects offers the native text menu.
+for path in sorted(qml.glob("*.qml")):
+    text = path.read_text(encoding="utf-8")
+    if re.search(r"^\s*(T\.TextArea|T\.TextField|TextEdit|TextInput)\s*\{", text, re.M):
+        # DiffLineText is selected by DiffView, whose own menu and Ctrl+C copy the selection.
+        if "MeridianTextMenu" not in text and path.name not in ("Actions.qml", "DiffLineText.qml"):
+            errors.append(f"{path.relative_to(root)}: an editable text lacks MeridianTextMenu")
+# The history graph is drawn natively and fed by the G-LANE-01 rows.
+history_row = (qml / "HistoryRow.qml").read_text(encoding="utf-8")
+if "GraphRow {" not in history_row:
+    errors.append("HistoryRow lost the native graph row")
+# Both theme modes and the three densities stay bound to the appearance settings.
+main = (qml / "Main.qml").read_text(encoding="utf-8")
+for contract in ('property: "density"', 'property: "mode"', 'property: "iconAliases"', 'property: "textMenuLabels"'):
+    if contract not in main:
+        errors.append(f"Main.qml lost the theme binding {contract}")
 
 if errors:
     raise SystemExit("\n".join(errors))
-print("Meridian design package, oracles, assets and Flutter code contracts passed")
+print("Meridian design package, oracles, assets and QML contracts passed")

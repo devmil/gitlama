@@ -1,0 +1,1693 @@
+{
+ "comment": "GitLama's commands: the one registry the toolbar, menus, palette, shortcuts and settings read. Order is the palette's.",
+ "commands": [
+  {
+   "id": "openRepository",
+   "group": "repository",
+   "icon": "folder-open",
+   "shortcut": "Ctrl+O",
+   "macShortcut": "Cmd+O",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "workspaceOpenAnother",
+   "remote": "view"
+  },
+  {
+   "id": "openRemoteRepository",
+   "group": "repository",
+   "icon": "server",
+   "shortcut": "Ctrl+Shift+O",
+   "macShortcut": "Cmd+Shift+O",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "openRemoteRepository",
+   "remote": "view"
+  },
+  {
+   "id": "cloneRepository",
+   "group": "repository",
+   "icon": "fetch",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "cloneRepository",
+   "remote": "view"
+  },
+  {
+   "id": "initializeRepository",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "initializeRepository",
+   "remote": "view"
+  },
+  {
+   "id": "closeRepositoryTab",
+   "group": "repository",
+   "icon": "close",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCloseRepositoryTab",
+   "remote": "view"
+  },
+  {
+   "id": "refreshRepository",
+   "group": "repository",
+   "icon": "refresh",
+   "shortcut": "Ctrl+R",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "workspaceRefreshLocal",
+   "remote": "read"
+  },
+  {
+   "id": "showRepositoryDetails",
+   "group": "repository",
+   "icon": "info",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "repositoryDetailsTitle",
+   "remote": "view"
+  },
+  {
+   "id": "showChanges",
+   "group": "commands",
+   "icon": "changes",
+   "shortcut": "Ctrl+1",
+   "macShortcut": "Cmd+1",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "workspaceChanges",
+   "remote": "view"
+  },
+  {
+   "id": "showHistory",
+   "group": "commands",
+   "icon": "history",
+   "shortcut": "Ctrl+2",
+   "macShortcut": "Cmd+2",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "workspaceHistory",
+   "remote": "view"
+  },
+  {
+   "id": "commitCreate",
+   "group": "commands",
+   "icon": "check",
+   "shortcut": "Ctrl+Enter",
+   "macShortcut": "Cmd+Enter",
+   "keyHint": null,
+   "scopes": [
+    "changes"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commitAction",
+   "remote": "commit"
+  },
+  {
+   "id": "commitAmend",
+   "group": "commands",
+   "icon": "pencil",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "changes"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commitAmend",
+   "remote": "commit"
+  },
+  {
+   "id": "stageToggle",
+   "group": "commands",
+   "icon": "stage-all",
+   "shortcut": "Space",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "changes"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandStageToggle",
+   "remote": "stage"
+  },
+  {
+   "id": "stageSelection",
+   "group": "commands",
+   "icon": "arrow-right",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "changes",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "stageSelected",
+   "remote": "stage"
+  },
+  {
+   "id": "unstageSelection",
+   "group": "commands",
+   "icon": "arrow-left",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "changes",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "unstageSelected",
+   "remote": "stage"
+  },
+  {
+   "id": "discardChanges",
+   "group": "commands",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "changes",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "discardSelected",
+   "remote": "discard"
+  },
+  {
+   "id": "diffToggleLayout",
+   "group": "commands",
+   "icon": "side-by-side",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandDiffToggleLayout",
+   "remote": "view"
+  },
+  {
+   "id": "diffRenderConfigured",
+   "group": "commands",
+   "icon": "brush-cleaning",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "changes",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandDiffRenderConfigured",
+   "remote": "read"
+  },
+  {
+   "id": "diffToggleWrap",
+   "group": "commands",
+   "icon": "wrap",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandDiffToggleWrap",
+   "remote": "view"
+  },
+  {
+   "id": "diffNextHunk",
+   "group": "commands",
+   "icon": "arrow-down",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandDiffNextHunk",
+   "remote": "view"
+  },
+  {
+   "id": "diffPreviousHunk",
+   "group": "commands",
+   "icon": "arrow-up",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandDiffPreviousHunk",
+   "remote": "view"
+  },
+  {
+   "id": "conflictNext",
+   "group": "commands",
+   "icon": "arrow-down",
+   "shortcut": "F8",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictNextRegion",
+   "remote": "read"
+  },
+  {
+   "id": "conflictPrevious",
+   "group": "commands",
+   "icon": "arrow-up",
+   "shortcut": "Shift+F8",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictPreviousRegion",
+   "remote": "read"
+  },
+  {
+   "id": "conflictTakeCurrent",
+   "group": "commands",
+   "icon": "arrow-left",
+   "shortcut": "Alt+1",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictTakeCurrent",
+   "remote": "history"
+  },
+  {
+   "id": "conflictTakeIncoming",
+   "group": "commands",
+   "icon": "arrow-right",
+   "shortcut": "Alt+2",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictTakeIncoming",
+   "remote": "history"
+  },
+  {
+   "id": "conflictTakeBoth",
+   "group": "commands",
+   "icon": "git-merge",
+   "shortcut": "Alt+3",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictTakeBoth",
+   "remote": "history"
+  },
+  {
+   "id": "conflictOpenExternal",
+   "group": "commands",
+   "icon": "external-link",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictExternalTool",
+   "remote": "unsupported"
+  },
+  {
+   "id": "rebaseContinue",
+   "group": "repository",
+   "icon": "skip-forward",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "rebase",
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictContinue",
+   "remote": "history"
+  },
+  {
+   "id": "rebaseAbort",
+   "group": "repository",
+   "icon": "ban",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "rebase",
+    "conflict"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "conflictAbort",
+   "remote": "history"
+  },
+  {
+   "id": "rebaseSquash",
+   "group": "repository",
+   "icon": "squash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "rebase"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRebaseSquash",
+   "remote": "history"
+  },
+  {
+   "id": "rebaseFixup",
+   "group": "repository",
+   "icon": "fixup",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "rebase"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRebaseFixup",
+   "remote": "history"
+  },
+  {
+   "id": "rebaseReword",
+   "group": "repository",
+   "icon": "pencil",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "rebase"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRebaseReword",
+   "remote": "history"
+  },
+  {
+   "id": "rebaseDrop",
+   "group": "repository",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "rebase"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRebaseDrop",
+   "remote": "history"
+  },
+  {
+   "id": "nextPane",
+   "group": "commands",
+   "icon": "arrow-right",
+   "shortcut": "Ctrl+Tab",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandNextPane",
+   "remote": "view"
+  },
+  {
+   "id": "find",
+   "group": "commands",
+   "icon": "inspect",
+   "shortcut": "Ctrl+F",
+   "macShortcut": "Cmd+F",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandFind",
+   "remote": "view"
+  },
+  {
+   "id": "showOperations",
+   "group": "commands",
+   "icon": "circle-dot",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "logbookTitle",
+   "remote": "view"
+  },
+  {
+   "id": "showActivity",
+   "group": "commands",
+   "icon": "list-view",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "workspaceActivity",
+   "remote": "view"
+  },
+  {
+   "id": "activityCopy",
+   "group": "commands",
+   "icon": "copy",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "activityCopy",
+   "remote": "view"
+  },
+  {
+   "id": "activityRetry",
+   "group": "repository",
+   "icon": "rotate-cw",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "retry",
+   "remote": "unsupported"
+  },
+  {
+   "id": "activityCancel",
+   "group": "repository",
+   "icon": "ban",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "cancel",
+   "remote": "view"
+  },
+  {
+   "id": "patch",
+   "group": "repository",
+   "icon": "file",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "patchTitle",
+   "remote": "read"
+  },
+  {
+   "id": "createPatch",
+   "group": "repository",
+   "icon": "file",
+   "shortcut": "Ctrl+Shift+P",
+   "macShortcut": "Cmd+Shift+P",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "patchCreate",
+   "remote": "read"
+  },
+  {
+   "id": "checkoutCommit",
+   "group": "commands",
+   "icon": "log-in",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCheckoutCommit",
+   "remote": "refs"
+  },
+  {
+   "id": "saveCommitArchive",
+   "group": "commands",
+   "icon": "archive",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandSaveCommitArchive",
+   "remote": "read"
+  },
+  {
+   "id": "applyPatch",
+   "group": "repository",
+   "icon": "file",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "patchApply",
+   "remote": "recovery"
+  },
+  {
+   "id": "showSnapshots",
+   "group": "commands",
+   "icon": "box",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "namedSnapshotsTitle",
+   "remote": "read"
+  },
+  {
+   "id": "showCommandPalette",
+   "group": "commands",
+   "icon": "command",
+   "shortcut": "Ctrl+P",
+   "macShortcut": "Cmd+P",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "commandPaletteTitle",
+   "remote": "view"
+  },
+  {
+   "id": "showSettings",
+   "group": "settings",
+   "icon": "settings",
+   "shortcut": "Ctrl+,",
+   "macShortcut": "Cmd+,",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "settingsTitle",
+   "remote": "view"
+  },
+  {
+   "id": "showShortcutReference",
+   "group": "settings",
+   "icon": "shortcuts",
+   "shortcut": "?",
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "shortcutReferenceTitle",
+   "remote": "view"
+  },
+  {
+   "id": "showLicenses",
+   "group": "settings",
+   "icon": "badge-check",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "licensesTitle",
+   "remote": "view"
+  },
+  {
+   "id": "reportIssue",
+   "group": "settings",
+   "icon": "bug",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": false,
+   "available": true,
+   "destructive": false,
+   "label": "commandReportIssue",
+   "remote": "view"
+  },
+  {
+   "id": "inspectIndexLock",
+   "group": "repository",
+   "icon": "recovery",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectIndexLock",
+   "remote": "recovery"
+  },
+  {
+   "id": "createBranch",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": "Insert",
+   "scopes": [
+    "history",
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCreateBranch",
+   "remote": "refs"
+  },
+  {
+   "id": "renameBranch",
+   "group": "repository",
+   "icon": "pencil",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandEditBranch",
+   "remote": "refs"
+  },
+  {
+   "id": "deleteBranch",
+   "group": "repository",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "commandDeleteBranch",
+   "remote": "refs"
+  },
+  {
+   "id": "deleteRemoteBranch",
+   "group": "repository",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "commandDeleteRemoteBranch",
+   "remote": "transfer"
+  },
+  {
+   "id": "checkoutBranch",
+   "group": "repository",
+   "icon": "log-in",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCheckoutBranch",
+   "remote": "refs"
+  },
+  {
+   "id": "addRemote",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": "Insert",
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandAddRemote",
+   "remote": "refs"
+  },
+  {
+   "id": "editRemote",
+   "group": "repository",
+   "icon": "link",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandEditRemote",
+   "remote": "refs"
+  },
+  {
+   "id": "renameRemote",
+   "group": "repository",
+   "icon": "pencil",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRenameRemote",
+   "remote": "refs"
+  },
+  {
+   "id": "removeRemote",
+   "group": "repository",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "commandRemoveRemote",
+   "remote": "refs"
+  },
+  {
+   "id": "remoteFetch",
+   "group": "repository",
+   "icon": "fetch",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandFetchRemote",
+   "remote": "transfer"
+  },
+  {
+   "id": "remotePush",
+   "group": "repository",
+   "icon": "push",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandPushRemote",
+   "remote": "transfer"
+  },
+  {
+   "id": "hostingCreatePullRequest",
+   "group": "repository",
+   "icon": "git-pull-request",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandHostingCreatePullRequest",
+   "remote": "view"
+  },
+  {
+   "id": "createTag",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": "Insert",
+   "scopes": [
+    "history"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCreateTag",
+   "remote": "refs"
+  },
+  {
+   "id": "deleteTag",
+   "group": "repository",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "commandDeleteTag",
+   "remote": "refs"
+  },
+  {
+   "id": "pushTag",
+   "group": "repository",
+   "icon": "push",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandPushTag",
+   "remote": "transfer"
+  },
+  {
+   "id": "resetBranch",
+   "group": "repository",
+   "icon": "recovery",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "commandResetBranch",
+   "remote": "refs"
+  },
+  {
+   "id": "fetch",
+   "group": "repository",
+   "icon": "fetch",
+   "shortcut": "Ctrl+Shift+K",
+   "macShortcut": "Cmd+Shift+K",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandFetch",
+   "remote": "transfer"
+  },
+  {
+   "id": "pull",
+   "group": "repository",
+   "icon": "pull",
+   "shortcut": "Ctrl+Down",
+   "macShortcut": "Cmd+Down",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandPull",
+   "remote": "transfer"
+  },
+  {
+   "id": "push",
+   "group": "repository",
+   "icon": "push",
+   "shortcut": "Ctrl+Up",
+   "macShortcut": "Cmd+Up",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandPush",
+   "remote": "transfer"
+  },
+  {
+   "id": "openInEditor",
+   "group": "repository",
+   "icon": "external-link",
+   "shortcut": "Ctrl+Alt+E",
+   "macShortcut": "Cmd+Alt+E",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandOpenInEditor",
+   "remote": "unsupported"
+  },
+  {
+   "id": "openInTerminal",
+   "group": "repository",
+   "icon": "command",
+   "shortcut": "Ctrl+Alt+T",
+   "macShortcut": "Cmd+Alt+T",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandOpenInTerminal",
+   "remote": "unsupported"
+  },
+  {
+   "id": "openInFileManager",
+   "group": "repository",
+   "icon": "folder-open",
+   "shortcut": "Ctrl+Alt+F",
+   "macShortcut": "Cmd+Alt+F",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "openInFileBrowser",
+   "remote": "unsupported"
+  },
+  {
+   "id": "createStash",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": "Ctrl+S",
+   "macShortcut": "Cmd+S",
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCreateStash",
+   "remote": "stash"
+  },
+  {
+   "id": "applyStash",
+   "group": "repository",
+   "icon": "rotate-ccw",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandApplyStash",
+   "remote": "stash"
+  },
+  {
+   "id": "popStash",
+   "group": "repository",
+   "icon": "stash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandPopStash",
+   "remote": "stash"
+  },
+  {
+   "id": "renameStash",
+   "group": "repository",
+   "icon": "pencil",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRenameStash",
+   "remote": "stash"
+  },
+  {
+   "id": "dropStash",
+   "group": "repository",
+   "icon": "trash",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": true,
+   "label": "commandDropStash",
+   "remote": "stash"
+  },
+  {
+   "id": "autoStashCheckout",
+   "group": "repository",
+   "icon": "git-fork",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandAutoStashCheckout",
+   "remote": "stash"
+  },
+  {
+   "id": "integrateBranch",
+   "group": "repository",
+   "icon": "git-pull-request",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandIntegrateBranch",
+   "remote": "history"
+  },
+  {
+   "id": "mergeBranch",
+   "group": "repository",
+   "icon": "git-merge",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandMergeBranch",
+   "remote": "history"
+  },
+  {
+   "id": "rebaseBranch",
+   "group": "repository",
+   "icon": "arrow-left-right",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRebaseBranch",
+   "remote": "history"
+  },
+  {
+   "id": "interactiveRebase",
+   "group": "repository",
+   "icon": "arrow-left-right",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInteractiveRebase",
+   "remote": "history"
+  },
+  {
+   "id": "historyCompare",
+   "group": "commands",
+   "icon": "arrow-left-right",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandHistoryCompare",
+   "remote": "view"
+  },
+  {
+   "id": "historyBlame",
+   "group": "commands",
+   "icon": "blame",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandHistoryBlame",
+   "remote": "view"
+  },
+  {
+   "id": "historyPathHistory",
+   "group": "commands",
+   "icon": "folder-history",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandHistoryPathHistory",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorBack",
+   "group": "commands",
+   "icon": "back",
+   "shortcut": "Alt+Left",
+   "macShortcut": "Cmd+[",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorBack",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorForward",
+   "group": "commands",
+   "icon": "forward",
+   "shortcut": "Alt+Right",
+   "macShortcut": "Cmd+]",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorForward",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorLensDiff",
+   "group": "commands",
+   "icon": "file-diff",
+   "shortcut": "Ctrl+Alt+1",
+   "macShortcut": "Cmd+Alt+1",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorLensDiff",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorLensContents",
+   "group": "commands",
+   "icon": "file-text",
+   "shortcut": "Ctrl+Alt+2",
+   "macShortcut": "Cmd+Alt+2",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorLensContents",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorLensBlame",
+   "group": "commands",
+   "icon": "blame",
+   "shortcut": "Ctrl+Alt+3",
+   "macShortcut": "Cmd+Alt+3",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorLensBlame",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorLensHistory",
+   "group": "commands",
+   "icon": "history",
+   "shortcut": "Ctrl+Alt+4",
+   "macShortcut": "Cmd+Alt+4",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorLensHistory",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorOpenInWindow",
+   "group": "commands",
+   "icon": "app-window",
+   "shortcut": "Ctrl+Shift+N",
+   "macShortcut": "Cmd+Shift+N",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorOpenInWindow",
+   "remote": "read"
+  },
+  {
+   "id": "inspectorToggleMaximize",
+   "group": "commands",
+   "icon": "maximize-2",
+   "shortcut": "Ctrl+Shift+Enter",
+   "macShortcut": "Cmd+Shift+Enter",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorToggleMaximize",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorToggleFiles",
+   "group": "commands",
+   "icon": "panel-left",
+   "shortcut": "Ctrl+Alt+B",
+   "macShortcut": "Cmd+Alt+B",
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorToggleFiles",
+   "remote": "view"
+  },
+  {
+   "id": "inspectorAllFiles",
+   "group": "commands",
+   "icon": "tree-view",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "history",
+    "diff"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandInspectorAllFiles",
+   "remote": "view"
+  },
+  {
+   "id": "restackBranches",
+   "group": "repository",
+   "icon": "branch",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRestackBranches",
+   "remote": "history"
+  },
+  {
+   "id": "cherryPickSelected",
+   "group": "repository",
+   "icon": "check",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandCherryPickSelected",
+   "remote": "history"
+  },
+  {
+   "id": "revertSelected",
+   "group": "repository",
+   "icon": "rotate-ccw",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandRevertSelected",
+   "remote": "history"
+  },
+  {
+   "id": "addWorktree",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": "Insert",
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandAddWorktree",
+   "remote": "extensions"
+  },
+  {
+   "id": "trackLfsPattern",
+   "group": "repository",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": "Insert",
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandTrackLfsPattern",
+   "remote": "extensions"
+  },
+  {
+   "id": "addIntegration",
+   "group": "settings",
+   "icon": "plus",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": "Insert",
+   "scopes": [
+    "sidebar"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "commandAddIntegration",
+   "remote": "unsupported"
+  },
+  {
+   "id": "showIntegrations",
+   "group": "settings",
+   "icon": "command",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "integrationTitle",
+   "remote": "view"
+  },
+  {
+   "id": "showPowerTools",
+   "group": "repository",
+   "icon": "inspect",
+   "shortcut": null,
+   "macShortcut": null,
+   "keyHint": null,
+   "scopes": [
+    "global"
+   ],
+   "requiresRepository": true,
+   "available": true,
+   "destructive": false,
+   "label": "powerToolsTitle",
+   "remote": "read"
+  }
+ ]
+}

@@ -15,6 +15,32 @@ pub const ACTIVITY_PAGE_CAPACITY: u32 = 64;
 
 static NEXT_ACTIVITY_ID: AtomicU64 = AtomicU64::new(1);
 
+/// Called when an operation starts, reports progress or ends, so the operation center is read
+/// when it changed instead of on a timer.
+pub type OperationsWakeup = Arc<dyn Fn() + Send + Sync>;
+static OPERATIONS_WAKEUP: std::sync::OnceLock<Mutex<Option<OperationsWakeup>>> =
+    std::sync::OnceLock::new();
+
+/// Installs (or with `None` removes) the operation center's change callback.
+pub fn set_operations_wakeup(wakeup: Option<OperationsWakeup>) {
+    let lock = OPERATIONS_WAKEUP.get_or_init(|| Mutex::new(None));
+    *lock
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = wakeup;
+}
+
+/// Tells the installed callback that the operation center changed.
+pub(crate) fn wake_operations() {
+    let wakeup = OPERATIONS_WAKEUP.get().and_then(|lock| {
+        lock.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    });
+    if let Some(wakeup) = wakeup {
+        wakeup();
+    }
+}
+
 #[derive(Default)]
 struct ActivityState {
     order: VecDeque<u64>,
@@ -88,6 +114,14 @@ impl ActivityStore {
     }
 
     fn publish(&self, event: ActivityEvent) {
+        let changes_operations = changes_operations(&event);
+        self.apply(event);
+        if changes_operations {
+            wake_operations();
+        }
+    }
+
+    fn apply(&self, event: ActivityEvent) {
         let mut state = self
             .inner
             .lock()
@@ -114,6 +148,11 @@ impl ActivityStore {
             }
         }
     }
+}
+
+/// Output is not part of the operation center; the other events change it.
+fn changes_operations(event: &ActivityEvent) -> bool {
+    !matches!(event, ActivityEvent::Output { .. })
 }
 
 pub fn allocate_activity_id() -> ActivityId {
@@ -298,6 +337,17 @@ mod tests {
             },
             10,
         )
+    }
+
+    #[test]
+    fn operations_change_with_records_but_not_with_output() {
+        assert!(changes_operations(&ActivityEvent::Created(record(1))));
+        assert!(changes_operations(&ActivityEvent::Finished(record(1))));
+        assert!(!changes_operations(&ActivityEvent::Output {
+            id: record(1).id,
+            stream: ActivityStream::Stdout,
+            bytes: b"x".to_vec(),
+        }));
     }
 
     #[test]

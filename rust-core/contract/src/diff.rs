@@ -184,7 +184,7 @@ pub struct NativeTextSyntaxRequest {
 }
 
 /// The categories of one line of a text, over UTF-16 code-unit offsets of the line without its
-/// terminator: the offsets a Dart string of the line indexes.
+/// terminator: the offsets QML text of the line indexes.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeTextSyntaxLine {
     pub state: NativeSyntaxSideState,

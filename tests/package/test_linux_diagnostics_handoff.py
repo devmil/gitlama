@@ -72,7 +72,7 @@ class LinuxDiagnosticsHandoffTest(unittest.TestCase):
         self.assertEqual(wrapper.count('install -d -m 0700 -- "$ROOT/dist/diagnostics"'), 2)
         # Both calls are within the container command, before host enumeration.
         for section in wrapper.split(call)[1:]:
-            self.assertIn('for diagnostic in "$STAGE/Flutter/GitLama/dist/diagnostics/"', section)
+            self.assertIn('for diagnostic in "$STAGE/GitLama/dist/diagnostics/"', section)
 
 
 if __name__ == '__main__':

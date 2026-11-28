@@ -1,0 +1,466 @@
+//! GitLama's composition root: the workbench services, the Qt objects and
+//! the QML window, and every lifetime until exit.
+
+// A window application on Windows: no console opens with it. Run from a
+// terminal it writes there (AttachConsole below), as earlier releases did.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
+mod hooks;
+
+use gitlama_qt::{AppState, Commands, Driver, Pump, PumpWaker, WorkspaceState};
+use gitlama_workbench::app::App;
+use gitlama_workbench::notify::Notifier;
+use gitlama_workbench::rt::Runtime;
+use hooks::PlatformHooks;
+use qtbridge::{QApp, QObjectHolder};
+use serde_json::json;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
+
+static RESOURCES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/gitlama.rcc"));
+
+const VERSION: &str = env!("GITLAMA_VERSION");
+const BUILD: &str = env!("GITLAMA_BUILD");
+
+/// The Qt application name: on Linux it is the Wayland app id and must match
+/// the desktop entry.
+const APPLICATION_NAME: &str = if cfg!(target_os = "linux") {
+    "de.devmil.gitlama"
+} else {
+    "GitLama"
+};
+
+fn os_name() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        "linux"
+    }
+}
+
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    fn gitlama_set_desktop_file_name(name: *const std::ffi::c_char);
+    fn gitlama_present_without_swap_wait();
+}
+
+/// The Wayland app id and X11 class, matching the desktop entry.
+fn set_desktop_file_name() {
+    #[cfg(target_os = "linux")]
+    {
+        let name = c"de.devmil.gitlama";
+        // SAFETY: a static NUL-terminated string; the setter copies it.
+        unsafe { gitlama_set_desktop_file_name(name.as_ptr()) };
+    }
+}
+
+unsafe extern "C" {
+    /// Registers the natively painted Qt Quick items (src/native).
+    fn gitlama_register_native_types();
+}
+
+/// Hands `gitlama <path>` and `--command` invocations to the running
+/// window: exits 0 once forwarded and 2
+/// with a message when refused; otherwise this process owns the instance.
+fn forward_or_continue() {
+    use gitlama_core::api::NativeCliStartupState;
+    let startup = gitlama_core::api::cli_forwarding_prepare_process();
+    match startup.state {
+        NativeCliStartupState::Owner => {}
+        NativeCliStartupState::Forwarded => std::process::exit(0),
+        NativeCliStartupState::Rejected => {
+            if std::env::var_os("GITLAMA_FORWARDING_DIAGNOSTICS").is_some_and(|value| value == "1")
+            {
+                eprintln!("gitlama_forwarding_failure={:?}", startup.failure);
+            }
+            eprintln!("{}", forwarding_failed_message());
+            std::process::exit(2);
+        }
+    }
+}
+
+/// The refusal in the system language (English or German).
+fn forwarding_failed_message() -> String {
+    let german = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()))
+        .is_some_and(|value| value.to_lowercase().starts_with("de"));
+    let catalog = if german {
+        include_str!("../../../../l10n/app_de.arb")
+    } else {
+        include_str!("../../../../l10n/app_en.arb")
+    };
+    serde_json::from_str::<serde_json::Value>(catalog)
+        .ok()
+        .and_then(|value| value["cliForwardingFailed"].as_str().map(str::to_owned))
+        .unwrap_or_else(|| "GitLama could not forward the command safely.".to_owned())
+}
+
+/// Sparkle, through the Objective-C bridge (sparkle_bridge.m).
+#[cfg(target_os = "macos")]
+fn install_native_updater() {
+    unsafe extern "C" {
+        fn gitlama_sparkle_loaded() -> bool;
+        fn gitlama_sparkle_configure(channel: *const std::ffi::c_char) -> bool;
+        fn gitlama_sparkle_check() -> bool;
+    }
+    fn loaded() -> bool {
+        unsafe { gitlama_sparkle_loaded() }
+    }
+    fn configure(channel: &str) -> bool {
+        let Ok(channel) = std::ffi::CString::new(channel) else {
+            return false;
+        };
+        unsafe { gitlama_sparkle_configure(channel.as_ptr()) }
+    }
+    fn check() -> bool {
+        unsafe { gitlama_sparkle_check() }
+    }
+    gitlama_workbench::updates::set_native_updater(gitlama_workbench::updates::NativeUpdater {
+        loaded,
+        configure,
+        check,
+    });
+}
+
+#[cfg(windows)]
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn AttachConsole(process_id: u32) -> i32;
+}
+
+unsafe extern "C" {
+    fn gitlama_install_file_open_filter();
+    /// Registers the QML bytecode compiled ahead of time (build.rs).
+    fn gitlama_init_qml_cache();
+}
+
+/// A folder the operating system asked to open (an open-document event); the window opens it
+/// once it is ready.
+#[unsafe(no_mangle)]
+extern "C" fn gitlama_file_open_requested(path: *const std::ffi::c_char, length: usize) {
+    if path.is_null() {
+        return;
+    }
+    // SAFETY: the filter passes `length` bytes of a live QByteArray for this call.
+    let bytes = unsafe { std::slice::from_raw_parts(path.cast::<u8>(), length) };
+    let _ = gitlama_workbench::cli::queue_open_request(bytes);
+}
+
+/// File and folder pickers use the desktop portal (the platform's own chooser, also on
+/// Hyprland and other compositors without a Qt platform theme) unless a theme is configured.
+/// Without one, Qt falls back to its own QML picker.
+#[cfg(target_os = "linux")]
+fn prefer_portal_dialogs() {
+    if std::env::var_os("QT_QPA_PLATFORMTHEME").is_none_or(|value| value.is_empty()) {
+        // SAFETY: runs first in main, before any thread exists.
+        unsafe { std::env::set_var("QT_QPA_PLATFORMTHEME", "xdgdesktopportal") };
+    }
+}
+
+/// Wayland's `threaded` scene-graph loop stalls the GUI thread waiting for the
+/// render thread's `eglSwapBuffers` frame callback during interactive resizes;
+/// the `basic` loop commits new geometry without that cross-thread stall, and
+/// presents without a blocking swap so each new size is shown in its own frame.
+#[cfg(target_os = "linux")]
+fn prefer_wayland_basic_render_loop() {
+    let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some_and(|value| !value.is_empty());
+    let non_wayland = std::env::var_os("QT_QPA_PLATFORM")
+        .is_some_and(|value| value == "xcb" || value == "offscreen" || value == "minimal");
+    if wayland
+        && !non_wayland
+        && std::env::var_os("QSG_RENDER_LOOP").is_none_or(|value| value.is_empty())
+    {
+        // SAFETY: runs first in main, before any thread exists.
+        unsafe { std::env::set_var("QSG_RENDER_LOOP", "basic") };
+        // A blocking swap halves how often the content follows an interactive resize
+        // (measured on Hyprland: 29 of 75 sizes a second, 67 without the wait).
+        // SAFETY: sets Qt's default surface format before any window exists.
+        unsafe { gitlama_present_without_swap_wait() };
+    }
+}
+
+fn main() {
+    // Command-line output reaches the terminal that started GitLama.
+    #[cfg(windows)]
+    // SAFETY: attaches this GUI process to its parent's console, if any.
+    unsafe {
+        AttachConsole(u32::MAX);
+    }
+    // macOS starts applications with launchd's PATH; restart with the login
+    // shell's before any thread exists so Git finds its helpers.
+    #[cfg(target_os = "macos")]
+    gitlama_core::gitlama_prepare_desktop_environment();
+
+    #[cfg(target_os = "linux")]
+    {
+        prefer_portal_dialogs();
+        prefer_wayland_basic_render_loop();
+    }
+    // A command for the running window is handed to it; this process ends.
+    forward_or_continue();
+    #[cfg(target_os = "macos")]
+    install_native_updater();
+    gitlama_workbench::diagnostics::info("Launcher", "process_start", &[]);
+    // A panic leaves a marker the next launch records; the history is memory-only.
+    if let Some(settings) = gitlama_core::api::application_settings_default_path().path {
+        gitlama_workbench::crash_marker::install(
+            std::path::Path::new(&settings),
+            &format!("{VERSION}+{BUILD}"),
+        );
+    }
+    set_desktop_file_name();
+    // SAFETY: registers a static table with the QML engine before any engine exists.
+    unsafe { gitlama_init_qml_cache() };
+    let mut application = QApp::new();
+    application.application_name(APPLICATION_NAME);
+    // SAFETY: the GUI application exists; the filter lives as its child.
+    unsafe { gitlama_install_file_open_filter() };
+    assert!(
+        qtbridge::qresource::register_bytes(RESOURCES),
+        "failed to register the embedded QML resource"
+    );
+
+    let runtime = Runtime::install();
+    let waker = PumpWaker::new();
+    {
+        let waker = Arc::clone(&waker);
+        runtime.set_wake_hook(Arc::new(move || waker.notify()));
+    }
+    let commands = Commands::new(Arc::clone(&waker));
+    let notifier = Notifier::new();
+    let app = App::new(notifier);
+
+    let state = Rc::new(RefCell::new(AppState::default()));
+    AppState::attach_qobject(&state);
+    state.borrow_mut().commands = Some(commands.clone());
+    state.borrow_mut().command_registry = gitlama_qt::command_registry();
+    state.borrow_mut().platform = json!({
+        "os": os_name(),
+        "version": VERSION,
+        "build": BUILD,
+        "hyprland": std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some(),
+        "remoteEnabled": true,
+    });
+
+    let workspace = Rc::new(RefCell::new(WorkspaceState::default()));
+    WorkspaceState::attach_qobject(&workspace);
+    workspace.borrow_mut().commands = Some(commands.clone());
+
+    let sidebar = Rc::new(RefCell::new(gitlama_qt::SidebarState::default()));
+    gitlama_qt::SidebarState::attach_qobject(&sidebar);
+    sidebar.borrow_mut().commands = Some(commands.clone());
+    let sidebar_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::SIDEBAR_ROLES,
+    )));
+    gitlama_qt::RowModel::attach_qobject(&sidebar_rows);
+
+    let history = Rc::new(RefCell::new(gitlama_qt::HistoryState::default()));
+    gitlama_qt::HistoryState::attach_qobject(&history);
+    history.borrow_mut().commands = Some(commands.clone());
+    let history_rows = Rc::new(RefCell::new(gitlama_qt::HistoryModel::default()));
+    gitlama_qt::HistoryModel::attach_qobject(&history_rows);
+
+    let inspector = Rc::new(RefCell::new(gitlama_qt::InspectorState::default()));
+    gitlama_qt::InspectorState::attach_qobject(&inspector);
+    gitlama_qt::attach_inspector_row_models(&inspector);
+    inspector.borrow_mut().commands = Some(commands.clone());
+    let inspector_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
+    gitlama_qt::DiffModel::attach_qobject(&inspector_diff);
+
+    let changes = Rc::new(RefCell::new(gitlama_qt::ChangesState::default()));
+    gitlama_qt::ChangesState::attach_qobject(&changes);
+    changes.borrow_mut().commands = Some(commands.clone());
+    let unstaged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::FILE_ROLES,
+    )));
+    gitlama_qt::RowModel::attach_qobject(&unstaged_rows);
+    let staged_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::FILE_ROLES,
+    )));
+    gitlama_qt::RowModel::attach_qobject(&staged_rows);
+    let working_diff = Rc::new(RefCell::new(gitlama_qt::DiffModel::default()));
+    gitlama_qt::DiffModel::attach_qobject(&working_diff);
+
+    let commit = Rc::new(RefCell::new(gitlama_qt::CommitState::default()));
+    gitlama_qt::CommitState::attach_qobject(&commit);
+    commit.borrow_mut().commands = Some(commands.clone());
+
+    let workflows = Rc::new(RefCell::new(gitlama_qt::WorkflowsState::default()));
+    gitlama_qt::WorkflowsState::attach_qobject(&workflows);
+    workflows.borrow_mut().commands = Some(commands.clone());
+
+    let settings = Rc::new(RefCell::new(gitlama_qt::SettingsState::default()));
+    gitlama_qt::SettingsState::attach_qobject(&settings);
+    settings.borrow_mut().commands = Some(commands.clone());
+
+    let conflicts = Rc::new(RefCell::new(gitlama_qt::ConflictsState::default()));
+    gitlama_qt::ConflictsState::attach_qobject(&conflicts);
+    conflicts.borrow_mut().commands = Some(commands.clone());
+    let conflict_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "key",
+        gitlama_qt::CONFLICT_ROW_ROLES,
+    )));
+    gitlama_qt::RowModel::attach_qobject(&conflict_rows);
+
+    let operations = Rc::new(RefCell::new(gitlama_qt::OperationsState::default()));
+    gitlama_qt::OperationsState::attach_qobject(&operations);
+    operations.borrow_mut().commands = Some(commands.clone());
+
+    let patches = Rc::new(RefCell::new(gitlama_qt::PatchState::default()));
+    gitlama_qt::PatchState::attach_qobject(&patches);
+    patches.borrow_mut().commands = Some(commands.clone());
+
+    let remote = Rc::new(RefCell::new(gitlama_qt::RemoteState::default()));
+    gitlama_qt::RemoteState::attach_qobject(&remote);
+    remote.borrow_mut().commands = Some(commands.clone());
+    let hosting = Rc::new(RefCell::new(gitlama_qt::HostingState::default()));
+    gitlama_qt::HostingState::attach_qobject(&hosting);
+    hosting.borrow_mut().commands = Some(commands.clone());
+
+    let line_selection = Rc::new(RefCell::new(gitlama_qt::LineSelectionState::default()));
+    gitlama_qt::LineSelectionState::attach_qobject(&line_selection);
+    line_selection.borrow_mut().commands = Some(commands.clone());
+    let line_rows = Rc::new(RefCell::new(gitlama_qt::RowModel::with_roles(
+        "rowId",
+        gitlama_qt::LINE_ROLES,
+    )));
+    gitlama_qt::RowModel::attach_qobject(&line_rows);
+
+    let inspector_blame = Rc::new(RefCell::new(gitlama_qt::BlameModel::default()));
+    gitlama_qt::BlameModel::attach_qobject(&inspector_blame);
+
+    let inspection_windows = Rc::new(RefCell::new(gitlama_qt::InspectionWindows::default()));
+    gitlama_qt::InspectionWindows::attach_qobject(&inspection_windows);
+    inspection_windows.borrow_mut().commands = Some(commands.clone());
+    let window_registry = Rc::clone(&inspection_windows.borrow().registry);
+
+    let driver = Rc::new(Driver {
+        inspection_windows: window_registry,
+        inspector_blame: Rc::clone(&inspector_blame),
+        operations: Rc::clone(&operations),
+        patches: Rc::clone(&patches),
+        hosting: Rc::clone(&hosting),
+        remote: Rc::clone(&remote),
+        line_selection: Rc::clone(&line_selection),
+        line_rows: Rc::clone(&line_rows),
+        conflicts: Rc::clone(&conflicts),
+        conflict_rows: Rc::clone(&conflict_rows),
+        settings: Rc::clone(&settings),
+        workflows: Rc::clone(&workflows),
+        commit: Rc::clone(&commit),
+        changes: Rc::clone(&changes),
+        unstaged_rows: Rc::clone(&unstaged_rows),
+        staged_rows: Rc::clone(&staged_rows),
+        working_diff: Rc::clone(&working_diff),
+        inspector: Rc::clone(&inspector),
+        inspector_diff: Rc::clone(&inspector_diff),
+        history: Rc::clone(&history),
+        history_rows: Rc::clone(&history_rows),
+        history_context: RefCell::new(None),
+        history_published: RefCell::new(None),
+        history_other_refs: std::cell::Cell::new(None),
+        transfers_announced: std::cell::Cell::new(0),
+        sidebar: Rc::clone(&sidebar),
+        sidebar_rows: Rc::clone(&sidebar_rows),
+        app: Rc::clone(&app),
+        runtime,
+        commands,
+        waker: Arc::clone(&waker),
+        state: Rc::clone(&state),
+        workspace: Rc::clone(&workspace),
+    });
+    let pump = Rc::new(RefCell::new(Pump::default()));
+    Pump::attach_qobject(&pump);
+    pump.borrow_mut().driver = Some(Rc::clone(&driver));
+    waker.bind(pump.borrow().get_qml_method_invoker());
+    app.start();
+    driver.pump();
+
+    // GITLAMA_QML_DIR loads the QML from a checkout instead of the embedded
+    // resource, for iterating on the UI without rebuilding.
+    let (import_path, main_qml) = match std::env::var("GITLAMA_QML_DIR") {
+        Ok(dir) if !dir.is_empty() => {
+            let dir = std::path::Path::new(&dir)
+                .canonicalize()
+                .unwrap_or_else(|_| dir.clone().into());
+            (
+                dir.display().to_string(),
+                format!("file://{}/GitLama/Boot.qml", dir.display()),
+            )
+        }
+        _ => ("qrc:/".to_owned(), "qrc:/GitLama/Boot.qml".to_owned()),
+    };
+    // SAFETY: registers QML types; called once on the GUI thread before
+    // any QML loads.
+    unsafe { gitlama_register_native_types() };
+    let hooks = Rc::new(RefCell::new(PlatformHooks::default()));
+    PlatformHooks::attach_qobject(&hooks);
+    let properties = vec![
+        ("app", state.borrow().as_qvariant()),
+        ("hooks", hooks.borrow().as_qvariant()),
+        ("workspace", workspace.borrow().as_qvariant()),
+        ("sidebar", sidebar.borrow().as_qvariant()),
+        ("sidebarRows", sidebar_rows.borrow().as_qvariant()),
+        ("history", history.borrow().as_qvariant()),
+        ("historyRows", history_rows.borrow().as_qvariant()),
+        ("inspector", inspector.borrow().as_qvariant()),
+        ("inspectorDiff", inspector_diff.borrow().as_qvariant()),
+        ("changes", changes.borrow().as_qvariant()),
+        ("unstagedRows", unstaged_rows.borrow().as_qvariant()),
+        ("stagedRows", staged_rows.borrow().as_qvariant()),
+        ("workingDiff", working_diff.borrow().as_qvariant()),
+        ("commit", commit.borrow().as_qvariant()),
+        ("workflows", workflows.borrow().as_qvariant()),
+        ("settings", settings.borrow().as_qvariant()),
+        ("conflicts", conflicts.borrow().as_qvariant()),
+        ("conflictRows", conflict_rows.borrow().as_qvariant()),
+        ("operations", operations.borrow().as_qvariant()),
+        ("inspectorBlame", inspector_blame.borrow().as_qvariant()),
+        (
+            "inspectionWindows",
+            inspection_windows.borrow().as_qvariant(),
+        ),
+        ("patches", patches.borrow().as_qvariant()),
+        ("hosting", hosting.borrow().as_qvariant()),
+        ("remote", remote.borrow().as_qvariant()),
+        ("lineSelection", line_selection.borrow().as_qvariant()),
+        ("lineRows", line_rows.borrow().as_qvariant()),
+    ];
+    let exit_code = application
+        .add_import_path(&import_path)
+        .with_initial_properties(&properties)
+        .load_qml_from_file(&main_qml)
+        .run();
+
+    // Flush settings and dispose the services before the engine goes.
+    {
+        let done = Rc::new(std::cell::Cell::new(false));
+        let finished = Rc::clone(&done);
+        let shutting_down = Rc::clone(&app);
+        gitlama_workbench::rt::spawn_detached(async move {
+            shutting_down.shutdown().await;
+            finished.set(true);
+        });
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !done.get() && std::time::Instant::now() < deadline {
+            driver.runtime.run_until_stalled();
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    }
+    waker.unbind();
+    drop(application);
+    drop(pump);
+    drop(hooks);
+    drop(workflows);
+    gitlama_workbench::crash_marker::clear();
+    if exit_code != 0 {
+        std::process::exit(exit_code);
+    }
+}

@@ -298,6 +298,14 @@
     "usage": "Rail and label of the incoming (theirs) side in the Conflict resolver."
    },
    {
+    "name": "lama-shades",
+    "value": {
+     "light": "#17171E",
+     "dark": "#17171E"
+    },
+    "usage": "The brand lama's sunglasses in its illustrations; dark in both themes."
+   },
+   {
     "name": "tag-ink",
     "value": {
      "light": "#7A4A00",

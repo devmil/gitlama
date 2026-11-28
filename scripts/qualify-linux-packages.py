@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect and smoke-test all four GitLama Linux package formats."""
+"""Inspect and smoke-test all five GitLama Linux package formats."""
 
 from __future__ import annotations
 
@@ -21,14 +21,13 @@ from lib.package_contract import (
     Version,
     artifact_name,
     leaked_build_path,
-    without_allowed_flutter_build_metadata,
 )
 
 
 ROOT = Path(__file__).resolve().parent.parent
 SYSTEM_APPLICATION = Path("usr/lib/gitlama")
 SYSTEM_BINARY = SYSTEM_APPLICATION / "gitlama"
-SYSTEM_NATIVE = SYSTEM_APPLICATION / "lib/libgitlama_core.so"
+SYSTEM_QT_CONF = SYSTEM_APPLICATION / "qt.conf"
 SYSTEM_LAUNCHER = Path("usr/bin/gitlama")
 DESKTOP = Path("usr/share/applications/de.devmil.gitlama.desktop")
 ICON = Path("usr/share/icons/hicolor/256x256/apps/de.devmil.gitlama.png")
@@ -104,6 +103,14 @@ def extract_deb(artifact: Path, destination: Path) -> tuple[Path, str]:
     return root, metadata
 
 
+def extract_arch(artifact: Path, destination: Path) -> tuple[Path, str]:
+    destination.mkdir()
+    run(["tar", "--zstd", "-xf", str(artifact), "-C", str(destination)])
+    info = destination / ".PKGINFO"
+    require(info.is_file(), "Arch package has no .PKGINFO")
+    return destination, info.read_text(encoding="utf-8")
+
+
 def extract_rpm(artifact: Path, destination: Path) -> tuple[Path, str]:
     destination.mkdir()
     payload = run(["rpm2cpio", str(artifact)])
@@ -140,10 +147,13 @@ def is_remote_helper(root: Path, path: Path) -> bool:
     return "remote-helper" in path.relative_to(root).parts
 
 
-def inspect_elf(root: Path, binary: Path, native: Path) -> dict[str, object]:
+def inspect_elf(root: Path, binary: Path) -> dict[str, object]:
     files = elf_files(root)
     require(root / binary in files, "application executable is not ELF")
-    require(root / native in files, "Rust native library is not ELF")
+    require(
+        any(path.name.startswith("libQt6Quick.so") for path in files),
+        "the private Qt Quick library is missing",
+    )
     dependencies = set()
     max_glibc: tuple[int, ...] = (0,)
     for path in files:
@@ -186,23 +196,20 @@ def inspect_assets(root: Path, portable: bool) -> None:
     if portable:
         required = (
             Path("gitlama"),
-            Path("lib/libgitlama_core.so"),
-            Path("data/flutter_assets/AssetManifest.bin"),
-            Path("data/flutter_assets/NOTICES.Z"),
+            Path("qt.conf"),
             Path("licenses/LICENSE"),
             Path("licenses/THIRD_PARTY_NOTICES.md"),
         )
     else:
         required = (
             SYSTEM_BINARY,
-            SYSTEM_NATIVE,
+            SYSTEM_QT_CONF,
             SYSTEM_LAUNCHER,
             DESKTOP,
             ICON,
             DOCS / "LICENSE",
             DOCS / "THIRD_PARTY_NOTICES.md",
-            SYSTEM_APPLICATION / "data/flutter_assets/AssetManifest.bin",
-            SYSTEM_APPLICATION / "data/flutter_assets/NOTICES.Z",
+            DOCS / "QT-RUNTIME.md",
         )
     for relative in required:
         require((root / relative).is_file(), f"payload is missing /{relative}")
@@ -229,7 +236,6 @@ def scan_build_paths(root: Path) -> int:
     count = 0
     for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file() and not candidate.is_symlink()):
         data = path.read_bytes()
-        data = without_allowed_flutter_build_metadata(data, path.name, ROOT)
         leaked = leaked_build_path(data, ROOT)
         if leaked:
             raise QualificationError(
@@ -281,12 +287,10 @@ def inspect_payload(name: str, root: Path, portable: bool, launch_seconds: float
     inspect_assets(root, portable)
     application = Path() if portable else SYSTEM_APPLICATION
     binary = application / "gitlama"
-    native = application / "lib/libgitlama_core.so"
     return {
         "format": name,
         "binarySha256": sha256(root / binary),
-        "nativeSha256": sha256(root / native),
-        "elf": inspect_elf(root, binary, native),
+        "elf": inspect_elf(root, binary),
         "scannedFiles": scan_build_paths(root),
         "launch": launch(root, Path("AppRun") if name == "AppImage" else binary, launch_seconds),
     }
@@ -296,7 +300,7 @@ def qualify(directory: Path, report: Path, launch_seconds: float) -> None:
     version = Version.read(ROOT / "VERSION")
     artifacts = {
         format_: directory / artifact_name(version, "linux", "x86_64", format_)
-        for format_ in ("AppImage", "deb", "rpm", "tar.gz")
+        for format_ in ("AppImage", "deb", "rpm", "pkg.tar.zst", "tar.gz")
     }
     for artifact in artifacts.values():
         require(artifact.is_file(), f"artifact is missing: {artifact.name}")
@@ -311,18 +315,20 @@ def qualify(directory: Path, report: Path, launch_seconds: float) -> None:
         records.append(inspect_payload("deb", deb_root, False, launch_seconds))
         rpm_root, metadata["rpm"] = extract_rpm(artifacts["rpm"], temporary / "rpm")
         records.append(inspect_payload("rpm", rpm_root, False, launch_seconds))
+        arch_root, metadata["pkg.tar.zst"] = extract_arch(artifacts["pkg.tar.zst"], temporary / "arch")
+        records.append(inspect_payload("pkg.tar.zst", arch_root, False, launch_seconds))
         tar_root = safe_tar_extract(artifacts["tar.gz"], temporary / "tar")
         records.append(inspect_payload("tar.gz", tar_root, True, launch_seconds))
 
         expected_binary = {record["binarySha256"] for record in records}
-        expected_native = {record["nativeSha256"] for record in records}
         require(len(expected_binary) == 1, "Linux formats contain different application executables")
-        require(len(expected_native) == 1, "Linux formats contain different Rust native libraries")
         run(["python3", str(ROOT / "scripts/native-smoke.py"), str(tar_root)])
 
     requirements = {
-        "deb": ("libgtk-3-0", "libstdc++6", "libc6", "git"),
-        "rpm": ("gtk3", "libstdc++", "glibc", "git"),
+        "deb": ("libegl1", "libxkbcommon0", "libwayland-client0", "libstdc++6", "libc6", "git"),
+        "rpm": ("libglvnd-egl", "libxkbcommon", "libwayland-client", "libstdc++", "glibc", "git"),
+        "pkg.tar.zst": ("depend = libglvnd", "depend = libxkbcommon", "depend = wayland",
+                        "depend = gcc-libs", "depend = glibc", "depend = git"),
     }
     for format_, text in metadata.items():
         require(

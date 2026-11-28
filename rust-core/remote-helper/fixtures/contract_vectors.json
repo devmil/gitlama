@@ -1,5 +1,5 @@
 {
-  "comment": "Accept/reject vectors both the helper tests and the Dart remote tests read. They pin the generated contract to concrete wire names.",
+  "comment": "Accept/reject vectors the helper and client tests read. They pin the generated contract to concrete wire names.",
   "methodCapabilities": [
     ["previewStage", "stage"], ["executeStage", "stage"], ["executeCommit", "commit"],
     ["previewRefs", "refs"], ["executeStash", "stash"], ["previewTransfer", "transfer"],

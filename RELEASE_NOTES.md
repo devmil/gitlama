@@ -51,6 +51,56 @@
 
 ## Unreleased Beta
 
+- Merging a branch names it in the merge commit again ("Merge branch 'topic'") instead of a commit hash, and the conflict resolver names the branch you merged. Hosts receive a new GitLama helper.
+- The Logbook says what each entry did (Commit, Merge, Stash, …).
+- A clone that fails now says so, and a clone started while repositories are open shows its progress with Cancel in a dialog.
+- Pop, Apply, Drop and Rename work for stashes again.
+- Saving a commit as ZIP shows its progress again.
+- Blame and File history are no longer offered for files that are not committed yet.
+- On macOS: Minimize, Zoom and Full Screen are in a Window menu with their usual shortcuts, leaving full screen keeps the window as it was, ⌘W closes inspection windows, file dialogs follow GitLama's dark or light theme, and context menus no longer show AutoFill.
+- Return confirms dialogs opened from menus, and the commit button no longer looks enabled after a commit when nothing is left to commit.
+- Very large repositories (more than 50,000 folders) no longer keep your computer busy while GitLama sits idle. Hosts receive a new GitLama helper.
+- When another Git program holds a lock while you stage or unstage, GitLama shows the lock files with their ages and can remove left-behind locks and try again.
+- If GitLama ever crashes, the next start notes it in Diagnostics (where in GitLama it happened, never your files), so a diagnostics export can explain the crash.
+- Blame, file history and the other inspector actions work for files with names in an older encoding (such as Latin-1).
+- A worktree whose folder was deleted is marked "Folder missing" and can be removed. During a bisect, the banner leads back to the search in Power Tools.
+- Opening a repository from the welcome screen no longer freezes the window for a moment.
+- A repository that can no longer be opened, for example because its folder was moved or deleted, now says so and offers to close the tab or open another repository, instead of loading forever.
+- Bare repositories show their history instead of loading forever.
+- Files with names in an older encoding (such as Latin-1) can be staged, discarded and compared again.
+- In a shallow clone, the newest commit's changes can be inspected again.
+- With many tabs open, a newly opened repository's tab scrolls into view.
+- During a rebase GitLama no longer warns that no branch is checked out, and counts of one read naturally ("1 commit").
+- Resizing the window on Linux follows your pointer smoothly: the content now keeps up with the window edge instead of updating at half the rate.
+- Switching repositories and selecting commits in History pause the interface less, especially in commits with many files.
+- When there is no diff to show, the lama now says why: it carries a moved file into its new folder, wears a new name tag for a renamed one, waits beside your files until you pick one, and more, in the Changes view and when inspecting commits alike.
+- All corners of the work areas are rounded again in Changes and History, and a subtle line now separates unstaged from staged changes.
+- Renamed and moved files are easier to read: the file lists show the new name with where it came from, the detail names the previous path, and a file moved or renamed without content changes says so instead of showing an empty diff.
+- The repository pill now always shows the work of the tab you are looking at: switching tabs no longer plays a "done" animation for work that is still running, and switching back shows the running work right away.
+- Progress of fetches, pulls, pushes and other Git work now updates as soon as Git reports it, on this computer and on remote hosts, instead of being checked several times a second. GitLama uses less CPU and network while work runs. Hosts receive a new GitLama helper.
+- Staging, unstaging or discarding files in the Changes tree view no longer hides remaining folders or files until you toggle between list and tree view.
+- The repository pill now shows all work that takes a moment, including a push right after Commit & push, and commits, stashes, merges, rebases, staging and discarding.
+- Long lines in diffs scroll sideways again with Shift and the mouse wheel or a sideways swipe on the touchpad.
+- While GitLama works on a repository, the repository pill at the top now fills with a soft tint behind its text instead of showing a thin line along its bottom edge. The pill stays lightly tinted while work runs, fills as the work progresses, sweeps a brighter band while the progress is unknown, and when the work is done it fills completely, flashes a highlight across and fades out, so even quick pulls and fetches are noticeable. A fetch, pull or push that finishes almost instantly now always shows this finish, also with reduced motion (without the movement).
+- Staging, unstaging and discarding large sets of changed files (more than 256 files or deep directory trees like `.dart_tool`, locally and on remote repositories) now succeeds instead of failing with a request validation error.
+- Selecting, scrolling, right-clicking, staging, unstaging and discarding many changed files (including collapsed folders) in Changes is now fast and responsive instead of freezing or silently doing nothing.
+- Repository tabs keep their full width when dragged and expand back properly when you widen the window.
+- The selected commit highlight in History now stays aligned with its row when you scroll the graph.
+- Selecting text in diff views is now responsive and no longer slows down the rest of the interface, especially on macOS and in large commits.
+- Resizing the GitLama window on Linux (Wayland) is noticeably more responsive, with less content lag behind the window edges.
+- Switching between repositories no longer briefly shows the previous repository's branch labels in History.
+- The repository details open from the repository name again instead of to its left after the window was resized.
+- macOS test builds no longer fail to start because macOS considers them damaged.
+- GitLama is now a native Qt application instead of a Flutter one. It looks and works as before and keeps your settings, recent repositories and other data, so it updates in place.
+- GitLama is available for Arch Linux and Omarchy as a pacman package. Install it with `sudo pacman -U` from the downloads page.
+- History no longer sometimes says a repository is unavailable right after you open it. Hosts receive a new GitLama helper.
+- Repositories whose branches point at commits that are missing locally open normally again; before, they showed no history and no branches. Hosts receive a new GitLama helper.
+- Very large repositories open faster and stay smoother: history loads once, switching back to History is instant, and selecting commits redraws less.
+- Local repositories no longer poll while idle, and History rows load faster and redraw only what changed when selecting commits.
+- GitLama uses almost no CPU while it is in the background: spinners and other ongoing animations pause while another window has focus and continue when you return. Hosts receive a new GitLama helper that also stays quieter while idle.
+- Diagnostics now record repository open attempts, failures and snapshot issues—and, when detailed capture is enabled in Settings, step-by-step timings for opening, History, diffs and sidebar loading—to make troubleshooting large or failing repositories much easier.
+- Fixed opening a repository replacing the "Open repository" tab, opening worktrees from the sidebar (including the second-row worktree tab strip), tab context menu positioning, and opening the group editor dialog when adding a tab to a new group.
+
 ## [0.1.0-beta.68] - 2026-11-21
 
 - Resizing the window on Linux no longer shows black flashes or black edges.

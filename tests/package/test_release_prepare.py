@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -36,10 +37,6 @@ def command(root: Path, *arguments: str) -> str:
 def fixture(root: Path, version: Version = Version("1.2.3", 7)) -> None:
     (root / "rust-core").mkdir()
     (root / "VERSION").write_text(f"{version.marketing}\n{version.build}\n", encoding="utf-8")
-    (root / "pubspec.yaml").write_text(
-        f"name: gitlama\nversion: {version.marketing}+{version.build}\n",
-        encoding="utf-8",
-    )
     (root / "rust-core/Cargo.toml").write_text(
         f'[package]\nname = "gitlama_core"\nversion = "{version.marketing}"\nedition = "2021"\n',
         encoding="utf-8",
@@ -173,66 +170,6 @@ class ReleasePrepareTest(unittest.TestCase):
         self.assertNotIn("package.py", recovery)
         self.assertNotIn("release.py\" sign", recovery)
 
-    def test_source_verification_prepares_l10n_output_in_clean_checkout(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / ".fvmrc").write_text(
-                '{"flutter": "3.47.5"}\n', encoding="utf-8"
-            )
-            with (
-                mock.patch.object(verify, "ROOT", root),
-                mock.patch.object(verify.os, "chdir"),
-                mock.patch.object(
-                    verify.subprocess,
-                    "check_output",
-                    return_value='{"frameworkVersion": "3.47.5"}',
-                ),
-                mock.patch.object(verify, "run") as run,
-                mock.patch.object(verify, "use_fvm_flutter"),
-                mock.patch.object(verify.sys, "argv", ["verify.py"]),
-            ):
-                verify.main()
-
-            self.assertTrue((root / "build").is_dir())
-            self.assertEqual(run.call_args_list[0], mock.call("flutter", "gen-l10n"))
-
-    def _use_fvm_flutter(self, root: Path, which: str | None) -> tuple[str, mock.Mock]:
-        (root / ".fvmrc").write_text('{"flutter": "3.47.5"}\n', encoding="utf-8")
-        context = json.dumps({"context": {"versionsCachePath": str(root / "versions")}})
-        with (
-            mock.patch.object(verify, "ROOT", root),
-            mock.patch.object(verify.shutil, "which", return_value=which),
-            mock.patch.object(verify.subprocess, "check_output", return_value=context),
-            mock.patch.object(verify.subprocess, "run") as run,
-            mock.patch.dict(verify.os.environ, {"PATH": "/existing"}),
-        ):
-            verify.use_fvm_flutter()
-            return verify.os.environ["PATH"], run
-
-    def test_fvm_puts_installed_pinned_sdk_first_on_path(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            sdk_bin = root / "versions" / "3.47.5" / "bin"
-            sdk_bin.mkdir(parents=True)
-            path, run = self._use_fvm_flutter(root, "/usr/bin/fvm")
-            self.assertEqual(path, os.pathsep.join([str(sdk_bin), "/existing"]))
-            run.assert_not_called()
-
-    def test_fvm_installs_missing_pinned_sdk(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            path, run = self._use_fvm_flutter(root, "/usr/bin/fvm")
-            run.assert_called_once_with(
-                ["/usr/bin/fvm", "install", "3.47.5", "--skip-pub-get"], check=True
-            )
-            self.assertTrue(path.startswith(str(root / "versions" / "3.47.5" / "bin")))
-
-    def test_without_fvm_path_is_unchanged(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path, run = self._use_fvm_flutter(Path(directory), None)
-            self.assertEqual(path, "/existing")
-            run.assert_not_called()
-
     def test_verification_scripts_read_repository_text_as_utf8(self) -> None:
         missing_encoding: list[str] = []
         for path in Path("scripts").rglob("*.py"):
@@ -262,7 +199,7 @@ class ReleasePrepareTest(unittest.TestCase):
         script = Path("scripts/qualify-linux-local.sh").read_text(encoding="utf-8")
         cleanup = script.split("cleanup() {", 1)[1].split("\n}\n", 1)[0]
         self.assertLess(
-            cleanup.index('"$STAGE"/Flutter/GitLama/dist/qualification/*.json'),
+            cleanup.index('"$STAGE"/GitLama/dist/qualification/*.json'),
             cleanup.index('rm -rf -- "$STAGE"'),
         )
 
@@ -297,22 +234,21 @@ class ReleasePrepareTest(unittest.TestCase):
             prepare_job.index("scripts/release.py prepare"),
         )
         self.assertNotIn("scripts/release.py tag", prepare_job)
-        self.assertEqual(prepare_job.count("flutter pub get --enforce-lockfile"), 1)
-        self.assertLess(prepare_job.index("flutter pub get --enforce-lockfile"),
-                        prepare_job.index("scripts/release.py prepare"))
-        self.assertLess(prepare_job.index("flutter pub get --enforce-lockfile"),
+        self.assertLess(prepare_job.index("jurplel/install-qt-action@v4"),
                         prepare_job.index("./scripts/verify.sh"))
         macos_job = workflow.split("\n  macos:\n", 1)[1].split("\n  linux:\n", 1)[0]
         self.assertIn('rustup target add --toolchain "$RUST_VERSION"', macos_job)
-        self.assertIn("aarch64-apple-darwin x86_64-apple-darwin", macos_job)
+        self.assertIn('rustup target add --toolchain "$RUST_VERSION" aarch64-apple-darwin', macos_job)
+        self.assertIn("python3 scripts/package.py dmg --sign --notarize", macos_job)
         windows_job = workflow.split("\n  windows:\n", 1)[1].split("\n  collect:\n", 1)[0]
+        self.assertIn("python scripts/package.py msi --build-only", windows_job)
         self.assertIn("python scripts/package.py msi --skip-build", windows_job)
+        self.assertLess(windows_job.index("--build-only"), windows_job.index("Windows bundle signing failed"))
         self.assertIn("-SoakSeconds 600 -SoakAdvisory", windows_job)
         self.assertIn("windows_soak_policy_cases.ps1", windows_job)
         self.assertNotIn("python scripts/package.py msi\n", windows_job)
         for failure in (
             "WiX setup failed",
-            "Flutter dependency resolution failed",
             "Windows release build failed",
             "Windows bundle signing failed",
             "MSI packaging failed",
@@ -356,7 +292,8 @@ class ReleasePrepareTest(unittest.TestCase):
         self.assertIn("./scripts/publish-candidate.sh publication", collect_job)
         self.assertIn("gitlama-signed-publication-candidate", collect_job)
         self.assertNotIn("publish-release.py", collect_job)
-        self.assertEqual(workflow.count("actions/setup-python@v5"), 1)
+        # prepare (Qt for the source gate), macos (Qt) and windows (Qt and probes).
+        self.assertEqual(workflow.count("actions/setup-python@v5"), 3)
         self.assertEqual(workflow.count("actions/setup-dotnet@v4"), 1)
         self.assertIn("dotnet-version: '8.0.414'", workflow)
         self.assertGreaterEqual(workflow.count("install-rustup-unix.sh"), 2)
@@ -374,8 +311,10 @@ class ReleasePrepareTest(unittest.TestCase):
         self.assertIn('*podman*) VOLUME_SUFFIX=":Z"', harness)
         self.assertIn("find /work -mindepth 1 -delete", harness)
         self.assertIn('--volume "$STAGE:/work$VOLUME_SUFFIX"', harness)
-        self.assertIn('"$ROOT/.fvmrc"', harness)
-        self.assertIn('--build-arg "FLUTTER_VERSION=$FLUTTER_VERSION"', harness)
+        # makepkg runs in an Arch container as an unprivileged user.
+        self.assertIn("GITLAMA_ARCH_BUILD_IMAGE", harness)
+        self.assertIn("useradd --create-home builder", harness)
+        self.assertIn("scripts/package.py pkg.tar.zst --skip-build", harness)
         # Cargo fetches devmil-git at its pinned revision; no sibling checkout enters the stage.
         self.assertNotIn("SHARED_GIT", harness)
         # A sudo-wrapped engine drops inherited variables; the shared-dependency
@@ -384,45 +323,28 @@ class ReleasePrepareTest(unittest.TestCase):
         self.assertIn('chmod 0600 "$GIT_ENV_FILE"', harness)
         self.assertNotIn("--env GIT_CONFIG_", harness)
 
-    def test_ci_uses_fvmrc_as_the_only_flutter_version_source(self) -> None:
-        configured = json.loads(Path(".fvmrc").read_text(encoding="utf-8"))
-        self.assertEqual(set(configured), {"flutter"})
-        self.assertRegex(configured["flutter"], r"^\d+\.\d+\.\d+$")
-        action = Path(".github/actions/flutter/action.yml").read_text(encoding="utf-8")
-        self.assertIn('json.load(open(".fvmrc"))["flutter"]', action)
-        self.assertIn("subosito/flutter-action@v2", action)
+    def test_ci_and_release_pin_one_qt_version(self) -> None:
+        versions = set()
         for workflow_path in (
             Path(".github/workflows/ci.yml"),
             Path(".github/workflows/release.yml"),
         ):
             workflow = workflow_path.read_text(encoding="utf-8")
-            self.assertIn("uses: ./.github/actions/flutter", workflow)
-            self.assertNotIn("subosito/flutter-action", workflow)
-            self.assertNotIn("FLUTTER_VERSION", workflow)
-            self.assertNotIn(configured["flutter"], workflow)
-        dockerfile = Path("tooling/linux-release/Dockerfile").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("ARG FLUTTER_VERSION\n", dockerfile)
-        self.assertNotIn(f"ARG FLUTTER_VERSION={configured['flutter']}", dockerfile)
+            versions.update(re.findall(r"QT_VERSION: '([0-9.]+)'", workflow))
+            self.assertNotIn("flutter", workflow.lower())
+        dockerfile = Path("tooling/linux-release/Dockerfile").read_text(encoding="utf-8")
+        versions.update(re.findall(r"ARG QT_VERSION=([0-9.]+)", dockerfile))
+        self.assertEqual(len(versions), 1, versions)
+        self.assertNotIn("FLUTTER", dockerfile)
 
     def test_ci_workflow_supports_the_linux_and_windows_hosts(self) -> None:
         workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("matrix.platform == 'linux'", workflow)
-        self.assertIn(
-            "if: ${{ matrix.platform == 'windows' }}\n        uses: actions/setup-python@v5",
-            workflow,
-        )
-        self.assertIn("pkg-config --exists gtk+-3.0", workflow)
-        self.assertIn("python scripts/native-smoke.py", workflow)
-        windows_smoke = workflow.split("- name: Load bundled Rust on Windows\n", 1)[1].split(
-            "- name:", 1
-        )[0]
-        self.assertIn("GITLAMA_NATIVE_TEST_TIMEOUT_SECONDS: '180'", windows_smoke)
-        self.assertIn("GITLAMA_NATIVE_TEST_WAIT_SECONDS: '30'", windows_smoke)
-        self.assertIn("Resolve locked dependencies on Windows", workflow)
+        self.assertIn("python scripts/install-qt-windows.py", workflow)
+        self.assertIn("jurplel/install-qt-action@v4", workflow)
+        self.assertIn('python3 scripts/native-smoke.py "${{ matrix.bundle }}"', workflow)
         self.assertIn("Build desktop bundle on Windows", workflow)
-        self.assertIn("Archive debug bundle on Windows", workflow)
+        self.assertIn("Archive the bundle on Windows", workflow)
         self.assertIn("Compress-Archive -LiteralPath", workflow)
         self.assertIn('tar -C "$(dirname "${{ matrix.bundle }}")"', workflow)
         self.assertIn("path: ${{ matrix.artifact }}", workflow)
@@ -468,7 +390,6 @@ class ReleasePrepareTest(unittest.TestCase):
             fixture(root, current)
             write_atomic(prepare_updates(root, current, updated, "beta", date(2026, 9, 19)))
             self.assertEqual(Version.read(root / "VERSION"), updated)
-            self.assertIn("version: 1.3.0-beta.1+8", (root / "pubspec.yaml").read_text())
             self.assertIn('version = "1.3.0-beta.1"', (root / "rust-core/Cargo.toml").read_text())
             self.assertIn("## [1.3.0-beta.1] - 2026-09-19", (root / "CHANGELOG.md").read_text())
             self.assertIn("- Stable item.", (root / "CHANGELOG.md").read_text())
@@ -478,7 +399,7 @@ class ReleasePrepareTest(unittest.TestCase):
             root = Path(directory)
             fixture(root)
             initialize_git(root)
-            (root / "pubspec.yaml").write_text("dirty\n", encoding="utf-8")
+            (root / "VERSION").write_text("dirty\n", encoding="utf-8")
             with self.assertRaises(ValueError):
                 require_clean(root)
 

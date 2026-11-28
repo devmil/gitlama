@@ -4,7 +4,7 @@
 pub use gitlama_contract::hosting_settings::*;
 use std::collections::HashSet;
 
-/// Stored preset names, as written by the Dart settings repository.
+/// Stored preset names, as earlier releases wrote them.
 pub(crate) const HOSTING_PRESETS: [&str; 6] = [
     "github",
     "gitlab",
@@ -14,7 +14,7 @@ pub(crate) const HOSTING_PRESETS: [&str; 6] = [
     "gitHubEnterprise",
 ];
 
-/// Stored authentication names, as written by the Dart settings repository.
+/// Stored authentication names, as earlier releases wrote them.
 pub(crate) const HOSTING_AUTHENTICATIONS: [&str; 3] = ["oauth", "gitHubCli", "gitLabCli"];
 
 /// Checks the stored hosting connections, bindings and expanded nodes.

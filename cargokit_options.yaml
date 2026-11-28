@@ -1,2 +1,0 @@
-# Build plugin Rust locally so diagnostics match the packaged binary.
-use_precompiled_binaries: false

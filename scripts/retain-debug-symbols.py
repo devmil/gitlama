@@ -68,25 +68,19 @@ def validate_unit(manifest: dict, folder: Path):
     binaries = manifest['binaries']
     if not binaries:
         raise SymbolError('diagnostics_native_inventory_empty')
-    maps = [p for p in (folder / 'dart').rglob('*.symbols') if p.stat().st_size > 0] if (folder / 'dart').exists() else []
-    if not manifest['unit'].startswith('helper-') and not maps:
-        raise SymbolError('dart_maps_missing')
     unit = manifest['unit']
     expected_format = 'macho' if 'macos' in unit else 'pe' if 'windows' in unit else 'elf'
     expected_arch = 'arm64' if unit.endswith('arm64') else 'x86_64'
     required = {'gitlama-remote-helper'} if unit.startswith('helper-') else {
-        'macos-arm64': {'GitLama', 'gitlama_core'},
-        'windows-x86_64': {'gitlama.exe', 'gitlama_core.dll'},
-        'linux-x86_64': {'gitlama', 'libgitlama_core.so'},
+        'macos-arm64': {'GitLama'},
+        'windows-x86_64': {'gitlama.exe'},
+        'linux-x86_64': {'gitlama'},
     }[unit]
     if not unit.startswith('helper-'):
-        engine = {'macos-arm64': 'FlutterMacOS', 'windows-x86_64': 'flutter_windows.dll', 'linux-x86_64': 'libflutter_linux_gtk.so'}[unit]
-        engines = [b for b in binaries if Path(b['file']).name == engine]
-        allowed = {'native_symbols', 'vendor_symbols_unavailable'} if unit == 'linux-x86_64' else {'native_symbols'}
-        if len(engines) != 1 or engines[0]['coverage'] not in allowed:
-            raise SymbolError('flutter_engine_symbol_coverage_incomplete')
-        if not any(b['coverage'] == 'dart_split_debug_info' for b in binaries):
-            raise SymbolError('dart_payload_inventory_missing')
+        runtime = {'macos-arm64': 'QtQuick', 'windows-x86_64': 'Qt6Quick.dll', 'linux-x86_64': 'libQt6Quick.so.6'}[unit]
+        runtimes = [b for b in binaries if Path(b['file']).name == runtime]
+        if len(runtimes) != 1 or runtimes[0]['coverage'] not in {'native_symbols', 'vendor_symbols_unavailable'}:
+            raise SymbolError('qt_runtime_inventory_incomplete')
         if {b.get('helper_unit') for b in binaries if b['coverage'] == 'separate_helper_archive'} != {u for u in UNITS if u.startswith('helper-')}:
             raise SymbolError('bundled_helper_inventory_incomplete')
     owned = [b for b in binaries if Path(b['file']).name in required]
@@ -100,13 +94,7 @@ def validate_unit(manifest: dict, folder: Path):
         binary = folder / record['file']
         if any(record[key] != value for key, value in file_record(binary, record['file']).items()):
             raise SymbolError('binary_record_digest_differs')
-        is_dart = record['coverage'] == 'dart_split_debug_info'
-        try:
-            actual = identity(binary)
-        except SymbolError:
-            if not is_dart:
-                raise
-            actual = {'format': 'dart-aot', 'ids': {}, 'debug': False}
+        actual = identity(binary)
         if actual != record['identity']:
             raise SymbolError('binary_identity_differs')
         coverage = record['coverage']
@@ -114,9 +102,6 @@ def validate_unit(manifest: dict, folder: Path):
             symbols = identity(folder / record['symbol_file'])
             if not symbols or not symbols['debug'] or not matches(actual, symbols):
                 raise SymbolError('symbol_identity_differs')
-        elif coverage == 'dart_split_debug_info':
-            if not maps:
-                raise SymbolError('dart_maps_missing')
         elif coverage == 'vendor_symbols_unavailable':
             from importlib.util import spec_from_file_location, module_from_spec
             spec = spec_from_file_location('debug_collector', ROOT / 'scripts/collect-debug-symbols.py')
@@ -154,12 +139,12 @@ def verify_set(archives: list[Path], packages: Path, version: Version, commit: s
             validate_unit(manifest, folder)
             units[unit] = manifest
             provenance = manifest['provenance']
-            toolchain = tuple(provenance.get(key) for key in ('flutter_version', 'rustc', 'shared_git_revision'))
+            toolchain = tuple(provenance.get(key) for key in ('rustc', 'shared_git_revision'))
             if None in toolchain:
                 raise SymbolError('diagnostics_toolchain_provenance_missing')
             toolchains.add(toolchain)
             if not unit.startswith('helper-'):
-                engines.add(manifest['provenance']['engine_revision'])
+                engines.add(manifest['provenance']['qt_version'])
                 reported_packages.extend(manifest['packages'])
             for binary in manifest['binaries']:
                 if binary['coverage'] == 'vendor_symbols_unavailable':

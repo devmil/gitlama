@@ -1,106 +1,26 @@
 #!/usr/bin/env python3
-"""Keep generated bridge imports confined to the native repository."""
+"""Enforces GitLama's dependency directions.
+
+Rust (Cargo dependencies and `use` paths):
+- gitlama_contract (the wire and value types) depends on no GitLama crate.
+- gitlama_application depends only on the contract; the remote helper runs it.
+- gitlama-remote-helper depends only on the application crate.
+- gitlama_core (the desktop's native runtime) never reaches the Qt layers.
+- desktop/workbench (services and workflows) never reaches Qt.
+- desktop/qt (the bridge objects) reaches the core only through the
+  workbench and never runs Git itself.
+- desktop/app is the composition root.
+
+QML (qml/GitLama):
+- The UI imports only Qt modules, Meridian, GitLama and its native items; it
+  loads no code at run time and opens no Qt Quick Controls menu.
+- No credential field reaches the bridge or the UI.
+"""
 from pathlib import Path
 import re
+
 root = Path(__file__).resolve().parent.parent
 errors = []
-for path in (root / 'lib').rglob('*.dart'):
-    rel = path.relative_to(root / 'lib').as_posix()
-    if rel.startswith('rust/'):
-        continue
-    imports = re.findall(r"(?:import|export) ['\"]([^'\"]+)", path.read_text(encoding="utf-8"))
-    if any('/rust/' in value or 'flutter_rust_bridge' in value for value in imports):
-        if not (
-            (
-                rel.startswith('repositories/impl/native_')
-                and rel.endswith('_repository.dart')
-            )
-            # The generated session call seam and the remote session calls
-            # carry bridge value types; only the seam's FFI forwarder calls
-            # the in-process library.
-            or rel == 'repositories/impl/repository_session_calls.g.dart'
-            # Generated name-based conversions between bridge and model enums.
-            or rel == 'repositories/impl/native_enum_mappers.g.dart'
-            # Mappers and the library loader the native implementations share,
-            # so no implementation imports another.
-            or rel == 'repositories/impl/native_mappers.dart'
-            or rel == 'repositories/impl/remote/remote_session_calls.dart'
-            # An inspector window's calls carry the same value types to the
-            # main window, which reads its host for it.
-            or rel == 'repositories/impl/remote/remote_inspection_calls.dart'
-        ):
-            errors.append(f'{rel}: native boundary import')
-        if rel in (
-            'repositories/impl/remote/remote_session_calls.dart',
-            'repositories/impl/remote/remote_inspection_calls.dart',
-        ) and (
-            'RustLib' in path.read_text(encoding="utf-8")
-            or any(v.endswith('/rust/api.dart') and ' as native' in v for v in imports)
-        ):
-            errors.append(f'{rel}: remote session calls must not reach the native library')
-    if rel.startswith(('services/', 'models/')) and any('package:flutter/' in v for v in imports):
-        errors.append(f'{rel}: presentation dependency')
-    if rel.startswith('repositories/') and any('/services/' in v for v in imports):
-        errors.append(f'{rel}: repository depends on service')
-    if rel.startswith('services/') and any('/impl/' in v for v in imports):
-        errors.append(f'{rel}: service depends on repository implementation')
-    if rel.startswith(('app/', 'widgets/', 'screens/')) and any(
-        '/repositories/impl/' in v or v.startswith('../repositories/impl/')
-        for v in imports
-    ):
-        errors.append(f'{rel}: presentation depends on repository implementation')
-    # Native implementations share impl/native_mappers.dart instead of
-    # importing each other. Reviewed compositions: the remote session factory
-    # builds the session adapter over the wire calls, and the SSH connection
-    # starts its process through the native child-process launcher.
-    if rel.startswith('repositories/impl/') and rel not in (
-        'repositories/impl/remote/remote_session_factory.dart',
-        'repositories/impl/remote/ssh_remote_connection_repository.dart',
-    ) and any(
-        re.search(r"(^|/)native_[a-z_]+_repository\.dart$", v) for v in imports
-    ):
-        errors.append(f'{rel}: imports another native repository implementation')
-    # Enums never map by position: a variant added on one side would shift
-    # every later value. Use the generated name-based mappers instead.
-    if re.search(r"\.values\s*\[[^\]]*\.index\s*\]", path.read_text(encoding="utf-8")):
-        errors.append(f'{rel}: enum mapped by position (.values[x.index])')
-
-# Each repository contract has one owning service; other services go through
-# that service. lib/di registers implementations and is not a consumer. The
-# session backend is split into one contract per command family, each owned
-# by its family service; the backend router is a repository implementation.
-SHARED_REPOSITORIES: dict[str, set[str]] = {}
-consumers: dict[str, set[str]] = {}
-for path in (root / 'lib' / 'services').rglob('*.dart'):
-    rel = path.relative_to(root / 'lib').as_posix()
-    for value in re.findall(r"import ['\"]([^'\"]+)", path.read_text(encoding="utf-8")):
-        name = value.rsplit('/', 1)[-1]
-        if '/repositories/' in f'/{value}' and '/impl/' not in value and name.endswith('_repository.dart'):
-            consumers.setdefault(name, set()).add(rel)
-for name, users in sorted(consumers.items()):
-    allowed = SHARED_REPOSITORIES.get(name)
-    if len(users) > 1 and users != allowed:
-        errors.append(
-            f'repositories/{name}: one owning service expected, used by {", ".join(sorted(users))}'
-        )
-for path in (root / 'lib').rglob('*.dart'):
-    rel = path.relative_to(root / 'lib').as_posix()
-    if rel.startswith(('app/', 'widgets/', 'screens/')) and any(
-        '/repositories/' in f'/{v}' for v in re.findall(r"import ['\"]([^'\"]+)", path.read_text(encoding="utf-8"))
-    ):
-        errors.append(f'{rel}: presentation depends on a repository')
-
-# Rust layering (LAY-7). Three crates under rust-core, each a layer:
-# - contract/ (gitlama_contract): the bridge types. Data only: flutter_rust_bridge reads it as a
-#   third-party input and would turn every public function or method, and every `Default`
-#   impl, into Dart API.
-# - application/ (gitlama_application): the domain (domain/), the use cases (application/), the
-#   feature modules and the remote wire adapter (wire/). The application layer depends on no
-#   adapter; the domain depends on nothing above it.
-# - src/ (gitlama_core): the FRB facade (api.rs with its generated bridge) and the desktop-only
-#   services. Nothing else reaches into the facade.
-# The remote helper builds on the application crate, never on the desktop library.
-# Doc comments may name the layers.
 RUST = root / 'rust-core'
 CONTRACT_SRC = RUST / 'contract' / 'src'
 APPLICATION_SRC = RUST / 'application' / 'src'
@@ -127,43 +47,52 @@ def manifest_dependencies(path):
             table = header.group(1)
             continue
         entry = re.match(r'([A-Za-z0-9_-]+)\s*=', line)
-        if entry and table and table.split('.')[-1].endswith('dependencies'):
+        # The workspace table pins versions for members; it is not a crate's own.
+        if entry and table and table != 'workspace.dependencies' and table.split('.')[-1].endswith('dependencies'):
             names.add(entry.group(1))
     return names
 
 
-INTERNAL = {'gitlama_contract', 'gitlama_application', 'gitlama_core', 'gitlama-remote-helper'}
+
+INTERNAL = {
+    'gitlama_contract', 'gitlama_application', 'gitlama_core', 'gitlama-remote-helper',
+    'gitlama-workbench', 'gitlama-qt', 'qtbridge',
+}
 for crate, allowed in (
     ('contract', set()),
     ('application', {'gitlama_contract'}),
     ('remote-helper', {'gitlama_application'}),
+    ('.', {'gitlama_contract', 'gitlama_application'}),
+    ('desktop/workbench', {'gitlama_core', 'gitlama_contract', 'gitlama_application'}),
+    ('desktop/qt', {'gitlama-workbench', 'gitlama_contract', 'qtbridge'}),
 ):
     for name in sorted((manifest_dependencies(RUST / crate / 'Cargo.toml') & INTERNAL) - allowed):
         errors.append(f'rust-core/{crate}/Cargo.toml: depends on {name}')
 for crate, forbidden in (
-    ('contract', ('gitlama_application', 'gitlama_core', 'devmil_git', 'flutter_rust_bridge')),
-    ('application', ('gitlama_core', 'flutter_rust_bridge')),
-    ('remote-helper', ('gitlama_core', 'flutter_rust_bridge')),
+    ('contract', ('gitlama_application', 'gitlama_core', 'devmil_git', 'qtbridge')),
+    ('application', ('gitlama_core', 'gitlama_workbench', 'qtbridge')),
+    ('remote-helper', ('gitlama_core', 'gitlama_workbench', 'qtbridge')),
+    ('src', ('gitlama_workbench', 'gitlama_qt', 'qtbridge')),
+    ('desktop/workbench/src', ('gitlama_qt', 'qtbridge')),
+    ('desktop/qt/src', ('gitlama_core', 'gitlama_application', 'devmil_git')),
 ):
     for path in sorted((RUST / crate).glob('**/*.rs')):
         code = rust_code(path)
         for name in forbidden:
             if re.search(rf'\b{name}::', code):
                 errors.append(f'{path.relative_to(root).as_posix()}: reaches {name}')
+# The bridge objects never start a process: Git runs in the core.
+for path in sorted((RUST / 'desktop/qt/src').glob('**/*.rs')):
+    if re.search(r'\bstd::process\b|\bCommand::new\b', rust_code(path)):
+        errors.append(f'{path.relative_to(root).as_posix()}: the Qt layer starts a process')
 
 for path in sorted(CONTRACT_SRC.rglob('*.rs')):
     rel = path.relative_to(root).as_posix()
-    text = path.read_text(encoding="utf-8")
     code = rust_code(path)
     if re.search(r'\bpub(\([^)]*\))?\s+(const\s+|async\s+|unsafe\s+)*fn\b', code):
-        errors.append(f'{rel}: the bridge contract declares a public function or method')
+        errors.append(f'{rel}: the contract declares a public function or method')
     if re.search(r'^impl(<[^>]*>)?\s+[A-Z]\w*(<[^>]*>)?\s*\{', code, re.M):
-        errors.append(f'{rel}: the bridge contract has an inherent impl; put behaviour in the application crate')
-    if re.search(r'#\[derive\([^)]*\bDefault\b', code):
-        errors.append(f'{rel}: derive(Default) in the bridge contract becomes Dart API; implement it with the ignore marker')
-    for match in re.finditer(r'^impl Default for (\w+) \{\n(.*?)^\}', text, re.S | re.M):
-        if '/// flutter_rust_bridge:ignore\n    fn default()' not in match.group(2):
-            errors.append(f'{rel}: Default for {match.group(1)} lacks the flutter_rust_bridge:ignore marker')
+        errors.append(f'{rel}: the contract has an inherent impl; put behaviour in the application crate')
 
 for path in sorted(APPLICATION_SRC.rglob('*.rs')):
     rel = path.relative_to(APPLICATION_SRC).as_posix()
@@ -175,14 +104,6 @@ for path in sorted(APPLICATION_SRC.rglob('*.rs')):
             if match.group(1) != 'domain':
                 errors.append(f'rust-core/application/src/{rel}: the domain depends on crate::{match.group(1)}')
 
-for path in sorted(CORE_SRC.rglob('*.rs')):
-    rel = path.relative_to(CORE_SRC).as_posix()
-    if rel not in ('api.rs', 'frb_generated.rs') and references(rust_code(path), 'api'):
-        errors.append(f'rust-core/src/{rel}: depends on the FRB facade crate::api')
-# FRB resolves the facade's types from its own imports: a bridge type imported through the
-# application crate's re-exports would become an opaque Dart handle.
-if re.search(r'\bgitlama_application::[\w:]*(\{[^}]*\bNative|\bNative)', rust_code(CORE_SRC / 'api.rs')):
-    errors.append('rust-core/src/api.rs: names a bridge type through gitlama_application; import it from gitlama_contract')
 # The cycles the 2026-10-11 review found stay broken: hosting renews credentials through a
 # refresh the runtime injects, and the helper's policy module only names the domain policy.
 for path, module in (
@@ -191,6 +112,23 @@ for path, module in (
 ):
     if references(rust_code(path), module):
         errors.append(f'{path.relative_to(root).as_posix()}: depends on crate::{module} (a broken cycle returned)')
+
+# QML.
+QML_IMPORT = re.compile(r'^\s*import\s+([A-Za-z][\w.]*)', re.M)
+QML_ALLOWED_IMPORTS = re.compile(r'^(Qt\w*(\.\w+)*|Meridian|GitLama|GitLamaNative)$')
+for path in sorted((root / 'qml/GitLama').rglob('*.qml')):
+    rel = path.relative_to(root).as_posix()
+    text = path.read_text(encoding='utf-8')
+    for uri in QML_IMPORT.findall(text):
+        if not QML_ALLOWED_IMPORTS.match(uri):
+            errors.append(f'{rel}: imports {uri}')
+    if re.search(r'Qt\.createQmlObject|loadLibrary|Qt\.include\s*\(', text):
+        errors.append(f'{rel}: loads code at run time')
+    # Menus are the operating system's, through CommandMenu and the menu presenter.
+    if path.name != 'CommandMenu.qml' and re.search(r'\b(C|T)\.(Menu|MenuItem|MenuBar|MenuSeparator)\b', text):
+        errors.append(f'{rel}: opens a Qt Quick Controls menu; use CommandMenu')
+    if re.search(r'^\s*import\s+Qt\.labs\.platform', text, re.M) and path.name != 'CommandMenu.qml':
+        errors.append(f'{rel}: uses the native menu module outside CommandMenu')
 assert not errors, '\n'.join(errors)
 
 windows_forwarding = (root / 'rust-core/src/cli_forwarding/windows.rs').read_text(encoding="utf-8")
@@ -278,25 +216,13 @@ if not re.search(r'#\[cfg\(windows\)\]\n(pub\(crate\) )?fn native_identity_bytes
 if re.search(r'#\[cfg\(not\(unix\)\)\]\n(pub\(crate\) )?fn native_identity_bytes\(_identity: &NativePathIdentity\)', repository_api):
     errors.append('Windows discard and clean regressed to the unsupported path fallback')
 
-hosting_api = (root / 'rust-core/src/api.rs').read_text(encoding="utf-8")
-if 'devmil_git::hosting' in hosting_api:
-    errors.append('FRB API exposes shared hosting types instead of product DTOs')
-generated_hosting = '\n'.join(
-    (root / path).read_text(encoding="utf-8")
-    for path in (
-        'lib/rust/third_party/gitlama_contract/hosting.dart',
-        'lib/rust/third_party/gitlama_contract/hosting_runtime.dart',
-    )
-)
-for forbidden in (
-    'CredentialEnvelope',
-    'accessToken',
-    'refreshToken',
-    'codeVerifier',
-    'deviceCode',
-):
-    if forbidden in generated_hosting:
-        errors.append(f'generated hosting bridge exposes secret field {forbidden}')
+# No credential field reaches the bridge objects or the UI.
+for path in [*sorted((RUST / 'desktop/qt/src').rglob('*.rs')), *sorted((root / 'qml/GitLama').rglob('*.qml'))]:
+    text = path.read_text(encoding='utf-8')
+    for forbidden in ('CredentialEnvelope', 'accessToken', 'refreshToken', 'access_token', 'refresh_token',
+                      'codeVerifier', 'code_verifier', 'deviceCode', 'device_code'):
+        if forbidden in text:
+            errors.append(f'{path.relative_to(root).as_posix()}: exposes secret field {forbidden}')
 
 assert not errors, '\n'.join(errors)
 print('Architecture boundaries passed')

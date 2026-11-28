@@ -97,6 +97,8 @@ pub struct Helper {
     pub nonce: String,
     next_request: u64,
     pub publications: Vec<Value>,
+    /// `operationCenter` publications, kept apart from the session publications `next` returns.
+    pub operation_centers: Vec<Value>,
     /// Chunk transactions reassembled so far.
     pub transactions: usize,
     assembling: HashMap<String, Vec<u8>>,
@@ -192,6 +194,7 @@ impl Helper {
             nonce: "f".repeat(32),
             next_request: 0,
             publications: Vec::new(),
+            operation_centers: Vec::new(),
             transactions: 0,
             assembling: HashMap::new(),
         }
@@ -242,9 +245,22 @@ impl Helper {
         )
     }
 
-    /// The next complete envelope, reassembling chunk transactions. `None` means the helper
-    /// closed its output; a helper that stays silent fails the test.
+    /// The next complete envelope, reassembling chunk transactions and setting
+    /// `operationCenter` publications aside. `None` means the helper closed its output; a
+    /// helper that stays silent fails the test.
     pub fn next(&mut self) -> Option<Value> {
+        loop {
+            let envelope = self.next_envelope()?;
+            if envelope["kind"] == "publication" && envelope["payload"]["type"] == "operationCenter"
+            {
+                self.operation_centers.push(envelope);
+                continue;
+            }
+            return Some(envelope);
+        }
+    }
+
+    fn next_envelope(&mut self) -> Option<Value> {
         loop {
             let frame = match self.frames.recv_timeout(FRAME_WAIT) {
                 Ok(frame) => frame,

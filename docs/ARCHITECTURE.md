@@ -1,152 +1,270 @@
 # GitLama architecture
 
-Status: accepted direction. "Current composition" describes the code as it is; "Target layering" records the intended direction and which parts are in place.
+Status: accepted. This describes the code as it is.
 
 ## Stack and boundary
 
-Use Flutter for the desktop presentation with a Rust native core. Flutter owns painting, semantics, input routing, focus, and presentation localization. Rust owns Git semantics, repository sessions, graph topology and layout, authoritative selection identities, operation coordination, persistence, and background work. Dart code depends inward: widgets on services, services on repository interfaces.
+GitLama is a Rust application with a Qt Quick (QML) interface. QML owns painting, input
+routing, focus, accessibility roles and presentation localization. Rust owns everything
+else: Git semantics through the installed Git (via `devmil-git`), repository sessions,
+graph topology and layout, authoritative selection identities, workflows, operation
+coordination, persistence, remote workspaces and background work. Dependencies point
+inward:
 
 ```text
-Flutter panes and controls
-    -> Dart services: observable immutable projections and typed commands
-        -> Dart repository interfaces
-            -> native repository implementations / generated FRB
-                -> Rust application use cases and consumer-owned ports
-                    -> Rust domain values
-                    -> adapters -> devmil-git Repository / hosting / integrations -> installed Git or provider
+qml/GitLama (views, Meridian controls)
+    -> desktop/qt: qtbridge QObjects and item models (projection and commands only)
+        -> desktop/workbench: services, workflows, observable state (no Qt)
+            -> gitlama_core api (rust-core/src): the core facade and desktop-only services
+                -> gitlama_application: sessions, use cases, projections, wire adapter
+                    -> domain values -> devmil-git Repository / hosting -> installed Git
 ```
 
-There is one production native bridge, flutter_rust_bridge. Do not add a parallel C ABI or platform-channel Git API. Widgets cannot import generated bindings. Third-party Rust types never become the public product contract. Generated Rust and Dart code is committed and recreated by `scripts/generate-rust-bridge.sh`.
+The Rust code is one Cargo workspace (`rust-core/Cargo.toml`, one lockfile):
 
-The Rust code is one Cargo workspace (`rust-core/Cargo.toml`, one lockfile) of four crates:
+- `gitlama_contract` (`rust-core/contract/`): the plain data types (`Native*`) every layer
+  and the remote wire carry. Types only, with no public functions or inherent impls.
+- `gitlama_application` (`rust-core/application/`): the domain (`domain/`), the session
+  registry and use cases (`application/` and the family modules) and the generated JSON
+  wire adapter (`wire/`). Its `image-codecs` feature (on for the desktop) decodes image
+  diffs; `build.rs` embeds the release identity and the remote helper ID.
+- `gitlama_core` (`rust-core/src/`): the facade (`api.rs`, a delegating function per call)
+  and desktop-only services such as hosting, CLI forwarding and avatars.
+- `gitlama-remote-helper` (`rust-core/remote-helper/`): runs the application crate headless
+  on another computer, without the image codecs. It never depends on the desktop crates.
+- `gitlama-workbench` (`rust-core/desktop/workbench/`): the desktop's services and
+  workflows, independent of Qt: workspace and tabs, repository sessions, history, changes,
+  commit, inspector, conflicts, rebases, hosting and review, remote workspaces, updates,
+  settings, diagnostics and the view and link caches.
+- `gitlama-qt` (`rust-core/desktop/qt/`): the qtbridge objects QML binds to and the item
+  models of the history graph, file lists, diffs and blame.
+- `gitlama` (`rust-core/desktop/app/`): the composition root and executable, the embedded
+  QML resource, native Qt Quick items in C++ (the graph row and text formatting), the
+  platform hooks (macOS window chrome and Sparkle, the Linux desktop entry, Windows console
+  attachment) and the development screenshot hook.
 
-- `gitlama_contract` (`rust-core/contract/`): the bridge types (`Native*`, `CoreInfo`), plain data with no public functions or methods. flutter_rust_bridge reads it as a third-party input (`rust_input: crate::api,gitlama_contract`) and generates their Dart classes under `lib/rust/third_party/gitlama_contract/`; a `Default` impl carries a `/// flutter_rust_bridge:ignore` marker so it does not become Dart API.
-- `gitlama_application` (`rust-core/application/`): the domain (`domain/`), the application layer (`application/` and the family modules) and the generated JSON wire adapter (`wire/`). Each family module re-exports its bridge types from the contract beside the behaviour that produces them. Its `image-codecs` feature (default; the desktop library enables it) decodes image diffs; `build.rs` embeds the release identity and the remote helper ID.
-- `gitlama_core` (`rust-core/`, the library Flutter loads): the FRB facade (`src/api.rs` and the generated `src/frb_generated.rs`) and the desktop-only services (hosting, CLI forwarding, child processes, avatars).
-- `gitlama-remote-helper` (`rust-core/remote-helper/`): runs the application crate headless on another computer, without the image codecs; it never depends on the desktop library.
+`scripts/check_architecture.py` enforces the directions: the contract depends on no
+GitLama crate and declares no behaviour; the application depends only on the contract and
+never on its wire adapter from the application layer; the helper depends only on the
+application; the core never reaches the Qt layers; the workbench never reaches Qt; the Qt
+crate reaches the core only through the workbench and never starts a process. In QML it
+rejects imports beyond Qt, Meridian and GitLama, code loaded at run time, Qt Quick Controls
+menus outside `CommandMenu`, and credential fields reaching the bridge.
 
-## Current composition
+## Composition and lifecycle
 
-`main.dart` installs framework/platform diagnostics and launches `AppLauncher`. Bootstrap initializes safe logging and an isolated `AppComponents` registry (`lib/di/app_components.dart`), which registers every production repository and its owning service in dependency order and exposes initialized services through the typed `AppRuntime`. The startup screen localizes loading, failure and retry in English/German. Inspector windows run a second, smaller composition root: `bootstrapInspectorWindow()` builds an `InspectorWindowComponents` registry and returns an `InspectorWindowRuntime`, and `InspectionWindowApp` shows its loading, failure and retry like the main launcher.
+`main.rs` starts the Qt application, creates the window's QObjects and passes them to
+`Main.qml` as initial properties (`app`, `workspace`, `history`, `changes`, `remote` and
+the others, reached in QML through the `Store` singleton). `gitlama_workbench::app::App`
+owns startup: it composes `Services` (`app.rs`) in dependency order, publishes the startup
+phase (loading, failed, ready) and, on Retry, builds a fresh composition; a failed start
+disposes what it built. On exit the host awaits `App::shutdown`, which disposes the
+services in reverse order: pending prompts, CLI forwarding, hosting (flushing the link
+cache), auto-fetch, the operation center, the workspace's sessions, the view cache, remote
+connections, history and finally settings, flushed atomically.
 
-`ComponentRegistry` shares concurrent initialization, records construction order, cleans partial failures, and disposes constructed instances in reverse order. A disposer failure does not prevent later cleanup. Failed bootstrap retries use a new registry. Late successful startup after widget disposal immediately shuts down its runtime.
+Inspector windows are further QML windows of the same process with their own read-only
+sessions (`inspection_windows.rs`); a window of a repository on a remote host reads
+through the main connection.
 
-FRB's library loader is process-owned and shared across bootstrap attempts. It loads only the executable's bundled library. Native repository sessions, the hosting runtime and background jobs have explicit initialization, cancellation and bounded shutdown in Rust.
+## The Qt bridge
 
-Remote workspaces reuse the same Dart mapping layer: `NativeRepositorySessionRepository` talks to the in-process core through the generated `RepositorySessionCalls` seam, and to the helper through its wire implementation; `RepositoryBackendRouter` (`repositories/impl`, registered as the `CompleteSessionBackend`) routes each session to this computer or to its connection's surface, which the remote workspace service publishes in a `RemoteSessionDirectory`; the remote adapter marks remote paths with their authority. Contracts that cross the bridge are generated or held by shared fixtures: enum conversions (`native_enum_mappers.g.dart` from `tooling/remote_wire/enum_mappers.json`), wire codecs (`tooling/remote_wire/generate.py`), stored settings names (`test/fixtures/settings_storage_names.json`) and conflict markers (`test/fixtures/conflict_markers.json`). `scripts/check_architecture.py` rejects positional enum mapping, repository contracts with more than one owning service, native implementations importing each other and, in Rust, a crate dependency against the layer order (contract, application, desktop library; the helper on the application only), a public function, inherent impl or unmarked `Default` in the contract, a bridge type the facade names through the application crate (FRB would make it opaque), any dependency on `crate::api` outside the facade, an application module depending on the wire adapter, the domain depending on anything above it, and the broken `hosting`/`hosting_runtime` and session-policy cycles returning.
+The workbench runs on a single-threaded async runtime (`workbench/src/rt.rs`) on the GUI
+thread. Blocking native work (Git, files, network) runs on a bounded blocking pool and
+wakes its task when it completes. `gitlama-qt`'s `Driver` is the pump: QML slots post
+commands, the pump runs them and the ready tasks, then projects what changed onto the
+QObjects, one borrow at a time. Services publish change topics through
+`notify::Notifier`; the driver re-projects only what a topic names, and compares a
+projection with the last one before setting it, so an unchanged value never notifies QML.
 
-The Rust core today:
+Rules:
 
-- `application/src/domain/`: the mutation outcome (`MutationOutcome { committed, state, failure }`, kept uncertain end to end), the product failure taxonomy (`ProductFailure { category, detail }`, which every family failure enum maps into), path identity, `SessionKey`, branch facts, hosting identity rules, the session policy, the history filter limit and the generated product limits.
-- `application/src/application/`: the session registry (`session.rs`: per-feature sub-states, one lookup through `RepositorySessions::session` and `with_session`, one place that dismisses every family's previews on close), every session-scoped use case and projection (staging, commit, discard, patch, restore, refs, history, inspection, diff, renderers, index lock, the operation center) and the session entry points of the family modules.
-- Family modules in `application/src/` (`stash.rs`, `transfer.rs`, `history_operation.rs`, `rebase_operation.rs`, `advanced_rebase.rs`, `named_snapshot.rs`, `extensions.rs`, `integrations.rs`, `power_tools.rs`, `conflict.rs`, `clone.rs` with `credentials.rs` and `ssh_trust.rs`): each owns its mechanics, its `PreviewStore`, its settings section where it has one, and, for operations that stop at conflicts, its `InterruptedOperation`.
-- Use cases register an `OperationIntent` where they start a changing command; the operation center reads it instead of the recorded arguments.
-- The contract's `dto.rs` holds the session bridge types and the family types; the failure taxonomy mappings of every family, including the desktop-only ones (`desktop_families.rs`), live in the application crate. `api.rs` is a delegating wrapper per bridge function; `wire/` dispatches to the same application functions.
+- A QML slot never re-enters a borrowed object synchronously. Commands are posted and
+  results arrive as property changes or signals.
+- Strings shown to people are translated in QML (`L10n`, generated from `l10n/app_en.arb`
+  and `l10n/app_de.arb` by `tooling/l10n/generate.py`). The core sends message keys and
+  arguments, never English text.
+- Large collections are item models (`HistoryModel`, `RowModel`, `DiffModel`,
+  `BlameModel`), not JSON properties; rows are fixed extent and virtualized.
+- Paths travel to QML as byte arrays and are shown through `Labels`; they are never parsed
+  from display text.
 
-## Target layering
+## Services and state
 
-```text
-widgets/screens -> services (workflows, one owner per state) -> repositories -> FRB / remote wire
-  -> Rust api.rs and wire (translation only) -> application (sessions, use cases, projections) -> domain -> devmil-git
-```
+Each service owns one workflow family and its observable state; a boundary (persistence,
+a native call, the network) has one owning service. `WorkspaceService` owns tabs, groups,
+navigation, the active session, the session lifecycle and event draining. Command
+families (working copy, references, transfers, stashes, history mutations, rebase and
+restack, conflicts, named snapshots, extensions, integrations, power tools, patches,
+archives, diff renderers) are services over the sessions the workspace hands them.
+Commands are evaluated and dispatched in one place (`commands.rs` with the QML `Commands`
+and `CommandMenus` catalogues), from service-published context, never from mounted views.
 
-- Workflows (ref edits, transfers, history rewrites, conflicts, staging, commit, clone, remote connection) belong in services that return typed outcomes; widgets show dialogs and render state.
-- Commands are evaluated and dispatched in one place from service-published context, not from mounted widgets.
-- `api.rs` translates only; use cases live in application modules and mutations report one domain `MutationOutcome` (in place). Result payloads are still the bridge types in `gitlama_contract`, so a bridge field remains a wire field.
-- Separate contract, application and adapter crates, so the helper depends only on the application crate (in place). `scripts/check_helper_compatibility.py` fingerprints the application and contract crates with the helper.
-- Generic Git mechanics live in devmil-git (`rust-core/Cargo.toml` pins it); generic controls in `meridian_ui`.
+`HistoryService` owns the graph: topology, selection, queries, branch filters, search and
+reflog. It announces each selected commit or comparison and never reads a commit's diff.
+`InspectorService` owns what the Detail pane shows: one location (target, scope, focus
+path, lens, line range, history entry, anchor), a Back and Forward stack and the reads
+behind each lens. The [inspector spec](design-system/specs/inspector.md) defines the
+behaviour.
+
+Remote workspaces reuse the same session calls: `backend::RoutedCalls` routes each session
+to this computer or to its host's connection (`remote::service::Router`), and remote paths
+carry their authority. See [remote workspaces](remote-workspaces/README.md).
+
+## Shared Repository integration
+
+The normal native entry point is `devmil_git::Repository`, not `RepositoryDiscovery`,
+`GraphLoader` or hand-built read commands. Construct with `RepositoryOptions`, subscribe
+before `load()`, and project `RepositorySnapshot` and `RepositoryEvent` into the contract's
+types. Construction performs no discovery; use `from_discovered` only when an earlier
+shared operation resolved the identity.
+
+The shared model owns worker and watcher lifetime, refresh coalescing, duplicate pending
+reads, cache accounting and recorded Git execution. GitLama owns layout, selection, graph
+lane geometry, typed effects, mutation sequencing, confirmation, credentials and
+persistence. Hosting and external tools are separate entry points; hosting refresh
+scheduling stays in GitLama.
+
+Map `Snapshot` and `Resynchronize` into coherent replacement publications; a slow
+subscriber must not replay lost deltas. Tickets return `Arc<T>` or typed errors, not a
+product revision envelope, so keep session and request identity and validate freshness at
+the adapter. `close()` and Drop cancel and join the worker, so teardown runs on the
+blocking pool, never on the GUI thread.
+
+Activity and wakeup callbacks run on the repository worker and must return promptly: a
+wakeup schedules event draining, not a UI call or a synchronous wait. Keep private
+unredacted parser buffers native. Map `RepositoryErrorKind` and activity identity to safe
+product failures rather than showing the shared error message.
+
+`rust-core/Cargo.toml` pins devmil-git to an exact revision; `scripts/shared_git_pin.py`
+describes local development against a devmil-git checkout.
+
+## Native contracts
+
+An object ID is a full identity, never a shortened display hash or a row index. Paths keep
+their native bytes; presentation uses a display string and the bytes for operations.
+Avoid lossy UTF-8 round trips for file names.
+
+Every repository publication carries the session generation, the query revision and the
+publication sequence. Requests that can be superseded (diff selection, graph queries,
+reveals, hosting searches) carry a request identity, and stale results are discarded
+before they change service state. Row indexes are viewport positions only; scroll is kept
+as a stable identity plus an offset.
+
+Durable selection, repository health, operation state and settings are snapshots. Copy,
+open-external, focus restoration and reveals are typed effects with identity; a repeated
+request to reveal the same commit still reveals it.
+
+Errors use a closed product taxonomy with bounded fields: unavailable Git, unsupported
+version, unavailable repository, authentication required, permission denied, conflict,
+stale precondition, canceled, timeout, output limit and internal failure. Unknown external
+variants map to a safe fallback. Neither Debug output nor English error text is protocol.
+
+## Scheduling and mutation safety
+
+One native session owns a shared `devmil_git::Repository` handle per worktree. GitLama
+implements no second refresh loop or read cache. Application index, ref and worktree
+mutations are serialized where their lock domains overlap; shared refresh reconciles
+afterward. Obsolete reads are canceled and late publications rejected by identity even
+when cancellation races. Git never runs, and a large diff is never decoded, on the GUI
+thread.
+
+An operation has an intent, preconditions, a cancellation handle, progress, activity
+identity, a commit point, a final outcome and an optional refresh degradation. Before a
+destructive command, its exact identities and preview scope are resolved, and execution
+revalidates the index, worktree and ref state. Arguments go to Git as an array through
+devmil-git, never through a shell. User-configured shell commands are a separate explicit
+capability with preview and consent.
+
+Once Git confirms a mutation, later cancellation or a failed refresh cannot make it "not
+applied": success is kept and refresh degradation reported separately. An uncertain outcome
+needs reconciliation before retry. Credentials stay native and out of activity, settings
+and fixtures.
+
+Activity records command intent and output through bounded redaction: secrets and
+authenticated URLs are removed. Safe diagnostics use reviewed event codes and no raw
+paths or exceptions; see [diagnostics](diagnostics.md).
+
+## Graph and diff design
+
+Rust calculates lanes, topology, ancestry lighting, occupied graph ink, filtering and
+stable row projections. QML shows them in virtualized fixed-extent list views; each graph
+row is painted by the native `GraphRow` item (`desktop/app/src/native/graph_row.cpp`) from
+the row's segments, never by inferring parentage from neighbouring rows. Metadata is
+pinned and hit-tested separately from clipped graph ink. Preserve G-LANE-01 and all graph
+layout fixtures. See [ADR 0002](adr/0002-fixed-extent-history-graph.md).
+
+Topology and summaries load under separate bounds: complete topology serves navigation and
+filters without hydrating every commit message. Publications are anchored by object ID;
+offscreen continuation geometry is kept.
+
+Diff rows carry their syntax colours as styled text from the diff model. Texts the window
+holds itself (a conflicted file's sides, its ancestor and unsaved result) are coloured by
+`text_syntax_page` through `gitlama_workbench::text_syntax`, page by page in the background;
+the editors apply the runs with the native `SyntaxHighlighter`
+(`desktop/app/src/native/syntax_highlighter.cpp`), which keeps them on their text blocks so
+an edit never waits for colours.
+
+Diffs and staging use revision-scoped hunk and line identities with the original bytes kept
+natively. Stage, unstage and discard are different commands with different safety rules.
+Patch preconditions, line endings, encodings, missing newlines, renames, binary files and an
+externally changed index are validated. Highlighting and image decoding are bounded
+background jobs; a large or binary file falls back to a clear state without fabricated text.
+See [ADR 0003](adr/0003-fixed-extent-bounded-diff.md).
+
+## Persistence and platform integration
+
+Rust owns versioned settings and workspace persistence at the locations earlier releases
+used, so an update keeps everything: the settings document (`storage::settings_default_path`),
+the pending remote operations, the SSH trust store and the OS keyring entries of hosting.
+Writes are atomic replace with explicit corruption reporting; unreadable storage is distinct
+from absent data and never triggers a destructive reset. The view cache and the hosting
+link cache are disposable private entries beside the settings (`cache/views`,
+`cache/hosting-links`); an entry of another schema is removed and rebuilt.
+
+Git is external, not libgit2; devmil-git discovers and validates it. Finder's PATH differs
+from a terminal, so the child-process PATH is resolved on a worker and cached. Windows
+command quoting and cancellation preserve process-tree ownership. Linux packages depend on
+the Qt 6 runtime or bundle it, per [packaging](PACKAGING.md).
+
+The macOS client needs access to arbitrary repositories and installed tools: GitLama ships
+outside the App Store, unsandboxed, with hardened runtime, signing and notarization as release
+requirements. Desktop launch, file-open integration, shortcuts, clipboard and external tools
+each need target checks before shipping.
 
 ## Directory responsibilities
 
 | Path | Owner and allowed contents |
 | --- | --- |
-| `lib/app/` | Bootstrap, theme, shell and screens, root lifecycle |
-| `lib/di/` | Dependency factories and lifecycle metadata |
-| `lib/models/` | Immutable application-owned Dart DTOs, no native SDK types |
-| `lib/services/` | Owning service per repository; projection state, command delivery |
-| `lib/repositories/` | Boundary contracts; `impl/` translates FRB types |
-| `lib/rust/` | Generated bridge (`api.dart`; bridge types under `third_party/gitlama_contract/`), no handwritten product logic |
-| `lib/l10n/` | EN/DE strings and generated localization |
-| `rust-core/src/api.rs` | FRB facade (`gitlama_core`): a delegating wrapper per bridge function |
-| `rust-core/src/` (other modules) | Desktop-only services: hosting, CLI forwarding, child processes, avatars |
-| `rust-core/contract/` | Bridge types both adapters carry (`gitlama_contract`); data only |
+| `qml/GitLama/` | The interface: windows, panes, dialogs and git-domain components |
+| `qml/Meridian/` | The vendored Meridian design system (`scripts/sync-meridian.sh`); never edited here |
+| `l10n/` | The English and German catalogs; English is the template |
+| `rust-core/desktop/app/` | Composition root, executable, native items and platform hooks |
+| `rust-core/desktop/qt/` | qtbridge objects and item models: projection and commands only |
+| `rust-core/desktop/workbench/` | Services and workflows, independent of Qt |
+| `rust-core/src/` | The core facade (`api.rs`) and desktop-only services |
+| `rust-core/contract/` | Data types every layer and the wire carry; data only |
 | `rust-core/application/src/domain/` | Domain values and rules; depends on nothing above it |
-| `rust-core/application/src/application/` | Session registry, use cases and projections; never depends on an adapter |
+| `rust-core/application/src/application/` | Session registry, use cases and projections |
 | `rust-core/application/src/wire/` | Generated JSON codecs and dispatch for the remote helper |
-| `rust-core/remote-helper/` | Headless helper crate for remote workspaces; depends on the application crate |
-| `hook/` | Build and bundle the matching native target |
-| `docs/design-system/` | Meridian design system: tokens, components, specimens, assets, behaviour specs and oracles, Flutter adaptation |
-| `webfront/` | Static public website, separate from application targets |
-| `packaging/` | Exact release artifact matrix and platform metadata |
-
-Expose initialized product services through typed `AppRuntime` fields. Consumers select small immutable projections instead of subscribing the whole root to a mutable global model.
-
-## Shared Repository integration
-
-The normal native entry point is `devmil_git::Repository`, not `RepositoryDiscovery`, `GraphLoader` or hand-built read commands. Construct with `RepositoryOptions`, subscribe before `load()`, and project `RepositorySnapshot`/`RepositoryEvent` through application-owned FRB DTOs. Construction performs no discovery. Use `from_discovered` only when identity is already resolved by an earlier shared operation.
-
-The shared model owns worker/watcher lifetime, refresh coalescing, duplicate pending reads, cache accounting and recorded Git execution. Application state still owns layout, selection, graph lane geometry, typed effects, mutation sequencing, confirmation, credentials and persistence. Shared hosting and external-tool APIs are separate entry points; hosting refresh scheduling remains application-owned.
-
-Map `Snapshot` and `Resynchronize` into coherent replacement publications; a slow subscriber must not replay lost deltas. Map `ReadCompleted` to pending typed `ReadTicket` state. Tickets return `Arc<T>` or typed errors, not a guaranteed product revision envelope, so retain session/request identity and validate snapshot/query freshness at the adapter. Ticket drop releases a response; it is not proof of per-read child cancellation. `close()` and Drop cancel and join the worker, so perform teardown off the Flutter UI thread and measure its deadline rather than assuming it is nonblocking.
-
-Use supported history, metadata, tree, path/range history, blame, reflog and commit detail/files/diff methods on the same handle. Reuse shared lower-level mechanics only for an identified facade gap, especially mutations and working-tree diff scopes. The inspected facade does not expose a universal mutation API. Coordinate mutations and refresh completion explicitly to prevent stale cached reads after a successful command.
-
-Activity/wakeup callbacks run on the repository worker and must return promptly. A wakeup schedules event draining, not a UI call or synchronous wait. Keep private unredacted parser buffers native. Map RepositoryErrorKind and activity identity to safe product errors rather than treating the shared error message as safe localized text.
-
-`rust-core/Cargo.toml` pins devmil-git to an exact revision; `scripts/shared_git_pin.py` describes local development against a devmil-git checkout.
-
-## History inspector
-
-`HistoryService` owns the graph: topology, selection, queries, branch filters, search and reflog. It announces each selected commit or comparison on `selections` and never reads a commit's diff. `InspectorService` (`lib/services/inspector/`) owns what the Detail pane shows: one `InspectorLocation` (target, scope, focus path, lens, line range, history entry, anchor), a browser-like Back/Forward stack and the reads behind each lens. A native session keeps one committed diff and one blame projection, so one session serves one inspector, and every navigation reloads them. `HistoryInspectorLink` connects the two: graph selections navigate the inspector, and targets reached through Back, Forward or a link select the graph.
-
-`RepositorySessionService` is a facade over the session subsystem (`lib/services/session/`): `WorkspaceService` owns tabs, groups, navigation, the active session, the session lifecycle and event draining; each command family (working copy, activity, references, transfers, stashes, history mutations, rebase, restack, conflicts, named snapshots, extensions, integrations, power tools, patches, diff renderers) is a service over its own capability contract, and the Composer owns commits. The families reach sessions only through the workspace's `SessionScope`.
-
-`InspectorView` (`lib/app/inspector/`) renders an inspector for an `InspectorHost`: the Detail pane (`PaneInspectorHost`) or an inspector window (`InspectionWindowApp`, which opens its own read-only session through `InspectorWindowSession` and reaches the main window through `InspectorRevealService`). A window of a repository on a remote host reads through the main window's connection: its `RemoteInspectionSessionRepository` sends the inspector's reads over the window channel `gitlama/remote-inspection` to the main window's `RemoteInspectionHostService`, which serves them on a helper session of the window's own and refuses every other call. Every file list (commit files, All files, history entries, Changes, conflicts and pull-request review) is built from `GitFileList` and `GitLamaFileRow`, and every file menu comes from the single catalogue in `lib/app/file_actions/file_actions.dart`. The [inspector spec](design-system/specs/inspector.md) defines the behaviour.
-
-## Planned native contracts
-
-Use application-owned `RepositoryId`, `WorktreeId`, `CommitId`, `OperationId`, and `RequestId` types. An OID is a full identity, never a shortened display hash or row index. Paths retain native bytes in Rust; presentation uses a safe display string and an opaque handle for operations. Avoid lossy UTF-8 round trips for filenames. Bridge integers must fit the Dart representation or use an explicit lossless encoding.
-
-Every repository publication carries session generation, query revision, and publication sequence. Requests that can be superseded, including diff selection, graph queries, navigation reveal, and hosting searches, carry request identity. Dart discards stale results before mutating service state. Row indexes are viewport positions only. Retain scroll as stable identity plus intra-row offset.
-
-Separate immutable state from exactly-once effects. Durable selection, repository health, operation state, and settings are snapshots. Copy, open-external, focus restoration, and navigation reveals are typed effects with identity and acknowledgement. A repeated request to reveal the same commit must still cause a reveal. A data revision is not an effect signal.
-
-Errors use a closed product enum with structured bounded fields: unavailable Git, unsupported version, unavailable repository, authentication required, permission denied, conflict, stale precondition, cancelled, timeout, output limit, and internal failure. Unknown external variants map to a safe explicit fallback. UI localizes at the presentation boundary; neither SDK Debug output nor English error parsing is protocol.
-
-## Scheduling and mutation safety
-
-One GitLama native session owns a shared devmil_git::Repository handle for each worktree context. Repository owns its worker, watcher, refresh coalescing, recorded reads, immutable snapshots, request queue and bounded caches. GitLama must not implement another repository refresh loop or read cache. Serialize application index/ref/worktree mutations where their lock domains overlap; use shared refresh/reload to reconcile afterward. Verify desired read priority against the shared API and extend it upstream if needed. Cancel obsolete reads, then reject late publications by identity even when cancellation races. Never run Git or decode a large diff on Flutter's UI isolate.
-
-An operation includes intent, preconditions, cancellation handle, progress, activity identity, commit point, final outcome, and optional refresh degradation. Before a destructive command, resolve its exact identities and preview scope. Revalidate the index/worktree/ref state at execution. Pass command arguments as an array through devmil-git rather than interpolating a shell command. User-configured custom shell commands form a separate explicit capability with preview and consent.
-
-Once Git confirms a mutation, later cancellation or failed refresh cannot turn it into “not applied.” Preserve success and report refresh degradation separately. An uncertain outcome requires reconciliation before retry. Network operations expose bounded progress and authentication through an owned adapter. Credentials stay native and out of ordinary activity, settings, and fixtures.
-
-Activity captures actual command intent/output through bounded redaction. The visible log remains useful, but secrets and authenticated URLs are removed. User content such as paths is shown only where necessary in the deliberately user-visible activity view; safe operational diagnostics use fixed event codes and no raw paths or exceptions. Export requires a separate privacy review.
-
-## Graph and diff design
-
-Rust calculates lanes, topology, ancestry lighting, occupied graph ink, filtering, and stable row projections. Flutter uses virtualized fixed-extent rows and custom painters over bounded viewport data. Metadata measurement belongs in the Flutter presentation adapter, which provides measured widths for the shared geometry contract. The painter never infers parentage from neighboring widgets. Preserve G-LANE-01 and all graph layout fixtures.
-
-Graph topology and summaries have separate bounded loading policies. Full topology can serve complete navigation/filter semantics without eagerly creating widgets or hydrating all commit messages. Anchor publications by OID; preserve offscreen continuation geometry. Metadata remains pinned and hit-tested separately from clipped graph ink. Never add the obsolete graph-column preferences.
-
-Diff/staging operates on revision-scoped hunk/line identities with original bytes retained natively. Stage/unstage and discard are different commands with different safety rules. Validate patch preconditions, line endings, encoding, missing newline, renames, binary files, and externally changed index content. Highlighting and image decoding are bounded background jobs. Rendering can fall back to a clear large/binary-file state without fabricating text.
-
-## Persistence and platform integration
-
-Rust owns versioned settings and repository workspace persistence. Use atomic write-and-replace, explicit corruption reporting, safe migrations, and test interrupted writes. App-wide data includes theme/density/geometry/shortcuts; repository data includes filters, selected identities, scroll anchors, and drafts. Credentials belong in the OS secure store. Unreadable storage is distinct from absent data and never triggers automatic destructive reset.
-
-Git is external, not libgit2. Discover and validate it with devmil-git. Finder's PATH differs from a terminal; resolve child-process PATH on a worker and cache it. Do not call a process-reexec environment helper after Flutter creates threads. Windows command quoting and cancellation must preserve process-tree ownership. Linux packages require GTK/Flutter dependencies rather than Qt deployment libraries.
-
-The macOS Git client needs access to arbitrary selected repositories and installed tools. Use a non-App-Store, unsandboxed desktop distribution; hardened runtime, signing and notarization remain release requirements. App Store sandbox support is not assumed. Desktop launch, file-open integration, shortcuts, clipboard and external tools each need target tests before shipping.
+| `rust-core/remote-helper/` | The headless helper for remote workspaces |
+| `tooling/` | Generators: localization, remote wire codecs and call routing, Meridian theme |
+| `docs/design-system/` | Meridian adoption: tokens, components, specimens, behaviour specs and oracles |
+| `packaging/` | Release artifact matrix and platform metadata |
+| `webfront/` | The static public website |
 
 ## Build and supply chain
 
-Pin Flutter with `.fvmrc`, Rust with `rust-toolchain.toml`, Dart packages with `pubspec.lock`, Rust packages with `Cargo.lock`, and the shared crate with an immutable Git revision. The native hook maps host target triples explicitly, uses Cargo `--locked`, and bundles platform-appropriate filenames. Register all Rust sources and manifests as hook inputs so edits invalidate the native build. Cross-compilation alone is not target acceptance.
+Rust is pinned by `rust-toolchain.toml`, crates by `Cargo.lock` (`--locked` everywhere),
+devmil-git and Meridian by immutable Git revisions, and Qt by the version the CI and release
+workflows, `scripts/install-qt-windows.py` and `tooling/linux-release/Dockerfile` install. CI runs `./scripts/verify.sh` on Linux and the platform lane on macOS and Windows,
+then builds and qualifies the packages on native hosts. Cross-compilation alone is not
+target acceptance.
 
-CI verifies the same local command, then builds on native desktop hosts. Shared libraries are public and fetched anonymously at their pinned revisions. A populated cache can support offline builds.
+## Validation
 
-## Validation and architectural risks
-
-Keep pure Rust domain/parser tests separate from real-Git fixture tests, widget/controller tests, native bridge integration, and installed-package qualification. Generated-binding imports are guarded. Add race tests for session replacement, stale diff completion, mutation commit points, partial bootstrap, shutdown, and failed persistence as the corresponding subsystem lands.
-
-Early technical proofs must measure a 100k-commit graph, heavy diff scrolling, 130% text scale, Linux fractional scaling, Windows key traversal, and cold restart. Flutter replacing Qt does not automatically meet QSpline's latency or accessibility guarantees. Reject a renderer architecture that requires unbounded bridge messages or per-commit widget retention.
+Pure Rust domain and parser tests stay separate from real-Git fixture tests, workbench
+service tests, the remote client tests against the real helper (and over OpenSSH in
+`scripts/verify_remote_workspaces.py`), QML lint and installed-package qualification. Race
+tests cover session replacement, stale diff completion, mutation commit points, partial
+bootstrap, shutdown and failed persistence.

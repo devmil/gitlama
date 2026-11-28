@@ -4,5 +4,5 @@ Start with the [architecture](ARCHITECTURE.md) and the [decision records](adr/).
 
 - [Remote workspaces over SSH](remote-workspaces/README.md): architecture, protocol and host setup.
 - [Diagnostics](diagnostics.md): the private, user-controlled diagnostic history.
-- [Linux window rendering](linux-window-rendering.md): the GTK window and renderer setup.
+- [Linux window rendering](linux-window-rendering.md): the frameless Qt Quick window and its caption.
 - [Packaging](PACKAGING.md), [release preparation](RELEASE.md) and [crash symbolication](CRASH_SYMBOLICATION.md).
