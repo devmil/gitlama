@@ -83,6 +83,29 @@ mod platform_hooks {
             std::env::var("GITLAMA_SCREENSHOT").unwrap_or_default()
         }
 
+        /// Development: whether `GITLAMA_DEV_CONTROL=<file>` names a control
+        /// file whose lines the window runs as screenshot steps.
+        #[qslot]
+        fn dev_control_enabled(&self) -> bool {
+            std::env::var_os("GITLAMA_DEV_CONTROL").is_some_and(|value| !value.is_empty())
+        }
+
+        /// Development: takes the steps written to the control file since
+        /// the last call (one per line) and empties it.
+        #[qslot]
+        fn dev_control_take(&self) -> String {
+            let Some(path) =
+                std::env::var_os("GITLAMA_DEV_CONTROL").filter(|value| !value.is_empty())
+            else {
+                return String::new();
+            };
+            let text = std::fs::read_to_string(&path).unwrap_or_default();
+            if !text.is_empty() {
+                let _ = std::fs::write(&path, b"");
+            }
+            text
+        }
+
         /// The desktop's text scale: Linux follows GTK's text-scaling-factor
         /// like the GTK applications beside it; elsewhere 1.
         #[qslot]

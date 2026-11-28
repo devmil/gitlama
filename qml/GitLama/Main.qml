@@ -173,6 +173,15 @@ Window {
         }
     }
 
+    // Development: scripted steps while the window stays open (DevControl.qml).
+    Loader {
+        active: appWindow.hooks.devControlEnabled()
+        sourceComponent: DevControl {
+            window: appWindow
+            hooks: appWindow.hooks
+        }
+    }
+
     /// GTK's decoration layout ("menu:minimize,maximize,close"); entries GitLama
     /// does not draw are skipped, a missing value is a single trailing close.
     function _parseCaptionLayout(value) {

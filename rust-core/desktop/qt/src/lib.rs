@@ -26,6 +26,7 @@ pub mod remote_state;
 pub mod row_model;
 mod settings_state;
 mod sidebar_state;
+mod trace;
 mod workflows_state;
 mod workspace_state;
 

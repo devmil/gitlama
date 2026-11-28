@@ -95,13 +95,21 @@ pub use pump::Pump;
 
 impl Driver {
     pub fn pump(&self) {
+        let _span = crate::trace::Span::new("pump");
         self.waker.begin_pump();
-        for command in self.commands.take() {
-            command(self);
+        {
+            let _span = crate::trace::Span::new("pump.commands");
+            for command in self.commands.take() {
+                command(self);
+            }
         }
-        self.runtime.run_until_stalled();
+        {
+            let _span = crate::trace::Span::new("pump.tasks");
+            self.runtime.run_until_stalled();
+        }
         let changed = self.app.notifier().take();
         if !changed.is_empty() {
+            let _span = crate::trace::Span::new("pump.project");
             self.project(changed);
         }
     }
@@ -550,6 +558,7 @@ impl Driver {
     }
 
     fn emit_events(&self) {
+        let _span = crate::trace::Span::new("emit_events");
         for prompt in self.app.prompts.take_fresh() {
             self.state.borrow_mut().prompt(
                 prompt.id as i64,
@@ -595,6 +604,7 @@ impl Driver {
     }
 
     fn project_workspace(&self, changed: Topics) {
+        let _span = crate::trace::Span::new("project_workspace");
         let Some(services) = self.app.services() else {
             return;
         };
@@ -604,11 +614,14 @@ impl Driver {
         if changed
             .intersects(Topics::WORKSPACE | Topics::SESSION | Topics::OPERATIONS | Topics::SETTINGS)
         {
-            let details = crate::workspace_state::details(&services);
-            let mut workspace = self.workspace.borrow_mut();
-            if workspace.details != details {
-                workspace.details = details;
-                workspace.details_changed();
+            {
+                let _span = crate::trace::Span::new("workspace.details");
+                let details = crate::workspace_state::details(&services);
+                let mut workspace = self.workspace.borrow_mut();
+                if workspace.details != details {
+                    workspace.details = details;
+                    workspace.details_changed();
+                }
             }
         }
         if changed.intersects(Topics::SETTINGS) {
@@ -706,6 +719,7 @@ impl Driver {
     }
 
     fn project_sidebar(&self, services: &gitlama_workbench::app::Services) {
+        let _span = crate::trace::Span::new("project_sidebar");
         services.navigator.follow_workspace();
         let selected = services
             .navigator
@@ -720,6 +734,7 @@ impl Driver {
     }
 
     fn project_history(&self) {
+        let _span = crate::trace::Span::new("project_history");
         let Some(services) = self.app.services() else {
             return;
         };
@@ -829,6 +844,7 @@ impl Driver {
     /// The accounts page, the active repository's hosting and its linked
     /// pull requests; follows the active repository and its remotes.
     fn project_hosting(&self) {
+        let _span = crate::trace::Span::new("project_hosting");
         let Some(services) = self.app.services() else {
             return;
         };
@@ -1051,6 +1067,7 @@ impl Driver {
     }
 
     pub(crate) fn project_inspector(&self) {
+        let _span = crate::trace::Span::new("project_inspector");
         let Some(services) = self.app.services() else {
             return;
         };
@@ -1103,6 +1120,7 @@ impl Driver {
         };
         let state = crate::inspector_state::project(service, tree, &collapsed);
         {
+            let _span = crate::trace::Span::new("insp.state.emit");
             let mut inspector = shown.borrow_mut();
             if inspector.actions.is_none() {
                 inspector.actions = Some(Rc::clone(&services.inspector_actions));
@@ -1113,11 +1131,15 @@ impl Driver {
             }
         }
         let current = service.current();
-        crate::diff_model::show(diff_model, current.diff);
+        {
+            let _span = crate::trace::Span::new("insp.diff");
+            crate::diff_model::show(diff_model, current.diff);
+        }
         blame_model.borrow_mut().publish(current.blame);
     }
 
     pub(crate) fn project_changes(&self) {
+        let _span = crate::trace::Span::new("project_changes");
         let Some(services) = self.app.services() else {
             return;
         };

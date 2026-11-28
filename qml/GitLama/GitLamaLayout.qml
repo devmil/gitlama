@@ -265,4 +265,7 @@ QtObject {
     readonly property int remoteCheckSettle: 3000
     readonly property int screenshotSettle: 2500
     readonly property int screenshotStepWait: 1200
+    readonly property int devControlPoll: 50
+    readonly property int devLagProbeInterval: 10
+    readonly property int devLagProbeReport: 8
 }
