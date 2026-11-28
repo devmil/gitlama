@@ -44,6 +44,7 @@ fn os_name() -> &'static str {
 #[cfg(target_os = "linux")]
 unsafe extern "C" {
     fn gitlama_set_desktop_file_name(name: *const std::ffi::c_char);
+    fn gitlama_present_without_swap_wait();
 }
 
 /// The Wayland app id and X11 class, matching the desktop entry.
@@ -162,7 +163,8 @@ fn prefer_portal_dialogs() {
 
 /// Wayland's `threaded` scene-graph loop stalls the GUI thread waiting for the
 /// render thread's `eglSwapBuffers` frame callback during interactive resizes;
-/// the `basic` loop commits new geometry without that cross-thread stall.
+/// the `basic` loop commits new geometry without that cross-thread stall, and
+/// presents without a blocking swap so each new size is shown in its own frame.
 #[cfg(target_os = "linux")]
 fn prefer_wayland_basic_render_loop() {
     let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some_and(|value| !value.is_empty());
@@ -174,6 +176,10 @@ fn prefer_wayland_basic_render_loop() {
     {
         // SAFETY: runs first in main, before any thread exists.
         unsafe { std::env::set_var("QSG_RENDER_LOOP", "basic") };
+        // A blocking swap halves how often the content follows an interactive resize
+        // (measured on Hyprland: 29 of 75 sizes a second, 67 without the wait).
+        // SAFETY: sets Qt's default surface format before any window exists.
+        unsafe { gitlama_present_without_swap_wait() };
     }
 }
 

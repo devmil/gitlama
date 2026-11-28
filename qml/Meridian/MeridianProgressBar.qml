@@ -13,6 +13,13 @@ Item {
     property bool persistent: false
     readonly property bool indeterminate: value < 0
     readonly property real clamped: Math.max(0, Math.min(1, value))
+    /// The shown fraction: animates towards `clamped`. The bar's width follows the
+    /// bar's own width at once, so resizing a window does not animate (and repaint) it.
+    property real _shown: clamped
+    Behavior on _shown {
+        enabled: !root.indeterminate
+        NumberAnimation { duration: Motion.emphasized; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
+    }
     property bool _done: false
 
     implicitHeight: Metrics.progressHeight
@@ -50,11 +57,7 @@ Item {
         opacity: root._done ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: Motion.fade(Motion.exit) } }
         width: root.indeterminate ? root.width * Metrics.progressIndeterminateFraction
-                                  : root.width * root.clamped
-        Behavior on width {
-            enabled: !root.indeterminate
-            NumberAnimation { duration: Motion.emphasized; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.standard }
-        }
+                                  : root.width * root._shown
         x: root.indeterminate ? sweep.position * (root.width + width) - width : 0
     }
 
