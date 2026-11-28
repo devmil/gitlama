@@ -23,7 +23,7 @@ pub fn parse_source(value: &Value) -> Option<Source> {
                 paths
                     .iter()
                     .filter_map(Value::as_str)
-                    .map(|path| path.as_bytes().to_vec())
+                    .map(gitlama_workbench::path_text::path_bytes)
                     .collect()
             })
             .unwrap_or_default()

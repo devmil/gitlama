@@ -324,7 +324,7 @@ pub struct TreeDirectory {
 /// The tree key of a folder path (None is the root).
 pub fn tree_key(directory: Option<&[u8]>) -> String {
     directory
-        .map(|path| String::from_utf8_lossy(path).into_owned())
+        .map(crate::path_text::path_text)
         .unwrap_or_default()
 }
 

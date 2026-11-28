@@ -40,7 +40,7 @@ pub fn location_of(value: &Value) -> Option<Location> {
     let path = value["path"]
         .as_str()
         .filter(|path| !path.is_empty())
-        .map(|path| path.as_bytes().to_vec());
+        .map(gitlama_workbench::path_text::path_bytes);
     Some(Location {
         target,
         scope: if value["scope"].as_str() == Some("all") {

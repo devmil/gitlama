@@ -67,6 +67,8 @@ QtObject {
     property var lineRows: null
     /// The workspace shell, which owns the floating panels.
     property var shell: null
+    /// The Power Tools section to show when the panel opens next ("" keeps it).
+    property string powerToolsSection: ""
     /// The History pane (development screenshots open its menus).
     property var historyPane: null
     /// The Changes lists by side (development screenshots open their menus).

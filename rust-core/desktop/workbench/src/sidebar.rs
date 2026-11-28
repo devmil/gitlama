@@ -61,6 +61,8 @@ pub struct Entry {
     pub worktree_path: Option<String>,
     /// A worktree row: deleting it is refused up front.
     pub worktree_protected: bool,
+    /// A worktree row whose folder is gone (Git calls it prunable).
+    pub worktree_missing: bool,
     /// A pull request row: its page and the branch and commit to check out.
     pub pull_request: Option<PullRequestRow>,
     /// The CI state shown after the name (a branch with pull requests, the
@@ -442,14 +444,22 @@ pub fn worktree_entries(inventory: &NativeExtensionInventory) -> Vec<Entry> {
                 Some(branch) => display_reference(&text(branch)).to_owned(),
                 None => basename(&worktree.worktree_root),
             };
+            let missing = worktree.prunable && !worktree.current;
             Entry {
                 worktree_path: Some(root.clone()),
                 worktree_protected: worktree_deletion_protected(inventory, worktree),
+                worktree_missing: missing,
+                subtitle: if missing {
+                    "@extensionWorktreeMissing".to_owned()
+                } else {
+                    String::new()
+                },
                 tree_path: Some(root),
                 name,
                 current: worktree.current,
                 current_description: worktree.current.then_some("extensionWorktreeCurrent"),
-                activate: (!worktree.current).then_some(Activate::OpenWorktree(index)),
+                // A missing folder cannot open; its menu still deletes the registration.
+                activate: (!worktree.current && !missing).then_some(Activate::OpenWorktree(index)),
                 worktree: Some(index),
                 ..Entry::default()
             }
@@ -622,6 +632,7 @@ impl Flatten<'_> {
                 "worktree": entry.worktree,
                 "worktreePath": entry.worktree_path,
                 "worktreeProtected": entry.worktree_protected,
+                "worktreeMissing": entry.worktree_missing,
                 "pullRequest": entry.pull_request.as_ref().map(|pull| json!({
                     "webUrl": pull.web_url,
                     "checks": pull.checks,
@@ -1220,5 +1231,44 @@ mod tests {
         );
         assert_eq!(rows[1]["selected"], true);
         assert_eq!(rows[4]["icon"], "check");
+    }
+
+    #[test]
+    fn a_worktree_whose_folder_is_gone_offers_no_open() {
+        use gitlama_contract::domain::path_identity::{NativePathIdentity, NativePathPlatform};
+        let path = |text: &str| NativePathIdentity {
+            platform: NativePathPlatform::Unix,
+            units: text.bytes().map(u16::from).collect(),
+            remote: None,
+        };
+        let entry =
+            |root: &str, git_dir: &str, current: bool, prunable: bool| NativeWorktreeEntry {
+                worktree_root: path(root),
+                git_dir: path(git_dir),
+                common_git_dir: path("/r/.git"),
+                head: None,
+                branch: None,
+                locked: false,
+                prunable,
+                current,
+            };
+        let inventory = NativeExtensionInventory {
+            worktrees: vec![
+                entry("/r", "/r/.git", true, false),
+                entry("/gone", "/r/.git/worktrees/gone", false, true),
+            ],
+            submodules: Vec::new(),
+            lfs_available: false,
+            lfs_unavailable_reason: false,
+            lfs_entries: Vec::new(),
+            activity_ids: Vec::new(),
+        };
+        let entries = worktree_entries(&inventory);
+        assert!(!entries[0].worktree_missing);
+        assert!(entries[1].worktree_missing);
+        assert_eq!(entries[1].subtitle, "@extensionWorktreeMissing");
+        assert_eq!(entries[1].activate, None);
+        // Its registration can still be deleted.
+        assert!(!entries[1].worktree_protected);
     }
 }

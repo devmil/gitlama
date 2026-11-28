@@ -232,6 +232,7 @@
   "workspaceOperationCherryPick": "Cherry-Pick läuft",
   "workspaceOperationRevert": "Revert läuft",
   "workspaceOperationBisect": "Bisect läuft",
+  "workspaceBisectShow": "Suche fortsetzen",
   "logbookRepeatedFetch": "Origin abgerufen ×{count}",
   "@logbookRepeatedFetch": {
     "description": "Zusammengefasste erfolgreiche Hintergrundabrufe.",
@@ -1034,6 +1035,7 @@
   "repositoryExtensionsTitle": "Repository-Erweiterungen",
   "extensionWorktrees": "Worktrees",
   "extensionWorktreeLocked": "Gesperrter Worktree",
+  "extensionWorktreeMissing": "Ordner fehlt",
   "extensionWorktreeCurrent": "Aktueller Worktree",
   "extensionWorktreePath": "Ordner für den Worktree",
   "extensionWorktreeChooseFolder": "Ordner auswählen…",

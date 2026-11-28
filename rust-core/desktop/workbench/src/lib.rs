@@ -51,6 +51,7 @@ pub mod notices;
 pub mod notify;
 pub mod operations;
 pub mod patches;
+pub mod path_text;
 pub mod path_tree;
 pub mod power_tools;
 pub mod preferences;

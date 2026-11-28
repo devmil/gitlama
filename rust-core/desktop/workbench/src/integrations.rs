@@ -178,7 +178,10 @@ pub fn repository_file(root: &NativePathIdentity, relative: &str) -> NativePathI
     let units: Vec<u16> = if windows {
         relative.replace('/', "\\").encode_utf16().collect()
     } else {
-        relative.bytes().map(u16::from).collect()
+        crate::path_text::path_bytes(relative)
+            .into_iter()
+            .map(u16::from)
+            .collect()
     };
     let separator = if windows {
         u16::from(b'\\')

@@ -77,6 +77,11 @@ Rectangle {
         mounted = next
         panel = name
     }
+    /// Opens panel `name`, leaving it open when it is already.
+    function openPanel(name) {
+        if (panel !== name)
+            togglePanel(name)
+    }
     function closePanel(name) {
         if (panel === name)
             panel = ""

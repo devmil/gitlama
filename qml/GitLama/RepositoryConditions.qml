@@ -47,7 +47,8 @@ Column {
         for (const operation of operations)
             list.push({ tone: operation.kind === "bisect" ? MeridianBanner.Info : MeridianBanner.Attention,
                         message: L10n.t("workspaceOperation" + operation.kind.charAt(0).toUpperCase() + operation.kind.slice(1)),
-                        operation: operation.kind !== "bisect" && operation === conditions.paused })
+                        operation: operation.kind !== "bisect" && operation === conditions.paused,
+                        bisect: operation.kind === "bisect" })
         return list
     }
 
@@ -110,6 +111,18 @@ Column {
                     disabledReason: conditions.conflictCount > 0 ? L10n.tn("workspaceConflictCount", { count: conditions.conflictCount })
                         : conditions.continueReason.length > 0 ? Commands.reasonText(conditions.continueReason) : ""
                     onClicked: conditions.command("rebaseContinue")
+                }
+            }
+            // A bisect continues in Power Tools, which marks, skips and ends it.
+            MeridianButton {
+                objectName: "status-bisect-show"
+                visible: banner.modelData.bisect === true && Store.shell !== null
+                text: L10n.t("workspaceBisectShow")
+                variant: MeridianButton.Secondary
+                controlSize: MeridianButton.Small
+                onClicked: {
+                    Store.powerToolsSection = "bisect"
+                    Store.shell.openPanel("powerTools")
                 }
             }
             MeridianButton {

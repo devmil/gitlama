@@ -430,16 +430,7 @@ MeridianSettingsDialog {
         function refresh() { detailed = Store.settings ? Store.settings.diagnosticsDetailed() : false }
         onVisibleChanged: if (visible) refresh()
 
-        MeridianText {
-            width: parent.width
-            text: L10n.t("diagnosticsTitle")
-        }
-        MeridianText {
-            width: parent.width
-            text: L10n.t("diagnosticsDescription")
-            wrapMode: Text.Wrap
-            elide: Text.ElideNone
-        }
+        // The page header shows the title and what is captured.
         Flow {
             width: parent.width
             spacing: Theme.space.s4
@@ -459,6 +450,7 @@ MeridianSettingsDialog {
                 }
             }
             MeridianButton {
+                objectName: "diagnostics-preview"
                 text: L10n.t("diagnosticsPreview")
                 onClicked: {
                     diagnostics.preview = Store.settings.diagnosticsPreview(Store.platform.version ?? "unknown")

@@ -85,6 +85,7 @@ impl InspectorActions {
                 {
                     use std::os::unix::ffi::OsStringExt;
                     let bytes: Vec<u8> = root.units.iter().map(|unit| *unit as u8).collect();
+                    let path = std::ffi::OsString::from_vec(crate::path_text::path_bytes(path));
                     return std::path::PathBuf::from(std::ffi::OsString::from_vec(bytes))
                         .join(path)
                         .symlink_metadata()
@@ -127,7 +128,7 @@ impl InspectorActions {
                 identity.native_id,
                 identity.generation,
                 commit,
-                path.clone().into_bytes(),
+                crate::path_text::path_bytes(&path),
                 RESTORE_BYTE_LIMIT,
             )
             .await
@@ -181,8 +182,8 @@ impl InspectorActions {
                 identity.generation,
                 old_revision,
                 new_revision,
-                Some(old_path.into_bytes()),
-                Some(new_path.into_bytes()),
+                Some(crate::path_text::path_bytes(&old_path)),
+                Some(crate::path_text::path_bytes(&new_path)),
                 tool,
             )
             .await

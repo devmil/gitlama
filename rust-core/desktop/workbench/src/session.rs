@@ -284,8 +284,9 @@ pub fn display_path(identity: &NativePathIdentity) -> String {
     match identity.platform {
         NativePathPlatform::Windows => String::from_utf16_lossy(&identity.units),
         NativePathPlatform::Unix => {
+            // Text QML hands back unchanged, also for names that are not UTF-8.
             let bytes: Vec<u8> = identity.units.iter().map(|unit| *unit as u8).collect();
-            String::from_utf8_lossy(&bytes).into_owned()
+            crate::path_text::path_text(&bytes)
         }
     }
 }

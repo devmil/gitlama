@@ -51,9 +51,11 @@
 
 ## Unreleased Beta
 
+- Very large repositories (more than 50,000 folders) no longer keep your computer busy while GitLama sits idle. Hosts receive a new GitLama helper.
 - When another Git program holds a lock while you stage or unstage, GitLama shows the lock files with their ages and can remove left-behind locks and try again.
 - If GitLama ever crashes, the next start notes it in Diagnostics (where in GitLama it happened, never your files), so a diagnostics export can explain the crash.
-- Very large repositories (more than 50,000 folders) no longer keep your computer busy while GitLama sits idle. Hosts receive a new GitLama helper.
+- Blame, file history and the other inspector actions work for files with names in an older encoding (such as Latin-1).
+- A worktree whose folder was deleted is marked "Folder missing" and can be removed. During a bisect, the banner leads back to the search in Power Tools.
 - Opening a repository from the welcome screen no longer freezes the window for a moment.
 - A repository that can no longer be opened, for example because its folder was moved or deleted, now says so and offers to close the tab or open another repository, instead of loading forever.
 - Bare repositories show their history instead of loading forever.

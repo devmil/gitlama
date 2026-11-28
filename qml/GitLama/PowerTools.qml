@@ -60,7 +60,21 @@ Item {
         bad = ""
         act("open", { owner: owner })
     }
-    Component.onCompleted: act("open", { owner: owner })
+    Component.onCompleted: {
+        act("open", { owner: owner })
+        takeSection()
+    }
+    /// A section someone asked for (the bisect banner) becomes the shown one.
+    function takeSection() {
+        if (Store.powerToolsSection.length === 0 || sections.indexOf(Store.powerToolsSection) < 0)
+            return
+        section = Store.powerToolsSection
+        Store.powerToolsSection = ""
+    }
+    Connections {
+        target: Store
+        function onPowerToolsSectionChanged() { tools.takeSection() }
+    }
     Component.onDestruction: act("close", { owner: owner })
 
     Column {

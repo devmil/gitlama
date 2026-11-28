@@ -119,7 +119,8 @@ MeridianPanel {
                                         spacing: Theme.space.s2
                                         MeridianCount {
                                             anchors.verticalCenter: parent.verticalCenter
-                                            label: worktreeRow.modelData.locked ? L10n.t("extensionWorktreeLocked")
+                                            label: worktreeRow.modelData.missing ? L10n.t("extensionWorktreeMissing")
+                                                : worktreeRow.modelData.locked ? L10n.t("extensionWorktreeLocked")
                                                 : worktreeRow.modelData.current ? L10n.t("extensionWorktreeCurrent")
                                                 : worktreeRow.modelData.head ?? L10n.t("detachedHead")
                                         }
@@ -127,14 +128,14 @@ MeridianPanel {
                                             text: L10n.t("extensionOpen")
                                             variant: MeridianButton.Quiet
                                             controlSize: MeridianButton.Small
-                                            enabled: !worktreeRow.modelData.current && !panel.busy
+                                            enabled: !worktreeRow.modelData.current && !worktreeRow.modelData.missing && !panel.busy
                                             onClicked: panel.act("openWorktree", { index: worktreeRow.index })
                                         }
                                         MeridianButton {
                                             text: L10n.tn("openInFileBrowser", { browser: Labels.fileBrowserName() })
                                             variant: MeridianButton.Quiet
                                             controlSize: MeridianButton.Small
-                                            enabled: !panel.busy
+                                            enabled: !worktreeRow.modelData.missing && !panel.busy
                                             onClicked: Store.workflows.openFolder(worktreeRow.modelData.path)
                                         }
                                         MeridianButton {

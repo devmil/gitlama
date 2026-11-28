@@ -72,9 +72,11 @@ FocusScope {
         const index = row.worktree
         const path = row.worktreePath ?? ""
         const actions = []
-        if (row.current !== true)
+        const missing = row.worktreeMissing === true
+        if (row.current !== true && !missing)
             actions.push({ title: L10n.t("extensionOpen"), run: () => Store.sidebar.openWorktree(index) })
-        actions.push({ title: L10n.tn("openInFileBrowser", { browser: fileBrowserName }), run: () => Store.actions.openFolder(path) })
+        if (!missing)
+            actions.push({ title: L10n.tn("openInFileBrowser", { browser: fileBrowserName }), run: () => Store.actions.openFolder(path) })
         actions.push({
             title: L10n.t("extensionWorktreeDeleteAction"),
             enabled: row.worktreeProtected !== true,

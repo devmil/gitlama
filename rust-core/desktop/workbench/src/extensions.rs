@@ -523,8 +523,9 @@ impl Extensions {
             return;
         };
         let identity = session.identity;
-        let mut entry = gitlama_core::api::ignore_exact_pattern(path.into_bytes(), directory)
-            .unwrap_or_default();
+        let mut entry =
+            gitlama_core::api::ignore_exact_pattern(crate::path_text::path_bytes(&path), directory)
+                .unwrap_or_default();
         let mut failure: Option<&'static str> = None;
         loop {
             let payload = json!({"entry": entry, "directory": directory, "tracked": tracked, "failure": failure});
@@ -598,6 +599,8 @@ fn worktree_value(inventory: &NativeExtensionInventory, entry: &NativeWorktreeEn
         "path": path,
         "locked": entry.locked,
         "current": entry.current,
+        // The folder is gone; only deleting the registration is left.
+        "missing": entry.prunable && !entry.current,
         "head": entry.head.as_deref().map(|head| head.chars().take(8).collect::<String>()),
         "deletable": !worktree_deletion_protected(inventory, entry),
     })

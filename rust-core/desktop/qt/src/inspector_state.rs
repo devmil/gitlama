@@ -33,6 +33,9 @@ fn text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
+/// A path as text QML hands back unchanged (`path_text`).
+use gitlama_workbench::path_text::{path_bytes, path_text};
+
 use gitlama_workbench::inspector::whitespace_name;
 pub use gitlama_workbench::inspector::whitespace_of as parse_whitespace;
 
@@ -80,7 +83,7 @@ fn file_rows(
 ) -> Vec<Value> {
     let rows = gitlama_workbench::path_tree::flatten(
         files.iter(),
-        |file| text(change_path(file)),
+        |file| path_text(change_path(file)),
         collapsed,
         tree,
         None,
@@ -96,7 +99,7 @@ fn file_rows(
                 "isExpanded": false,
                 "kind": change_kind_name(file.kind),
                 "mode": file.new_mode,
-                "oldPath": text(&file.old_path),
+                "oldPath": path_text(&file.old_path),
             }),
             None => json!({
                 "key": format!("dir:{}", row.identity),
@@ -135,7 +138,7 @@ fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> 
                 inspection
                     .files
                     .iter()
-                    .map(|file| (text(change_path(file)), file))
+                    .map(|file| (path_text(change_path(file)), file))
                     .collect()
             })
             .unwrap_or_default();
@@ -152,7 +155,7 @@ fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> 
             return;
         };
         for entry in &folder.entries {
-            let path = text(&entry.path);
+            let path = path_text(&entry.path);
             let name = path.rsplit('/').next().unwrap_or_default().to_owned();
             if entry.kind == gitlama_contract::dto::NativeTreeEntryKind::Directory {
                 let expanded = state.expanded.contains(&path);
@@ -169,7 +172,7 @@ fn all_rows(state: &gitlama_workbench::inspector::InspectorState) -> Vec<Value> 
             rows.push(json!({"key": format!("file:{path}"), "rowKind": "file", "filePath": path, "label": name, "rowDepth": depth,
                 "isExpanded": false, "loading": false,
                 "kind": change.map_or("", |file| change_kind_name(file.kind)),
-                "oldPath": change.map_or(String::new(), |file| text(&file.old_path)),
+                "oldPath": change.map_or(String::new(), |file| path_text(&file.old_path)),
                 "treeKind": tree_kind_name(entry.kind),
                 "mode": change.map_or(entry.mode, |file| file.new_mode)}));
         }
@@ -197,7 +200,7 @@ pub fn project(
             "commit": location.target.commit(),
             "base": location.target.base(),
             "scope": match location.scope { Scope::Changed => "changed", Scope::All => "all" },
-            "path": location.path.as_deref().map(text),
+            "path": location.path.as_deref().map(path_text),
             "directory": location.directory,
             "lens": location.lens.name(),
             "lines": location.lines.map(|(first, last)| json!([first, last])),
@@ -241,8 +244,8 @@ pub fn project(
                 "author": text(&entry.author),
                 "authorTime": entry.author_time,
                 "summary": text(&entry.summary),
-                "path": entry.path.as_deref().map(text),
-                "oldPath": entry.old_path.as_deref().map(text),
+                "path": entry.path.as_deref().map(path_text),
+                "oldPath": entry.old_path.as_deref().map(path_text),
             })).collect::<Vec<_>>(),
         })
     });
@@ -276,9 +279,9 @@ pub fn project(
                 .iter()
                 .map(|file| {
                     json!({
-                        "path": text(change_path(file)),
-                        "oldPath": text(&file.old_path),
-                        "newPath": text(&file.new_path),
+                        "path": path_text(change_path(file)),
+                        "oldPath": path_text(&file.old_path),
+                        "newPath": path_text(&file.new_path),
                         "kind": change_kind_name(file.kind),
                         "mode": file.new_mode,
                         "similarity": file.similarity,
@@ -327,7 +330,7 @@ pub fn project(
                 .as_ref()
                 .filter(|location| location.directory)
                 .and_then(|location| location.path.clone())
-                .map(|path| format!("{}/", text(&path).trim_end_matches('/')));
+                .map(|path| format!("{}/", path_text(&path).trim_end_matches('/')));
             json!({
                 "commit": inspection.detail.commit,
                 "subject": message.trim().lines().next().unwrap_or_default(),
@@ -335,7 +338,7 @@ pub fn project(
                 "authorTime": inspection.detail.author_time,
                 "files": inspection.files.len(),
                 "folderFiles": folder.map(|prefix| inspection.files.iter().filter_map(|file| {
-                    let path = text(if file.new_path.is_empty() { &file.old_path } else { &file.new_path });
+                    let path = path_text(if file.new_path.is_empty() { &file.old_path } else { &file.new_path });
                     path.starts_with(&prefix).then(|| json!({"path": path, "kind": change_kind_name(file.kind)}))
                 }).collect::<Vec<_>>()),
             })
@@ -445,7 +448,7 @@ mod inspector_state {
                 let Some(location) = inspector.current().location else {
                     return;
                 };
-                let path = (!path.is_empty()).then(|| path.into_bytes());
+                let path = (!path.is_empty()).then(|| path_bytes(&path));
                 inspector
                     .navigate(
                         Location {
@@ -555,7 +558,7 @@ mod inspector_state {
                         new_path
                     };
                     let result = inspector
-                        .image_diff(old.into_bytes(), new.into_bytes())
+                        .image_diff(path_bytes(&old), path_bytes(&new))
                         .await;
                     let value =
                         rt::blocking(move || gitlama_workbench::images::image_diff_value(result))
@@ -656,7 +659,7 @@ mod inspector_state {
         fn expand_directory(&self, path: String) {
             self.with_inspector(move |inspector| async move {
                 inspector
-                    .expand_directory((!path.is_empty()).then(|| path.into_bytes()))
+                    .expand_directory((!path.is_empty()).then(|| path_bytes(&path)))
                     .await
             });
         }
@@ -665,7 +668,7 @@ mod inspector_state {
         #[qslot]
         fn collapse_directory(&self, path: String) {
             self.with_inspector(move |inspector| async move {
-                inspector.collapse_directory(path.as_bytes())
+                inspector.collapse_directory(&path_bytes(&path))
             });
         }
 
@@ -674,7 +677,7 @@ mod inspector_state {
         fn load_more_directory(&self, path: String) {
             self.with_inspector(move |inspector| async move {
                 inspector
-                    .load_more_directory((!path.is_empty()).then(|| path.into_bytes()))
+                    .load_more_directory((!path.is_empty()).then(|| path_bytes(&path)))
                     .await
             });
         }
@@ -733,7 +736,7 @@ mod inspector_state {
                 };
                 let location = Location {
                     scope,
-                    path: Some(path.into_bytes()),
+                    path: Some(path_bytes(&path)),
                     directory,
                     lens,
                     ..Location::of(target)
@@ -819,7 +822,7 @@ mod inspector_state {
                         _ => Lens::History,
                     };
                     let location = Location {
-                        path: Some(path.into_bytes()),
+                        path: Some(path_bytes(&path)),
                         directory,
                         lens,
                         ..Location::of(Target::Commit(head))

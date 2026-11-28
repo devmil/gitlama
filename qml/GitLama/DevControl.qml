@@ -6,7 +6,7 @@ import QtQuick
 // window, `mark:<label>` logs a timestamped marker, `lagProbe:on|off` logs how
 // late a 10 ms timer fires (the GUI thread was blocked) and every presented
 // frame's size, `dump:<depth>` logs the item tree, `hide:`/`show:<objectName
-// or /index/path>` toggles an item. Run with QT_MESSAGE_PATTERN containing
+// or /index/path>` toggles an item, `click:<objectName>` clicks a button. Run with QT_MESSAGE_PATTERN containing
 // %{time process} to correlate with Qt's render-loop timing.
 Item {
     id: control
@@ -42,6 +42,12 @@ Item {
             if (found)
                 found.visible = name === "show"
             console.log("gitlama-dev-mark", name + (found ? "-ok" : "-missing"))
+        } else if (name === "click") {
+            // The first visible item of that name that has a clicked signal.
+            const found = _find(window.contentItem, argument, item => item.visible && typeof item.clicked === "function")
+            if (found)
+                found.clicked()
+            console.log("gitlama-dev-mark", name + (found ? "-ok" : "-missing"))
         } else {
             Store.screenshotStep(name, argument)
         }
@@ -63,11 +69,11 @@ Item {
         return item
     }
 
-    function _find(item, name) {
-        if (item.objectName === name)
+    function _find(item, name, accepts) {
+        if (item.objectName === name && (accepts === undefined || accepts(item)))
             return item
         for (let index = 0; index < item.children.length; ++index) {
-            const found = _find(item.children[index], name)
+            const found = _find(item.children[index], name, accepts)
             if (found)
                 return found
         }

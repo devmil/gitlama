@@ -724,6 +724,10 @@
     "description": "Repository condition for an in-progress revert."
   },
   "workspaceOperationBisect": "Bisect in progress",
+  "workspaceBisectShow": "Continue search",
+  "@workspaceBisectShow": {
+    "description": "Button on the bisect banner that opens the bisect section of Power Tools."
+  },
   "@workspaceOperationBisect": {
     "description": "Repository condition for an in-progress bisect."
   },
@@ -3934,6 +3938,10 @@
   "repositoryExtensionsTitle": "Repository extensions",
   "extensionWorktrees": "Worktrees",
   "extensionWorktreeLocked": "Locked worktree",
+  "extensionWorktreeMissing": "Folder missing",
+  "@extensionWorktreeMissing": {
+    "description": "Label of a linked worktree whose folder no longer exists; only deleting its registration is offered."
+  },
   "extensionWorktreeCurrent": "Current worktree",
   "extensionWorktreePath": "Folder for the worktree",
   "extensionWorktreeChooseFolder": "Choose folder…",
