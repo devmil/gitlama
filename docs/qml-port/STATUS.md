@@ -230,6 +230,11 @@ a second) running; every dialog was built at startup (now created on first use: 
 memory difference is the QML object tree of the open workspace. Not measured: macOS,
 Windows, large repositories (100k commits), frame timing while scrolling.
 
+UI performance pass (2026-11-28, `docs/qml-port/performance.md`): idle CPU on worktrees
+beyond the native watch limit, interactive resize at the display rate on Wayland, keyed
+inspector rows and the first repository open built in the background; measured with the
+development hooks (`GITLAMA_DEV_CONTROL`, `GITLAMA_DEV_SPANS`) and `tooling/perf/gitlama_perf.py`.
+
 ## Remaining parity gaps
 Known differences from the Flutter build, none of them data or workflow loss:
 - Motion: Flutter's motion is ported, including the Changes stage flight, leaving and arriving
