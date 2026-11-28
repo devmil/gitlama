@@ -25,6 +25,7 @@ pub mod commands;
 pub mod commit;
 pub mod conflict_draft;
 pub mod conflicts;
+pub mod crash_marker;
 pub mod diagnostics;
 pub mod diff_doc;
 pub mod diff_renderer;

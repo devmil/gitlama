@@ -205,6 +205,13 @@ fn main() {
     #[cfg(target_os = "macos")]
     install_native_updater();
     gitlama_workbench::diagnostics::info("Launcher", "process_start", &[]);
+    // A panic leaves a marker the next launch records; the history is memory-only.
+    if let Some(settings) = gitlama_core::api::application_settings_default_path().path {
+        gitlama_workbench::crash_marker::install(
+            std::path::Path::new(&settings),
+            &format!("{VERSION}+{BUILD}"),
+        );
+    }
     set_desktop_file_name();
     // SAFETY: registers a static table with the QML engine before any engine exists.
     unsafe { gitlama_init_qml_cache() };
@@ -452,6 +459,7 @@ fn main() {
     drop(pump);
     drop(hooks);
     drop(workflows);
+    gitlama_workbench::crash_marker::clear();
     if exit_code != 0 {
         std::process::exit(exit_code);
     }

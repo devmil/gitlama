@@ -924,15 +924,28 @@ impl ChangesService {
             ),
             FailureCode,
         > = Ok((NativeStagingExecutionState::Failed, None));
-        for slice in path_batches {
+        let mut lock_shown = false;
+        let mut batches = path_batches.into_iter().peekable();
+        while let Some(slice) = batches.peek() {
             let request = NativeStagingRequest {
                 request_id: intent.accepted_request.unwrap_or(0),
                 side,
                 scope,
-                paths: slice,
+                paths: slice.clone(),
                 row_ids: intent.row_ids.clone(),
             };
             outcome = self.execute_staging(intent.identity, request).await;
+            // A held index lock asks what to do; trying again repeats this batch.
+            if is_index_locked(&outcome)
+                && self.session_open(tab, intent.identity)
+                && self.workspace.active_tab_id() == Some(tab)
+            {
+                lock_shown = true;
+                if self.lock_resolved(tab, intent.identity).await {
+                    continue;
+                }
+            }
+            batches.next();
             if let Ok((state, _)) = &outcome {
                 moved |= matches!(
                     state,
@@ -965,7 +978,7 @@ impl ChangesService {
                 } else {
                     self.effect(ChangesEffect::ActionFailed { tab, side, scope });
                 }
-                self.report_staging(state, diagnostic);
+                self.report_staging(state, diagnostic, lock_shown);
                 state == NativeStagingExecutionState::Completed
             }
             Err(code) => {
@@ -976,6 +989,25 @@ impl ChangesService {
         };
         self.effect(ChangesEffect::MoveEnded { tab, moved });
         proceed
+    }
+
+    /// Shows the repository's lock files after Git found the index locked;
+    /// true when the person removed them or chose to try again (and the
+    /// session is still the one that failed).
+    async fn lock_resolved(&self, tab: u64, identity: SessionIdentity) -> bool {
+        let answer = self
+            .prompts
+            .ask(
+                "transferFailure",
+                json!({"kind": "stage", "diagnosis": "locked"}),
+            )
+            .await;
+        let retry = answer
+            .as_ref()
+            .and_then(|answer| answer.get("remedy"))
+            .and_then(Value::as_str)
+            == Some("retry");
+        retry && self.session_open(tab, identity)
     }
 
     /// Runs one staging request; a stale whole-file intent is rebuilt once.
@@ -1094,13 +1126,15 @@ impl ChangesService {
         &self,
         state: NativeStagingExecutionState,
         diagnostic: Option<NativeStagingFailureCode>,
+        lock_shown: bool,
     ) {
         let (key, error) = match state {
             NativeStagingExecutionState::Completed => ("stagingCompleted", false),
             NativeStagingExecutionState::Stale => ("stagingStale", true),
+            // The lock dialog already explained a held index lock.
             NativeStagingExecutionState::Failed => (
                 diagnostic.map_or("stagingFailed", staging_failure_key),
-                true,
+                !(lock_shown && diagnostic == Some(NativeStagingFailureCode::IndexLocked)),
             ),
             NativeStagingExecutionState::ReconciledWithWarning => ("stagingWarning", false),
             NativeStagingExecutionState::OutcomeUncertain => ("mutationOutcomeUncertain", true),
@@ -1409,6 +1443,25 @@ impl ChangesService {
         self.disposed.set(true);
         self.tabs.borrow_mut().clear();
     }
+}
+
+/// Whether a staging outcome failed on a lock another Git process holds.
+fn is_index_locked(
+    outcome: &Result<
+        (
+            NativeStagingExecutionState,
+            Option<NativeStagingFailureCode>,
+        ),
+        FailureCode,
+    >,
+) -> bool {
+    matches!(
+        outcome,
+        Ok((
+            NativeStagingExecutionState::Failed,
+            Some(NativeStagingFailureCode::IndexLocked)
+        ))
+    )
 }
 
 pub fn staging_failure_key(code: NativeStagingFailureCode) -> &'static str {
