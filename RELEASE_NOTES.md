@@ -51,6 +51,7 @@
 
 ## Unreleased Beta
 
+- Very large repositories (more than 50,000 folders) no longer keep your computer busy while GitLama sits idle. Hosts receive a new GitLama helper.
 - Opening a repository from the welcome screen no longer freezes the window for a moment.
 - A repository that can no longer be opened, for example because its folder was moved or deleted, now says so and offers to close the tab or open another repository, instead of loading forever.
 - Bare repositories show their history instead of loading forever.
