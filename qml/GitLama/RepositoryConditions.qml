@@ -36,7 +36,9 @@ Column {
             list.push({ tone: MeridianBanner.Error, message: L10n.t("workspaceStatusFailure") })
         if (active.refsFailure)
             list.push({ tone: MeridianBanner.Error, message: L10n.t("workspaceRefsFailure") })
-        if (active.detached)
+        // A rebase or bisect detaches HEAD by design; its own banner explains the state, and a
+        // rebase puts the branch back when it finishes.
+        if (active.detached && !operations.some(operation => operation.kind === "rebase" || operation.kind === "bisect"))
             list.push({ tone: MeridianBanner.Info, message: L10n.t("workspaceDetachedHead") })
         if (conflictCount > 0)
             list.push({ tone: MeridianBanner.Attention, message: L10n.tn("workspaceConflictCount", { count: conflictCount }) })

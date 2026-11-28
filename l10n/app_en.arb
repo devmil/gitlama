@@ -592,7 +592,7 @@
   "@historyRetryLoad": {
     "description": "Retry the failed History load."
   },
-  "historyEndOfHistory": "End of history · {count} commits",
+  "historyEndOfHistory": "End of history · {count, plural, =1{1 commit} other{{count} commits}}",
   "@historyEndOfHistory": {
     "description": "Footer after the final loaded commit.",
     "placeholders": {
@@ -1504,7 +1504,7 @@
   "@menuNameCopied": {
     "description": "Status confirmation after a menu copies a branch, tag, stash or remote name."
   },
-  "historyWorkingTreeChanges": "Uncommitted changes · {count} files · {staged} staged",
+  "historyWorkingTreeChanges": "Uncommitted changes · {count, plural, =1{1 file} other{{count} files}} · {staged} staged",
   "@historyWorkingTreeChanges": {
     "description": "Dirty working-tree pseudo-commit summary.",
     "placeholders": {
@@ -1516,7 +1516,7 @@
       }
     }
   },
-  "historyWorkingTreeConflicts": "Conflicts · {count} files · open resolver",
+  "historyWorkingTreeConflicts": "Conflicts · {count, plural, =1{1 file} other{{count} files}} · open resolver",
   "@historyWorkingTreeConflicts": {
     "description": "Conflicted working-tree pseudo-commit summary.",
     "placeholders": {
@@ -1693,7 +1693,7 @@
   "@historyCollapseSelected": {
     "description": "History merge collapse action."
   },
-  "historyCollapsedCount": "{count} commits collapsed",
+  "historyCollapsedCount": "{count, plural, =1{1 commit collapsed} other{{count} commits collapsed}}",
   "@historyCollapsedCount": {
     "placeholders": {
       "count": {
@@ -1989,7 +1989,7 @@
   "@diffContextLines": {
     "description": "Choose the number of context lines."
   },
-  "diffContextValue": "{count} context lines",
+  "diffContextValue": "{count, plural, =1{1 context line} other{{count} context lines}}",
   "@diffContextValue": {
     "placeholders": {
       "count": {
@@ -3616,7 +3616,7 @@
   "rebaseActionFixup": "Fixup",
   "rebaseActionDrop": "Drop",
   "rebaseCompleted": "Rebase completed.",
-  "rebaseConflict": "Rebase stopped with {count} conflict path(s).",
+  "rebaseConflict": "{count, plural, =1{Rebase stopped with 1 conflicting path.} other{Rebase stopped with {count} conflicting paths.}}",
   "@rebaseConflict": {
     "placeholders": {
       "count": {
@@ -3644,7 +3644,7 @@
   "@historyMutationCompleted": {
     "description": "History mutation completion."
   },
-  "historyMutationConflict": "The operation stopped with {count} conflict path(s). Continue in the conflict workflow.",
+  "historyMutationConflict": "{count, plural, =1{The operation stopped with 1 conflicting path.} other{The operation stopped with {count} conflicting paths.}} Continue in the conflict workflow.",
   "@historyMutationConflict": {
     "placeholders": {
       "count": {
@@ -3856,7 +3856,7 @@
   "restackIncompleteWarning": "GitLama couldn't map the whole stack. Only the branches listed here are restacked.",
   "restackPublishedWarning": "I understand that this rewrites published branches, so others may need to update their copies.",
   "restackNothingToDo": "All dependent branches are already based on their current parents.",
-  "restackCompleted": "Restacked {count} branches.",
+  "restackCompleted": "{count, plural, =1{Restacked 1 branch.} other{Restacked {count} branches.}}",
   "@restackCompleted": {
     "placeholders": {
       "count": {

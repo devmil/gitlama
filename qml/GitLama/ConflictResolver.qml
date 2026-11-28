@@ -392,7 +392,7 @@ FocusScope {
                                 MeridianCheckbox {
                                     checked: resolver.checked.indexOf(fileRow.file.key) >= 0
                                     enabled: !resolver.busy
-                                    Accessible.name: fileRow.file.path
+                                    Accessible.name: fileRow.file.path ?? ""
                                     onClicked: resolver.toggleChecked(fileRow.file.key, checked, false)
                                     TapHandler {
                                         acceptedModifiers: Qt.ShiftModifier

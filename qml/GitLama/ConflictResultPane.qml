@@ -109,7 +109,7 @@ Item {
             spacing: Theme.space.s2
             ExternalMergeAction {
                 anchors.verticalCenter: parent.verticalCenter
-                busy: Store.conflicts.state.busy === true
+                busy: Store.conflicts?.state?.busy === true
             }
             MeridianButton {
                 visible: root.textFile && root.file.ancestorPresent === true

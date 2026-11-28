@@ -463,11 +463,26 @@ Item {
             indicator.targetX = activeTarget.x
             indicator.targetW = activeTarget.w
             indicator.shown = true
+            // A tab that just became active scrolls into view; one the person scrolled away
+            // from while it stayed active does not jump back on a relayout.
+            if (_activeMoved && !activeTarget.lifted)
+                _reveal(activeTarget.x, activeTarget.w)
         } else {
             indicator.shown = false
         }
         _activeMoved = false
         _layoutAnimated = true
+    }
+
+    /// Scrolls the strip so the span from `x` with width `w` is shown whole.
+    function _reveal(x, w) {
+        if (flick.width <= 0)
+            return
+        const end = Math.max(0, _total - flick.width)
+        if (x < flick.contentX)
+            flick.contentX = Math.max(0, Math.min(end, x))
+        else if (x + w > flick.contentX + flick.width)
+            flick.contentX = Math.max(0, Math.min(end, x + w - flick.width))
     }
 
     function _apply(targets, spans) {
@@ -687,6 +702,7 @@ Item {
 
     Flickable {
         id: flick
+        objectName: "tabStripFlick"
         anchors.fill: parent
         contentWidth: root._total
         contentHeight: height
