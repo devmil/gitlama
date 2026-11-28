@@ -378,6 +378,11 @@ mod workspace_state {
         }
 
         #[qslot]
+        fn dismiss_clone_failure(&self) {
+            self.with_services(|services| services.entry.dismiss_clone_failure());
+        }
+
+        #[qslot]
         fn initialize_repository(&self, bare: bool) {
             self.with_services(move |services| {
                 let entry = std::rc::Rc::clone(&services.entry);

@@ -232,7 +232,7 @@ MeridianPanel {
                         entranceKey: "logbook-entry|" + modelData.key
                         entranceOrder: index
                         entranceActive: panel.visible
-                        verb: modelData.count > 1 ? L10n.tn("logbookRepeatedFetch", { count: modelData.count }) : panel.actionLabel(modelData.action)
+                        verb: modelData.count > 1 ? L10n.tn("logbookRepeatedFetch", { count: modelData.count }) : (modelData.label ? L10n.t(modelData.label) : panel.actionLabel(modelData.action))
                         target: modelData.count > 1 ? "" : (modelData.repository ?? L10n.t("operationRepositoryApplication"))
                         metadata: [modelData.repository ?? L10n.t("operationRepositoryApplication"),
                                    modelData.elapsed !== null && modelData.elapsed !== undefined

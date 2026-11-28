@@ -477,6 +477,9 @@ pub struct NativeOperationCenterEntry {
     pub state: NativeOperationCenterState,
     pub origin: NativeOperationCenterOrigin,
     pub action: NativeOperationCenterAction,
+    /// The Git subcommand the entry ran (`commit`, `merge`, `stash`), which names an
+    /// `Other` change; None for refreshes and clones.
+    pub command: Option<String>,
     pub started_at_unix_ms: u64,
     pub finished_at_unix_ms: Option<u64>,
     pub progress: Option<NativeActivityProgress>,

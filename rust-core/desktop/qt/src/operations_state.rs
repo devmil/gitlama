@@ -38,6 +38,37 @@ fn action_name(action: NativeOperationCenterAction) -> &'static str {
     }
 }
 
+/// The localization key naming an entry: its action, or for another change the
+/// Git subcommand it ran (Commit, Merge, Stash, …); "operationOther" for the rest.
+fn label_key(action: NativeOperationCenterAction, command: Option<&str>) -> &'static str {
+    match action {
+        NativeOperationCenterAction::Refresh => "operationRefresh",
+        NativeOperationCenterAction::Initialize => "operationInitialize",
+        NativeOperationCenterAction::Clone => "operationClone",
+        NativeOperationCenterAction::Fetch => "operationFetch",
+        NativeOperationCenterAction::Pull => "operationPull",
+        NativeOperationCenterAction::Push => "operationPush",
+        NativeOperationCenterAction::Other => match command {
+            Some("commit") => "operationCommit",
+            Some("merge") => "operationMerge",
+            Some("stash") => "operationStash",
+            Some("checkout" | "switch") => "operationCheckout",
+            Some("branch") => "operationBranch",
+            Some("tag") => "operationTag",
+            Some("reset") => "operationReset",
+            Some("rebase") => "operationRebase",
+            Some("cherry-pick") => "operationCherryPick",
+            Some("revert") => "operationRevert",
+            Some("add" | "restore" | "rm" | "apply" | "update-index") => "operationStage",
+            Some("clean") => "operationClean",
+            Some("worktree") => "operationWorktree",
+            Some("submodule") => "operationSubmodule",
+            Some("remote") => "operationRemote",
+            _ => "operationOther",
+        },
+    }
+}
+
 fn status_name(status: NativeActivityStatus) -> &'static str {
     match status {
         NativeActivityStatus::Running => "running",
@@ -49,14 +80,20 @@ fn status_name(status: NativeActivityStatus) -> &'static str {
     }
 }
 
+/// Output as text: the NUL separators of `-z` output become line breaks, which the
+/// fonts would otherwise draw as boxes.
+fn output_text(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).replace('\0', "\n")
+}
+
 /// A record's command and output (its stdout, then its stderr).
 pub fn record_value(record: &NativeActivityRecord) -> Value {
     let mut output = Vec::new();
     if !record.stdout.is_empty() {
-        output.push(String::from_utf8_lossy(&record.stdout).into_owned());
+        output.push(output_text(&record.stdout));
     }
     if !record.stderr.is_empty() {
-        output.push(String::from_utf8_lossy(&record.stderr).into_owned());
+        output.push(output_text(&record.stderr));
     }
     json!({
         "id": record.id.to_string(),
@@ -89,6 +126,7 @@ pub fn project(
                     NativeOperationCenterOrigin::Background => "background",
                 },
                 "action": action_name(entry.action),
+                "label": label_key(entry.action, entry.command.as_deref()),
                 "repository": entry.session_id.map(|session| label(session, entry.generation).unwrap_or_else(|| format!("#{session}"))),
                 "started": entry.started_at_unix_ms,
                 "elapsed": entry.finished_at_unix_ms.map(|finished| finished.saturating_sub(entry.started_at_unix_ms)),
@@ -295,3 +333,25 @@ mod operations_state {
 }
 
 pub use operations_state::OperationsState;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn nul_separated_output_reads_as_lines() {
+        assert_eq!(super::output_text(b"a\0b\0"), "a\nb\n");
+    }
+
+    use super::*;
+
+    #[test]
+    fn other_changes_are_named_by_their_git_subcommand() {
+        use NativeOperationCenterAction::{Other, Pull};
+        assert_eq!(label_key(Other, Some("commit")), "operationCommit");
+        assert_eq!(label_key(Other, Some("switch")), "operationCheckout");
+        assert_eq!(label_key(Other, Some("add")), "operationStage");
+        assert_eq!(label_key(Other, Some("notes")), "operationOther");
+        assert_eq!(label_key(Other, None), "operationOther");
+        // A transfer keeps its own name whatever it ran.
+        assert_eq!(label_key(Pull, Some("stash")), "operationPull");
+    }
+}

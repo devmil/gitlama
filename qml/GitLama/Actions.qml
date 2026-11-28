@@ -324,6 +324,8 @@ Item {
                 defaultSuffix: "zip"
                 onAccepted: {
                     const url = selectedFile.toString()
+                    // Loaded first, so it sees the archive start running and opens.
+                    archiveProgressLazy.get()
                     Store.workflows.saveCommitArchive(commit, prefix,
                         url.startsWith("file://") ? decodeURIComponent(url.slice(Qt.platform.os === "windows" ? 8 : 7)) : url)
                 }
@@ -374,6 +376,90 @@ Item {
                         variant: MeridianButton.Quiet
                         enabled: !archiveProgress.canceled
                         onClicked: { archiveProgress.canceled = true; Store.workflows.cancelCommitArchive() }
+                    }
+                ]
+            }
+        }
+    }
+    // A clone started while repositories are open: the welcome screen that shows its
+    // progress and failure is hidden behind the tabs, so a dialog shows them.
+    readonly property string cloneFailure: Store.workspace && Store.workspace.entry ? (Store.workspace.entry.cloneFailure ?? "") : ""
+    readonly property string clonePhase: !Store.hasTabs ? ""
+        : Store.clone.running === true ? "running"
+        : cloneFailure.length > 0 ? "failed" : ""
+    onCloneFailureChanged: if (cloneFailure.length > 0 && cloneStatusLazy.active) cloneStatusLazy.get().failure = cloneFailure
+    onClonePhaseChanged: {
+        if (clonePhase !== "") {
+            const dialog = cloneStatusLazy.get()
+            dialog.phase = clonePhase
+            dialog.failure = cloneFailure
+            dialog.open()
+        } else if (cloneStatusLazy.active) {
+            cloneStatusLazy.get().close()
+        }
+    }
+    Lazy {
+        id: cloneStatusLazy
+        sourceComponent: Component {
+            MeridianDialog {
+                id: cloneStatus
+                property string failure
+                // Kept while the dialog closes, so it does not change as it fades out.
+                property string phase
+                readonly property bool running: phase === "running"
+                title: running ? L10n.t("cloneProgressTitle") : L10n.t("cloneFailedTitle")
+                onRejected: if (!running) Store.workspace.dismissCloneFailure()
+                onSubmitted: running ? close() : reject()
+                Column {
+                    width: parent ? parent.width : 0
+                    spacing: Theme.space.s4
+                    MeridianProgressBar {
+                        visible: cloneStatus.running
+                        width: parent.width
+                        track: true
+                        persistent: true
+                        value: Store.clone.progress ?? -1
+                    }
+                    MeridianBanner {
+                        objectName: "clone-status-failure"
+                        visible: !cloneStatus.running && cloneStatus.failure.length > 0
+                        width: parent.width
+                        tone: MeridianBanner.Error
+                        message: Labels.cloneFailureMessage(cloneStatus.failure)
+                    }
+                }
+                actions: [
+                    MeridianButton {
+                        objectName: "clone-status-cancel"
+                        visible: cloneStatus.running
+                        text: L10n.t("cancelClone")
+                        variant: MeridianButton.Quiet
+                        onClicked: Store.workspace.cancelClone()
+                    },
+                    MeridianButton {
+                        visible: cloneStatus.running
+                        text: L10n.t("cloneProgressHide")
+                        variant: MeridianButton.Primary
+                        onClicked: cloneStatus.close()
+                    },
+                    MeridianButton {
+                        visible: !cloneStatus.running && cloneStatus.failure === "authentication"
+                        text: L10n.t("retryAuthentication")
+                        variant: MeridianButton.Quiet
+                        onClicked: Store.workspace.retryCloneWithCredentials()
+                    },
+                    MeridianButton {
+                        visible: !cloneStatus.running && cloneStatus.failure === "hostKey"
+                        text: L10n.t("inspectHostKey")
+                        variant: MeridianButton.Quiet
+                        onClicked: Store.workspace.inspectCloneHostKey()
+                    },
+                    MeridianButton {
+                        objectName: "clone-status-close"
+                        visible: !cloneStatus.running
+                        text: L10n.t("close")
+                        variant: MeridianButton.Primary
+                        onClicked: cloneStatus.reject()
                     }
                 ]
             }

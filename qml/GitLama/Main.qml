@@ -75,6 +75,14 @@ Window {
              : appWindow.appearance.theme === "light" ? Theme.Light
              : appWindow.appearance.theme === "dark" ? Theme.Dark : Theme.System
     }
+    // Native dialogs and menus follow the chosen theme, not only the system's; System
+    // hands the scheme back to the platform.
+    Binding {
+        target: Application.styleHints
+        property: "colorScheme"
+        value: Theme.mode === Theme.Dark ? Qt.ColorScheme.Dark
+             : Theme.mode === Theme.Light ? Qt.ColorScheme.Light : Qt.ColorScheme.Unknown
+    }
     Binding {
         target: Theme
         property: "density"
@@ -206,7 +214,20 @@ Window {
         window: appWindow
         update: patch => appWindow.app.updateAppearance(patch)
         // Native window setup (macOS toolbar) needs the shown window.
-        onRestoredChanged: Qt.callLater(() => appWindow.hooks.configureWindow())
+        onRestoredChanged: Qt.callLater(() => {
+            appWindow.hooks.configureWindow()
+            appWindow.installWindowMenu()
+        })
+    }
+    // macOS: the standard Window menu (Minimize, Zoom, Enter Full Screen), in the shown language.
+    function installWindowMenu() {
+        if (Store.isMac)
+            hooks.installWindowMenu(L10n.t("macWindowMenu"), L10n.t("macWindowMinimize"),
+                                    L10n.t("macWindowZoom"), L10n.t("macWindowEnterFullScreen"))
+    }
+    Connections {
+        target: L10n
+        function onLanguageChanged() { if (frame.restored) appWindow.installWindowMenu() }
     }
     // The saved frame arrives with the settings; a failed start shows the window as it is.
     function _restoreFrame() {

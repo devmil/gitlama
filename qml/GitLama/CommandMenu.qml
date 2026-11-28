@@ -22,8 +22,23 @@ MeridianMenu {
     function show(parentItem, x, y) {
         build()
         if (parentItem)
+            _takeTextFocus(parentItem)
+        if (parentItem)
             menu.parent = parentItem
         menu.popup(parentItem, x ?? 0, y ?? 0)
+    }
+
+    // A row's menu while a text field elsewhere has the keyboard: macOS treats
+    // the menu as the field's and appends AutoFill to it. The clicked item
+    // takes the focus, as a list does on a right-click.
+    function _takeTextFocus(parentItem) {
+        const focused = parentItem.Window.activeFocusItem
+        if (!Store.isMac || !focused || focused.inputMethodComposing === undefined)
+            return
+        for (let item = parentItem; item; item = item.parent)
+            if (item === focused)
+                return
+        parentItem.forceActiveFocus(Qt.PopupFocusReason)
     }
 
     function build() {

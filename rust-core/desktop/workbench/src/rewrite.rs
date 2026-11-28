@@ -9,11 +9,11 @@ use crate::notices::Notices;
 use crate::prompts::Prompts;
 use crate::session::{SessionError, SessionIdentity, display_path};
 use crate::workspace::{Pane, WorkspaceService};
-use gitlama_contract::dto::NativeStagingSide;
 use gitlama_contract::dto::{
     NativeRefMutationExecutionState, NativeRefMutationKind, NativeRefMutationRequest,
     NativeRefMutationWarning, NativeStatusEntryKind,
 };
+use gitlama_contract::dto::{NativeRepositoryStash, NativeStagingSide};
 use gitlama_contract::stash::{
     NativeStashExecutionResult, NativeStashExecutionState, NativeStashFailureKind, NativeStashKind,
     NativeStashPreview, NativeStashRequest,
@@ -46,6 +46,28 @@ pub fn parse_stash_kind(name: &str) -> Option<NativeStashKind> {
         "autoStashCheckoutCommit" => NativeStashKind::AutoStashCheckoutCommit,
         _ => return None,
     })
+}
+
+/// The listed stash entry `selector` names (`stash@{n}`).
+fn find_stash<'a>(
+    stashes: &'a [NativeRepositoryStash],
+    selector: Option<&str>,
+) -> Option<&'a NativeRepositoryStash> {
+    let selector = selector?;
+    stashes
+        .iter()
+        .find(|stash| text(&stash.selector) == selector)
+}
+
+/// The object ID a stash request carries. The core changes a stash entry
+/// only when the selector and the object ID name the same entry, so a stash
+/// pushed meanwhile cannot redirect `stash@{0}` to another entry. Menus name
+/// the entry by selector; its object ID comes from the listed entry.
+fn entry_object_id(
+    stash: Option<&NativeRepositoryStash>,
+    object_id: Option<String>,
+) -> Option<String> {
+    object_id.or_else(|| stash.map(|stash| stash.object_id.clone()))
 }
 
 fn stash_failure_key(kind: NativeStashFailureKind) -> &'static str {
@@ -230,13 +252,8 @@ impl RewriteService {
             return;
         };
         let snapshot = Rc::clone(&session.snapshot);
-        let stash = selector.as_ref().and_then(|selector| {
-            snapshot
-                .refs
-                .stashes
-                .iter()
-                .find(|stash| &text(&stash.selector) == selector)
-        });
+        let stash = find_stash(&snapshot.refs.stashes, selector.as_deref());
+        let object_id = entry_object_id(stash, object_id);
         let entries = snapshot
             .status
             .as_ref()
@@ -470,5 +487,42 @@ impl RewriteService {
                 ),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(selector: &str, object_id: &str) -> NativeRepositoryStash {
+        NativeRepositoryStash {
+            selector: selector.as_bytes().to_vec(),
+            object_id: object_id.to_owned(),
+            subject: b"On main: wip".to_vec(),
+        }
+    }
+
+    #[test]
+    fn a_selector_carries_the_listed_entry_object_id() {
+        let stashes = [entry("stash@{0}", "aaa"), entry("stash@{1}", "bbb")];
+        let stash = find_stash(&stashes, Some("stash@{1}"));
+        assert_eq!(entry_object_id(stash, None).as_deref(), Some("bbb"));
+    }
+
+    #[test]
+    fn an_explicit_object_id_is_kept() {
+        let stashes = [entry("stash@{0}", "aaa")];
+        let stash = find_stash(&stashes, Some("stash@{0}"));
+        assert_eq!(
+            entry_object_id(stash, Some("ccc".to_owned())).as_deref(),
+            Some("ccc")
+        );
+    }
+
+    #[test]
+    fn an_unlisted_or_missing_selector_carries_no_object_id() {
+        let stashes = [entry("stash@{0}", "aaa")];
+        assert!(find_stash(&stashes, Some("stash@{4}")).is_none());
+        assert_eq!(entry_object_id(find_stash(&stashes, None), None), None);
     }
 }

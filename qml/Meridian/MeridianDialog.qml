@@ -58,6 +58,12 @@ T.Dialog {
 
     onRejectCountChanged: shake.restart()
 
+    // Enter and Escape reach the body only while focus is inside the dialog.
+    // An opened dialog whose content took no focus (no field, no focused
+    // button) leaves it on the popup itself, where Enter would do nothing:
+    // give it to the body then. A field or button the dialog focused keeps it.
+    onOpened: dialogBody.takeFocusUnlessInside()
+
     T.Overlay.modal: Rectangle {
         color: Theme.colors.scrim
         Behavior on opacity { NumberAnimation { duration: Motion.fade(Motion.dialog) } }
@@ -114,6 +120,14 @@ T.Dialog {
 
     contentItem: Flickable {
         id: dialogBody
+        function takeFocusUnlessInside() {
+            const focused = Window.activeFocusItem
+            let item = focused
+            while (item && item !== parent)
+                item = item.parent
+            if (!item || focused === parent)
+                forceActiveFocus()
+        }
         MeridianWheelScroll { flickable: dialogBody }
         Accessible.role: Accessible.Dialog
         Accessible.name: control.title

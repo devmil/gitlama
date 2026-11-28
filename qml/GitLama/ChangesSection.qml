@@ -205,6 +205,8 @@ Item {
         fileMenu.showFor({
             source: unstaged ? "unstagedFile" : "stagedFile",
             path: row.path,
+            // Added files are not in the current commit (no Blame or history at HEAD).
+            change: row.status === "A" ? "added" : row.untracked === true ? "untracked" : "",
             exists: true,
             staged: !unstaged,
             discardable: row.discardable === true,

@@ -180,6 +180,29 @@ fn prediction_payload(prediction: Option<&NativeConflictPredictionResult>) -> Va
     }
 }
 
+/// The command as the user would type it: arguments with spaces or quotes are quoted, and a
+/// multi-line merge message shows its first line.
+fn command_line(arguments: &[String]) -> String {
+    let shown = arguments.iter().map(|argument| {
+        let mut lines = argument.lines();
+        let first = lines.next().unwrap_or_default();
+        let first = if lines.next().is_some() {
+            format!("{first} …")
+        } else {
+            first.to_owned()
+        };
+        if first.is_empty() || first.contains([' ', '\'', '"']) {
+            format!("\"{}\"", first.replace('"', "\\\""))
+        } else {
+            first
+        }
+    });
+    std::iter::once("git".to_owned())
+        .chain(shown)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn preview_payload(
     preview: &NativeHistoryMutationPreview,
     prediction: Option<&NativeConflictPredictionResult>,
@@ -190,7 +213,7 @@ fn preview_payload(
         commands
             .push("git stash push --include-untracked -m \"GitLama before revert …\"".to_owned());
     }
-    commands.push(format!("git {}", preview.arguments.join(" ")));
+    commands.push(command_line(&preview.arguments));
     if set_aside {
         commands.push("git stash apply --index <stash>".to_owned());
     }
@@ -503,6 +526,26 @@ impl HistoryMutations {
 mod tests {
     use super::*;
     use gitlama_contract::history_operation::NativeHistorySetAside;
+
+    #[test]
+    fn the_merge_command_quotes_its_message_and_shows_its_first_line() {
+        let arguments = ["merge", "--no-edit", "--no-ff", "--no-log", "-m"]
+            .map(String::from)
+            .into_iter()
+            .chain([
+                "Merge branch 'topic'\n\n* topic:\n  one\n".into(),
+                "abc".into(),
+            ])
+            .collect::<Vec<_>>();
+        assert_eq!(
+            command_line(&arguments),
+            "git merge --no-edit --no-ff --no-log -m \"Merge branch 'topic' …\" abc"
+        );
+        assert_eq!(
+            command_line(&["merge".into(), "say \"hi\"".into()]),
+            "git merge \"say \\\"hi\\\"\""
+        );
+    }
 
     fn preview(no_commit: bool) -> NativeHistoryMutationPreview {
         NativeHistoryMutationPreview {

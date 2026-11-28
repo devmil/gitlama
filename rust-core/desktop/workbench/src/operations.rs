@@ -324,6 +324,7 @@ mod tests {
             state,
             origin,
             action,
+            command: None,
             started_at_unix_ms: 1,
             finished_at_unix_ms: None,
             progress: None,

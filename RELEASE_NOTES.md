@@ -51,6 +51,14 @@
 
 ## Unreleased Beta
 
+- Merging a branch names it in the merge commit again ("Merge branch 'topic'") instead of a commit hash, and the conflict resolver names the branch you merged. Hosts receive a new GitLama helper.
+- The Logbook says what each entry did (Commit, Merge, Stash, …).
+- A clone that fails now says so, and a clone started while repositories are open shows its progress with Cancel in a dialog.
+- Pop, Apply, Drop and Rename work for stashes again.
+- Saving a commit as ZIP shows its progress again.
+- Blame and File history are no longer offered for files that are not committed yet.
+- On macOS: Minimize, Zoom and Full Screen are in a Window menu with their usual shortcuts, leaving full screen keeps the window as it was, ⌘W closes inspection windows, file dialogs follow GitLama's dark or light theme, and context menus no longer show AutoFill.
+- Return confirms dialogs opened from menus, and the commit button no longer looks enabled after a commit when nothing is left to commit.
 - Very large repositories (more than 50,000 folders) no longer keep your computer busy while GitLama sits idle. Hosts receive a new GitLama helper.
 - When another Git program holds a lock while you stage or unstage, GitLama shows the lock files with their ages and can remove left-behind locks and try again.
 - If GitLama ever crashes, the next start notes it in Diagnostics (where in GitLama it happened, never your files), so a diagnostics export can explain the crash.

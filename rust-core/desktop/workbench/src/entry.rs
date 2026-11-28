@@ -294,6 +294,13 @@ impl EntryWorkflows {
         let _ = self.clones.cancel().await;
     }
 
+    /// Forgets the last clone failure once the user has read it.
+    pub fn dismiss_clone_failure(&self) {
+        if self.state.get().clone_failure.is_some() {
+            self.set(|state| state.clone_failure = None);
+        }
+    }
+
     /// Creates a repository on this computer: asks Bare or not, then a folder.
     pub async fn initialize(self: &Rc<Self>, initially_bare: bool) {
         let choice = self

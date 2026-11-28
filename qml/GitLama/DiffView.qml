@@ -529,6 +529,10 @@ Item {
         }
         onContentYChanged: syntaxTimer.restart()
         onHeightChanged: syntaxTimer.restart()
+        // Whether the list has rows, settled after layout: the minimap's visibility sets this
+        // list's width, and a relayout for a new width can change `count`.
+        property bool hasRows: false
+        onCountChanged: Qt.callLater(() => list.hasRows = list.count > 0)
 
         // Shift+wheel and the sideways part of a diagonal swipe move the text (the list
         // itself never scrolls sideways).
@@ -1047,7 +1051,7 @@ Item {
     Item {
         id: minimap
         objectName: "diff-minimap"
-        visible: view.showMinimap && view.model !== null && list.count > 0
+        visible: view.showMinimap && view.model !== null && list.hasRows
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom

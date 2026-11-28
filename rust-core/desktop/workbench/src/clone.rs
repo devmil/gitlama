@@ -323,11 +323,12 @@ impl CloneService {
         self.poll(attempt.clone());
         let completion = rt::blocking(run).await;
         self.progress.borrow_mut().cancel();
+        let failure = run_failure(&completion);
         if let Some(snapshot) = completion.snapshot {
             self.publish(snapshot);
         }
-        if let Some(failure) = completion.failure {
-            return Err(failure_name(failure.kind));
+        if let Some(kind) = failure {
+            return Err(failure_name(kind));
         }
         let opened = completion.session.map(|session| OpenedSession {
             identity: SessionIdentity {
@@ -341,6 +342,24 @@ impl CloneService {
     }
 }
 
+/// Why a run did not clone: the call's own failure, or the attempt's when Git failed
+/// (that one is carried by the attempt, not the call). A canceled clone is no failure.
+fn run_failure(completion: &NativeCloneRunResult) -> Option<NativeCloneFailureKind> {
+    if let Some(failure) = &completion.failure {
+        return Some(failure.kind);
+    }
+    completion
+        .snapshot
+        .as_ref()
+        .filter(|snapshot| snapshot.state == NativeCloneState::Failed)
+        .map(|snapshot| {
+            snapshot
+                .failure
+                .as_ref()
+                .map_or(NativeCloneFailureKind::Git, |failure| failure.kind)
+        })
+}
+
 /// How far a clone has come (0…1), or None while it cannot tell.
 pub fn progress(snapshot: &NativeCloneSnapshot) -> Option<f64> {
     let progress = snapshot.progress.as_ref()?;
@@ -352,6 +371,50 @@ pub fn progress(snapshot: &NativeCloneSnapshot) -> Option<f64> {
 mod tests {
     use super::*;
     use gitlama_contract::activity::NativeActivityProgress;
+    use gitlama_contract::dto::NativeCloneFailure;
+
+    #[test]
+    fn a_failed_attempt_fails_the_run_and_a_canceled_one_does_not() {
+        let attempt = |state, failure| NativeCloneRunResult {
+            snapshot: Some(NativeCloneSnapshot {
+                attempt_id: 1,
+                generation: 1,
+                state,
+                failure,
+                partial_destination: false,
+                progress: None,
+                host_key_challenge: None,
+            }),
+            session: None,
+            failure: None,
+        };
+        assert_eq!(
+            run_failure(&attempt(
+                NativeCloneState::Failed,
+                Some(NativeCloneFailure {
+                    kind: NativeCloneFailureKind::Authentication
+                })
+            )),
+            Some(NativeCloneFailureKind::Authentication)
+        );
+        assert_eq!(
+            run_failure(&attempt(NativeCloneState::Failed, None)),
+            Some(NativeCloneFailureKind::Git)
+        );
+        assert_eq!(
+            run_failure(&attempt(
+                NativeCloneState::Canceled,
+                Some(NativeCloneFailure {
+                    kind: NativeCloneFailureKind::Canceled
+                })
+            )),
+            None
+        );
+        assert_eq!(
+            run_failure(&attempt(NativeCloneState::Succeeded, None)),
+            None
+        );
+    }
 
     #[test]
     fn progress_needs_a_total() {

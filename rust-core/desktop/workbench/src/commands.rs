@@ -310,8 +310,14 @@ pub fn resolve(
     Ok(bindings)
 }
 
+/// Whether the platform's keyboards have `hint`'s key: Mac keyboards have no
+/// Insert key, so that list hint is not shown there.
+fn hint_on_keyboard(hint: &str, mac: bool) -> bool {
+    !(mac && hint.eq_ignore_ascii_case("insert"))
+}
+
 /// The shortcut each command shows: its binding, or its list key hint unless
-/// the user overrode the command.
+/// the user overrode the command or the platform's keyboards lack the key.
 pub fn shown(
     overrides: &[NativeShortcutOverride],
     mac: bool,
@@ -326,6 +332,7 @@ pub fn shown(
         if entry.is_none()
             && !overridden.contains(command.id.as_str())
             && let Some(hint) = &command.key_hint
+            && hint_on_keyboard(hint, mac)
         {
             *entry = Shortcut::parse(hint).ok();
         }
@@ -420,6 +427,19 @@ mod tests {
         assert_eq!(error.code, ShortcutFailure::Conflict);
         let ok = replace(&[], "push", Some("Ctrl+Shift+U"), false).unwrap();
         assert_eq!(ok[0].binding.as_deref(), Some("Ctrl+Shift+U"));
+    }
+
+    #[test]
+    fn the_insert_hint_shows_only_where_keyboards_have_insert() {
+        let elsewhere = shown(&[], false).unwrap();
+        let mac = shown(&[], true).unwrap();
+        assert_eq!(
+            elsewhere["createBranch"]
+                .as_ref()
+                .map(|shortcut| shortcut.key.as_str()),
+            Some("Insert")
+        );
+        assert!(mac["createBranch"].is_none());
     }
 
     #[test]

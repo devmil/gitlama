@@ -39,7 +39,9 @@ T.Button {
 
     readonly property bool small: controlSize === MeridianButton.Small
     readonly property bool primary: variant === MeridianButton.Primary
-    readonly property bool active: enabled || loading || success
+    // The confirmation looks active only for its hold: a `success` left set
+    // afterwards does not keep a disabled button looking enabled.
+    readonly property bool active: enabled || loading || _holding
     readonly property real extent: small ? Theme.size.controlSmall : Theme.size.control
     readonly property color restFill: {
         const c = Theme.colors
@@ -86,7 +88,7 @@ T.Button {
         }
     }
     readonly property color fillColor: {
-        if (loading || success)
+        if (loading || _holding)
             return restFill
         if (!enabled)
             return primary ? Theme.colors.accentSoft : Theme.clear(Theme.colors.paneHover)

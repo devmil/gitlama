@@ -37,6 +37,13 @@ Window {
         window.destroy()
     }
 
+    // The platform's Close Window key (⌘W, Ctrl+W) closes this window like its close button.
+    Shortcut {
+        sequences: [StandardKey.Close]
+        context: Qt.WindowShortcut
+        onActivated: window.close()
+    }
+
     MeridianIsland {
         anchors.fill: parent
         anchors.margins: Theme.space.s3

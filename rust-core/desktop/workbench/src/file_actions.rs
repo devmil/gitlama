@@ -157,6 +157,17 @@ impl Subject {
         matches!(self.source, Source::Folder | Source::ChangesFolder)
     }
 
+    /// Whether a Changes file is in the current commit, which its Blame
+    /// (HEAD) and File history (HEAD) read: untracked and newly added files
+    /// are not.
+    pub fn at_head_commit(&self) -> bool {
+        !self.untracked
+            && !matches!(
+                self.change,
+                Some(NativeFileChangeKind::Added | NativeFileChangeKind::Untracked)
+            )
+    }
+
     /// Inspection actions of the working tree inspect the current commit.
     pub fn at_head(&self) -> bool {
         matches!(
@@ -308,10 +319,12 @@ pub fn applies(action: FileAction, subject: &Subject) -> bool {
         FileAction::ShowContents => (committed || history || source == TreeFile) && contents,
         FileAction::Blame => {
             ((committed || history || source == TreeFile) && blame)
-                || changes_file
+                || (changes_file && subject.at_head_commit())
                 || matches!(source, ConflictFile | ReviewFile)
         }
-        FileAction::FileHistory => !subject.is_folder(),
+        FileAction::FileHistory => {
+            !subject.is_folder() && (!changes_file || subject.at_head_commit())
+        }
         FileAction::FolderHistory => subject.is_folder(),
         FileAction::OpenInNewWindow => committed || history || matches!(source, TreeFile | Folder),
         FileAction::Stage => source == UnstagedFile || (source == ChangesFolder && !subject.staged),
@@ -881,7 +894,25 @@ mod tests {
                 untracked: true,
                 ..subject(Source::UnstagedFile)
             },
-            &[&unstaged[..], &["Delete untracked file !"]].concat(),
+            // An untracked file is not in HEAD: no Blame or history there.
+            &[&unstaged[3..], &["Delete untracked file !"]].concat(),
+        );
+        check(
+            Subject {
+                staged: true,
+                change: Some(NativeFileChangeKind::Added),
+                ..subject(Source::StagedFile)
+            },
+            &[
+                "Unstage file",
+                "Inspect changes",
+                "—",
+                "Create patch",
+                "—",
+                "Open in external editor",
+                "Open in Files",
+                "Copy path",
+            ],
         );
         check(
             Subject {

@@ -16,13 +16,15 @@ Rectangle {
 
     color: Theme.colors.ground
 
-    // Title row: the window caption with the Settings button.
+    // Title row: the window caption with the Settings button. On macOS it is
+    // the unified title bar's height, as the repository toolbar is, so the
+    // caption is centred on the traffic lights.
     Item {
         id: titleRow
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: Metrics.tabStripHeight
+        height: Store.isMac ? Theme.size.toolbar : Metrics.tabStripHeight
 
         WindowDragArea { anchors.fill: parent }
         MeridianText {
@@ -106,14 +108,24 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: childrenRect.height
                 spacing: Theme.space.s4
-                // Centre each line of the wrap so the wrap is centred.
+                // Centre the wrapped block: its widest line, as the Flow
+                // breaks the buttons into lines, decides the padding.
                 leftPadding: Math.max(0, (width - implicitLineWidth) / 2)
                 readonly property real implicitLineWidth: {
-                    let total = 0
-                    for (let i = 0; i < children.length; ++i)
-                        if (children[i].visible)
-                            total += children[i].implicitWidth + (total > 0 ? spacing : 0)
-                    return Math.min(total, width)
+                    let widest = 0
+                    let line = 0
+                    for (let i = 0; i < children.length; ++i) {
+                        if (!children[i].visible)
+                            continue
+                        const item = children[i].implicitWidth
+                        if (line > 0 && line + spacing + item > width) {
+                            widest = Math.max(widest, line)
+                            line = item
+                        } else {
+                            line += (line > 0 ? spacing : 0) + item
+                        }
+                    }
+                    return Math.min(Math.max(widest, line), width)
                 }
                 MeridianButton {
                     text: L10n.t("welcomeOpen")
@@ -145,13 +157,16 @@ Rectangle {
                     enabled: !screen.busy
                     onActivated: Store.workspace.initializeRepository(false)
                 }
-                MeridianButton {
-                    text: L10n.t("initializeBareRepository")
-                    variant: MeridianButton.Quiet
-                    loading: screen.busy
-                    enabled: !screen.busy
-                    onActivated: Store.workspace.initializeRepository(true)
-                }
+            }
+            // The rarer bare repository, a quiet action centred below.
+            Item { Layout.preferredHeight: Theme.space.s3 }
+            MeridianButton {
+                Layout.alignment: Qt.AlignHCenter
+                text: L10n.t("initializeBareRepository")
+                variant: MeridianButton.Quiet
+                loading: screen.busy
+                enabled: !screen.busy
+                onActivated: Store.workspace.initializeRepository(true)
             }
             // A running clone: its progress and Cancel.
             Item { visible: Store.clone.running === true; Layout.preferredHeight: Theme.space.s4 }

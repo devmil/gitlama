@@ -10,6 +10,12 @@ unsafe extern "C" {
 #[cfg(target_os = "macos")]
 unsafe extern "C" {
     fn gitlama_configure_windows();
+    fn gitlama_install_window_menu(
+        title: *const std::ffi::c_char,
+        minimize: *const std::ffi::c_char,
+        zoom: *const std::ffi::c_char,
+        full_screen: *const std::ffi::c_char,
+    );
     fn gitlama_system_reduce_motion() -> bool;
     fn gitlama_share_text(
         text: *const std::ffi::c_char,
@@ -33,6 +39,38 @@ mod platform_hooks {
             // SAFETY: configures the application's windows on the GUI thread.
             unsafe {
                 super::gitlama_configure_windows();
+            }
+        }
+
+        /// Gives macOS the standard Window menu (Minimize ⌘M, Zoom, Enter Full Screen ⌃⌘F)
+        /// with these localized titles. Elsewhere nothing.
+        #[qslot]
+        fn install_window_menu(
+            &self,
+            title: String,
+            minimize: String,
+            zoom: String,
+            full_screen: String,
+        ) {
+            #[cfg(target_os = "macos")]
+            {
+                let titles = [title, minimize, zoom, full_screen].map(std::ffi::CString::new);
+                let [Ok(title), Ok(minimize), Ok(zoom), Ok(full_screen)] = titles else {
+                    return;
+                };
+                // SAFETY: NUL-terminated strings valid for the call, on the GUI thread.
+                unsafe {
+                    super::gitlama_install_window_menu(
+                        title.as_ptr(),
+                        minimize.as_ptr(),
+                        zoom.as_ptr(),
+                        full_screen.as_ptr(),
+                    );
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (title, minimize, zoom, full_screen);
             }
         }
 
